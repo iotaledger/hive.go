@@ -3,7 +3,7 @@ package objectstorage
 import (
 	"sync"
 
-	"github.com/iotaledger/goshimmer/packages/typeutils"
+	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/dgraph-io/badger"
 )

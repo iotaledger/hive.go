@@ -5,11 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/iotaledger/goshimmer/packages/typeutils"
+	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/dgraph-io/badger"
-
-	"github.com/iotaledger/goshimmer/packages/daemon"
 )
 
 var writeWg sync.WaitGroup
@@ -113,8 +111,6 @@ func runBatchWriter() {
 				waitingForTimeout = false
 				timeoutWg.Done()
 
-				break COLLECT_VALUES
-			case <-daemon.ShutdownSignal:
 				break COLLECT_VALUES
 			}
 		}
