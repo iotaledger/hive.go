@@ -3,7 +3,6 @@ package filter
 import (
 	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
-
 )
 
 type ByteArrayFilter struct {
