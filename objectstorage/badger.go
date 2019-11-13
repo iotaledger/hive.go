@@ -56,7 +56,7 @@ func createDB() (*badger.DB, error) {
 	}
 
 	opts := badger.DefaultOptions(directory)
-	opts.Logger = &disabledBadgerLogger{}
+	opts.Logger = nil
 	opts.Truncate = true
 	opts.TableLoadingMode = options.MemoryMap
 
@@ -66,22 +66,4 @@ func createDB() (*badger.DB, error) {
 	}
 
 	return db, nil
-}
-
-type disabledBadgerLogger struct{}
-
-func (this *disabledBadgerLogger) Errorf(string, ...interface{}) {
-	// disable logging
-}
-
-func (this *disabledBadgerLogger) Infof(string, ...interface{}) {
-	// disable logging
-}
-
-func (this *disabledBadgerLogger) Warningf(string, ...interface{}) {
-	// disable logging
-}
-
-func (this *disabledBadgerLogger) Debugf(string, ...interface{}) {
-	// disable logging
 }
