@@ -1,12 +1,14 @@
 package list
 
-import "sync"
+import (
+	"github.com/iotaledger/hive.go/syncutils"
+)
 
 type DoublyLinkedListEntry struct {
 	Value interface{}
 	Prev  *DoublyLinkedListEntry
 	Next  *DoublyLinkedListEntry
-	mutex sync.RWMutex
+	mutex syncutils.RWMutex
 }
 
 func (entry *DoublyLinkedListEntry) GetNext() *DoublyLinkedListEntry {

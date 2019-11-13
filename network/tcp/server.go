@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/network"
+	"github.com/iotaledger/hive.go/syncutils"
 	"net"
-	"sync"
 )
 
 type TCPServer struct {
 	socket      net.Listener
-	socketMutex sync.RWMutex
+	socketMutex syncutils.RWMutex
 	Events      tcpServerEvents
 }
 

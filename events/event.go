@@ -1,11 +1,13 @@
 package events
 
-import "sync"
+import (
+	"github.com/iotaledger/hive.go/syncutils"
+)
 
 type Event struct {
 	triggerFunc func(handler interface{}, params ...interface{})
 	callbacks   map[uintptr]interface{}
-	mutex       sync.RWMutex
+	mutex       syncutils.RWMutex
 }
 
 func (ev *Event) Attach(closure *Closure) {

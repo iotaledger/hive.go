@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/syncutils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,7 +19,7 @@ type CachedObject struct {
 	stored        int32
 	delete        int32
 	wg            sync.WaitGroup
-	valueMutex    sync.RWMutex
+	valueMutex    syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
 }
 

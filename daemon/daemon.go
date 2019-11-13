@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"github.com/iotaledger/hive.go/syncutils"
 	"sync"
 )
 
@@ -11,7 +12,7 @@ var (
 	backgroundWorkers        = make([]func(), 0)
 	backgroundWorkerNames    = make([]string, 0)
 	runningBackgroundWorkers = make(map[string]bool)
-	lock                     = sync.Mutex{}
+	lock                     = syncutils.Mutex{}
 )
 
 func GetRunningBackgroundWorkers() []string {

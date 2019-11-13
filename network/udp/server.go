@@ -2,14 +2,14 @@ package udp
 
 import (
 	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/syncutils"
 	"net"
 	"strconv"
-	"sync"
 )
 
 type UDPServer struct {
 	socket            net.PacketConn
-	socketMutex       sync.RWMutex
+	socketMutex       syncutils.RWMutex
 	ReceiveBufferSize int
 	Events            udpServerEvents
 }

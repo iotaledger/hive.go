@@ -3,8 +3,8 @@ package lru_cache
 import (
 	"github.com/iotaledger/hive.go/key_mutex"
 	"github.com/iotaledger/hive.go/list"
+	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-	"sync"
 )
 
 type lruCacheElement struct {
@@ -18,7 +18,7 @@ type LRUCache struct {
 	capacity         int
 	size             int
 	options          *LRUCacheOptions
-	mutex            sync.RWMutex
+	mutex            syncutils.RWMutex
 	krwMutex         *key_mutex.KRWMutex
 }
 
