@@ -1,7 +1,7 @@
 package key_mutex_test
 
 import (
-	key_mutex "github.com/iotaledger/hive.go/sync"
+	key_mutex "github.com/iotaledger/hive.go/key_mutex"
 	"testing"
 )
 

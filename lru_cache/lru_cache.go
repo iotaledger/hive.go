@@ -1,8 +1,9 @@
 package lru_cache
 
 import (
+	"github.com/iotaledger/hive.go/key_mutex"
 	"github.com/iotaledger/hive.go/list"
-	key_mutex "github.com/iotaledger/hive.go/sync"
+	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 )
 
@@ -18,7 +19,7 @@ type LRUCache struct {
 	size             int
 	options          *LRUCacheOptions
 	mutex            sync.RWMutex
-	krwMutex         key_mutex.KRWMutex
+	krwMutex         *key_mutex.KRWMutex
 }
 
 func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
@@ -42,7 +43,7 @@ func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
 		doublyLinkedList: &list.DoublyLinkedList{},
 		capacity:         capacity,
 		options:          currentOptions,
-		krwMutex:         key_mutex.KRWMutex{keyMutexConsumers: make(map[interface{}]int), keyMutexes: make(map[interface{}]*key_mutex.RWMutex)},
+		krwMutex:         key_mutex.NewKRWMutex(),
 	}
 }
 
@@ -62,13 +63,13 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 	directory := cache.directory
 
 	if element, exists := directory[key]; exists {
-		element.value.(*lruCacheElement).value = value
+		element.Value.(*lruCacheElement).value = value
 		cache.promoteElement(element)
 		return
 	}
 
-	linkedListEntry := &list.DoublyLinkedListEntry{value: &lruCacheElement{key: key, value: value}}
-	cache.doublyLinkedList.addFirstEntry(linkedListEntry)
+	linkedListEntry := &list.DoublyLinkedListEntry{Value: &lruCacheElement{key: key, value: value}}
+	cache.doublyLinkedList.AddFirstEntry(linkedListEntry)
 	directory[key] = linkedListEntry
 	cache.size++
 
@@ -80,11 +81,11 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 	elemsToEvict := []interface{}{}
 	elemsKeys := []interface{}{}
 	for i := 0; i < int(cache.options.EvictionBatchSize) && cache.doublyLinkedList.GetSize() > 0; i++ {
-		element, err := cache.doublyLinkedList.removeLastEntry()
+		element, err := cache.doublyLinkedList.RemoveLastEntry()
 		if err != nil {
 			panic(err)
 		}
-		lruCacheElement := element.value.(*lruCacheElement)
+		lruCacheElement := element.Value.(*lruCacheElement)
 
 		// we don't need to hold any element locks because we are holding
 		// the entire cache's write lock
@@ -161,7 +162,7 @@ func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value int
 			keyMutex.Unlock()
 		} else {
 			cache.mutex.Lock()
-			if err := cache.doublyLinkedList.removeEntry(entry); err != nil {
+			if err := cache.doublyLinkedList.RemoveEntry(entry); err != nil {
 				panic(err)
 			}
 			delete(cache.directory, key)
@@ -258,7 +259,7 @@ func (cache *LRUCache) Delete(key interface{}) bool {
 		cache.mutex.RUnlock()
 		cache.mutex.Lock()
 
-		if err := cache.doublyLinkedList.removeEntry(entry); err != nil {
+		if err := cache.doublyLinkedList.RemoveEntry(entry); err != nil {
 			panic(err)
 		}
 		delete(cache.directory, key)
@@ -284,11 +285,11 @@ func (cache *LRUCache) Delete(key interface{}) bool {
 	return false
 }
 
-func (cache *LRUCache) promoteElement(element *DoublyLinkedListEntry) {
-	if err := cache.doublyLinkedList.removeEntry(element); err != nil {
+func (cache *LRUCache) promoteElement(element *list.DoublyLinkedListEntry) {
+	if err := cache.doublyLinkedList.RemoveEntry(element); err != nil {
 		panic(err)
 	}
-	cache.doublyLinkedList.addFirstEntry(element)
+	cache.doublyLinkedList.AddFirstEntry(element)
 }
 
 func (cache *LRUCache) DeleteAll() {
@@ -300,7 +301,7 @@ func (cache *LRUCache) DeleteAll() {
 	evictedItemsCnt := 0
 
 	for key, entry := range cache.directory {
-		if err := cache.doublyLinkedList.removeEntry(entry); err != nil {
+		if err := cache.doublyLinkedList.RemoveEntry(entry); err != nil {
 			panic(err)
 		}
 		delete(cache.directory, key)

@@ -3,6 +3,7 @@ package lru_cache_test
 import (
 	"fmt"
 	"github.com/iotaledger/hive.go/lru_cache"
+	"github.com/iotaledger/hive.go/typeutils"
 	"testing"
 )
 
@@ -129,7 +130,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 	})
 
 	for i := 0; i < 11; i++ {
-		cache.set(i, i)
+		cache.Set(i, i)
 	}
 
 	if !called {

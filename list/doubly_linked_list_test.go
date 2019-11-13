@@ -1,11 +1,12 @@
-package list
+package list_test
 
 import (
+	"github.com/iotaledger/hive.go/list"
 	"testing"
 )
 
 func TestAdd(t *testing.T) {
-	doublyLinkedList := &DoublyLinkedList{}
+	doublyLinkedList := list.NewDoublyLinkedList()
 
 	doublyLinkedList.Add(12)
 	doublyLinkedList.Add(12)
@@ -18,7 +19,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	doublyLinkedList := &DoublyLinkedList{}
+	doublyLinkedList := list.NewDoublyLinkedList()
 
 	doublyLinkedList.Add(12)
 	doublyLinkedList.Add(13)
