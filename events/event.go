@@ -8,24 +8,33 @@ type Event struct {
 	mutex       sync.RWMutex
 }
 
-func (this *Event) Attach(closure *Closure) {
-	this.mutex.Lock()
-	this.callbacks[closure.Id] = closure.Fnc
-	this.mutex.Unlock()
+func (ev *Event) Attach(closure *Closure) {
+	ev.mutex.Lock()
+	ev.callbacks[closure.Id] = closure.Fnc
+	ev.mutex.Unlock()
 }
 
-func (this *Event) Detach(closure *Closure) {
-	this.mutex.Lock()
-	delete(this.callbacks, closure.Id)
-	this.mutex.Unlock()
-}
-
-func (this *Event) Trigger(params ...interface{}) {
-	this.mutex.RLock()
-	for _, handler := range this.callbacks {
-		this.triggerFunc(handler, params...)
+func (ev *Event) Detach(closure *Closure) {
+	if closure == nil {
+		return
 	}
-	this.mutex.RUnlock()
+	ev.mutex.Lock()
+	delete(ev.callbacks, closure.Id)
+	ev.mutex.Unlock()
+}
+
+func (ev *Event) Trigger(params ...interface{}) {
+	ev.mutex.RLock()
+	for _, handler := range ev.callbacks {
+		ev.triggerFunc(handler, params...)
+	}
+	ev.mutex.RUnlock()
+}
+
+func (ev *Event) DetachAll() {
+	ev.mutex.Lock()
+	ev.callbacks = make(map[uintptr]interface{})
+	ev.mutex.Unlock()
 }
 
 func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {
