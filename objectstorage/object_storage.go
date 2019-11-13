@@ -1,8 +1,7 @@
 package objectstorage
 
 import (
-	"sync"
-
+	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/dgraph-io/badger"
@@ -13,7 +12,7 @@ type ObjectStorage struct {
 	storageId      []byte
 	objectFactory  StorableObjectFactory
 	cachedObjects  map[string]*CachedObject
-	cacheMutex     sync.RWMutex
+	cacheMutex     syncutils.RWMutex
 	options        *ObjectStorageOptions
 }
 

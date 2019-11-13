@@ -1,8 +1,8 @@
 package list
 
 import (
+	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 func NewSyncDoublyLinkedList() *SyncDoublyLinkedList {
@@ -11,7 +11,7 @@ func NewSyncDoublyLinkedList() *SyncDoublyLinkedList {
 
 // SyncDoublyLinkedList is a DoublyLinkedList but with synchronized methods.
 type SyncDoublyLinkedList struct {
-	mutex  sync.RWMutex
+	mutex  syncutils.RWMutex
 	Unsafe DoublyLinkedList
 }
 

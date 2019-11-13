@@ -1,6 +1,7 @@
 package batchworkerpool
 
 import (
+	"github.com/iotaledger/hive.go/syncutils"
 	"sync"
 	"time"
 )
@@ -14,7 +15,7 @@ type BatchWorkerPool struct {
 	terminate    chan int
 
 	running bool
-	mutex   sync.RWMutex
+	mutex   syncutils.RWMutex
 	wait    sync.WaitGroup
 }
 

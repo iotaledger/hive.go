@@ -2,9 +2,9 @@ package logger
 
 import (
 	"fmt"
+	"github.com/iotaledger/hive.go/syncutils"
 	"log"
 	"os"
-	"sync"
 )
 
 // every instance of the logger uses the same logger to ensure that
@@ -38,9 +38,9 @@ const (
 
 type Logger struct {
 	Prefix     string
-	changeMu   sync.Mutex
+	changeMu   syncutils.Mutex
 	logLevel   LogLevel
-	disabledMu sync.Mutex
+	disabledMu syncutils.Mutex
 	disabled   bool
 }
 

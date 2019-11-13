@@ -2,14 +2,14 @@ package database
 
 import (
 	"github.com/dgraph-io/badger"
-	"sync"
+	"github.com/iotaledger/hive.go/syncutils"
 )
 
 var (
 	ErrKeyNotFound = badger.ErrKeyNotFound
 
 	dbMap = make(map[string]*prefixDb)
-	mu    sync.Mutex
+	mu    syncutils.Mutex
 )
 
 type prefixDb struct {

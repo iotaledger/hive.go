@@ -10,7 +10,7 @@ type ByteArrayFilter struct {
 	byteArrays      [][]byte
 	byteArraysByKey map[string]bool
 	size            int
-	mutex           sync.RWMutex
+	mutex           syncutils.RWMutex
 }
 
 func NewByteArrayFilter(size int) *ByteArrayFilter {

@@ -1,11 +1,11 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/dgraph-io/badger"
 )
@@ -16,7 +16,7 @@ var timeoutWg sync.WaitGroup
 
 var waitingForTimeout bool
 
-var startStopMutex sync.Mutex
+var startStopMutex syncutils.Mutex
 
 var running int32 = 0
 

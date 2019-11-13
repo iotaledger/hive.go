@@ -1,30 +1,30 @@
 package key_mutex
 
 import (
-	"sync"
+	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type KRWMutex struct {
 	keyMutexConsumers map[interface{}]int
-	keyMutexes        map[interface{}]*sync.RWMutex
-	mutex             sync.RWMutex
+	keyMutexes        map[interface{}]*syncutils.RWMutex
+	mutex             syncutils.RWMutex
 }
 
 func NewKRWMutex() *KRWMutex {
 	return &KRWMutex{
 		keyMutexConsumers: make(map[interface{}]int),
-		keyMutexes:        make(map[interface{}]*sync.RWMutex),
+		keyMutexes:        make(map[interface{}]*syncutils.RWMutex),
 	}
 }
 
-func (krwMutex *KRWMutex) Register(key interface{}) (result *sync.RWMutex) {
+func (krwMutex *KRWMutex) Register(key interface{}) (result *syncutils.RWMutex) {
 	krwMutex.mutex.Lock()
 
 	if val, exists := krwMutex.keyMutexConsumers[key]; exists {
 		krwMutex.keyMutexConsumers[key] = val + 1
 		result = krwMutex.keyMutexes[key]
 	} else {
-		result = &sync.RWMutex{}
+		result = &syncutils.RWMutex{}
 
 		krwMutex.keyMutexConsumers[key] = 1
 		krwMutex.keyMutexes[key] = result
