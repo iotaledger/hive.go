@@ -2,6 +2,7 @@ package test
 
 import (
 	"errors"
+	"github.com/iotaledger/hive.go/parameter"
 	"strconv"
 	"sync"
 	"testing"
@@ -9,6 +10,12 @@ import (
 
 	"github.com/iotaledger/hive.go/objectstorage"
 )
+
+func init() {
+	if err := parameter.FetchConfig(); err != nil {
+		panic(err)
+	}
+}
 
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
 
