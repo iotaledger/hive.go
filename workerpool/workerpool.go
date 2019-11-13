@@ -24,10 +24,6 @@ type WorkerPool struct {
 	wait    sync.WaitGroup
 }
 
-func voidCaller(handler interface{}, params ...interface{}) {
-	handler.(func())()
-}
-
 func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
@@ -151,24 +147,26 @@ func (wp *WorkerPool) GetPendingQueueSize() int {
 }
 
 func (wp *WorkerPool) signalBarrier(params ...interface{}) {
-	if wp.running {
-		wp.barrierLock.Lock()
-		wp.barrierWait.Add(1)
-
-		// signal all threads to enter the barrier after processing their last task or being idle
-		for i := 0; i < wp.options.WorkerCount; i++ {
-			wp.barrierIn <- struct{}{}
-		}
-
-		// wait for all threads to enter the barrier
-		for i := 0; i < wp.options.WorkerCount; i++ {
-			<-wp.barrierOut
-		}
-
-		wp.barrierWait.Done()
-		wp.BarrierEvent.Trigger(params...)
-		wp.barrierLock.Unlock()
+	if !wp.running {
+		return
 	}
+
+	wp.barrierLock.Lock()
+	wp.barrierWait.Add(1)
+
+	// signal all threads to enter the barrier after processing their last task or being idle
+	for i := 0; i < wp.options.WorkerCount; i++ {
+		wp.barrierIn <- struct{}{}
+	}
+
+	// wait for all threads to enter the barrier
+	for i := 0; i < wp.options.WorkerCount; i++ {
+		<-wp.barrierOut
+	}
+
+	wp.barrierWait.Done()
+	wp.BarrierEvent.Trigger(params...)
+	wp.barrierLock.Unlock()
 }
 
 func (wp *WorkerPool) resetChannels() {

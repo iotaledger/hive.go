@@ -1,16 +1,21 @@
 package workerpool_test
 
 import (
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/workerpool"
 	"sync"
 	"testing"
 )
 
 func TestSignalBarrier(t *testing.T) {
-	pool := workerpool.New(func(task workerpool.Task) {
+	pool := workerpool.NewWithBarrier(func(task workerpool.Task) {
 		println(task.Param(0).(int))
 		task.Return(nil)
-	}, workerpool.WorkerCount(10), workerpool.QueueSize(2000))
+	},
+		events.NewEvent(events.CallbackCaller),
+		workerpool.WorkerCount(10),
+		workerpool.QueueSize(2000),
+	)
 	pool.Start()
 
 	var wg sync.WaitGroup
