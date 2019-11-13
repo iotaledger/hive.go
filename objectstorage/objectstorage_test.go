@@ -1,14 +1,13 @@
-package test
+package objectstorage_test
 
 import (
 	"errors"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/parameter"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 func init() {

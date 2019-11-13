@@ -1,8 +1,7 @@
-package test
+package objectstorage_test
 
 import (
 	"encoding/binary"
-
 	"github.com/iotaledger/hive.go/objectstorage"
 )
 
