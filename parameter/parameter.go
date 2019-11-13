@@ -1,90 +1,53 @@
 package parameter
 
-var boolParameters = make(map[string]*BoolParameter)
+import (
+	"encoding/json"
+	"github.com/iotaledger/hive.go/logger"
+	"os"
 
-func AddBool(name string, defaultValue bool, description string) *BoolParameter {
-	if boolParameters[name] != nil {
-		panic("duplicate parameter - \"" + name + "\" was defined already")
+	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
+)
+
+var (
+	NodeConfig = viper.New()
+	log        = logger.NewLogger("NodeConfig")
+)
+
+// FetchConfig fetches parameters from a config file or command line arguments
+func FetchConfig() error {
+
+	err := NodeConfig.BindPFlags(flag.CommandLine)
+	if err != nil {
+		log.Error(err)
 	}
 
-	newParameter := &BoolParameter{
-		Name:         name,
-		DefaultValue: defaultValue,
-		Value:        &defaultValue,
-		Description:  description,
+	var configPath *string = flag.StringP("config", "c", "config.json", "Path to the config file")
+	flag.Parse()
+
+	if configPath != nil {
+		// Check if config file exists
+		_, err := os.Stat(*configPath)
+		if os.IsNotExist(err) && !flag.CommandLine.Changed("config") {
+			log.Error("No config file found. Loading default settings.")
+		} else {
+			log.Infof("Loading parameters from %s...\n", *configPath)
+			NodeConfig.SetConfigFile(*configPath)
+			err := NodeConfig.ReadInConfig()
+			if err != nil {
+				log.Errorf("Error while loading config from: %s (%s)\n", *configPath, err)
+			}
+		}
 	}
 
-	boolParameters[name] = newParameter
-
-	Events.AddBool.Trigger(newParameter)
-
-	return newParameter
-}
-
-func GetBool(name string) *BoolParameter {
-	return boolParameters[name]
-}
-
-func GetBools() map[string]*BoolParameter {
-	return boolParameters
-}
-
-var intParameters = make(map[string]*IntParameter)
-
-func AddInt(name string, defaultValue int, description string) *IntParameter {
-	if _, exists := intParameters[name]; exists {
-		panic("duplicate parameter - \"" + name + "\" was defined already")
+	// Print parameters
+	cfg, err := json.MarshalIndent(NodeConfig.AllSettings(), "", "  ")
+	if err != nil {
+		log.Errorf("Error: %s\n", err)
 	}
+	log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 
-	newParameter := &IntParameter{
-		Name:         name,
-		DefaultValue: defaultValue,
-		Value:        &defaultValue,
-		Description:  description,
-	}
-
-	intParameters[name] = newParameter
-
-	Events.AddInt.Trigger(newParameter)
-
-	return newParameter
-}
-
-func GetInt(name string) *IntParameter {
-	return intParameters[name]
-}
-
-func GetInts() map[string]*IntParameter {
-	return intParameters
-}
-
-var stringParameters = make(map[string]*StringParameter)
-
-func AddString(name string, defaultValue string, description string) *StringParameter {
-	if _, exists := stringParameters[name]; exists {
-		panic("duplicate parameter - \"" + name + "\" was defined already")
-	}
-
-	newParameter := &StringParameter{
-		Name:         name,
-		DefaultValue: defaultValue,
-		Value:        &defaultValue,
-		Description:  description,
-	}
-
-	stringParameters[name] = newParameter
-
-	Events.AddString.Trigger(newParameter)
-
-	return stringParameters[name]
-}
-
-func GetString(name string) *StringParameter {
-	return stringParameters[name]
-}
-
-func GetStrings() map[string]*StringParameter {
-	return stringParameters
+	return nil
 }
 
 var plugins = make(map[string]int)
