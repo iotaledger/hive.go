@@ -1,5 +1,7 @@
 package objectstorage
 
-import "github.com/iotaledger/hive.go/parameter"
+import flag "github.com/spf13/pflag"
 
-var DIRECTORY = parameter.AddString("OBJECTSTORAGE/DIRECTORY", "objectsdb", "path to the database folder")
+func init() {
+	flag.String("objectstorage.directory", "objectsdb", "path to the database folder")
+}

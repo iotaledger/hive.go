@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/parameter"
 	"github.com/pkg/errors"
 	"os"
 	"sync"
@@ -49,7 +50,7 @@ func checkDir(dir string) error {
 }
 
 func createDB() (*badger.DB, error) {
-	directory := *DIRECTORY.Value
+	directory := parameter.NodeConfig.GetString("objectstorage.directory")
 	if err := checkDir(directory); err != nil {
 		return nil, errors.Wrap(err, "Could not check directory")
 	}
