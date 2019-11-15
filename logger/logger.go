@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"github.com/iotaledger/hive.go/syncutils"
+	"io"
 	"log"
 	"os"
 )
@@ -10,6 +11,11 @@ import (
 // every instance of the logger uses the same logger to ensure that
 // concurrent prints/writes don't overlap
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
+
+// InjectWriter swaps out the logger package's underlying logger's writers.
+func InjectWriters(writers ...io.Writer) {
+	logger = log.New(io.MultiWriter(writers...), "", log.Ldate|log.Ltime)
+}
 
 func NewLogger(prefix string, logLevel ...LogLevel) *Logger {
 	l := &Logger{Prefix: prefix}
