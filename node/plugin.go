@@ -12,6 +12,8 @@ const (
 	Enabled
 )
 
+type Callback = func(plugin *Plugin)
+
 type Plugin struct {
 	Node   *Node
 	Name   string
@@ -22,7 +24,7 @@ type Plugin struct {
 
 // Creates a new plugin with the given name, default status and callbacks.
 // The last specified callback is the mandatory run callback, while all other callbacks are configure callbacks.
-func NewPlugin(name string, status int, callback func(), callbacks ...func()) *Plugin {
+func NewPlugin(name string, status int, callback Callback, callbacks ...Callback) *Plugin {
 	plugin := &Plugin{
 		Name:   name,
 		Status: status,
