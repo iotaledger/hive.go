@@ -1,12 +1,19 @@
 package parameter
 
 import (
-	"encoding/json"
-	"github.com/iotaledger/hive.go/logger"
 	"os"
 
+	"github.com/iotaledger/hive.go/logger"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	yaml "gopkg.in/yaml.v2"
+)
+
+// Config file type defaults
+const (
+	FetchDefaultYAML = "yaml"
+	FetchDefaultJSON = "json"
+	FetchDefaultTOML = "toml"
 )
 
 var (
@@ -14,15 +21,30 @@ var (
 	log        = logger.NewLogger("NodeConfig")
 )
 
-// FetchConfig fetches parameters from a config file or command line arguments
-func FetchConfig() error {
+// FetchConfig fetches parameters from a config file or command line arguments.
+// printConfig: Print parameters as YAML
+// defautFetch: Try to fetch config from config.(json | yaml | toml) if no config flag has been set, default: config.yaml
+func FetchConfig(printConfig bool, defaultFetch string) error {
+
+	var fetchConfig string
 
 	err := NodeConfig.BindPFlags(flag.CommandLine)
 	if err != nil {
 		log.Error(err)
 	}
 
-	var configPath *string = flag.StringP("config", "c", "config.json", "Path to the config file")
+	switch defaultFetch {
+	case FetchDefaultYAML:
+		fetchConfig = "config.yaml"
+	case FetchDefaultJSON:
+		fetchConfig = "config.json"
+	case FetchDefaultTOML:
+		fetchConfig = "config.toml"
+	default:
+		fetchConfig = "config.yaml"
+	}
+
+	var configPath *string = flag.StringP("config", "c", fetchConfig, "Path to the config file")
 	flag.Parse()
 
 	if configPath != nil {
@@ -35,17 +57,19 @@ func FetchConfig() error {
 			NodeConfig.SetConfigFile(*configPath)
 			err := NodeConfig.ReadInConfig()
 			if err != nil {
-				log.Errorf("Error while loading config from: %s (%s)\n", *configPath, err)
+				log.Panicf("Error while loading config from: %s (%s)\n", *configPath, err)
 			}
 		}
 	}
 
-	// Print parameters
-	cfg, err := json.MarshalIndent(NodeConfig.AllSettings(), "", "  ")
-	if err != nil {
-		log.Errorf("Error: %s\n", err)
+	// Print parameters if printConfig is true
+	if printConfig {
+		cfg, err := yaml.Marshal(NodeConfig.AllSettings())
+		if err != nil {
+			log.Errorf("Error: %s\n", err)
+		}
+		log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 	}
-	log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 
 	return nil
 }
