@@ -1,65 +1,47 @@
 package parameter
 
 import (
-	"os"
-
 	"github.com/iotaledger/hive.go/logger"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	yaml "gopkg.in/yaml.v2"
-)
-
-// Config file type defaults
-const (
-	FetchDefaultYAML = "yaml"
-	FetchDefaultJSON = "json"
-	FetchDefaultTOML = "toml"
+	"gopkg.in/yaml.v2"
 )
 
 var (
+	// flags
+	configName    = flag.StringP("config", "c", "config", "Filename of the config file without the file extension")
+	configDirPath = flag.String("config-dir", ".", "Path to the directory containing the config file")
+	// Viper
 	NodeConfig = viper.New()
 	log        = logger.NewLogger("NodeConfig")
 )
 
-// FetchConfig fetches parameters from a config file or command line arguments.
-// printConfig: Print parameters as YAML
-// defautFetch: Try to fetch config from config.(json | yaml | toml) if no config flag has been set, default: config.yaml
-func FetchConfig(printConfig bool, defaultFetch string) error {
-
-	var fetchConfig string
-
+// FetchConfig fetches config values from a dir defined via CLI flag --config-dir (or the current working dir if not set).
+//
+// It automatically reads in a single config file starting with "config" (can be changed via the --config CLI flag)
+// and ending with: .json, .toml, .yaml or .yml (in this sequence).
+func FetchConfig(printConfig bool) error {
 	err := NodeConfig.BindPFlags(flag.CommandLine)
 	if err != nil {
 		log.Error(err)
 	}
 
-	switch defaultFetch {
-	case FetchDefaultYAML:
-		fetchConfig = "config.yaml"
-	case FetchDefaultJSON:
-		fetchConfig = "config.json"
-	case FetchDefaultTOML:
-		fetchConfig = "config.toml"
-	default:
-		fetchConfig = "config.yaml"
-	}
-
-	var configPath *string = flag.StringP("config", "c", fetchConfig, "Path to the config file")
 	flag.Parse()
 
-	if configPath != nil {
-		// Check if config file exists
-		_, err := os.Stat(*configPath)
-		if os.IsNotExist(err) && !flag.CommandLine.Changed("config") {
-			log.Error("No config file found. Loading default settings.")
+	// adjust viper to wanted locations
+	NodeConfig.SetConfigName(*configName)
+	NodeConfig.AddConfigPath(*configDirPath)
+	log.Infof("Loading parameters from config dir '%s' using '%s' as file prefix...\n", *configDirPath, *configName)
+
+	// read in the config file (whatever it finds)
+	if err := NodeConfig.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Errorf("No config file found via '%s/%s.[json,toml,yaml,yml]'. Loading default settings.", *configDirPath, *configName)
 		} else {
-			log.Infof("Loading parameters from %s...\n", *configPath)
-			NodeConfig.SetConfigFile(*configPath)
-			err := NodeConfig.ReadInConfig()
-			if err != nil {
-				log.Panicf("Error while loading config from: %s (%s)\n", *configPath, err)
-			}
+			log.Panicf("Error while loading config from %s: %s", *configDirPath, err)
 		}
+	} else {
+		log.Infof("read parameters from %s", NodeConfig.ConfigFileUsed())
 	}
 
 	// Print parameters if printConfig is true
