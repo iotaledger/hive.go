@@ -1,51 +1,57 @@
 package parameter
 
 import (
-	"encoding/json"
 	"github.com/iotaledger/hive.go/logger"
-	"os"
-
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 var (
+	// flags
+	configName    = flag.StringP("config", "c", "config", "Filename of the config file without the file extension")
+	configDirPath = flag.String("config-dir", ".", "Path to the directory containing the config file")
+	// Viper
 	NodeConfig = viper.New()
 	log        = logger.NewLogger("NodeConfig")
 )
 
-// FetchConfig fetches parameters from a config file or command line arguments
-func FetchConfig() error {
-
+// FetchConfig fetches config values from a dir defined via CLI flag --config-dir (or the current working dir if not set).
+//
+// It automatically reads in a single config file starting with "config" (can be changed via the --config CLI flag)
+// and ending with: .json, .toml, .yaml or .yml (in this sequence).
+func FetchConfig(printConfig bool) error {
 	err := NodeConfig.BindPFlags(flag.CommandLine)
 	if err != nil {
 		log.Error(err)
 	}
 
-	var configPath *string = flag.StringP("config", "c", "config.json", "Path to the config file")
 	flag.Parse()
 
-	if configPath != nil {
-		// Check if config file exists
-		_, err := os.Stat(*configPath)
-		if os.IsNotExist(err) && !flag.CommandLine.Changed("config") {
-			log.Error("No config file found. Loading default settings.")
+	// adjust viper to wanted locations
+	NodeConfig.SetConfigName(*configName)
+	NodeConfig.AddConfigPath(*configDirPath)
+	log.Infof("Loading parameters from config dir '%s' using '%s' as file prefix...\n", *configDirPath, *configName)
+
+	// read in the config file (whatever it finds)
+	if err := NodeConfig.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Errorf("No config file found via '%s/%s.[json,toml,yaml,yml]'. Loading default settings.", *configDirPath, *configName)
 		} else {
-			log.Infof("Loading parameters from %s...\n", *configPath)
-			NodeConfig.SetConfigFile(*configPath)
-			err := NodeConfig.ReadInConfig()
-			if err != nil {
-				log.Errorf("Error while loading config from: %s (%s)\n", *configPath, err)
-			}
+			log.Panicf("Error while loading config from %s: %s", *configDirPath, err)
 		}
+	} else {
+		log.Infof("read parameters from %s", NodeConfig.ConfigFileUsed())
 	}
 
-	// Print parameters
-	cfg, err := json.MarshalIndent(NodeConfig.AllSettings(), "", "  ")
-	if err != nil {
-		log.Errorf("Error: %s\n", err)
+	// Print parameters if printConfig is true
+	if printConfig {
+		cfg, err := yaml.Marshal(NodeConfig.AllSettings())
+		if err != nil {
+			log.Errorf("Error: %s\n", err)
+		}
+		log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 	}
-	log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 
 	return nil
 }
