@@ -2,123 +2,215 @@ package daemon
 
 import (
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/pkg/errors"
+	"sort"
 	"sync"
+	"time"
+)
+
+const (
+	ShutdownPriorityLow    = 0
+	ShutdownPriorityMedium = 1
+	ShutdownPriorityHigh   = 2
 )
 
 var (
-	running                  bool
-	wg                       sync.WaitGroup
-	ShutdownSignal           = make(chan int, 1)
-	backgroundWorkers        = make([]func(), 0)
-	backgroundWorkerNames    = make([]string, 0)
-	runningBackgroundWorkers = make(map[string]bool)
-	lock                     = syncutils.Mutex{}
+	ErrBackgroundWorkerAlreadyDefined = errors.New("background worker already defined")
 )
 
+// functions kept for backwards compatibility
+var defaultDaemon = NewDaemon()
+var ShutdownSignal = defaultDaemon.globalShutdownSignal
+
 func GetRunningBackgroundWorkers() []string {
-	lock.Lock()
+	return defaultDaemon.GetRunningBackgroundWorkers()
+}
+
+func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
+	return defaultDaemon.BackgroundWorker(name, handler, priority...)
+}
+
+func Start() {
+	defaultDaemon.Start()
+}
+
+func Run() {
+	defaultDaemon.Run()
+}
+
+func Shutdown(sleepBetweenPriorities ...time.Duration) {
+	defaultDaemon.Shutdown(sleepBetweenPriorities...)
+}
+
+func ShutdownAndWait(sleepBetweenPriorities ...time.Duration) {
+	defaultDaemon.ShutdownAndWait(sleepBetweenPriorities...)
+}
+
+func IsRunning() bool {
+	return defaultDaemon.IsRunning()
+}
+
+func NewDaemon() *Daemon {
+	return &Daemon{
+		running:              false,
+		wg:                   sync.WaitGroup{},
+		workers:              make(map[string]*worker),
+		shutdownPriorities:   make([]string, 0),
+		globalShutdownSignal: make(chan struct{}, 1),
+		lock:                 syncutils.Mutex{},
+	}
+}
+
+type Daemon struct {
+	running              bool
+	wg                   sync.WaitGroup
+	workers              map[string]*worker
+	shutdownPriorities   []string
+	globalShutdownSignal chan struct{}
+	lock                 syncutils.Mutex
+}
+
+type WorkerFunc = func(shutdownSignal <-chan struct{})
+
+type worker struct {
+	priority       int
+	handler        WorkerFunc
+	running        bool
+	shutdownSignal chan struct{}
+}
+
+func (d *Daemon) GetRunningBackgroundWorkers() []string {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	result := make([]string, 0)
-	for runningBackgroundWorker := range runningBackgroundWorkers {
-		result = append(result, runningBackgroundWorker)
+	for name, worker := range d.workers {
+		if !worker.running {
+			continue
+		}
+		result = append(result, name)
 	}
-
-	lock.Unlock()
 
 	return result
 }
 
-func runBackgroundWorker(name string, backgroundWorker func()) {
-	wg.Add(1)
+func (d *Daemon) runBackgroundWorker(name string, backgroundWorker WorkerFunc) {
+	d.wg.Add(1)
 
 	go func() {
-		lock.Lock()
-		runningBackgroundWorkers[name] = true
-		lock.Unlock()
+		d.lock.Lock()
+		d.workers[name].running = true
+		d.lock.Unlock()
 
-		backgroundWorker()
+		backgroundWorker(d.workers[name].shutdownSignal)
 
-		lock.Lock()
-		delete(runningBackgroundWorkers, name)
-		lock.Unlock()
+		d.lock.Lock()
+		d.workers[name].running = false
+		d.lock.Unlock()
 
-		wg.Done()
+		d.wg.Done()
 	}()
 }
 
-func BackgroundWorker(name string, handler func()) {
-	lock.Lock()
+func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
+	d.lock.Lock()
 
-	if IsRunning() {
-		runBackgroundWorker(name, handler)
-	} else {
-		backgroundWorkerNames = append(backgroundWorkerNames, name)
-		backgroundWorkers = append(backgroundWorkers, handler)
+	_, has := d.workers[name]
+	if has {
+		return errors.Wrapf(ErrBackgroundWorkerAlreadyDefined, "%s is already defined", name)
 	}
 
-	lock.Unlock()
+	var workerPriority int
+	var shutdownSignal chan struct{}
+	if len(priority) > 0 {
+		workerPriority = priority[0]
+		shutdownSignal = make(chan struct{}, 1)
+	} else {
+		shutdownSignal = d.globalShutdownSignal
+	}
+
+	d.workers[name] = &worker{
+		priority:       workerPriority,
+		handler:        handler,
+		shutdownSignal: shutdownSignal,
+	}
+
+	// add to the shutdown sequence and order by priorities
+	d.shutdownPriorities = append(d.shutdownPriorities, name)
+
+	// must be done while holding the lock
+	sort.Slice(d.shutdownPriorities, func(i, j int) bool {
+		return d.workers[d.shutdownPriorities[i]].priority > d.workers[d.shutdownPriorities[j]].priority
+	})
+
+	if d.IsRunning() {
+		d.runBackgroundWorker(name, handler)
+	}
+
+	d.lock.Unlock()
+	return nil
 }
 
-func Start() {
-	if !running {
-		lock.Lock()
+func (d *Daemon) Start() {
+	if !d.running {
+		d.lock.Lock()
 
-		if !running {
-			ShutdownSignal = make(chan int, 1)
-
-			running = true
+		if !d.running {
+			d.running = true
 
 			Events.Run.Trigger()
 
-			for i, backgroundWorker := range backgroundWorkers {
-				runBackgroundWorker(backgroundWorkerNames[i], backgroundWorker)
+			for name, worker := range d.workers {
+				d.runBackgroundWorker(name, worker.handler)
 			}
 		}
 
-		lock.Unlock()
+		d.lock.Unlock()
 	}
 }
 
-func Run() {
-	Start()
-
-	wg.Wait()
+func (d *Daemon) Run() {
+	d.Start()
+	d.wg.Wait()
 }
 
-func Shutdown() {
-	if running {
-		lock.Lock()
+func (d *Daemon) shutdown(sleepBetweenPriorities ...time.Duration) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
-		if running {
-			close(ShutdownSignal)
-
-			running = false
-
-			Events.Shutdown.Trigger()
+	if d.running {
+		currentPriority := -1
+		for _, name := range d.shutdownPriorities {
+			worker := d.workers[name]
+			// sleep every time we come to a new priority
+			if len(sleepBetweenPriorities) > 0 && (currentPriority == -1 || worker.priority < currentPriority) {
+				if currentPriority != -1 {
+					time.Sleep(sleepBetweenPriorities[0])
+				}
+				currentPriority = worker.priority
+			}
+			close(worker.shutdownSignal)
 		}
+		close(d.globalShutdownSignal)
 
-		lock.Unlock()
+		d.running = false
+		Events.Shutdown.Trigger()
 	}
 }
 
-func ShutdownAndWait() {
-	if running {
-		lock.Lock()
-
-		if running {
-			close(ShutdownSignal)
-
-			running = false
-
-			Events.Shutdown.Trigger()
-		}
-
-		lock.Unlock()
+func (d *Daemon) Shutdown(sleepBetweenPriorities ...time.Duration) {
+	if d.running {
+		d.shutdown(sleepBetweenPriorities...)
 	}
-
-	wg.Wait()
 }
 
-func IsRunning() bool {
-	return running
+func (d *Daemon) ShutdownAndWait(sleepBetweenPriorities ...time.Duration) {
+	if d.running {
+		d.shutdown(sleepBetweenPriorities...)
+	}
+	d.wg.Wait()
+}
+
+func (d *Daemon) IsRunning() bool {
+	return d.running
 }
