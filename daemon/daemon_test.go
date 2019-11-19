@@ -9,7 +9,7 @@ import (
 
 func TestStartShutdown(t *testing.T) {
 
-	daemonA := daemon.NewDaemon()
+	daemonA := daemon.New()
 
 	var isShutdown, wasStarted bool
 	if err := daemonA.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
@@ -34,7 +34,7 @@ func TestStartShutdown(t *testing.T) {
 
 func TestShutdownPriority(t *testing.T) {
 
-	daemonB := daemon.NewDaemon()
+	daemonB := daemon.New()
 
 	const highShutdownPriorityWorker = "highShutdownPriorityWorker"
 	const lowShutdownPriorityWorker = "lowShutdownPriorityWorker"
@@ -58,7 +58,7 @@ func TestShutdownPriority(t *testing.T) {
 	}
 
 	daemonB.Start()
-	daemonB.ShutdownAndWait(time.Second)
+	daemonB.ShutdownAndWait()
 
 	if <-feedback != highShutdownPriorityWorker {
 		t.Fatalf("expected worker %s to be shutdown before worker %s", highShutdownPriorityWorker, lowShutdownPriorityWorker)

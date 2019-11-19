@@ -19,38 +19,51 @@ var (
 )
 
 // functions kept for backwards compatibility
-var defaultDaemon = NewDaemon()
+var defaultDaemon = New()
+
+// The ShutdownSignal held by the default daemon instance.
 var ShutdownSignal = defaultDaemon.globalShutdownSignal
 
+// GetRunningBackgroundWorkers gets the running background workers of the default daemon instance.
 func GetRunningBackgroundWorkers() []string {
 	return defaultDaemon.GetRunningBackgroundWorkers()
 }
 
+// BackgroundWorker adds a new background worker to the default daemon instance. Use priority
+// to define in which shutdown order this particular background worker is shut down (higher = earlier).
 func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	return defaultDaemon.BackgroundWorker(name, handler, priority...)
 }
 
+// Start starts the default daemon instance.
 func Start() {
 	defaultDaemon.Start()
 }
 
+// Run runs the default daemon instance and then waits for the daemon to shutdown.
 func Run() {
 	defaultDaemon.Run()
 }
 
+// Shutdown signals all background worker of the default deamon instance to shut down.
+// This call doesn't await termination of the background workers.
 func Shutdown(sleepBetweenPriorities ...time.Duration) {
 	defaultDaemon.Shutdown(sleepBetweenPriorities...)
 }
 
+// Shutdown signals all background worker of the default deamon instance to shut down and
+// then waits for their termination.
 func ShutdownAndWait(sleepBetweenPriorities ...time.Duration) {
 	defaultDaemon.ShutdownAndWait(sleepBetweenPriorities...)
 }
 
+// IsRunning checks whether the default daemon instance is running.
 func IsRunning() bool {
 	return defaultDaemon.IsRunning()
 }
 
-func NewDaemon() *Daemon {
+// New creates a new daemon instance.
+func New() *Daemon {
 	return &Daemon{
 		running:              false,
 		wg:                   sync.WaitGroup{},
@@ -61,6 +74,7 @@ func NewDaemon() *Daemon {
 	}
 }
 
+// Daemon is an orchestrator for background workers.
 type Daemon struct {
 	running              bool
 	wg                   sync.WaitGroup
@@ -70,6 +84,7 @@ type Daemon struct {
 	lock                 syncutils.Mutex
 }
 
+// A function accepting its shutdown signal handler channel.
 type WorkerFunc = func(shutdownSignal <-chan struct{})
 
 type worker struct {
@@ -79,6 +94,7 @@ type worker struct {
 	shutdownSignal chan struct{}
 }
 
+// GetRunningBackgroundWorkers gets the running background workers.
 func (d *Daemon) GetRunningBackgroundWorkers() []string {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -112,6 +128,9 @@ func (d *Daemon) runBackgroundWorker(name string, backgroundWorker WorkerFunc) {
 	}()
 }
 
+// BackgroundWorker adds a new background worker to the daemon.
+// Use priority to define in which shutdown order this particular
+// background worker is shut down (higher = earlier).
 func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	d.lock.Lock()
 
@@ -122,7 +141,7 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, priority ...i
 
 	var workerPriority int
 	var shutdownSignal chan struct{}
-	if len(priority) > 0 {
+	if len(priority) > 0 && priority[0] != 0 {
 		workerPriority = priority[0]
 		shutdownSignal = make(chan struct{}, 1)
 	} else {
@@ -151,6 +170,7 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, priority ...i
 	return nil
 }
 
+// Start starts the daemon.
 func (d *Daemon) Start() {
 	if !d.running {
 		d.lock.Lock()
@@ -169,6 +189,7 @@ func (d *Daemon) Start() {
 	}
 }
 
+// Run runs the daemon and then waits for the daemon to shutdown.
 func (d *Daemon) Run() {
 	d.Start()
 	d.wg.Wait()
@@ -182,6 +203,10 @@ func (d *Daemon) shutdown(sleepBetweenPriorities ...time.Duration) {
 		currentPriority := -1
 		for _, name := range d.shutdownPriorities {
 			worker := d.workers[name]
+			if worker.priority == 0 {
+				break
+			}
+
 			// sleep every time we come to a new priority
 			if len(sleepBetweenPriorities) > 0 && (currentPriority == -1 || worker.priority < currentPriority) {
 				if currentPriority != -1 {
@@ -191,6 +216,8 @@ func (d *Daemon) shutdown(sleepBetweenPriorities ...time.Duration) {
 			}
 			close(worker.shutdownSignal)
 		}
+
+		// global shutdown signal channel for all workers at priority 0
 		close(d.globalShutdownSignal)
 
 		d.running = false
@@ -198,12 +225,16 @@ func (d *Daemon) shutdown(sleepBetweenPriorities ...time.Duration) {
 	}
 }
 
+// Shutdown signals all background worker of the deamon shut down.
+// This call doesn't await termination of the background workers.
 func (d *Daemon) Shutdown(sleepBetweenPriorities ...time.Duration) {
 	if d.running {
 		d.shutdown(sleepBetweenPriorities...)
 	}
 }
 
+// Shutdown signals all background worker of the deamon to shut down and
+// then waits for their termination.
 func (d *Daemon) ShutdownAndWait(sleepBetweenPriorities ...time.Duration) {
 	if d.running {
 		d.shutdown(sleepBetweenPriorities...)
@@ -211,6 +242,7 @@ func (d *Daemon) ShutdownAndWait(sleepBetweenPriorities ...time.Duration) {
 	d.wg.Wait()
 }
 
+// IsRunning checks whether the daemon is running.
 func (d *Daemon) IsRunning() bool {
 	return d.running
 }
