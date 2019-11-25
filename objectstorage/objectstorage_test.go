@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	if err := parameter.FetchConfig(); err != nil {
+	if err := parameter.FetchConfig(false); err != nil {
 		panic(err)
 	}
 }
