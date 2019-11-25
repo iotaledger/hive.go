@@ -88,10 +88,12 @@ func (cachedObject *CachedObject) IsDeleted() bool {
 }
 
 // Marks an object for being stored in the persistence layer.
-func (cachedObject *CachedObject) Store() {
+func (cachedObject *CachedObject) Store() *CachedObject {
 	atomic.StoreInt32(&(cachedObject.delete), 0)
 	atomic.StoreInt32(&(cachedObject.stored), 0)
 	atomic.StoreInt32(&(cachedObject.store), 1)
+
+	return cachedObject
 }
 
 // Returns true if the object is either persisted already or is supposed to be persisted (Store() was called).
