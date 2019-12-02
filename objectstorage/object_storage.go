@@ -45,6 +45,19 @@ func (objectStorage *ObjectStorage) Load(key []byte) (*CachedObject, error) {
 	}).waitForResult()
 }
 
+func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) (StorableObject, error)) (*CachedObject, error) {
+	return objectStorage.accessCache(key, nil, func(cachedObject *CachedObject) {
+		loadedObject, err := objectStorage.loadObjectFromBadger(key)
+		if loadedObject != nil {
+			cachedObject.stored = 1
+
+			cachedObject.publishResult(loadedObject, err)
+		} else {
+			cachedObject.publishResult(remappingFunction(key))
+		}
+	}).waitForResult()
+}
+
 func (objectStorage *ObjectStorage) Delete(key []byte) {
 	objectStorage.accessCache(key, func(cachedObject *CachedObject) {
 		cachedObject.Delete()
