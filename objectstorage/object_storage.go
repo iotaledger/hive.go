@@ -31,6 +31,8 @@ func (objectStorage *ObjectStorage) Prepare(object StorableObject) *CachedObject
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
+	object.SetModified()
+
 	return objectStorage.storeObjectInCache(object, true)
 }
 
