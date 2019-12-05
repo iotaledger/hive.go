@@ -15,9 +15,6 @@ type CachedObject struct {
 	err           error
 	consumers     int32
 	published     int32
-	store         int32
-	stored        int32
-	delete        int32
 	wg            sync.WaitGroup
 	valueMutex    syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
@@ -36,11 +33,9 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObject)
 
 // Retrieves the StorableObject, that is cached in this container.
 func (cachedObject *CachedObject) Get() (result StorableObject) {
-	if !cachedObject.IsDeleted() {
-		cachedObject.valueMutex.RLock()
-		result = cachedObject.value
-		cachedObject.valueMutex.RUnlock()
-	}
+	cachedObject.valueMutex.RLock()
+	result = cachedObject.value
+	cachedObject.valueMutex.RUnlock()
 
 	return
 }
@@ -66,39 +61,11 @@ func (cachedObject *CachedObject) Release() {
 
 // Directly consumes the StorableObject. This method automatically Release()s the object when the callback is done.
 func (cachedObject *CachedObject) Consume(consumer func(object StorableObject)) {
-	if cachedObject.Exists() && !cachedObject.IsDeleted() {
-		consumer(cachedObject.Get())
+	if storableObject := cachedObject.Get(); storableObject != nil && !storableObject.IsDeleted() {
+		consumer(storableObject)
 	}
 
 	cachedObject.Release()
-}
-
-// Marks an object for deletion in the persistence layer.
-func (cachedObject *CachedObject) Delete() *CachedObject {
-	atomic.StoreInt32(&(cachedObject.store), 0)
-	atomic.StoreInt32(&(cachedObject.stored), 0)
-	atomic.StoreInt32(&(cachedObject.delete), 1)
-
-	return cachedObject
-}
-
-// Returns true if this object is supposed to be deleted from the in the persistence layer (Delete() was called).
-func (cachedObject *CachedObject) IsDeleted() bool {
-	return atomic.LoadInt32(&(cachedObject.delete)) == 1
-}
-
-// Marks an object for being stored in the persistence layer.
-func (cachedObject *CachedObject) Store() *CachedObject {
-	atomic.StoreInt32(&(cachedObject.delete), 0)
-	atomic.StoreInt32(&(cachedObject.stored), 0)
-	atomic.StoreInt32(&(cachedObject.store), 1)
-
-	return cachedObject
-}
-
-// Returns true if the object is either persisted already or is supposed to be persisted (Store() was called).
-func (cachedObject *CachedObject) IsStored() bool {
-	return atomic.LoadInt32(&(cachedObject.stored)) == 1 || atomic.LoadInt32(&(cachedObject.store)) == 1
 }
 
 // Registers a new consumer for this cached object.
@@ -111,7 +78,9 @@ func (cachedObject *CachedObject) RegisterConsumer() {
 }
 
 func (cachedObject *CachedObject) Exists() bool {
-	return cachedObject.Get() != nil
+	storableObject := cachedObject.Get()
+
+	return storableObject != nil && !storableObject.IsDeleted()
 }
 
 func (cachedObject *CachedObject) updateValue(value StorableObject) {

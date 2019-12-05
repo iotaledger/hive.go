@@ -1,16 +1,37 @@
 package objectstorage
 
 type StorableObject interface {
-	// updates the object "in place" (so it should use a pointer receiver)
+	// Marks the object as modified, which causes it to be written to the disk (if persistence is enabled).
+	// Default value when omitting the parameter: true
+	SetModified(modified ...bool)
+
+	// Returns true if the object was marked as modified.
+	IsModified() bool
+
+	// Marks the object to be deleted from the persistence layer.
+	// Default value when omitting the parameter: true
+	Delete(delete ...bool)
+
+	// Returns true if the object was marked as deleted.
+	IsDeleted() bool
+
+	// Enables or disables persistence for this object. Objects that have persistence disabled get discarded once they
+	// are evicted from the cache.
+	// Default value when omitting the parameter: true
+	Persist(enabled ...bool)
+
+	// Returns "true" if this object is going to be persisted.
+	PersistenceEnabled() bool
+
+	// Updates the object with the values of another object "in place" (so it should use a pointer receiver)
 	Update(other StorableObject)
 
-	// returns the key that identifies the object
+	// Returns the key that identifies the object in the object storage.
 	GetStorageKey() []byte
 
-	// returns the marshaled value that shall be stored in the database (without key)
+	// Returns the marshaled value that shall be stored in the persistence layer (without key)
 	MarshalBinary() (data []byte, err error)
 
-	// receives the concatenation of key and value as data (this way we can also "encode" things in the key and need
-	// less space)
+	// Unmarshal the data and set the value of the object.
 	UnmarshalBinary(data []byte) error
 }

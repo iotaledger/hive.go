@@ -57,16 +57,20 @@ func batchWrite(object *CachedObject) {
 func writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
 	objectStorage := cachedObject.objectStorage
 
-	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 && atomic.AddInt32(&(cachedObject.stored), 1) == 1 {
-		if cachedObject.IsDeleted() {
-			if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
-				panic(err)
-			}
-		} else if atomic.LoadInt32(&(cachedObject.store)) == 1 && cachedObject.value != nil {
-			marshaledObject, _ := cachedObject.value.MarshalBinary()
+	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			if storableObject.IsDeleted() {
+				if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
+					panic(err)
+				}
+			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
+				storableObject.SetModified(false)
 
-			if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.value.GetStorageKey()}), marshaledObject); err != nil {
-				panic(err)
+				marshaledObject, _ := storableObject.MarshalBinary()
+
+				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{storableObject.GetStorageKey()}), marshaledObject); err != nil {
+					panic(err)
+				}
 			}
 		}
 	} else if consumers < 0 {

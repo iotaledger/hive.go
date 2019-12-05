@@ -38,7 +38,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) (*CachedObject, error) {
 	return objectStorage.accessCache(key, nil, func(cachedObject *CachedObject) {
 		loadedObject, err := objectStorage.loadObjectFromBadger(key)
 		if loadedObject != nil {
-			cachedObject.stored = 1
+			loadedObject.Persist()
 		}
 
 		cachedObject.publishResult(loadedObject, err)
@@ -49,7 +49,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 	return objectStorage.accessCache(key, nil, func(cachedObject *CachedObject) {
 		loadedObject, err := objectStorage.loadObjectFromBadger(key)
 		if loadedObject != nil {
-			cachedObject.stored = 1
+			loadedObject.Persist()
 
 			cachedObject.publishResult(loadedObject, err)
 		} else {
@@ -60,10 +60,16 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 
 func (objectStorage *ObjectStorage) Delete(key []byte) {
 	objectStorage.accessCache(key, func(cachedObject *CachedObject) {
-		cachedObject.Delete()
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.Delete()
+		}
+
 		cachedObject.Release()
 	}, func(cachedObject *CachedObject) {
-		cachedObject.Delete()
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.Delete()
+		}
+
 		cachedObject.publishResult(nil, nil)
 		cachedObject.Release()
 	})
@@ -170,7 +176,7 @@ func (objectStorage *ObjectStorage) storeObjectInCache(object StorableObject, pe
 		}
 	}, func(cachedObject *CachedObject) {
 		if persist {
-			cachedObject.store = 1
+			object.Persist()
 		}
 
 		cachedObject.publishResult(object, nil)

@@ -1,9 +1,10 @@
-package objectstorage_test
+package test
 
 import (
 	"errors"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/parameter"
+	"github.com/stretchr/testify/assert"
 	"strconv"
 	"sync"
 	"testing"
@@ -17,6 +18,34 @@ func init() {
 }
 
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
+
+func TestStorableObjectFlags(t *testing.T) {
+	testObject := NewTestObject("Batman", 44)
+
+	assert.Equal(t, false, testObject.IsModified())
+	testObject.SetModified()
+	assert.Equal(t, true, testObject.IsModified())
+	testObject.SetModified(false)
+	assert.Equal(t, false, testObject.IsModified())
+	testObject.SetModified(true)
+	assert.Equal(t, true, testObject.IsModified())
+
+	assert.Equal(t, false, testObject.IsDeleted())
+	testObject.Delete()
+	assert.Equal(t, true, testObject.IsDeleted())
+	testObject.Delete(false)
+	assert.Equal(t, false, testObject.IsDeleted())
+	testObject.Delete(true)
+	assert.Equal(t, true, testObject.IsDeleted())
+
+	assert.Equal(t, false, testObject.PersistenceEnabled())
+	testObject.Persist()
+	assert.Equal(t, true, testObject.PersistenceEnabled())
+	testObject.Persist(false)
+	assert.Equal(t, false, testObject.PersistenceEnabled())
+	testObject.Persist(true)
+	assert.Equal(t, true, testObject.PersistenceEnabled())
+}
 
 func BenchmarkStore(b *testing.B) {
 	// create our storage
@@ -40,6 +69,8 @@ func BenchmarkLoad(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
+
+	time.Sleep(2 * time.Second)
 
 	b.ResetTimer()
 

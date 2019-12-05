@@ -1,4 +1,4 @@
-package objectstorage_test
+package test
 
 import (
 	"encoding/binary"
@@ -6,14 +6,16 @@ import (
 )
 
 type TestObject struct {
-	id    []byte
-	value uint32
+	objectstorage.StorableObjectFlags
+
+	id      []byte
+	value   uint32
 }
 
 func NewTestObject(id string, value uint32) *TestObject {
 	return &TestObject{
-		id:    []byte(id),
-		value: value,
+		id:      []byte(id),
+		value:   value,
 	}
 }
 

@@ -7,9 +7,3 @@ func (cachedObjects CachedObjects) Release() {
 		cachedObject.Release()
 	}
 }
-
-func (cachedObjects CachedObjects) Store() {
-	for _, cachedObject := range cachedObjects {
-		cachedObject.Store()
-	}
-}
