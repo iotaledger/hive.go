@@ -198,7 +198,7 @@ func (d *Daemon) shutdown() {
 		worker := d.workers[name]
 		if currentPriority == -1 || worker.shutdownOrder < currentPriority {
 			if currentPriority != -1 {
-				// wait for every worker in the shutdownOrderWorkerNames
+				// wait for every worker in the same shutdown order to terminate
 				d.wgPerSameShutdownOrder[currentPriority].Wait()
 			}
 			currentPriority = worker.shutdownOrder
