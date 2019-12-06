@@ -59,5 +59,35 @@ func TestShutdownOrder(t *testing.T) {
 			t.Fatalf("wrong shutdown sequence, expected %d but was %d", i, n)
 		}
 	}
+}
+
+func TestReRun(t *testing.T) {
+
+	daemonC := ordered_daemon.New()
+
+	terminate := make(chan struct{}, 2)
+	feedback := make(chan struct{}, 2)
+
+	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-terminate
+		feedback <- struct{}{}
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	daemonC.Start()
+
+	terminate<-struct{}{}
+	<-feedback
+
+	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-terminate
+		feedback <- struct{}{}
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	terminate<-struct{}{}
+	<-feedback
 
 }
