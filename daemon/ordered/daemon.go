@@ -194,7 +194,7 @@ func (d *Daemon) shutdown() {
 		return
 	}
 	currentPriority := -1
-	for i, name := range d.shutdownOrder {
+	for _, name := range d.shutdownOrder {
 		worker := d.workers[name]
 		if currentPriority == -1 || worker.shutdownOrder < currentPriority {
 			if currentPriority != -1 {
@@ -205,17 +205,13 @@ func (d *Daemon) shutdown() {
 		}
 
 		close(worker.shutdownSignal)
-
-		// wait for the last shutdownOrder to finish and then break
-		if i == len(d.shutdownOrder)-1 {
-			// special case if we only had one order defined
-			if currentPriority == -1 {
-				currentPriority = 0
-			}
-			d.wgPerSameShutdownOrder[currentPriority].Wait()
-			break
-		}
 	}
+
+	// special case if we only had one order defined
+	if currentPriority == -1 {
+		currentPriority = 0
+	}
+	d.wgPerSameShutdownOrder[currentPriority].Wait()
 	d.running = false
 }
 
