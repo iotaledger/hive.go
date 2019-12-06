@@ -19,7 +19,7 @@ func GetRunningBackgroundWorkers() []string {
 	return defaultDaemon.GetRunningBackgroundWorkers()
 }
 
-// BackgroundWorker adds a new background worker to the default daemon instance. Use shutdownOrder
+// BackgroundWorker adds a new background worker to the default daemon instance. Use shutdownOrderWorkerNames
 // to define in which shutdown order this particular background worker is shut down (higher = earlier).
 func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	return defaultDaemon.BackgroundWorker(name, handler, priority...)
@@ -55,21 +55,21 @@ func IsRunning() bool {
 // New creates a new daemon instance.
 func New() *Daemon {
 	return &Daemon{
-		running:                false,
-		workers:                make(map[string]*worker),
-		shutdownOrder:          make([]string, 0),
-		wgPerSameShutdownOrder: make(map[int]*sync.WaitGroup),
-		lock:                   syncutils.Mutex{},
+		running:                  false,
+		workers:                  make(map[string]*worker),
+		shutdownOrderWorkerNames: make([]string, 0),
+		wgPerSameShutdownOrder:   make(map[int]*sync.WaitGroup),
+		lock:                     syncutils.Mutex{},
 	}
 }
 
 // Daemon is an orchestrator for background workers.
 type Daemon struct {
-	running                bool
-	workers                map[string]*worker
-	shutdownOrder          []string
-	wgPerSameShutdownOrder map[int]*sync.WaitGroup
-	lock                   syncutils.Mutex
+	running                  bool
+	workers                  map[string]*worker
+	shutdownOrderWorkerNames []string
+	wgPerSameShutdownOrder   map[int]*sync.WaitGroup
+	lock                     syncutils.Mutex
 }
 
 // A function accepting its shutdown signal handler channel.
@@ -141,11 +141,11 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int)
 	}
 
 	// add to the shutdown sequence and order by order
-	d.shutdownOrder = append(d.shutdownOrder, name)
+	d.shutdownOrderWorkerNames = append(d.shutdownOrderWorkerNames, name)
 
 	// must be done while holding the lock
-	sort.Slice(d.shutdownOrder, func(i, j int) bool {
-		return d.workers[d.shutdownOrder[i]].shutdownOrder > d.workers[d.shutdownOrder[j]].shutdownOrder
+	sort.Slice(d.shutdownOrderWorkerNames, func(i, j int) bool {
+		return d.workers[d.shutdownOrderWorkerNames[i]].shutdownOrder > d.workers[d.shutdownOrderWorkerNames[j]].shutdownOrder
 	})
 
 	if d.IsRunning() {
@@ -177,12 +177,12 @@ func (d *Daemon) Run() {
 	d.waitForLastPriority()
 }
 
-// waits on the lowest shutdownOrder wait group
+// waits on the lowest shutdownOrderWorkerNames wait group
 func (d *Daemon) waitForLastPriority() {
-	if len(d.shutdownOrder) == 0 {
+	if len(d.shutdownOrderWorkerNames) == 0 {
 		return
 	}
-	lowestShutdownPriorityWorker := d.workers[d.shutdownOrder[len(d.shutdownOrder)-1]]
+	lowestShutdownPriorityWorker := d.workers[d.shutdownOrderWorkerNames[len(d.shutdownOrderWorkerNames)-1]]
 	d.wgPerSameShutdownOrder[lowestShutdownPriorityWorker.shutdownOrder].Wait()
 }
 
@@ -194,11 +194,11 @@ func (d *Daemon) shutdown() {
 		return
 	}
 	currentPriority := -1
-	for _, name := range d.shutdownOrder {
+	for _, name := range d.shutdownOrderWorkerNames {
 		worker := d.workers[name]
 		if currentPriority == -1 || worker.shutdownOrder < currentPriority {
 			if currentPriority != -1 {
-				// wait for every worker in the shutdownOrder
+				// wait for every worker in the shutdownOrderWorkerNames
 				d.wgPerSameShutdownOrder[currentPriority].Wait()
 			}
 			currentPriority = worker.shutdownOrder
