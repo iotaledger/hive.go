@@ -64,6 +64,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 func (objectStorage *ObjectStorage) Delete(key []byte) {
 	objectStorage.accessCache(key, func(cachedObject *CachedObject) {
 		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.Persist()
 			storableObject.Delete()
 		}
 
@@ -95,7 +96,12 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 					marshaledData := make([]byte, len(val))
 					copy(marshaledData, val)
 
-					cachedObject.publishResult(objectStorage.unmarshalObject(key, marshaledData))
+					storableObject, err := objectStorage.unmarshalObject(key, marshaledData)
+					if storableObject != nil {
+						storableObject.Persist()
+					}
+
+					cachedObject.publishResult(storableObject, err)
 
 					return nil
 				})
