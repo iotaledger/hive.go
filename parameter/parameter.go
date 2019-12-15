@@ -1,16 +1,18 @@
 package parameter
 
 import (
+	"encoding/json"
+	"strings"
+
 	"github.com/iotaledger/hive.go/logger"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
 )
 
 var (
 	// flags
 	configName    = flag.StringP("config", "c", "config", "Filename of the config file without the file extension")
-	configDirPath = flag.String("config-dir", ".", "Path to the directory containing the config file")
+	configDirPath = flag.StringP("config-dir", "d", ".", "Path to the directory containing the config file")
 	// Viper
 	NodeConfig = viper.New()
 	log        = logger.NewLogger("NodeConfig")
@@ -20,7 +22,7 @@ var (
 //
 // It automatically reads in a single config file starting with "config" (can be changed via the --config CLI flag)
 // and ending with: .json, .toml, .yaml or .yml (in this sequence).
-func FetchConfig(printConfig bool) error {
+func FetchConfig(printConfig bool, ignoreSettingsAtPrint ...[]string) error {
 	err := NodeConfig.BindPFlags(flag.CommandLine)
 	if err != nil {
 		log.Error(err)
@@ -46,7 +48,22 @@ func FetchConfig(printConfig bool) error {
 
 	// Print parameters if printConfig is true
 	if printConfig {
-		cfg, err := yaml.Marshal(NodeConfig.AllSettings())
+		settings := NodeConfig.AllSettings()
+		if len(ignoreSettingsAtPrint) > 0 {
+			for _, ignoredSetting := range ignoreSettingsAtPrint[0] {
+				parameter := settings
+				ignoredSettingSplitted := strings.Split(ignoredSetting, ".")
+				for lvl, parameterName := range ignoredSettingSplitted {
+					if lvl == len(ignoredSettingSplitted)-1 {
+						delete(parameter, parameterName)
+						continue
+					}
+					parameter = parameter[parameterName].(map[string]interface{})
+				}
+			}
+		}
+
+		cfg, err := json.MarshalIndent(settings, "", "  ")
 		if err != nil {
 			log.Errorf("Error: %s\n", err)
 		}
