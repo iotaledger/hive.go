@@ -1,10 +1,11 @@
 package ordered
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/pkg/errors"
 	"sort"
 	"sync"
+
+	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -122,6 +123,18 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int)
 	if has {
 		if exWorker.running {
 			return errors.Wrapf(ErrExistingBackgroundWorkerStillRunning, "%s is still running", name)
+		}
+
+		// remove the existing worker from the shutdown order
+		for i, exName := range d.shutdownOrderWorker {
+			if exName != name {
+				continue
+			}
+			if i < len(d.shutdownOrderWorker)-1 {
+				copy(d.shutdownOrderWorker[i:], d.shutdownOrderWorker[i+1:])
+			}
+			d.shutdownOrderWorker[len(d.shutdownOrderWorker)-1] = ""
+			d.shutdownOrderWorker = d.shutdownOrderWorker[:len(d.shutdownOrderWorker)-1]
 		}
 	}
 
