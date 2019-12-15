@@ -1,10 +1,12 @@
 package ordered
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/pkg/errors"
+	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -123,6 +125,18 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int)
 		if exWorker.running {
 			return errors.Wrapf(ErrExistingBackgroundWorkerStillRunning, "%s is still running", name)
 		}
+
+		// remove the existing worker from the shutdown order
+		for i, exName := range d.shutdownOrderWorker {
+			if exName != name {
+				continue
+			}
+			if i < len(d.shutdownOrderWorker)-1 {
+				copy(d.shutdownOrderWorker[i:], d.shutdownOrderWorker[i+1:])
+			}
+			d.shutdownOrderWorker[len(d.shutdownOrderWorker)-1] = ""
+			d.shutdownOrderWorker = d.shutdownOrderWorker[:len(d.shutdownOrderWorker)-1]
+		}
 	}
 
 	var shutdownOrder int
@@ -149,6 +163,8 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int)
 	sort.Slice(d.shutdownOrderWorker, func(i, j int) bool {
 		return d.workers[d.shutdownOrderWorker[i]].shutdownOrder > d.workers[d.shutdownOrderWorker[j]].shutdownOrder
 	})
+
+	fmt.Println(d.shutdownOrderWorker)
 
 	if d.IsRunning() {
 		d.runBackgroundWorker(name, handler)

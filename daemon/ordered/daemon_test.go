@@ -1,10 +1,11 @@
 package ordered_test
 
 import (
-	ordered_daemon "github.com/iotaledger/hive.go/daemon/ordered"
 	"log"
 	"strconv"
 	"testing"
+
+	ordered_daemon "github.com/iotaledger/hive.go/daemon/ordered"
 )
 
 func TestStartShutdown(t *testing.T) {
@@ -65,8 +66,8 @@ func TestReRun(t *testing.T) {
 
 	daemonC := ordered_daemon.New()
 
-	terminate := make(chan struct{}, 2)
-	feedback := make(chan struct{}, 2)
+	terminate := make(chan struct{}, 1)
+	feedback := make(chan struct{}, 1)
 
 	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		<-terminate
@@ -77,17 +78,14 @@ func TestReRun(t *testing.T) {
 
 	daemonC.Start()
 
-	terminate<-struct{}{}
+	terminate <- struct{}{}
 	<-feedback
 
 	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		<-terminate
-		feedback <- struct{}{}
+		<-shutdownSignal
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	terminate<-struct{}{}
-	<-feedback
-
+	daemonC.ShutdownAndWait()
 }
