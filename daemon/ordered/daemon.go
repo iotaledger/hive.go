@@ -54,6 +54,11 @@ func IsRunning() bool {
 	return defaultDaemon.IsRunning()
 }
 
+// IsStopped checks whether the default daemon instance was stopped.
+func IsStopped() bool {
+	return defaultDaemon.IsStopped()
+}
+
 // New creates a new daemon instance.
 func New() *Daemon {
 	return &Daemon{
@@ -267,4 +272,9 @@ func (d *Daemon) ShutdownAndWait() {
 // IsRunning checks whether the daemon is running.
 func (d *Daemon) IsRunning() bool {
 	return d.running
+}
+
+// IsStopped checks whether the daemon was stopped.
+func (d *Daemon) IsStopped() bool {
+	return d.stopped
 }
