@@ -1,10 +1,10 @@
 package node
 
 import (
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/parameter"
 	"strings"
 	"sync"
+
+	"github.com/iotaledger/hive.go/events"
 )
 
 const (
@@ -34,8 +34,7 @@ func NewPlugin(name string, status int, callback Callback, callbacks ...Callback
 		},
 	}
 
-	// make the plugin known to the parameters
-	parameter.AddPlugin(name, status)
+	AddPlugin(name, status)
 
 	if len(callbacks) >= 1 {
 		plugin.Events.Configure.Attach(events.NewClosure(callback))
