@@ -72,19 +72,3 @@ func FetchConfig(printConfig bool, ignoreSettingsAtPrint ...[]string) error {
 
 	return nil
 }
-
-var plugins = make(map[string]int)
-
-func AddPlugin(name string, status int) {
-	if _, exists := plugins[name]; exists {
-		panic("duplicate plugin - \"" + name + "\" was defined already")
-	}
-
-	plugins[name] = status
-
-	Events.AddPlugin.Trigger(name, status)
-}
-
-func GetPlugins() map[string]int {
-	return plugins
-}
