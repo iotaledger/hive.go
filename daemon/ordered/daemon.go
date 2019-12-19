@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	ErrDaemonAlreadyStopped                 = errors.New("daemon was already stopped")
 	ErrExistingBackgroundWorkerStillRunning = errors.New("existing background worker is still running")
 )
 
@@ -53,10 +54,16 @@ func IsRunning() bool {
 	return defaultDaemon.IsRunning()
 }
 
+// IsStopped checks whether the default daemon instance was stopped.
+func IsStopped() bool {
+	return defaultDaemon.IsStopped()
+}
+
 // New creates a new daemon instance.
 func New() *Daemon {
 	return &Daemon{
 		running:                false,
+		stopped:                false,
 		workers:                make(map[string]*worker),
 		shutdownOrderWorker:    make([]string, 0),
 		wgPerSameShutdownOrder: make(map[int]*sync.WaitGroup),
@@ -67,6 +74,7 @@ func New() *Daemon {
 // Daemon is an orchestrator for background workers.
 type Daemon struct {
 	running                bool
+	stopped                bool
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
@@ -118,6 +126,10 @@ func (d *Daemon) runBackgroundWorker(name string, backgroundWorker WorkerFunc) {
 func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
+	if d.stopped {
+		return ErrDaemonAlreadyStopped
+	}
 
 	exWorker, has := d.workers[name]
 	if has {
@@ -172,6 +184,10 @@ func (d *Daemon) BackgroundWorker(name string, handler WorkerFunc, order ...int)
 
 // Start starts the daemon.
 func (d *Daemon) Start() {
+	if d.stopped {
+		return
+	}
+
 	if !d.running {
 		d.lock.Lock()
 
@@ -206,6 +222,7 @@ func (d *Daemon) shutdown() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	d.stopped = true
 	if !d.running {
 		return
 	}
@@ -243,22 +260,21 @@ func (d *Daemon) shutdown() {
 // Shutdown signals all background worker of the daemon shut down.
 // This call doesn't await termination of the background workers.
 func (d *Daemon) Shutdown() {
-	if d.running {
-		return
-	}
 	go d.shutdown()
 }
 
 // Shutdown signals all background worker of the daemon to shut down and
 // then waits for their termination.
 func (d *Daemon) ShutdownAndWait() {
-	if !d.running {
-		return
-	}
 	d.shutdown()
 }
 
 // IsRunning checks whether the daemon is running.
 func (d *Daemon) IsRunning() bool {
 	return d.running
+}
+
+// IsStopped checks whether the daemon was stopped.
+func (d *Daemon) IsStopped() bool {
+	return d.stopped
 }
