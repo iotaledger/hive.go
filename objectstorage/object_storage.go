@@ -1,14 +1,15 @@
 package objectstorage
 
 import (
-	"github.com/dgraph-io/badger/v2"
-
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
+
+	"github.com/dgraph-io/badger/v2"
 )
 
 type ObjectStorage struct {
 	badgerInstance *badger.DB
+	batchedWriter  *BatchedWriter
 	storageId      []byte
 	objectFactory  StorableObjectFactory
 	cachedObjects  map[string]*CachedObject
@@ -16,10 +17,22 @@ type ObjectStorage struct {
 	options        *ObjectStorageOptions
 }
 
-func New(storageId string, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
+func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
 	return &ObjectStorage{
-		badgerInstance: GetBadgerInstance(),
-		storageId:      []byte(storageId),
+		badgerInstance: badgerInstance,
+		batchedWriter:  NewBatchedWriter(badgerInstance),
+		storageId:      storageId,
+		objectFactory:  objectFactory,
+		cachedObjects:  map[string]*CachedObject{},
+		options:        newTransportOutputStorageFilters(optionalOptions),
+	}
+}
+
+func NewWithBatchWriter(badgerInstance *badger.DB, batchedWriter *BatchedWriter, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
+	return &ObjectStorage{
+		badgerInstance: badgerInstance,
+		batchedWriter:  batchedWriter,
+		storageId:      storageId,
 		objectFactory:  objectFactory,
 		cachedObjects:  map[string]*CachedObject{},
 		options:        newTransportOutputStorageFilters(optionalOptions),
@@ -35,6 +48,13 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
 	object.SetModified()
 
 	return objectStorage.putObjectInCache(object)
+}
+
+func (objectStorage *ObjectStorage) GetSize() int {
+	objectStorage.cacheMutex.RLock()
+	size := len(objectStorage.cachedObjects)
+	objectStorage.cacheMutex.RUnlock()
+	return size
 }
 
 func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
@@ -175,6 +195,10 @@ func (objectStorage *ObjectStorage) Prune() error {
 	return nil
 }
 
+func (objectStorage *ObjectStorage) StopBatchWriter() {
+	objectStorage.batchedWriter.StopBatchWriter()
+}
+
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObject, cacheHit bool) {
 	copiedKey := make([]byte, len(key))
 	copy(copiedKey, key)
@@ -225,7 +249,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObject {
 	var marshaledData []byte
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
-		if item, err := txn.Get(append(objectStorage.storageId, key...)); err != nil {
+		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
 			return err
 		} else {
 			return item.Value(func(val []byte) error {

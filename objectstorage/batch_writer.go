@@ -11,51 +11,67 @@ import (
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
-var writeWg sync.WaitGroup
+const (
+	BATCH_WRITER_QUEUE_SIZE    = BATCH_WRITER_BATCH_SIZE
+	BATCH_WRITER_BATCH_SIZE    = 1024
+	BATCH_WRITER_BATCH_TIMEOUT = 500 * time.Millisecond
+)
 
-var timeoutWg sync.WaitGroup
+type BatchedWriter struct {
+	badgerInstance    *badger.DB
+	writeWg           sync.WaitGroup
+	timeoutWg         sync.WaitGroup
+	waitingForTimeout bool
+	startStopMutex    syncutils.Mutex
+	running           int32
+	batchQueue        chan *CachedObject
+}
 
-var waitingForTimeout bool
-
-var startStopMutex syncutils.Mutex
-
-var running int32 = 0
-
-var batchQueue = make(chan *CachedObject, BATCH_WRITER_QUEUE_SIZE)
-
-func StartBatchWriter() {
-	startStopMutex.Lock()
-	if atomic.LoadInt32(&running) == 0 {
-		atomic.StoreInt32(&running, 1)
-
-		go runBatchWriter()
+func NewBatchedWriter(badgerInstance *badger.DB) *BatchedWriter {
+	return &BatchedWriter{
+		badgerInstance:    badgerInstance,
+		writeWg:           sync.WaitGroup{},
+		timeoutWg:         sync.WaitGroup{},
+		waitingForTimeout: false,
+		startStopMutex:    syncutils.Mutex{},
+		running:           0,
+		batchQueue:        make(chan *CachedObject, BATCH_WRITER_QUEUE_SIZE),
 	}
-	startStopMutex.Unlock()
 }
 
-func StopBatchWriter() {
-	startStopMutex.Lock()
-	if atomic.LoadInt32(&running) != 0 {
-		atomic.StoreInt32(&running, 0)
+func (bw *BatchedWriter) StartBatchWriter() {
+	bw.startStopMutex.Lock()
+	if atomic.LoadInt32(&bw.running) == 0 {
+		atomic.StoreInt32(&bw.running, 1)
 
-		writeWg.Wait()
+		go bw.runBatchWriter()
 	}
-	startStopMutex.Unlock()
+	bw.startStopMutex.Unlock()
 }
 
-func WaitForWritesToFlush() {
-	timeoutWg.Wait()
+func (bw *BatchedWriter) StopBatchWriter() {
+	bw.startStopMutex.Lock()
+	if atomic.LoadInt32(&bw.running) != 0 {
+		atomic.StoreInt32(&bw.running, 0)
+
+		bw.writeWg.Wait()
+	}
+	bw.startStopMutex.Unlock()
 }
 
-func batchWrite(object *CachedObject) {
-	if atomic.LoadInt32(&running) == 0 {
-		StartBatchWriter()
+func (bw *BatchedWriter) WaitForWritesToFlush() {
+	bw.timeoutWg.Wait()
+}
+
+func (bw *BatchedWriter) batchWrite(object *CachedObject) {
+	if atomic.LoadInt32(&bw.running) == 0 {
+		bw.StartBatchWriter()
 	}
 
-	batchQueue <- object
+	bw.batchQueue <- object
 }
 
-func writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
+func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
 	objectStorage := cachedObject.objectStorage
 
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
@@ -68,7 +84,6 @@ func writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
 				storableObject.SetModified(false)
 
 				marshaledObject, _ := storableObject.MarshalBinary()
-
 				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{storableObject.GetStorageKey()}), marshaledObject); err != nil {
 					panic(err)
 				}
@@ -79,7 +94,7 @@ func writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
 	}
 }
 
-func releaseObject(cachedObject *CachedObject) {
+func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 	objectStorage := cachedObject.objectStorage
 
 	objectStorage.cacheMutex.Lock()
@@ -89,32 +104,30 @@ func releaseObject(cachedObject *CachedObject) {
 	objectStorage.cacheMutex.Unlock()
 }
 
-func runBatchWriter() {
-	badgerInstance := GetBadgerInstance()
+func (bw *BatchedWriter) runBatchWriter() {
 
-	for atomic.LoadInt32(&running) == 1 {
-		writeWg.Add(1)
+	for atomic.LoadInt32(&bw.running) == 1 {
+		bw.writeWg.Add(1)
 
-		if !waitingForTimeout {
-			waitingForTimeout = true
-			timeoutWg.Add(1)
+		if !bw.waitingForTimeout {
+			bw.waitingForTimeout = true
+			bw.timeoutWg.Add(1)
 		}
 
-		wb := badgerInstance.NewWriteBatch()
+		wb := bw.badgerInstance.NewWriteBatch()
 
 		writtenValues := make([]*CachedObject, BATCH_WRITER_BATCH_SIZE)
 		writtenValuesCounter := 0
 	COLLECT_VALUES:
 		for writtenValuesCounter < BATCH_WRITER_BATCH_SIZE {
 			select {
-			case objectToPersist := <-batchQueue:
-				writeObject(wb, objectToPersist)
-
+			case objectToPersist := <-bw.batchQueue:
+				bw.writeObject(wb, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++
 			case <-time.After(BATCH_WRITER_BATCH_TIMEOUT):
-				waitingForTimeout = false
-				timeoutWg.Done()
+				bw.waitingForTimeout = false
+				bw.timeoutWg.Done()
 
 				break COLLECT_VALUES
 			}
@@ -126,16 +139,10 @@ func runBatchWriter() {
 
 		for _, cachedObject := range writtenValues {
 			if cachedObject != nil {
-				releaseObject(cachedObject)
+				bw.releaseObject(cachedObject)
 			}
 		}
 
-		writeWg.Done()
+		bw.writeWg.Done()
 	}
 }
-
-const (
-	BATCH_WRITER_QUEUE_SIZE    = BATCH_WRITER_BATCH_SIZE
-	BATCH_WRITER_BATCH_SIZE    = 1024
-	BATCH_WRITER_BATCH_TIMEOUT = 500 * time.Millisecond
-)

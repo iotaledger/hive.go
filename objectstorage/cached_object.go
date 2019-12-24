@@ -1,11 +1,12 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type CachedObject struct {
@@ -47,13 +48,13 @@ func (cachedObject *CachedObject) Release() {
 				atomic.StorePointer(&cachedObject.releaseTimer, nil)
 
 				if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-					batchWrite(cachedObject)
+					cachedObject.objectStorage.batchedWriter.batchWrite(cachedObject)
 				} else if consumers < 0 {
 					panic("called Release() too often")
 				}
 			})))
 		} else {
-			batchWrite(cachedObject)
+			cachedObject.objectStorage.batchedWriter.batchWrite(cachedObject)
 		}
 	}
 }
