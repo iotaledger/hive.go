@@ -103,6 +103,35 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 	}
 }
 
+func TestStoreIfAbsent(t *testing.T) {
+	objects := objectstorage.New("TestStoreIfAbsentStorage", testObjectFactory, objectstorage.CacheTime(1 * time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	if loadedObject, err := objects.Load([]byte("Hans")); err != nil {
+		t.Error(err)
+	} else {
+		loadedObject.Release()
+	}
+
+	stored1, storedObject1, err := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, true, stored1)
+	storedObject1.Release()
+
+	stored2, storedObject2, err := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, false, stored2)
+	storedObject2.Release()
+
+	objectstorage.WaitForWritesToFlush()
+}
+
 func TestDelete(t *testing.T) {
 	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()

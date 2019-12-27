@@ -17,6 +17,7 @@ type CachedObject struct {
 	published     int32
 	wg            sync.WaitGroup
 	valueMutex    syncutils.RWMutex
+	errMutex      syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
 }
 
@@ -106,9 +107,14 @@ func (cachedObject *CachedObject) waitForResult() (*CachedObject, error) {
 		cachedObject.wg.Wait()
 	}
 
+	cachedObject.errMutex.RLock()
 	if err := cachedObject.err; err != nil {
+		cachedObject.errMutex.RUnlock()
+
 		return nil, err
 	} else {
+		cachedObject.errMutex.RUnlock()
+
 		return cachedObject, nil
 	}
 }

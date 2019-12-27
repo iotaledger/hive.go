@@ -1,10 +1,9 @@
 package objectstorage
 
 import (
+	"github.com/dgraph-io/badger"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-
-	"github.com/dgraph-io/badger"
 )
 
 type ObjectStorage struct {
@@ -49,7 +48,29 @@ func (objectStorage *ObjectStorage) Load(key []byte) (*CachedObject, error) {
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) (StorableObject, error)) (*CachedObject, error) {
-	return objectStorage.accessCache(key, nil, func(cachedObject *CachedObject) {
+	return objectStorage.accessCache(key, func(cachedObject *CachedObject) {
+		// wait for it to be published
+		cachedObject.wg.Wait()
+
+		// if currentValue is still nil => update result
+		cachedObject.valueMutex.RLock()
+		if cachedObject.value == nil {
+			cachedObject.valueMutex.RUnlock()
+
+			cachedObject.valueMutex.Lock()
+			if cachedObject.value == nil {
+				object, err := remappingFunction(key)
+
+				cachedObject.value = object
+				cachedObject.errMutex.Lock()
+				cachedObject.err = err
+				cachedObject.errMutex.Unlock()
+			}
+			cachedObject.valueMutex.Unlock()
+		} else {
+			cachedObject.valueMutex.RUnlock()
+		}
+	}, func(cachedObject *CachedObject) {
 		loadedObject, err := objectStorage.loadObjectFromBadger(key)
 		if loadedObject != nil {
 			loadedObject.Persist()
@@ -59,6 +80,53 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			cachedObject.publishResult(remappingFunction(key))
 		}
 	}).waitForResult()
+}
+
+// Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the value log
+func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (stored bool, cachedObject *CachedObject, err error) {
+	cachedObject, err = objectStorage.accessCache(key, func(cachedObject *CachedObject) {
+		// if we have a cache hit => wait till the previous result was published
+		cachedObject.wg.Wait()
+
+		// if currentValue is still nil => update result and mark as stored
+		cachedObject.valueMutex.RLock()
+		if cachedObject.value == nil {
+			cachedObject.valueMutex.RUnlock()
+
+			cachedObject.valueMutex.Lock()
+			if cachedObject.value == nil {
+				object.Persist()
+				object.SetModified()
+
+				cachedObject.value = object
+				cachedObject.errMutex.Lock()
+				cachedObject.err = nil
+				cachedObject.errMutex.Unlock()
+
+				stored = true
+			}
+			cachedObject.valueMutex.Unlock()
+		} else {
+			cachedObject.valueMutex.RUnlock()
+		}
+	}, func(cachedObject *CachedObject) {
+		if objectExists, err := objectStorage.objectExistsInBadger(key); err != nil {
+			cachedObject.publishResult(nil, err)
+		} else {
+			if !objectExists {
+				object.Persist()
+				object.SetModified()
+
+				stored = true
+
+				cachedObject.publishResult(object, nil)
+			} else {
+				cachedObject.Release()
+			}
+		}
+	}).waitForResult()
+
+	return
 }
 
 func (objectStorage *ObjectStorage) Delete(key []byte) {
@@ -213,6 +281,22 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) (StorableOb
 		}
 	} else {
 		return objectStorage.unmarshalObject(key, marshaledData)
+	}
+}
+
+func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) (bool, error) {
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+		_, err = txn.Get(append(objectStorage.storageId, key...))
+
+		return
+	}); err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		} else {
+			return false, err
+		}
+	} else {
+		return true, nil
 	}
 }
 
