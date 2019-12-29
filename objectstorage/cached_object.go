@@ -90,6 +90,31 @@ func (cachedObject *CachedObject) updateValue(value StorableObject) {
 	cachedObject.valueMutex.Unlock()
 }
 
+func (cachedObject *CachedObject) updateEmptyResult(object StorableObject, err error) (valueUpdated bool) {
+	cachedObject.valueMutex.RLock()
+	if cachedObject.value == nil {
+		cachedObject.valueMutex.RUnlock()
+
+		cachedObject.valueMutex.Lock()
+		if cachedObject.value == nil {
+			object.Persist()
+			object.SetModified()
+
+			cachedObject.value = object
+			cachedObject.errMutex.Lock()
+			cachedObject.err = err
+			cachedObject.errMutex.Unlock()
+
+			valueUpdated = true
+		}
+		cachedObject.valueMutex.Unlock()
+	} else {
+		cachedObject.valueMutex.RUnlock()
+	}
+
+	return
+}
+
 func (cachedObject *CachedObject) publishResult(result StorableObject, err error) bool {
 	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
 		cachedObject.value = result
@@ -103,6 +128,10 @@ func (cachedObject *CachedObject) publishResult(result StorableObject, err error
 }
 
 func (cachedObject *CachedObject) waitForResult() (*CachedObject, error) {
+	if cachedObject == nil {
+		return nil, nil
+	}
+
 	if atomic.LoadInt32(&(cachedObject.published)) != 1 {
 		cachedObject.wg.Wait()
 	}

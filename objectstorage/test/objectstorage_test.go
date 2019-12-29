@@ -120,6 +120,9 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, true, stored1)
+	if storedObject1 == nil {
+		t.Error("the object should NOT be nil if it was stored")
+	}
 	storedObject1.Release()
 
 	stored2, storedObject2, err := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
@@ -127,7 +130,9 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, false, stored2)
-	storedObject2.Release()
+	if storedObject2 != nil {
+		t.Error("the object should be nil if it wasn't stored")
+	}
 
 	objectstorage.WaitForWritesToFlush()
 }
