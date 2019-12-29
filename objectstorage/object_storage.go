@@ -195,6 +195,10 @@ func (objectStorage *ObjectStorage) Prune() error {
 	return nil
 }
 
+func (objectStorage *ObjectStorage) WaitForWritesToFlush() {
+	objectStorage.batchedWriter.WaitForWritesToFlush()
+}
+
 func (objectStorage *ObjectStorage) StopBatchWriter() {
 	objectStorage.batchedWriter.StopBatchWriter()
 }

@@ -118,7 +118,8 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 }
 
 func TestStoreIfAbsent(t *testing.T) {
-	objects := objectstorage.New("TestStoreIfAbsentStorage", testObjectFactory, objectstorage.CacheTime(1 * time.Second))
+
+	objects := objectstorage.New(db, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.CacheTime(1*time.Second))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -139,7 +140,7 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error("the object should be nil if it wasn't stored")
 	}
 
-	objectstorage.WaitForWritesToFlush()
+	objects.WaitForWritesToFlush()
 }
 
 func TestDelete(t *testing.T) {
