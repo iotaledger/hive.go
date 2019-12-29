@@ -75,10 +75,7 @@ func BenchmarkLoad(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		cachedObject, err := objects.Load([]byte("Hans" + strconv.Itoa(i)))
-		if err != nil {
-			b.Error(err)
-		}
+		cachedObject := objects.Load([]byte("Hans" + strconv.Itoa(i)))
 
 		cachedObject.Release()
 	}
@@ -94,10 +91,7 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		cachedObject, err := objects.Load([]byte("Hans" + strconv.Itoa(0)))
-		if err != nil {
-			b.Error(err)
-		}
+		cachedObject := objects.Load([]byte("Hans" + strconv.Itoa(0)))
 
 		cachedObject.Release()
 	}
@@ -109,26 +103,17 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error(err)
 	}
 
-	if loadedObject, err := objects.Load([]byte("Hans")); err != nil {
-		t.Error(err)
-	} else {
-		loadedObject.Release()
-	}
+	loadedObject := objects.Load([]byte("Hans"))
+	loadedObject.Release()
 
-	stored1, storedObject1, err := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
-	if err != nil {
-		t.Error(err)
-	}
+	storedObject1, stored1 := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 	if storedObject1 == nil {
 		t.Error("the object should NOT be nil if it was stored")
 	}
 	storedObject1.Release()
 
-	stored2, storedObject2, err := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
-	if err != nil {
-		t.Error(err)
-	}
+	storedObject2, stored2 := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
 	assert.Equal(t, false, stored2)
 	if storedObject2 != nil {
 		t.Error("the object should be nil if it wasn't stored")
@@ -141,20 +126,16 @@ func TestDelete(t *testing.T) {
 	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
 
-	cachedObject, err := objects.Load([]byte("Hans"))
-	if err != nil {
-		t.Error(err)
-	} else if !cachedObject.Exists() {
+	cachedObject := objects.Load([]byte("Hans"))
+	if !cachedObject.Exists() {
 		t.Error("the item should exist")
 	}
 	cachedObject.Release()
 
 	objects.Delete([]byte("Hans"))
 
-	cachedObject, err = objects.Load([]byte("Hans"))
-	if err != nil {
-		t.Error(err)
-	} else if cachedObject.Exists() {
+	cachedObject = objects.Load([]byte("Hans"))
+	if cachedObject.Exists() {
 		t.Error("the item should not exist exist")
 	}
 	cachedObject.Release()
@@ -170,10 +151,7 @@ func TestConcurrency(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		cachedObject, err := objects.Load([]byte("Hans"))
-		if err != nil {
-			t.Error(err)
-		}
+		cachedObject := objects.Load([]byte("Hans"))
 
 		// check if we "see" the modifications of the 2nd goroutine (using the "consume" method)
 		cachedObject.Consume(func(object objectstorage.StorableObject) {
@@ -191,10 +169,7 @@ func TestConcurrency(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		cachedObject, err := objects.Load([]byte("Hans"))
-		if err != nil {
-			t.Error(err)
-		}
+		cachedObject := objects.Load([]byte("Hans"))
 
 		// retrieve, modify and release the object manually (without consume)
 		cachedObject.Get().(*TestObject).value = 3

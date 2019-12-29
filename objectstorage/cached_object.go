@@ -12,12 +12,10 @@ type CachedObject struct {
 	key           []byte
 	objectStorage *ObjectStorage
 	value         StorableObject
-	err           error
 	consumers     int32
 	published     int32
 	wg            sync.WaitGroup
 	valueMutex    syncutils.RWMutex
-	errMutex      syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
 }
 
@@ -61,7 +59,7 @@ func (cachedObject *CachedObject) Release() {
 }
 
 // Directly consumes the StorableObject. This method automatically Release()s the object when the callback is done.
-func (cachedObject *CachedObject) Consume(consumer func(object StorableObject)) {
+func (cachedObject *CachedObject) Consume(consumer func(StorableObject)) {
 	if storableObject := cachedObject.Get(); storableObject != nil && !storableObject.IsDeleted() {
 		consumer(storableObject)
 	}
@@ -84,28 +82,41 @@ func (cachedObject *CachedObject) Exists() bool {
 	return storableObject != nil && !storableObject.IsDeleted()
 }
 
-func (cachedObject *CachedObject) updateValue(value StorableObject) {
+func (cachedObject *CachedObject) publishResult(result StorableObject) bool {
+	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
+		cachedObject.value = result
+		cachedObject.wg.Done()
+
+		return true
+	}
+
+	return false
+}
+
+func (cachedObject *CachedObject) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
-	cachedObject.value = value
+	if cachedObject.value == nil {
+		cachedObject.value = object
+	} else {
+		cachedObject.value.Update(object)
+	}
 	cachedObject.valueMutex.Unlock()
 }
 
-func (cachedObject *CachedObject) updateEmptyResult(object StorableObject, err error) (valueUpdated bool) {
+func (cachedObject *CachedObject) updateEmptyResult(update interface{}) (updated bool) {
 	cachedObject.valueMutex.RLock()
 	if cachedObject.value == nil {
 		cachedObject.valueMutex.RUnlock()
 
 		cachedObject.valueMutex.Lock()
 		if cachedObject.value == nil {
-			object.Persist()
-			object.SetModified()
+			if object, ok := update.(StorableObject); ok {
+				cachedObject.value = object
+			} else if updater, ok := update.(func() StorableObject); ok {
+				cachedObject.value = updater()
+			}
 
-			cachedObject.value = object
-			cachedObject.errMutex.Lock()
-			cachedObject.err = err
-			cachedObject.errMutex.Unlock()
-
-			valueUpdated = true
+			updated = true
 		}
 		cachedObject.valueMutex.Unlock()
 	} else {
@@ -115,35 +126,8 @@ func (cachedObject *CachedObject) updateEmptyResult(object StorableObject, err e
 	return
 }
 
-func (cachedObject *CachedObject) publishResult(result StorableObject, err error) bool {
-	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
-		cachedObject.value = result
-		cachedObject.err = err
-		cachedObject.wg.Done()
+func (cachedObject *CachedObject) waitForInitialResult() *CachedObject {
+	cachedObject.wg.Wait()
 
-		return true
-	}
-
-	return false
-}
-
-func (cachedObject *CachedObject) waitForResult() (*CachedObject, error) {
-	if cachedObject == nil {
-		return nil, nil
-	}
-
-	if atomic.LoadInt32(&(cachedObject.published)) != 1 {
-		cachedObject.wg.Wait()
-	}
-
-	cachedObject.errMutex.RLock()
-	if err := cachedObject.err; err != nil {
-		cachedObject.errMutex.RUnlock()
-
-		return nil, err
-	} else {
-		cachedObject.errMutex.RUnlock()
-
-		return cachedObject, nil
-	}
+	return cachedObject
 }
