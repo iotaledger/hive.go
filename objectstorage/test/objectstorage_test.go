@@ -1,20 +1,37 @@
 package test
 
 import (
-	"errors"
-	"github.com/iotaledger/hive.go/objectstorage"
-	"github.com/iotaledger/hive.go/parameter"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dgraph-io/badger/v2"
+	"github.com/pkg/errors"
+	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/parameter"
+)
+
+var (
+	db     *badger.DB
+	config *viper.Viper
 )
 
 func init() {
-	if err := parameter.FetchConfig(false); err != nil {
+	configName := *flag.StringP("config", "c", "config", "Filename of the config file without the file extension")
+	configDirPath := *flag.StringP("config-dir", "d", ".", "Path to the directory containing the config file")
+
+	config = viper.New()
+	err := parameter.LoadConfigFile(config, configDirPath, configName, true, true)
+	if err != nil {
 		panic(err)
 	}
+
+	db = objectstorage.GetBadgerInstance(config.GetString("objectstorage.directory"))
 }
 
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
@@ -48,8 +65,9 @@ func TestStorableObjectFlags(t *testing.T) {
 }
 
 func BenchmarkStore(b *testing.B) {
+
 	// create our storage
-	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
+	objects := objectstorage.New(db, []byte("TestObjectStorage"), testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		b.Error(err)
 	}
@@ -60,11 +78,12 @@ func BenchmarkStore(b *testing.B) {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
 
-	objectstorage.StopBatchWriter()
+	objects.StopBatchWriter()
 }
 
 func BenchmarkLoad(b *testing.B) {
-	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
+
+	objects := objectstorage.New(db, []byte("TestObjectStorage"), testObjectFactory)
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
@@ -82,7 +101,8 @@ func BenchmarkLoad(b *testing.B) {
 }
 
 func BenchmarkLoadCachingEnabled(b *testing.B) {
-	objects := objectstorage.New("TestObjectStorage", testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
+
+	objects := objectstorage.New(db, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(0), uint32(i)))
@@ -123,7 +143,7 @@ func TestStoreIfAbsent(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
+	objects := objectstorage.New(db, []byte("TestObjectStorage"), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
 
 	cachedObject := objects.Load([]byte("Hans"))
@@ -142,7 +162,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	objects := objectstorage.New("TestObjectStorage", testObjectFactory)
+	objects := objectstorage.New(db, []byte("TestObjectStorage"), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
 
 	var wg sync.WaitGroup
