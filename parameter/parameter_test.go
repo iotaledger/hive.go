@@ -2,71 +2,60 @@ package parameter_test
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/parameter"
+	"os"
+	"testing"
+
 	"github.com/spf13/afero"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"os"
-	"testing"
+
+	"github.com/iotaledger/hive.go/parameter"
 )
 
-// we use a Windows path, just to please viper, as it otherwise
-// decides to append Windows drive letters to unix paths, when running
-// this test under Windows.
-const confDir = "C:/config"
+const (
+	configName = "config"
 
-var memFS = afero.NewMemMapFs()
+	// we use a Windows path, just to please viper, as it otherwise
+	// decides to append Windows drive letters to unix paths, when running
+	// this test under Windows.
+	//confDir = "C:/configDir"
+	confDir = "/configDir"
+)
+
+var (
+	memFS = afero.NewMemMapFs()
+)
 
 func TestMain(m *testing.M) {
+
 	if err := memFS.MkdirAll(confDir, 0755); err != nil {
 		panic(err)
 	}
-	// swap out used file system
-	viper.SetFs(memFS)
-	parameter.NodeConfig.SetFs(memFS)
+
 	os.Exit(m.Run())
 }
 
 func TestFetchJSONConfig(t *testing.T) {
-	if err := flag.Set("config-dir", confDir); err != nil {
-		t.Fatal(err)
-	}
+	flag.String("a", "321", "test")
+	flag.Set("a", "321")
 
-	filename := fmt.Sprintf("%s/config.json", confDir)
-	jsonConfFile, err := memFS.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0755)
+	config := viper.New()
+	config.SetFs(memFS)
+
+	//
+	err := parameter.LoadConfigFile(config, confDir, configName, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer memFS.Remove(filename)
 
-	if _, err := jsonConfFile.WriteString(`{"a": 321}`); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := jsonConfFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := parameter.FetchConfig(false); err != nil {
-		t.Fatal(err)
-	}
-
-	val := parameter.NodeConfig.GetInt("a")
-	if val != 321 {
-		t.Fatalf("expected read config value to be %d, but was %d", 321, val)
+	val := config.GetString("a")
+	if val != "321" {
+		t.Fatalf("expected read config value to be %s, but was %s", "321", val)
 	}
 }
 
 func TestFetchJSONConfigFlagConfigName(t *testing.T) {
-	if err := flag.Set("config-dir", confDir); err != nil {
-		t.Fatal(err)
-	}
-
-	filename := fmt.Sprintf("%s/conf.json", confDir)
-
-	if err := flag.Set("config", "conf"); err != nil {
-		t.Fatal(err)
-	}
+	filename := fmt.Sprintf("%s/%s.json", confDir, configName)
 
 	jsonConfFile, err := memFS.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0755)
 	if err != nil {
@@ -82,25 +71,23 @@ func TestFetchJSONConfigFlagConfigName(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := parameter.FetchConfig(false); err != nil {
+	config := viper.New()
+	config.SetFs(memFS)
+
+	err = parameter.LoadConfigFile(config, confDir, configName, false, false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	val := parameter.NodeConfig.GetInt("b")
+	val := config.GetInt("b")
 	if val != 321 {
 		t.Fatalf("expected read config value to be %d, but was %d", 321, val)
 	}
 }
 
 func TestFetchYAMLConfig(t *testing.T) {
-	if err := flag.Set("config", "config"); err != nil {
-		t.Fatal(err)
-	}
-	if err := flag.Set("config-dir", confDir); err != nil {
-		t.Fatal(err)
-	}
+	filename := fmt.Sprintf("%s/%s.yml", confDir, configName)
 
-	filename := fmt.Sprintf("%s/config.yml", confDir)
 	jsonConfFile, err := memFS.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -115,11 +102,15 @@ func TestFetchYAMLConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := parameter.FetchConfig(false); err != nil {
+	config := viper.New()
+	config.SetFs(memFS)
+
+	err = parameter.LoadConfigFile(config, confDir, configName, false, false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	val := parameter.NodeConfig.GetInt("c")
+	val := config.GetInt("c")
 	if val != 333 {
 		t.Fatalf("expected read config value to be %d, but was %d", 321, val)
 	}

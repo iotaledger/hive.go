@@ -1,22 +1,22 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/parameter"
-	"github.com/pkg/errors"
 	"os"
 	"sync"
 
-	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/options"
+	"github.com/pkg/errors"
+
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
 )
 
 var instance *badger.DB
 
 var once sync.Once
 
-func GetBadgerInstance() *badger.DB {
+func GetBadgerInstance(directory string) *badger.DB {
 	once.Do(func() {
-		db, err := createDB()
+		db, err := createDB(directory)
 		if err != nil {
 			// errors should cause a panic to avoid singleton deadlocks
 			panic(err)
@@ -49,8 +49,7 @@ func checkDir(dir string) error {
 	return nil
 }
 
-func createDB() (*badger.DB, error) {
-	directory := parameter.NodeConfig.GetString("objectstorage.directory")
+func createDB(directory string) (*badger.DB, error) {
 	if err := checkDir(directory); err != nil {
 		return nil, errors.Wrap(err, "Could not check directory")
 	}
