@@ -97,7 +97,7 @@ func (workerPool *NonBlockingWorkerPool) Shutdown() {
 		workerPool.stopped.Set()
 
 		if workerPool.pool != nil {
-			workerPool.pool.Release()
+			go workerPool.pool.Release()
 		}
 	})
 }
@@ -109,7 +109,7 @@ func (workerPool *NonBlockingWorkerPool) ShutdownGracefully() {
 		workerPool.tasksWg.Wait()
 
 		if workerPool.pool != nil {
-			workerPool.pool.Release()
+			go workerPool.pool.Release()
 		}
 	})
 }

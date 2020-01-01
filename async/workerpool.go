@@ -2,10 +2,9 @@ package async
 
 import (
 	"fmt"
+	"github.com/panjf2000/ants/v2"
 	"runtime"
 	"sync"
-
-	"github.com/panjf2000/ants/v2"
 
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -87,7 +86,7 @@ func (workerPool *WorkerPool) Shutdown() {
 		workerPool.stopped.Set()
 
 		if workerPool.pool != nil {
-			workerPool.pool.Release()
+			go workerPool.pool.Release()
 		}
 	})
 }
@@ -99,7 +98,7 @@ func (workerPool *WorkerPool) ShutdownGracefully() {
 		workerPool.tasksWg.Wait()
 
 		if workerPool.pool != nil {
-			workerPool.pool.Release()
+			go workerPool.pool.Release()
 		}
 	})
 }
