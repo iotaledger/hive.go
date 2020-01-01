@@ -46,6 +46,12 @@ func BadgerInstance(badgerInstance *badger.DB) ObjectStorageOption {
 	}
 }
 
+func BatchedWriterInstance(batchedWriterInstance *BatchedWriter) ObjectStorageOption {
+	return func(args *ObjectStorageOptions) {
+		args.batchedWriterInstance = batchedWriterInstance
+	}
+}
+
 func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
 		args.persistenceEnabled = persistenceEnabled
