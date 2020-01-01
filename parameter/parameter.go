@@ -3,6 +3,7 @@ package parameter
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/iotaledger/hive.go/logger"
 	flag "github.com/spf13/pflag"
@@ -11,6 +12,8 @@ import (
 
 var (
 	log = logger.NewLogger("NodeConfig")
+	defaultConfig *viper.Viper
+	defaultConfigInit sync.Once
 )
 
 // PrintConfig prints the actual configuration, ignoreSettingsAtPrint are not shown
@@ -35,6 +38,21 @@ func PrintConfig(config *viper.Viper, ignoreSettingsAtPrint ...[]string) {
 		log.Errorf("Error: %s\n", err)
 	}
 	log.Infof("Parameters loaded: \n %+v\n", string(cfg))
+}
+
+func DefaultConfig() *viper.Viper {
+	defaultConfigInit.Do(func() {
+		configName := *flag.StringP("config", "c", "config", "Filename of the config file without the file extension")
+		configDirPath := *flag.StringP("config-dir", "d", ".", "Path to the directory containing the config file")
+
+		defaultConfig = viper.New()
+		err := LoadConfigFile(defaultConfig, configDirPath, configName, true, true)
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	return defaultConfig
 }
 
 // LoadConfigFile fetches config values from a dir defined in "configDir" (or the current working dir if not set)

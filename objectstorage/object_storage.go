@@ -8,8 +8,6 @@ import (
 )
 
 type ObjectStorage struct {
-	badgerInstance *badger.DB
-	batchedWriter  *BatchedWriter
 	storageId      []byte
 	objectFactory  StorableObjectFactory
 	cachedObjects  map[string]*CachedObject
@@ -17,25 +15,12 @@ type ObjectStorage struct {
 	options        *ObjectStorageOptions
 }
 
-func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
+func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
 	return &ObjectStorage{
-		badgerInstance: badgerInstance,
-		batchedWriter:  NewBatchedWriter(badgerInstance),
 		storageId:      storageId,
 		objectFactory:  objectFactory,
 		cachedObjects:  map[string]*CachedObject{},
-		options:        newTransportOutputStorageFilters(optionalOptions),
-	}
-}
-
-func NewWithBatchWriter(badgerInstance *badger.DB, batchedWriter *BatchedWriter, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
-	return &ObjectStorage{
-		badgerInstance: badgerInstance,
-		batchedWriter:  batchedWriter,
-		storageId:      storageId,
-		objectFactory:  objectFactory,
-		cachedObjects:  map[string]*CachedObject{},
-		options:        newTransportOutputStorageFilters(optionalOptions),
+		options:        newObjectStorageOptions(optionalOptions),
 	}
 }
 
@@ -144,7 +129,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
 func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefixes ...[]byte) error {
-	return objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
+	return objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefixes)
 
@@ -186,7 +171,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 func (objectStorage *ObjectStorage) Prune() error {
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
+	if err := objectStorage.options.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
 		return err
 	}
 	objectStorage.cachedObjects = map[string]*CachedObject{}
@@ -196,11 +181,11 @@ func (objectStorage *ObjectStorage) Prune() error {
 }
 
 func (objectStorage *ObjectStorage) WaitForWritesToFlush() {
-	objectStorage.batchedWriter.WaitForWritesToFlush()
+	objectStorage.options.batchedWriterInstance.WaitForWritesToFlush()
 }
 
 func (objectStorage *ObjectStorage) StopBatchWriter() {
-	objectStorage.batchedWriter.StopBatchWriter()
+	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObject, cacheHit bool) {
@@ -252,7 +237,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 
 func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObject {
 	var marshaledData []byte
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
+	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
 			return err
 		} else {
@@ -275,7 +260,7 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 }
 
 func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) (err error) {
 		_, err = txn.Get(append(objectStorage.storageId, key...))
 
 		return

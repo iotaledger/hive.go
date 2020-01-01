@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/parameter"
 	"os"
 	"sync"
 
@@ -14,8 +15,15 @@ var instance *badger.DB
 
 var once sync.Once
 
-func GetBadgerInstance(directory string) *badger.DB {
+func GetBadgerInstance(optionalDirectory ...string) *badger.DB {
 	once.Do(func() {
+		var directory string
+		if len(optionalDirectory) >= 1 {
+			directory = optionalDirectory[0]
+		} else {
+			directory = parameter.DefaultConfig().GetString("objectstorage.directory")
+		}
+
 		db, err := createDB(directory)
 		if err != nil {
 			// errors should cause a panic to avoid singleton deadlocks
@@ -23,6 +31,7 @@ func GetBadgerInstance(directory string) *badger.DB {
 		}
 		instance = db
 	})
+
 	return instance
 }
 
