@@ -1,9 +1,16 @@
 package database
 
 import (
+	"context"
+
 	"github.com/dgraph-io/badger/v2"
-	
+	"github.com/dgraph-io/badger/v2/pb"
+
 	"github.com/iotaledger/hive.go/syncutils"
+)
+
+const (
+	StreamNumGoRoutines = 16
 )
 
 var (
@@ -15,30 +22,30 @@ var (
 
 type prefixDb struct {
 	db     *badger.DB
-	name   string
 	prefix []byte
 }
 
-func getPrefix(name string) []byte {
-	return []byte(name + "_")
-}
-
-func Get(name string) (Database, error) {
+func Get(dbPrefix byte, optionalBadger ...*badger.DB) (Database, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if db, exists := dbMap[name]; exists {
+	if db, exists := dbMap[string(dbPrefix)]; exists {
 		return db, nil
 	}
 
-	badger := GetBadgerInstance()
-	db := &prefixDb{
-		db:     badger,
-		name:   name,
-		prefix: getPrefix(name),
+	var badgerInst *badger.DB
+	if len(optionalBadger) > 0 {
+		badgerInst = optionalBadger[0]
+	} else {
+		badgerInst = GetBadgerInstance()
 	}
 
-	dbMap[name] = db
+	db := &prefixDb{
+		db:     badgerInst,
+		prefix: []byte{dbPrefix},
+	}
+
+	dbMap[string(dbPrefix)] = db
 
 	return db, nil
 }
@@ -48,7 +55,7 @@ func (pdb *prefixDb) keyWithPrefix(key Key) Key {
 }
 
 func (pdb *prefixDb) keyWithoutPrefix(key Key) Key {
-	return key[len(pdb.prefix):]
+	return key[1:]
 }
 
 func (k Key) keyWithoutKeyPrefix(prefix KeyPrefix) Key {
@@ -156,6 +163,11 @@ func (pdb *prefixDb) Delete(key Key) error {
 	return wb.Flush()
 }
 
+func (pdb *prefixDb) DeletePrefix(keyPrefix KeyPrefix) error {
+	prefixToDelete := append(pdb.prefix, keyPrefix...)
+	return pdb.db.DropPrefix(prefixToDelete)
+}
+
 func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
@@ -236,4 +248,130 @@ func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(Key
 		return nil
 	})
 	return err
+}
+
+func (pdb *prefixDb) StreamForEach(consumer func(Entry) error) error {
+	stream := pdb.db.NewStream()
+
+	stream.NumGo = StreamNumGoRoutines
+	stream.Prefix = pdb.prefix
+	stream.ChooseKey = nil
+	stream.KeyToList = nil
+
+	// Send is called serially, while Stream.Orchestrate is running.
+	stream.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			var meta byte
+			tmpMeta := kv.GetUserMeta()
+			if len(tmpMeta) > 0 {
+				meta = tmpMeta[0]
+			}
+			err := consumer(Entry{
+				Key:   pdb.keyWithoutPrefix(kv.GetKey()),
+				Value: kv.GetValue(),
+				Meta:  meta,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Run the stream
+	return stream.Orchestrate(context.Background())
+}
+
+func (pdb *prefixDb) StreamForEachKeyOnly(consumer func(KeyOnlyEntry) error) error {
+	stream := pdb.db.NewStream()
+
+	stream.NumGo = StreamNumGoRoutines
+	stream.Prefix = pdb.prefix
+	stream.ChooseKey = nil
+	stream.KeyToList = nil
+
+	// Send is called serially, while Stream.Orchestrate is running.
+	stream.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			var meta byte
+			tmpMeta := kv.GetUserMeta()
+			if len(tmpMeta) > 0 {
+				meta = tmpMeta[0]
+			}
+			err := consumer(KeyOnlyEntry{
+				Key:  pdb.keyWithoutPrefix(kv.GetKey()),
+				Meta: meta,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Run the stream
+	return stream.Orchestrate(context.Background())
+}
+
+func (pdb *prefixDb) StreamForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) error) error {
+	stream := pdb.db.NewStream()
+
+	stream.NumGo = StreamNumGoRoutines
+	stream.Prefix = append(pdb.prefix, keyPrefix...)
+	stream.ChooseKey = nil
+	stream.KeyToList = nil
+
+	// Send is called serially, while Stream.Orchestrate is running.
+	stream.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			var meta byte
+			tmpMeta := kv.GetUserMeta()
+			if len(tmpMeta) > 0 {
+				meta = tmpMeta[0]
+			}
+			err := consumer(Entry{
+				Key:   pdb.keyWithoutPrefix(kv.GetKey()).keyWithoutKeyPrefix(keyPrefix),
+				Value: kv.GetValue(),
+				Meta:  meta,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Run the stream
+	return stream.Orchestrate(context.Background())
+}
+
+func (pdb *prefixDb) StreamForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(KeyOnlyEntry) error) error {
+	stream := pdb.db.NewStream()
+
+	stream.NumGo = StreamNumGoRoutines
+	stream.Prefix = append(pdb.prefix, keyPrefix...)
+	stream.ChooseKey = nil
+	stream.KeyToList = nil
+
+	// Send is called serially, while Stream.Orchestrate is running.
+	stream.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			var meta byte
+			tmpMeta := kv.GetUserMeta()
+			if len(tmpMeta) > 0 {
+				meta = tmpMeta[0]
+			}
+			err := consumer(KeyOnlyEntry{
+				Key:  pdb.keyWithoutPrefix(kv.GetKey()).keyWithoutKeyPrefix(keyPrefix),
+				Meta: meta,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Run the stream
+	return stream.Orchestrate(context.Background())
 }
