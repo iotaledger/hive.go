@@ -18,30 +18,32 @@ type Node struct {
 	wg            *sync.WaitGroup
 	loadedPlugins []*Plugin
 	Logger        *logger.Logger
+	options       *NodeOptions
 }
 
-func New(plugins ...*Plugin) *Node {
+func New(optionalOptions ...NodeOption) *Node {
 	node := &Node{
 		wg:            &sync.WaitGroup{},
 		loadedPlugins: make([]*Plugin, 0),
 		Logger:        logger.NewLogger("Node"),
+		options:       newNodeOptions(optionalOptions),
 	}
 
 	// configure the enabled plugins
-	node.configure(plugins...)
+	node.configure(node.options.plugins...)
 
 	return node
 }
 
-func Start(plugins ...*Plugin) *Node {
-	node := New(plugins...)
+func Start(optionalOptions ...NodeOption) *Node {
+	node := New(optionalOptions...)
 	node.Start()
 
 	return node
 }
 
-func Run(plugins ...*Plugin) *Node {
-	node := New(plugins...)
+func Run(optionalOptions ...NodeOption) *Node {
+	node := New(optionalOptions...)
 	node.Run()
 
 	return node
