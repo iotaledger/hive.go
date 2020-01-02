@@ -1,13 +1,12 @@
 package timeutil
 
 import (
-	"github.com/iotaledger/hive.go/daemon"
 	"time"
 )
 
-func Sleep(interval time.Duration) bool {
+func Sleep(interval time.Duration, shutdownSignal <-chan struct{}) bool {
 	select {
-	case <-daemon.ShutdownSignal:
+	case <-shutdownSignal:
 		return false
 
 	case <-time.After(interval):

@@ -1,11 +1,11 @@
-package ordered_test
+package daemon_test
 
 import (
 	"log"
 	"strconv"
 	"testing"
 
-	ordered_daemon "github.com/iotaledger/hive.go/daemon/ordered"
+	ordered_daemon "github.com/iotaledger/hive.go/daemon"
 )
 
 func TestStartShutdown(t *testing.T) {
