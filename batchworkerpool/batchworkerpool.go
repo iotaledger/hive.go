@@ -1,49 +1,54 @@
 package batchworkerpool
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
 	"sync"
 	"time"
+
+	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type BatchWorkerPool struct {
 	workerFnc func([]Task)
 	options   *Options
 
-	calls        chan Task
-	batchedCalls chan []Task
-	terminate    chan int
+	calls                 chan Task
+	batchedCalls          chan []Task
+	terminate             chan struct{}
+	terminateBatchWorkers chan struct{}
 
-	running bool
-	mutex   syncutils.RWMutex
-	wait    sync.WaitGroup
+	running  bool
+	shutdown bool
+
+	mutex syncutils.RWMutex
+	wait  sync.WaitGroup
 }
 
 func New(workerFnc func([]Task), optionalOptions ...Option) (result *BatchWorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
 	result = &BatchWorkerPool{
-		workerFnc: workerFnc,
-		options:   options,
+		workerFnc:             workerFnc,
+		options:               options,
+		calls:                 make(chan Task, options.QueueSize),
+		batchedCalls:          make(chan []Task, 2*options.WorkerCount),
+		terminate:             make(chan struct{}),
+		terminateBatchWorkers: make(chan struct{}),
 	}
-
-	result.resetChannels()
 
 	return
 }
 
 func (wp *BatchWorkerPool) Submit(params ...interface{}) (result chan interface{}) {
-	result = make(chan interface{}, 1)
 
 	wp.mutex.RLock()
 
-	if wp.running {
+	if !wp.shutdown {
+		result = make(chan interface{}, 1)
+
 		wp.calls <- Task{
 			params:     params,
 			resultChan: result,
 		}
-	} else {
-		close(result)
 	}
 
 	wp.mutex.RUnlock()
@@ -55,6 +60,9 @@ func (wp *BatchWorkerPool) Start() {
 	wp.mutex.Lock()
 
 	if !wp.running {
+		if wp.shutdown {
+			panic("BatchWorker was already used before")
+		}
 		wp.running = true
 
 		wp.startBatchDispatcher()
@@ -71,22 +79,21 @@ func (wp *BatchWorkerPool) Run() {
 }
 
 func (wp *BatchWorkerPool) Stop() {
-	go wp.StopAndWait()
-}
-
-func (wp *BatchWorkerPool) StopAndWait() {
 	wp.mutex.Lock()
 
 	if wp.running {
+		wp.shutdown = true
 		wp.running = false
 
 		close(wp.terminate)
-		wp.resetChannels()
 	}
 
-	wp.wait.Wait()
-
 	wp.mutex.Unlock()
+}
+
+func (wp *BatchWorkerPool) StopAndWait() {
+	wp.Stop()
+	wp.wait.Wait()
 }
 
 func (wp *BatchWorkerPool) GetWorkerCount() int {
@@ -101,58 +108,67 @@ func (wp *BatchWorkerPool) GetPendingQueueSize() int {
 	return len(wp.batchedCalls)
 }
 
-func (wp *BatchWorkerPool) resetChannels() {
-	wp.calls = make(chan Task, wp.options.QueueSize)
-	wp.batchedCalls = make(chan []Task, 2*wp.options.WorkerCount)
-	wp.terminate = make(chan int, 1)
+func (wp *BatchWorkerPool) dispatchTasks(task Task) {
+
+	batchTask := append(make([]Task, 0), task)
+
+	collectionTimeout := time.After(wp.options.BatchCollectionTimeout)
+
+	// collect additional requests that arrive within the timeout
+CollectAdditionalCalls:
+	for {
+		select {
+
+		case <-collectionTimeout:
+			break CollectAdditionalCalls
+
+		case call := <-wp.calls:
+			batchTask = append(batchTask, call)
+
+			if len(batchTask) == wp.options.BatchSize {
+				break CollectAdditionalCalls
+			}
+		}
+	}
+
+	wp.batchedCalls <- batchTask
 }
 
 func (wp *BatchWorkerPool) startBatchDispatcher() {
-	calls := wp.calls
-	terminate := wp.terminate
-
 	wp.wait.Add(1)
 
 	go func() {
 		for {
 			select {
-			case <-terminate:
-				wp.wait.Done()
+			case <-wp.terminate:
 
-				return
-			case firstCall := <-calls:
-				batchTask := append(make([]Task, 0), firstCall)
+				if wp.options.FlushTasksAtShutdown {
+				terminateLoop:
+					// process all waiting tasks after shutdown signal
+					for {
+						select {
+						case firstCall := <-wp.calls:
+							wp.dispatchTasks(firstCall)
 
-				collectionTimeout := time.After(wp.options.BatchCollectionTimeout)
-
-				// collect additional requests that arrive within the timeout
-			CollectAdditionalCalls:
-				for {
-					select {
-					case <-terminate:
-						wp.wait.Done()
-
-						return
-					case <-collectionTimeout:
-						break CollectAdditionalCalls
-					case call := <-wp.calls:
-						batchTask = append(batchTask, call)
-
-						if len(batchTask) == wp.options.BatchSize {
-							break CollectAdditionalCalls
+						default:
+							break terminateLoop
 						}
 					}
 				}
 
-				wp.batchedCalls <- batchTask
+				close(wp.terminateBatchWorkers)
+
+				wp.wait.Done()
+				return
+
+			case firstCall := <-wp.calls:
+				wp.dispatchTasks(firstCall)
 			}
 		}
 	}()
 }
 
 func (wp *BatchWorkerPool) startBatchWorkers() {
-	batchedCalls := wp.batchedCalls
-	terminate := wp.terminate
 
 	for i := 0; i < wp.options.WorkerCount; i++ {
 		wp.wait.Add(1)
@@ -162,10 +178,24 @@ func (wp *BatchWorkerPool) startBatchWorkers() {
 
 			for !aborted {
 				select {
-				case <-terminate:
+				case <-wp.terminateBatchWorkers:
 					aborted = true
 
-				case batchTask := <-batchedCalls:
+					if wp.options.FlushTasksAtShutdown {
+					terminateLoop:
+						// process all waiting tasks after shutdown signal
+						for {
+							select {
+							case batchTask := <-wp.batchedCalls:
+								wp.workerFnc(batchTask)
+
+							default:
+								break terminateLoop
+							}
+						}
+					}
+
+				case batchTask := <-wp.batchedCalls:
 					wp.workerFnc(batchTask)
 				}
 			}
