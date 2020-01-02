@@ -25,7 +25,7 @@ type prefixDb struct {
 	prefix []byte
 }
 
-func Get(badger *badger.DB, dbPrefix byte) (Database, error) {
+func Get(dbPrefix byte, optionalBadger ...*badger.DB) (Database, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -33,8 +33,15 @@ func Get(badger *badger.DB, dbPrefix byte) (Database, error) {
 		return db, nil
 	}
 
+	var badgerInst *badger.DB
+	if len(optionalBadger) > 0 {
+		badgerInst = optionalBadger[0]
+	} else {
+		badgerInst = GetBadgerInstance()
+	}
+
 	db := &prefixDb{
-		db:     badger,
+		db:     badgerInst,
 		prefix: []byte{dbPrefix},
 	}
 
