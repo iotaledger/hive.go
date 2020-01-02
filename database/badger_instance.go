@@ -2,6 +2,7 @@ package database
 
 import (
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
@@ -10,10 +11,8 @@ import (
 )
 
 var (
-	instance  *badger.DB
-	once      sync.Once
-	directory = "mainnetdb"
-	light     bool
+	defaultBadger     *badger.DB
+	defaultBadgerInit sync.Once
 )
 
 // Returns whether the given file or directory exists.
@@ -28,12 +27,6 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
-// Settings sets DB dir and light mode
-func Settings(dir string, lightMode bool) {
-	directory = dir
-	light = lightMode
-}
-
 func checkDir(dir string) error {
 	exists, err := exists(dir)
 	if err != nil {
@@ -46,38 +39,19 @@ func checkDir(dir string) error {
 	return nil
 }
 
-func createDB() (*badger.DB, error) {
+func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {
 	if err := checkDir(directory); err != nil {
 		return nil, errors.Wrap(err, "Could not check directory")
 	}
 
-	opts := badger.DefaultOptions(directory)
-	opts.Logger = nil
-	opts.Truncate = true
+	var opts badger.Options
 
-	if light {
-		opts.LevelOneSize = 256 << 18
-		opts.LevelSizeMultiplier = 10
-		opts.TableLoadingMode = options.FileIO
-		opts.ValueLogLoadingMode = options.FileIO
-
-		opts.MaxLevels = 5
-		opts.MaxTableSize = 64 << 18
-		opts.NumCompactors = 1 // Compactions can be expensive. Only run 2.
-		opts.NumLevelZeroTables = 1
-		opts.NumLevelZeroTablesStall = 2
-		opts.NumMemtables = 1
-		opts.SyncWrites = false
-		opts.NumVersionsToKeep = 1
-		opts.CompactL0OnClose = true
-
-		opts.ValueLogFileSize = 1<<25 - 1
-
-		opts.ValueLogMaxEntries = 250000
-		opts.ValueThreshold = 32
-		opts.Truncate = false
-		opts.LogRotatesToFlush = 2
+	if len(optionalOptions) > 0 {
+		opts = optionalOptions[0]
 	} else {
+		opts = badger.DefaultOptions(directory)
+		opts.Logger = nil
+
 		opts.LevelOneSize = 256 << 20
 		opts.LevelSizeMultiplier = 10
 		opts.TableLoadingMode = options.MemoryMap
@@ -99,6 +73,10 @@ func createDB() (*badger.DB, error) {
 		opts.ValueThreshold = 32
 		opts.Truncate = false
 		opts.LogRotatesToFlush = 2
+
+		if runtime.GOOS == "windows" {
+			opts = opts.WithTruncate(true)
+		}
 	}
 
 	db, err := badger.Open(opts)
@@ -109,14 +87,20 @@ func createDB() (*badger.DB, error) {
 	return db, nil
 }
 
-func GetBadgerInstance() *badger.DB {
-	once.Do(func() {
-		db, err := createDB()
+func GetBadgerInstance(optionalDirectory ...string) *badger.DB {
+	defaultBadgerInit.Do(func() {
+
+		directory := "mainnetdb"
+		if len(optionalDirectory) > 0 {
+			directory = optionalDirectory[0]
+		}
+
+		db, err := CreateDB(directory)
 		if err != nil {
 			// errors should cause a panic to avoid singleton deadlocks
 			panic(err)
 		}
-		instance = db
+		defaultBadger = db
 	})
-	return instance
+	return defaultBadger
 }
