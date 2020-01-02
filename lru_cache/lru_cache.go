@@ -247,7 +247,7 @@ func (cache *LRUCache) GetSize() int {
 	return cache.size
 }
 
-func (cache *LRUCache) Delete(key interface{}) bool {
+func (cache *LRUCache) DeleteWithoutEviction(key interface{}) (existed bool, keyToEvict interface{}, valueToEvict interface{}) {
 	keyMutex := cache.krwMutex.Register(key)
 	keyMutex.Lock()
 
@@ -267,13 +267,9 @@ func (cache *LRUCache) Delete(key interface{}) bool {
 		cache.mutex.Unlock()
 		keyMutex.Unlock()
 
-		if cache.options.EvictionCallback != nil {
-			cache.options.EvictionCallback(key, entry.GetValue().(*lruCacheElement).value)
-		}
-
 		cache.krwMutex.Free(key)
 
-		return true
+		return true, key, entry.GetValue().(*lruCacheElement).value
 	}
 
 	cache.mutex.RUnlock()
@@ -281,7 +277,19 @@ func (cache *LRUCache) Delete(key interface{}) bool {
 	keyMutex.Unlock()
 	cache.krwMutex.Free(key)
 
-	return false
+	return false, nil, nil
+}
+
+func (cache *LRUCache) Delete(key interface{}) bool {
+	deleted, keyToEvict, valueToEvict := cache.DeleteWithoutEviction(key)
+
+	if deleted {
+		if cache.options.EvictionCallback != nil {
+			cache.options.EvictionCallback(keyToEvict, valueToEvict)
+		}
+	}
+
+	return deleted
 }
 
 func (cache *LRUCache) promoteElement(element *list.DoublyLinkedListEntry) {
