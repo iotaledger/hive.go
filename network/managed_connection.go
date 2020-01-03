@@ -2,11 +2,12 @@ package network
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/events"
 	"net"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/iotaledger/hive.go/events"
 )
 
 type ManagedConnection struct {
@@ -15,6 +16,8 @@ type ManagedConnection struct {
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	closeOnce    sync.Once
+	BytesRead    int
+	BytesWritten int
 }
 
 func NewManagedConnection(conn net.Conn) *ManagedConnection {
@@ -30,122 +33,123 @@ func NewManagedConnection(conn net.Conn) *ManagedConnection {
 	return bufferedConnection
 }
 
-func (this *ManagedConnection) Read(receiveBuffer []byte) (n int, err error) {
+func (mc *ManagedConnection) Read(receiveBuffer []byte) (n int, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("panic while reading from socket", r, string(debug.Stack()))
 		}
-		this.Close()
+		mc.Close()
 	}()
 
-	totalReadBytes := 0
 	for {
-		if err := this.setReadTimeoutBasedDeadline(); err != nil {
-			return totalReadBytes, err
+		if err := mc.setReadTimeoutBasedDeadline(); err != nil {
+			return mc.BytesRead, err
 		}
 
-		byteCount, err := this.Conn.Read(receiveBuffer)
+		byteCount, err := mc.Conn.Read(receiveBuffer)
 		if err != nil {
-			this.Events.Error.Trigger(err)
-			return totalReadBytes, err
+			mc.Events.Error.Trigger(err)
+			return mc.BytesRead, err
 		}
 		if byteCount > 0 {
-			totalReadBytes += byteCount
+			mc.BytesRead += byteCount
 
 			receivedData := make([]byte, byteCount)
 			copy(receivedData, receiveBuffer)
 
-			this.Events.ReceiveData.Trigger(receivedData)
+			mc.Events.ReceiveData.Trigger(receivedData)
 		}
 	}
 }
 
-func (this *ManagedConnection) Write(data []byte) (n int, err error) {
+func (mc *ManagedConnection) Write(data []byte) (n int, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("panic while writing to socket", r)
+			mc.Close()
 		}
 	}()
-	if err := this.setWriteTimeoutBasedDeadline(); err != nil {
+	if err := mc.setWriteTimeoutBasedDeadline(); err != nil {
 		return 0, err
 	}
 
-	return this.Conn.Write(data)
+	wrote, err := mc.Conn.Write(data)
+	mc.BytesWritten += wrote
+	return wrote, err
 }
 
-func (this *ManagedConnection) Close() error {
-	err := this.Conn.Close()
+func (mc *ManagedConnection) Close() error {
+	err := mc.Conn.Close()
 	if err != nil {
-		println(fmt.Sprintf("Managed connection error: %s", err.Error()))
-		this.Events.Error.Trigger(err)
+		mc.Events.Error.Trigger(err)
 	}
 
-	this.closeOnce.Do(func() {
-		this.Events.Close.Trigger()
+	mc.closeOnce.Do(func() {
+		go mc.Events.Close.Trigger()
 	})
 
 	return err
 }
 
-func (this *ManagedConnection) LocalAddr() net.Addr {
-	return this.Conn.LocalAddr()
+func (mc *ManagedConnection) LocalAddr() net.Addr {
+	return mc.Conn.LocalAddr()
 }
 
-func (this *ManagedConnection) RemoteAddr() net.Addr {
-	return this.Conn.RemoteAddr()
+func (mc *ManagedConnection) RemoteAddr() net.Addr {
+	return mc.Conn.RemoteAddr()
 }
 
-func (this *ManagedConnection) SetDeadline(t time.Time) error {
-	return this.Conn.SetDeadline(t)
+func (mc *ManagedConnection) SetDeadline(t time.Time) error {
+	return mc.Conn.SetDeadline(t)
 }
 
-func (this *ManagedConnection) SetReadDeadline(t time.Time) error {
-	return this.Conn.SetReadDeadline(t)
+func (mc *ManagedConnection) SetReadDeadline(t time.Time) error {
+	return mc.Conn.SetReadDeadline(t)
 }
 
-func (this *ManagedConnection) SetWriteDeadline(t time.Time) error {
-	return this.Conn.SetWriteDeadline(t)
+func (mc *ManagedConnection) SetWriteDeadline(t time.Time) error {
+	return mc.Conn.SetWriteDeadline(t)
 }
 
-func (this *ManagedConnection) SetTimeout(d time.Duration) error {
-	if err := this.SetReadTimeout(d); err != nil {
+func (mc *ManagedConnection) SetTimeout(d time.Duration) error {
+	if err := mc.SetReadTimeout(d); err != nil {
 		return err
 	}
 
-	if err := this.SetWriteTimeout(d); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (this *ManagedConnection) SetReadTimeout(d time.Duration) error {
-	this.readTimeout = d
-
-	if err := this.setReadTimeoutBasedDeadline(); err != nil {
+	if err := mc.SetWriteTimeout(d); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (this *ManagedConnection) SetWriteTimeout(d time.Duration) error {
-	this.writeTimeout = d
+func (mc *ManagedConnection) SetReadTimeout(d time.Duration) error {
+	mc.readTimeout = d
 
-	if err := this.setWriteTimeoutBasedDeadline(); err != nil {
+	if err := mc.setReadTimeoutBasedDeadline(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (this *ManagedConnection) setReadTimeoutBasedDeadline() error {
-	if this.readTimeout != 0 {
-		if err := this.Conn.SetReadDeadline(time.Now().Add(this.readTimeout)); err != nil {
+func (mc *ManagedConnection) SetWriteTimeout(d time.Duration) error {
+	mc.writeTimeout = d
+
+	if err := mc.setWriteTimeoutBasedDeadline(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (mc *ManagedConnection) setReadTimeoutBasedDeadline() error {
+	if mc.readTimeout != 0 {
+		if err := mc.Conn.SetReadDeadline(time.Now().Add(mc.readTimeout)); err != nil {
 			return err
 		}
 	} else {
-		if err := this.Conn.SetReadDeadline(time.Time{}); err != nil {
+		if err := mc.Conn.SetReadDeadline(time.Time{}); err != nil {
 			return err
 		}
 	}
@@ -153,13 +157,13 @@ func (this *ManagedConnection) setReadTimeoutBasedDeadline() error {
 	return nil
 }
 
-func (this *ManagedConnection) setWriteTimeoutBasedDeadline() error {
-	if this.writeTimeout != 0 {
-		if err := this.Conn.SetWriteDeadline(time.Now().Add(this.writeTimeout)); err != nil {
+func (mc *ManagedConnection) setWriteTimeoutBasedDeadline() error {
+	if mc.writeTimeout != 0 {
+		if err := mc.Conn.SetWriteDeadline(time.Now().Add(mc.writeTimeout)); err != nil {
 			return err
 		}
 	} else {
-		if err := this.Conn.SetWriteDeadline(time.Time{}); err != nil {
+		if err := mc.Conn.SetWriteDeadline(time.Time{}); err != nil {
 			return err
 		}
 	}
