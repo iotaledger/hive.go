@@ -85,7 +85,7 @@ func (mc *ManagedConnection) Close() error {
 	}
 
 	mc.closeOnce.Do(func() {
-		mc.Events.Close.Trigger()
+		go mc.Events.Close.Trigger()
 	})
 
 	return err
