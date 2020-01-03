@@ -2,10 +2,11 @@ package tcp
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/network"
 	"github.com/iotaledger/hive.go/syncutils"
-	"net"
 )
 
 type TCPServer struct {
