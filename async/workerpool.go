@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/panjf2000/ants/v2"
 	"runtime"
+	"runtime/debug"
 	"sync"
 
 	"github.com/iotaledger/hive.go/typeutils"
@@ -32,7 +33,7 @@ func (workerPool *WorkerPool) Submit(f func()) {
 			if r := recover(); r != nil {
 				workerPool.tasksWg.Done()
 
-				fmt.Println("recovered from panic in WorkerPool:", r)
+				fmt.Printf("recovered from panic in WorkerPool: %s %s", r, debug.Stack())
 			}
 		}()
 

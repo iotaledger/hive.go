@@ -3,6 +3,7 @@ package async
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"sync"
 
 	"github.com/panjf2000/ants/v2"
@@ -35,7 +36,7 @@ func (workerPool *NonBlockingWorkerPool) Submit(f func()) bool {
 			if r := recover(); r != nil {
 				workerPool.tasksWg.Done()
 
-				fmt.Println("recovered from panic in NonBlockingWorkerPool:", r)
+				fmt.Printf("recovered from panic in WorkerPool: %s %s", r, debug.Stack())
 			}
 		}()
 
