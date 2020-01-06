@@ -88,6 +88,10 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 					panic(err)
 				}
 			}
+		} else if cachedObject.blindDelete.IsSet() {
+			if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
+				panic(err)
+			}
 		}
 	} else if consumers < 0 {
 		panic("too many unregistered consumers of cached object")

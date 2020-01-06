@@ -132,12 +132,15 @@ func TestDelete(t *testing.T) {
 	cachedObject.Release()
 
 	objects.Delete([]byte("Hans"))
+	objects.Delete([]byte("Huns"))
 
 	cachedObject = objects.Load([]byte("Hans"))
 	if cachedObject.Exists() {
 		t.Error("the item should not exist exist")
 	}
 	cachedObject.Release()
+
+	objects.WaitForWritesToFlush()
 }
 
 func TestConcurrency(t *testing.T) {

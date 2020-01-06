@@ -78,6 +78,88 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 	return cachedObject.waitForInitialResult()
 }
 
+// This method deletes an element and return true if the element was deleted.
+func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
+	deleteExistingEntry := func(cachedObject *CachedObject) bool {
+		cachedObject.wg.Wait()
+
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			if !storableObject.IsDeleted() {
+				storableObject.Delete()
+				cachedObject.Release()
+
+				return true
+			}
+
+			cachedObject.Release()
+		}
+
+		return false
+	}
+
+	cachedObject, cacheHit := objectStorage.accessCache(key, false)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	cachedObject, cacheHit = objectStorage.accessCache(key, true)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	if objectStorage.objectExistsInBadger(key) {
+		cachedObject.blindDelete.Set()
+		cachedObject.publishResult(nil)
+		cachedObject.Release()
+
+		return true
+	}
+
+	cachedObject.Release()
+
+	return false
+}
+
+// Performs a "blind delete", where we do not check the objects existence.
+func (objectStorage *ObjectStorage) Delete(key []byte) {
+	deleteExistingEntry := func(cachedObject *CachedObject) {
+		cachedObject.wg.Wait()
+
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			if !storableObject.IsDeleted() {
+				storableObject.Delete()
+				cachedObject.Release()
+
+				return
+			}
+
+			cachedObject.Release()
+		}
+
+		return
+	}
+
+	cachedObject, cacheHit := objectStorage.accessCache(key, false)
+	if cacheHit {
+		deleteExistingEntry(cachedObject)
+
+		return
+	}
+
+	cachedObject, cacheHit = objectStorage.accessCache(key, true)
+	if cacheHit {
+		deleteExistingEntry(cachedObject)
+
+		return
+	}
+
+	cachedObject.blindDelete.Set()
+	cachedObject.publishResult(nil)
+	cachedObject.Release()
+
+	return
+}
+
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
 func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (cachedObject *CachedObject, stored bool) {
@@ -90,6 +172,8 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 		if stored = existingCachedObject.updateEmptyResult(object); stored {
 			cachedObject = existingCachedObject
+		} else {
+			existingCachedObject.Release()
 		}
 	} else {
 		if objectExists := objectStorage.objectExistsInBadger(key); !objectExists {
@@ -101,6 +185,8 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 				if stored = newCachedObject.updateEmptyResult(object); stored {
 					cachedObject = newCachedObject
+				} else {
+					newCachedObject.Release()
 				}
 			} else {
 				newCachedObject.publishResult(object)
@@ -116,14 +202,6 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 	}
 
 	return
-}
-
-func (objectStorage *ObjectStorage) Delete(key []byte) {
-	cachedObject := objectStorage.Load(key)
-	if existingObject := cachedObject.Get(); existingObject != nil {
-		existingObject.Delete()
-	}
-	cachedObject.Release()
 }
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously

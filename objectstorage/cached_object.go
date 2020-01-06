@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,7 @@ type CachedObject struct {
 	wg            sync.WaitGroup
 	valueMutex    syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
+	blindDelete   typeutils.AtomicBool
 }
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObject) {
