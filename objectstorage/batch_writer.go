@@ -84,7 +84,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 				storableObject.SetModified(false)
 
 				marshaledObject, _ := storableObject.MarshalBinary()
-				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{storableObject.GetStorageKey()}), marshaledObject); err != nil {
+				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledObject); err != nil {
 					panic(err)
 				}
 			}
@@ -103,7 +103,26 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+		// First check if the cachedObject inside the objectStorage is the same that was written to
+		if c, contains := objectStorage.cachedObjects[typeutils.BytesToString(cachedObject.key)]; contains && c == cachedObject {
+			if storableObject := cachedObject.Get(); storableObject != nil {
+				if storableObject.IsDeleted() {
+					// storableObject was deleted
+					delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+				} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
+					// storableObject was modified using updateValue since we called writeObject
+					go func() {
+						bw.batchQueue <- cachedObject
+					}()
+				} else {
+					// Safe to delete since it was not modified
+					delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+				}
+			} else {
+				// storableObject is nil, so we can delete it
+				delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+			}
+		}
 	}
 	objectStorage.cacheMutex.Unlock()
 }
