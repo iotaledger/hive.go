@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/parameter"
-
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -40,6 +40,27 @@ var (
 	logger     = zap.S()
 	loggerInit sync.Once
 )
+
+const viperKey = "logger"
+
+// InitGlobalLogger initializes the global logger from the provided viper config.
+func InitGlobalLogger(config *viper.Viper) error {
+	err := fmt.Errorf("global logger already initialized")
+	loggerInit.Do(func() {
+		logger, err = NewRootLoggerFromViper(config, level)
+	})
+	return err
+}
+
+// NewRootLoggerFromViper creates a new root logger from the provided viper configuration.
+func NewRootLoggerFromViper(config *viper.Viper, levelOverride ...zap.AtomicLevel) (*Logger, error) {
+	cfg := defaultCfg
+	err := config.UnmarshalKey(viperKey, &cfg)
+	if err != nil {
+		return nil, err
+	}
+	return NewRootLogger(cfg, levelOverride...)
+}
 
 // NewRootLogger creates a new root logger from the provided configuration.
 func NewRootLogger(cfg Config, levelOverride ...zap.AtomicLevel) (*Logger, error) {
@@ -99,29 +120,15 @@ func SetLevel(l Level) {
 
 // NewLogger returns a new named child of the global root logger.
 func NewLogger(name string) *Logger {
+	// if the global logger has not been initialized, init from default config.
 	loggerInit.Do(func() {
-		var err error
-		logger, err = configureLogger()
+		root, err := NewRootLoggerFromViper(parameter.DefaultConfig(), level)
 		if err != nil {
 			log.Panicf("Error while configuring logger: %s", err)
 		}
+		logger = root
 	})
 	return logger.Named(name)
-}
-
-func configureLogger() (*Logger, error) {
-	cfg := defaultCfg
-	err := parameter.DefaultConfig().UnmarshalKey("logger", &cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	root, err := NewRootLogger(cfg, level)
-	if err != nil {
-		return nil, err
-	}
-
-	return root, nil
 }
 
 func newEncoder(name string, cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
