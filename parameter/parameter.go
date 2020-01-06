@@ -2,17 +2,17 @@ package parameter
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/logger"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 var (
-	log = logger.NewLogger("NodeConfig")
-	defaultConfig *viper.Viper
+	defaultConfig     *viper.Viper
 	defaultConfigInit sync.Once
 )
 
@@ -33,11 +33,9 @@ func PrintConfig(config *viper.Viper, ignoreSettingsAtPrint ...[]string) {
 		}
 	}
 
-	cfg, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		log.Errorf("Error: %s\n", err)
+	if cfg, err := json.MarshalIndent(settings, "", "  "); err == nil {
+		fmt.Printf("Parameters loaded: \n %+v\n", string(cfg))
 	}
-	log.Infof("Parameters loaded: \n %+v\n", string(cfg))
 }
 
 func DefaultConfig() *viper.Viper {
@@ -48,7 +46,7 @@ func DefaultConfig() *viper.Viper {
 		defaultConfig = viper.New()
 		err := LoadConfigFile(defaultConfig, configDirPath, configName, true, true)
 		if err != nil {
-			panic(err)
+			log.Panicf("Error loading config: %s", err)
 		}
 	})
 
@@ -61,29 +59,25 @@ func DefaultConfig() *viper.Viper {
 // It automatically reads in a single config with name defined in "configName"
 // and ending with: .json, .toml, .yaml or .yml (in this sequence).
 func LoadConfigFile(config *viper.Viper, configDir string, configName string, bindFlags bool, loadDefault bool) error {
-
 	flag.Parse()
 	if bindFlags {
 		err := config.BindPFlags(flag.CommandLine)
 		if err != nil {
-			log.Error(err)
+			return err
 		}
 	}
 
 	// adjust viper to wanted locations
 	config.SetConfigName(configName)
 	config.AddConfigPath(configDir)
-	log.Infof("Loading parameters from config dir '%s' using '%s' as file prefix...\n", configDir, configName)
 
 	// read in the config file (whatever it finds)
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok && loadDefault {
-			log.Errorf("No config file found via '%s/%s.[json,toml,yaml,yml]'. Loading default settings.", configDir, configName)
+			log.Printf("No config file found via '%s/%s.[json,toml,yaml,yml]'. Loading default settings.", configDir, configName)
 		} else {
-			log.Panicf("Error while loading config from %s: %s", configDir, err)
+			return err
 		}
-	} else {
-		log.Infof("read parameters from %s", config.ConfigFileUsed())
 	}
 
 	return nil
