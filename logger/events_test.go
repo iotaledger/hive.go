@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/iotaledger/hive.go/events"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
@@ -50,7 +50,7 @@ func TestNewEventCore(t *testing.T) {
 
 		m.On("panic", LevelPanic, testName, testLoggedMsg).Once()
 		m.On("any", LevelPanic, testName, testLoggedMsg).Once()
-		assert.Panic(t, func() { logger.Panic(testMsg) }, testMsg)
+		assert.Panics(t, func() { logger.Panic(testMsg) }, testMsg)
 
 		m.AssertExpectations(t)
 	})
