@@ -2,6 +2,9 @@ package logger
 
 import "go.uber.org/zap/zapcore"
 
+// ViperKey defines the key name under which the logger config is stored.
+const ViperKey = "logger"
+
 // Config holds the settings to configure a root logger instance.
 type Config struct {
 	// Level is the minimum enabled logging level.

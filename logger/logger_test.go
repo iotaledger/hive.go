@@ -3,7 +3,10 @@ package logger
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,8 +84,12 @@ func TestNewLogger(t *testing.T) {
 	require.NoError(t, err, "Failed to create temp file.")
 	defer os.Remove(temp.Name())
 
-	// override the default config to write to temp file
-	defaultCfg.OutputPaths = append(defaultCfg.OutputPaths, temp.Name())
+	// override the default config to also write to temp file
+	cfg := defaultCfg
+	cfg.OutputPaths = append(cfg.OutputPaths, temp.Name())
+
+	// init the global logger for that temp file and de-init afterwards
+	defer initGlobal(t, cfg)()
 
 	t.Run("info", func(t *testing.T) {
 		logger := NewLogger("test")
@@ -103,6 +110,46 @@ func TestNewLogger(t *testing.T) {
 		assert.Regexp(t, `debug1\n`, logs, "Unexpected log output.")
 		assert.NotRegexp(t, `debug2\n`, logs, "Unexpected log output.")
 	})
+}
+
+func TestNewLoggerWithoutInit(t *testing.T) {
+	assert.Panics(t, func() { NewLogger("test") })
+}
+
+func TestInitGlobalAfterError(t *testing.T) {
+	// create invalid config
+	cfg := defaultCfg
+	cfg.Level = "invalid"
+
+	v := viper.New()
+	v.Set(ViperKey, cfg)
+	require.Error(t, InitGlobalLogger(v))
+
+	initGlobal(t, defaultCfg)()
+}
+
+func TestInitGlobalTwice(t *testing.T) {
+	v := viper.New()
+	v.Set(ViperKey, defaultCfg)
+
+	require.NoError(t, InitGlobalLogger(v))
+	assert.Errorf(t, InitGlobalLogger(v), ErrGlobalLoggerAlreadyInitialized.Error())
+}
+
+func initGlobal(t require.TestingT, cfg Config) func() {
+	// load into viper
+	v := viper.New()
+	v.Set(ViperKey, cfg)
+
+	err := InitGlobalLogger(v)
+	require.NoError(t, err, "Failed to init global logger.")
+
+	// de-initialize the global logger
+	return func() {
+		logger = nil
+		initialized.UnSet()
+		mu = sync.Mutex{}
+	}
 }
 
 func getLogs(t require.TestingT, file *os.File) string {

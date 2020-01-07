@@ -3,12 +3,11 @@ package logger
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/parameter"
+	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -36,28 +35,39 @@ const (
 	LevelFatal = zapcore.FatalLevel
 )
 
-var (
-	level                             = zap.NewAtomicLevel()
-	logger                            = zap.S()
-	loggerInit                        sync.Once
-	ErrGlobalLoggerAlreadyInitialized = errors.New("global logger already initialized")
-)
+// ErrGlobalLoggerAlreadyInitialized is returned when InitGlobalLogger is called more than once.
+var ErrGlobalLoggerAlreadyInitialized = errors.New("global logger already initialized")
 
-const viperKey = "logger"
+var (
+	level  = zap.NewAtomicLevel()
+	logger *Logger
+
+	initialized typeutils.AtomicBool // true, if the global logger was successfully initialized
+	mu          sync.Mutex           // prevents multiple initializations at the same time
+)
 
 // InitGlobalLogger initializes the global logger from the provided viper config.
 func InitGlobalLogger(config *viper.Viper) error {
-	err := ErrGlobalLoggerAlreadyInitialized
-	loggerInit.Do(func() {
-		logger, err = NewRootLoggerFromViper(config, level)
-	})
-	return err
+	mu.Lock()
+	defer mu.Unlock()
+
+	if initialized.IsSet() {
+		return ErrGlobalLoggerAlreadyInitialized
+	}
+	root, err := NewRootLoggerFromViper(config, level)
+	if err != nil {
+		return err
+	}
+
+	logger = root
+	initialized.Set()
+	return nil
 }
 
 // NewRootLoggerFromViper creates a new root logger from the provided viper configuration.
 func NewRootLoggerFromViper(config *viper.Viper, levelOverride ...zap.AtomicLevel) (*Logger, error) {
 	cfg := defaultCfg
-	err := config.UnmarshalKey(viperKey, &cfg)
+	err := config.UnmarshalKey(ViperKey, &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -122,14 +132,9 @@ func SetLevel(l Level) {
 
 // NewLogger returns a new named child of the global root logger.
 func NewLogger(name string) *Logger {
-	// if the global logger has not been initialized, init from default config.
-	loggerInit.Do(func() {
-		root, err := NewRootLoggerFromViper(parameter.DefaultConfig(), level)
-		if err != nil {
-			log.Panicf("Error while configuring logger: %s", err)
-		}
-		logger = root
-	})
+	if !initialized.IsSet() {
+		panic("global logger not initialized")
+	}
 	return logger.Named(name)
 }
 
