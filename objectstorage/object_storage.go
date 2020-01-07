@@ -56,6 +56,18 @@ func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
 	return cachedObject.waitForInitialResult()
 }
 
+func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
+	if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
+		result = cachedObject.waitForInitialResult().Exists()
+
+		cachedObject.Release()
+	} else {
+		result = objectStorage.objectExistsInBadger(key)
+	}
+
+	return
+}
+
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) *CachedObject {
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if cacheHit {
