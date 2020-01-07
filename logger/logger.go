@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -36,16 +37,17 @@ const (
 )
 
 var (
-	level      = zap.NewAtomicLevel()
-	logger     = zap.S()
-	loggerInit sync.Once
+	level                             = zap.NewAtomicLevel()
+	logger                            = zap.S()
+	loggerInit                        sync.Once
+	ErrGlobalLoggerAlreadyInitialized = errors.New("global logger already initialized")
 )
 
 const viperKey = "logger"
 
 // InitGlobalLogger initializes the global logger from the provided viper config.
 func InitGlobalLogger(config *viper.Viper) error {
-	err := fmt.Errorf("global logger already initialized")
+	err := ErrGlobalLoggerAlreadyInitialized
 	loggerInit.Do(func() {
 		logger, err = NewRootLoggerFromViper(config, level)
 	})
@@ -122,10 +124,6 @@ func SetLevel(l Level) {
 func NewLogger(name string) *Logger {
 	// if the global logger has not been initialized, init from default config.
 	loggerInit.Do(func() {
-		// only init the root logger for the first time, if it wasn't already set
-		if logger != nil {
-			return
-		}
 		root, err := NewRootLoggerFromViper(parameter.DefaultConfig(), level)
 		if err != nil {
 			log.Panicf("Error while configuring logger: %s", err)
