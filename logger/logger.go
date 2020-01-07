@@ -2,278 +2,156 @@ package logger
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/syncutils"
-	"io"
 	"log"
 	"os"
+	"strings"
+	"sync"
+
+	"github.com/iotaledger/hive.go/parameter"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func init() {
-	// auto. route log msgs into the any msg event
-	anyRouter := events.NewClosure(func(logLvl LogLevel, prefix string, msg string) {
-		Events.AnyMsg.Trigger(logLvl, prefix, msg)
-	})
-	Events.InfoMsg.Attach(anyRouter)
-	Events.NoticeMsg.Attach(anyRouter)
-	Events.WarningMsg.Attach(anyRouter)
-	Events.ErrorMsg.Attach(anyRouter)
-	Events.CriticalMsg.Attach(anyRouter)
-	Events.PanicMsg.Attach(anyRouter)
-	Events.FatalMsg.Attach(anyRouter)
-	Events.DebugMsg.Attach(anyRouter)
-}
+// The Logger uses the sugared logger.
+type Logger = zap.SugaredLogger
 
-func LogCaller(handler interface{}, params ...interface{}) {
-	handler.(func(LogLevel, string, string))(params[0].(LogLevel), params[1].(string), params[2].(string))
-}
-
-var Events = loggerevents{
-	InfoMsg:     events.NewEvent(LogCaller),
-	NoticeMsg:   events.NewEvent(LogCaller),
-	WarningMsg:  events.NewEvent(LogCaller),
-	ErrorMsg:    events.NewEvent(LogCaller),
-	CriticalMsg: events.NewEvent(LogCaller),
-	PanicMsg:    events.NewEvent(LogCaller),
-	FatalMsg:    events.NewEvent(LogCaller),
-	DebugMsg:    events.NewEvent(LogCaller),
-	AnyMsg:      events.NewEvent(LogCaller),
-}
-
-type loggerevents struct {
-	InfoMsg     *events.Event
-	NoticeMsg   *events.Event
-	WarningMsg  *events.Event
-	ErrorMsg    *events.Event
-	CriticalMsg *events.Event
-	PanicMsg    *events.Event
-	FatalMsg    *events.Event
-	DebugMsg    *events.Event
-	AnyMsg      *events.Event
-}
-
-// every instance of the logger uses the same logger to ensure that
-// concurrent prints/writes don't overlap
-var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
-
-// InjectWriter swaps out the logger package's underlying logger's writers.
-func InjectWriters(writers ...io.Writer) {
-	logger = log.New(io.MultiWriter(writers...), "", log.Ldate|log.Ltime)
-}
-
-func NewLogger(prefix string, logLevel ...LogLevel) *Logger {
-	l := &Logger{Prefix: prefix}
-	if len(logLevel) > 0 {
-		l.logLevel = logLevel[0]
-	} else {
-		l.logLevel = LevelNormal
-	}
-	return l
-}
-
-type LogLevel byte
+// A Level is a logging priority. Higher levels are more important.
+type Level = zapcore.Level
 
 const (
-	LevelInfo     LogLevel = 1
-	LevelNotice            = LevelInfo << 1
-	LevelWarning           = LevelNotice << 1
-	LevelError             = LevelWarning << 1
-	LevelCritical          = LevelError << 1
-	LevelPanic             = LevelCritical << 1
-	LevelFatal             = LevelPanic << 1
-	LevelDebug             = LevelFatal << 1
-
-	LevelNormal = LevelInfo | LevelNotice | LevelWarning | LevelError | LevelCritical | LevelPanic | LevelFatal
+	// LevelDebug logs are typically voluminous, and are usually disabled in production.
+	LevelDebug = zapcore.DebugLevel
+	// LevelInfo is the default logging priority.
+	LevelInfo = zapcore.InfoLevel
+	// LevelWarn logs are more important than Info, but don't need individual human review.
+	LevelWarn = zapcore.WarnLevel
+	// LevelError logs are high-priority.
+	// If an application is running as expected, there shouldn't be any error-level logs.
+	LevelError = zapcore.ErrorLevel
+	// LevelPanic logs a message, then panics.
+	LevelPanic = zapcore.PanicLevel
+	// LevelFatal logs a message, then calls os.Exit(1).
+	LevelFatal = zapcore.FatalLevel
 )
 
-type Logger struct {
-	Prefix     string
-	changeMu   syncutils.Mutex
-	logLevel   LogLevel
-	disabledMu syncutils.Mutex
-	disabled   bool
+var (
+	level      = zap.NewAtomicLevel()
+	logger     = zap.S()
+	loggerInit sync.Once
+)
+
+const viperKey = "logger"
+
+// InitGlobalLogger initializes the global logger from the provided viper config.
+func InitGlobalLogger(config *viper.Viper) error {
+	err := fmt.Errorf("global logger already initialized")
+	loggerInit.Do(func() {
+		logger, err = NewRootLoggerFromViper(config, level)
+	})
+	return err
 }
 
-func (l *Logger) Enabled() bool {
-	return !l.disabled
-}
-
-func (l *Logger) Enable() {
-	l.disabledMu.Lock()
-	l.disabled = false
-	l.disabledMu.Unlock()
-}
-
-func (l *Logger) Disable() {
-	l.disabledMu.Lock()
-	l.disabled = true
-	l.disabledMu.Unlock()
-}
-
-func (l *Logger) ChangeLogLevel(logLevel LogLevel) {
-	l.changeMu.Lock()
-	l.logLevel = logLevel
-	l.changeMu.Unlock()
-}
-
-// Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
-func (l *Logger) Fatal(args ...interface{}) {
-	if l.logLevel&LevelFatal == 0 || l.disabled {
-		return
+// NewRootLoggerFromViper creates a new root logger from the provided viper configuration.
+func NewRootLoggerFromViper(config *viper.Viper, levelOverride ...zap.AtomicLevel) (*Logger, error) {
+	cfg := defaultCfg
+	err := config.UnmarshalKey(viperKey, &cfg)
+	if err != nil {
+		return nil, err
 	}
-	msg := fmt.Sprint(args...)
-	Events.FatalMsg.Trigger(LevelFatal, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ FATAL ] %s:", l.Prefix), msg)
-	os.Exit(1)
+	return NewRootLogger(cfg, levelOverride...)
 }
 
-// Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
-func (l *Logger) Fatalf(format string, args ...interface{}) {
-	if l.logLevel&LevelFatal == 0 || l.disabled {
-		return
+// NewRootLogger creates a new root logger from the provided configuration.
+func NewRootLogger(cfg Config, levelOverride ...zap.AtomicLevel) (*Logger, error) {
+	var (
+		cores []zapcore.Core
+		opts  []zap.Option
+		level Level
+	)
+
+	if err := level.UnmarshalText([]byte(cfg.Level)); err != nil {
+		return nil, err
 	}
-	msg := fmt.Sprintf(format, args...)
-	Events.FatalMsg.Trigger(LevelFatal, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ FATAL ] %s:", l.Prefix), msg)
-	os.Exit(1)
+	enc, err := newEncoder(cfg.Encoding, defaultEncoderConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	var enabler zapcore.LevelEnabler = level
+	if len(levelOverride) > 0 {
+		atomic := levelOverride[0]
+		atomic.SetLevel(level)
+		enabler = atomic
+	}
+
+	// write errors generated by the logger to stderr
+	opts = append(opts, zap.ErrorOutput(zapcore.Lock(os.Stderr)))
+
+	// create the logger only if there is at least one output path
+	if len(cfg.OutputPaths) > 0 {
+		ws, _, err := zap.Open(cfg.OutputPaths...)
+		if err != nil {
+			return nil, err
+		}
+
+		core := zapcore.NewCore(enc, ws, enabler)
+		cores = append(cores, core)
+
+		// add required options
+		opts = append(opts, buildOptions(cfg)...)
+	}
+
+	// add the event logging
+	if !cfg.DisableEvents {
+		cores = append(cores, NewEventCore(enabler))
+	}
+
+	// create the logger
+	logger := zap.New(zapcore.NewTee(cores...), opts...)
+
+	return logger.Sugar(), nil
 }
 
-// Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
-func (l *Logger) Panic(args ...interface{}) {
-	if l.logLevel&LevelPanic == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprint(args...)
-	Events.PanicMsg.Trigger(LevelPanic, l.Prefix, msg)
-	logger.Panicln(fmt.Sprintf("[ PANIC ] %s:", l.Prefix), msg)
+// SetLevel alters the logging level of the global logger.
+func SetLevel(l Level) {
+	level.SetLevel(l)
 }
 
-// Panicf is equivalent to l.Critical followed by a call to panic().
-func (l *Logger) Panicf(format string, args ...interface{}) {
-	if l.logLevel&LevelPanic == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.PanicMsg.Trigger(LevelPanic, l.Prefix, msg)
-	logger.Panicln(fmt.Sprintf("[ PANIC ] %s:", l.Prefix), msg)
+// NewLogger returns a new named child of the global root logger.
+func NewLogger(name string) *Logger {
+	// if the global logger has not been initialized, init from default config.
+	loggerInit.Do(func() {
+		root, err := NewRootLoggerFromViper(parameter.DefaultConfig(), level)
+		if err != nil {
+			log.Panicf("Error while configuring logger: %s", err)
+		}
+		logger = root
+	})
+	return logger.Named(name)
 }
 
-// Critical logs a message using CRITICAL as log level.
-func (l *Logger) Critical(args ...interface{}) {
-	if l.logLevel&LevelCritical == 0 || l.disabled {
-		return
+func newEncoder(name string, cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
+	switch strings.ToLower(name) {
+	case "console", "":
+		return zapcore.NewConsoleEncoder(cfg), nil
+	case "json":
+		return zapcore.NewJSONEncoder(cfg), nil
 	}
-	msg := fmt.Sprint(args...)
-	Events.CriticalMsg.Trigger(LevelCritical, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ CRITICAL ] %s:", l.Prefix), msg)
+	return nil, fmt.Errorf("no encoder registered for name %q", name)
 }
 
-// Criticalf logs a message using CRITICAL as log level.
-func (l *Logger) Criticalf(format string, args ...interface{}) {
-	if l.logLevel&LevelCritical == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.CriticalMsg.Trigger(LevelCritical, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ CRITICAL ] %s:", l.Prefix), msg)
-}
+func buildOptions(cfg Config) []zap.Option {
+	var opts []zap.Option
 
-// Error logs a message using ERROR as log level.
-func (l *Logger) Error(args ...interface{}) {
-	if l.logLevel&LevelError == 0 || l.disabled {
-		return
+	if !cfg.DisableCaller {
+		// add caller to the log
+		opts = append(opts, zap.AddCaller())
 	}
-	msg := fmt.Sprint(args...)
-	Events.ErrorMsg.Trigger(LevelError, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ ERROR ] %s:", l.Prefix), msg)
-}
+	if !cfg.DisableStacktrace {
+		// add stackstrace for error or higher
+		opts = append(opts, zap.AddStacktrace(zap.ErrorLevel))
+	}
 
-// Errorf logs a message using ERROR as log level.
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	if l.logLevel&LevelError == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.ErrorMsg.Trigger(LevelError, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ ERROR ] %s:", l.Prefix), msg)
-}
-
-// Warning logs a message using WARNING as log level.
-func (l *Logger) Warning(args ...interface{}) {
-	if l.logLevel&LevelWarning == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprint(args...)
-	Events.WarningMsg.Trigger(LevelWarning, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ WARNING ] %s:", l.Prefix), msg)
-}
-
-// Warningf logs a message using WARNING as log level.
-func (l *Logger) Warningf(format string, args ...interface{}) {
-	if l.logLevel&LevelWarning == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.WarningMsg.Trigger(LevelWarning, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ WARNING ] %s:", l.Prefix), msg)
-}
-
-// Notice logs a message using NOTICE as log level.
-func (l *Logger) Notice(args ...interface{}) {
-	if l.logLevel&LevelNotice == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprint(args...)
-	Events.NoticeMsg.Trigger(LevelNotice, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ NOTICE ] %s:", l.Prefix), msg)
-}
-
-// Noticef logs a message using NOTICE as log level.
-func (l *Logger) Noticef(format string, args ...interface{}) {
-	if l.logLevel&LevelNotice == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.NoticeMsg.Trigger(LevelNotice, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ NOTICE ] %s:", l.Prefix), msg)
-}
-
-// Info logs a message using INFO as log level.
-func (l *Logger) Info(args ...interface{}) {
-	if l.logLevel&LevelInfo == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprint(args...)
-	Events.InfoMsg.Trigger(LevelInfo, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ INFO ] %s:", l.Prefix), msg)
-}
-
-// Infof logs a message using INFO as log level.
-func (l *Logger) Infof(format string, args ...interface{}) {
-	if l.logLevel&LevelInfo == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.InfoMsg.Trigger(LevelInfo, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ INFO ] %s:", l.Prefix), msg)
-}
-
-// Debug logs a message using DEBUG as log level.
-func (l *Logger) Debug(args ...interface{}) {
-	if l.logLevel&LevelDebug == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprint(args...)
-	Events.DebugMsg.Trigger(LevelDebug, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ DEBUG ] %s:", l.Prefix), msg)
-}
-
-// Debugf logs a message using DEBUG as log level.
-func (l *Logger) Debugf(format string, args ...interface{}) {
-	if l.logLevel&LevelDebug == 0 || l.disabled {
-		return
-	}
-	msg := fmt.Sprintf(format, args...)
-	Events.DebugMsg.Trigger(LevelDebug, l.Prefix, msg)
-	logger.Println(fmt.Sprintf("[ DEBUG ] %s:", l.Prefix), msg)
+	return opts
 }
