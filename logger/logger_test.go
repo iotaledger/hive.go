@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	defaultCfg.Encoder.TimeKey = "" // no timestamps in tests
+	defaultEncoderConfig.TimeKey = "" // no timestamps in tests
 }
 
 func TestNewRootLogger(t *testing.T) {
