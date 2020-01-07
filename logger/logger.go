@@ -122,6 +122,10 @@ func SetLevel(l Level) {
 func NewLogger(name string) *Logger {
 	// if the global logger has not been initialized, init from default config.
 	loggerInit.Do(func() {
+		// only init the root logger for the first time, if it wasn't already set
+		if logger != nil {
+			return
+		}
 		root, err := NewRootLoggerFromViper(parameter.DefaultConfig(), level)
 		if err != nil {
 			log.Panicf("Error while configuring logger: %s", err)
