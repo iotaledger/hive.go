@@ -223,6 +223,7 @@ func (d *OrderedDaemon) shutdown() {
 	if !d.running {
 		return
 	}
+
 	currentPriority := -1
 	for _, name := range d.shutdownOrderWorker {
 		worker := d.workers[name]
