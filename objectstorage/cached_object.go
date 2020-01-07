@@ -2,6 +2,7 @@ package objectstorage
 
 import (
 	"github.com/iotaledger/hive.go/typeutils"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,6 +30,21 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObject)
 	}
 
 	result.wg.Add(1)
+
+	return
+}
+
+// Creates an "empty" CachedObject, that is not part of any ObjectStorage.
+//
+// Sometimes, we want to be able to offer a "filtered view" on the ObjectStorage and therefore be able to return an
+// "empty" value on load operations even if the underlying object exists (i.e. the value tangle on top of the normal
+// tangle only returns value transactions in its load operations).
+func NewEmptyCachedObject(key []byte) (result *CachedObject) {
+	result = &CachedObject{
+		key:       key,
+		published: 1,
+		consumers: math.MinInt32,
+	}
 
 	return
 }
