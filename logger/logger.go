@@ -85,7 +85,7 @@ func NewRootLogger(cfg Config, levelOverride ...zap.AtomicLevel) (*Logger, error
 	if err := level.UnmarshalText([]byte(cfg.Level)); err != nil {
 		return nil, err
 	}
-	enc, err := newEncoder(cfg.Encoding, defaultEncoderConfig)
+	enc, err := newEncoder(cfg.Encoding, cfg.Encoder)
 	if err != nil {
 		return nil, err
 	}

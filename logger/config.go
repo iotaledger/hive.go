@@ -25,23 +25,24 @@ type Config struct {
 	// DisableEvents prevents log messages from being raced as events.
 	// By default, the corresponding events are triggered.
 	DisableEvents bool `mapstructure:"disableEvents"`
+	// Encoder contains the configuration for the logger encoder.
+	Encoder zapcore.EncoderConfig `mapstructure:"encoderConfig"`
 }
 
 var defaultCfg = Config{
 	Level:       "info",
 	Encoding:    "console",
 	OutputPaths: []string{"stdout"},
-}
-
-var defaultEncoderConfig = zapcore.EncoderConfig{
-	TimeKey:        "ts",
-	LevelKey:       "level",
-	NameKey:        "logger",
-	CallerKey:      "caller",
-	MessageKey:     "msg",
-	StacktraceKey:  "stacktrace",
-	EncodeLevel:    zapcore.CapitalLevelEncoder,    // level in upper case
-	EncodeTime:     zapcore.RFC3339TimeEncoder,     // timestamp according to RFC3339
-	EncodeDuration: zapcore.SecondsDurationEncoder, // duration in seconds
-	EncodeCaller:   zapcore.ShortCallerEncoder,     // caller according to package/file:line
+	Encoder: zapcore.EncoderConfig{
+		TimeKey:        "ts",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
+		EncodeLevel:    zapcore.CapitalLevelEncoder,    // level in upper case
+		EncodeTime:     zapcore.RFC3339TimeEncoder,     // timestamp according to RFC3339
+		EncodeDuration: zapcore.SecondsDurationEncoder, // duration in seconds
+		EncodeCaller:   zapcore.ShortCallerEncoder,     // caller according to package/file:line
+	},
 }
