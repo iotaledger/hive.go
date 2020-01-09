@@ -1,7 +1,6 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -86,7 +86,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 				storableObject.SetModified(false)
 
 				marshaledObject, _ := storableObject.MarshalBinary()
-				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{storableObject.GetStorageKey()}), marshaledObject); err != nil {
+				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledObject); err != nil {
 					panic(err)
 				}
 			}
