@@ -28,6 +28,8 @@ func (testObject *StorableObjectFlags) Delete(delete ...bool) {
 	} else {
 		testObject.delete.Set()
 	}
+
+	testObject.modified.Set()
 }
 
 func (testObject *StorableObjectFlags) IsDeleted() bool {

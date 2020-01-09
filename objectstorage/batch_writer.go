@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -77,6 +77,8 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		if storableObject := cachedObject.Get(); storableObject != nil {
 			if storableObject.IsDeleted() {
+				storableObject.SetModified(false)
+
 				if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
 					panic(err)
 				}
@@ -103,7 +105,10 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+		// only delete if the object is still empty or was not modified since the write
+		if storableObject := cachedObject.Get(); storableObject == nil || !storableObject.IsModified() {
+			delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+		}
 	}
 	objectStorage.cacheMutex.Unlock()
 }
