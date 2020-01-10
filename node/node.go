@@ -53,33 +53,35 @@ func Shutdown() {
 	daemon.ShutdownAndWait()
 }
 
+// IsSkipped returns whether the plugin is loaded or skipped.
+func IsSkipped(plugin *Plugin) bool {
+	return (plugin.Status == Disabled || isDisabled(plugin)) &&
+		(plugin.Status == Enabled || !isEnabled(plugin))
+}
+
 func isDisabled(plugin *Plugin) bool {
 	_, exists := DisabledPlugins[GetPluginIdentifier(plugin.Name)]
-
 	return exists
 }
 
 func isEnabled(plugin *Plugin) bool {
 	_, exists := EnabledPlugins[GetPluginIdentifier(plugin.Name)]
-
 	return exists
 }
 
 func (node *Node) configure(plugins ...*Plugin) {
 	for _, plugin := range plugins {
-		status := plugin.Status
-		if (status == Enabled && !isDisabled(plugin)) ||
-			(status == Disabled && isEnabled(plugin)) {
-
-			plugin.wg = node.wg
-			plugin.Node = node
-
-			plugin.Events.Configure.Trigger(plugin)
-			node.loadedPlugins = append(node.loadedPlugins, plugin)
-			node.Logger.Infof("Loading Plugin: %s ... done", plugin.Name)
-		} else {
+		if IsSkipped(plugin) {
 			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
+			continue
 		}
+
+		plugin.wg = node.wg
+		plugin.Node = node
+
+		plugin.Events.Configure.Trigger(plugin)
+		node.loadedPlugins = append(node.loadedPlugins, plugin)
+		node.Logger.Infof("Loading Plugin: %s ... done", plugin.Name)
 	}
 }
 
