@@ -81,10 +81,11 @@ func (ips *IPAddresses) Len() int {
 	return len(ips.IPs)
 }
 
-// OriginAddress represents a tuple of a IP or hostname, port and IPv6 preference
+// OriginAddress represents a tuple of a IP or hostname, port, alias and IPv6 preference
 type OriginAddress struct {
 	Addr       string
 	Port       uint16
+	Alias      string
 	PreferIPv6 bool
 }
 
