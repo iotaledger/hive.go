@@ -230,31 +230,30 @@ func (d *OrderedDaemon) shutdown() {
 		return
 	}
 
-	currentPriority := -1
-	for _, name := range d.shutdownOrderWorker {
-		worker := d.workers[name]
-		if !worker.running.IsSet() {
-			// the worker's shutdown channel will be automatically garbage collected
-			continue
-		}
-		if currentPriority == -1 || worker.shutdownOrder < currentPriority {
-			if currentPriority != -1 {
-				// wait for every worker in the same shutdown order to terminate
-				d.wgPerSameShutdownOrder[currentPriority].Wait()
+	// stop all the workers
+	if len(d.shutdownOrderWorker) > 0 {
+		// initialize with the priority of the first worker
+		prevPriority := d.workers[d.shutdownOrderWorker[0]].shutdownOrder
+		for _, name := range d.shutdownOrderWorker {
+			worker := d.workers[name]
+			if !worker.running.IsSet() {
+				// the worker's shutdown channel will be automatically garbage collected
+				continue
 			}
-			currentPriority = worker.shutdownOrder
+			// if the current worker has a lower priority...
+			if worker.shutdownOrder < prevPriority {
+				// wait for every worker in the previous shutdown priority to terminate
+				d.wgPerSameShutdownOrder[prevPriority].Wait()
+				prevPriority = worker.shutdownOrder
+			}
+			close(worker.shutdownSignal)
 		}
-
-		close(worker.shutdownSignal)
+		// wait for the last priority to finish
+		d.wgPerSameShutdownOrder[prevPriority].Wait()
 	}
-
-	// special case if we only had one order defined
-	if currentPriority == -1 {
-		currentPriority = 0
-	}
-	d.wgPerSameShutdownOrder[currentPriority].Wait()
 
 	// clear
+	d.running.UnSet()
 	d.workers = nil
 	d.shutdownOrderWorker = nil
 	d.wgPerSameShutdownOrder = nil
