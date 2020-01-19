@@ -2,49 +2,38 @@ package daemon_test
 
 import (
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
-	ordered_daemon "github.com/iotaledger/hive.go/daemon"
+	"github.com/iotaledger/hive.go/daemon"
 	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // graceTime for go routines to start
-const graceTime = 2 * time.Millisecond
+const graceTime = 5 * time.Millisecond
 
-func TestRun(t *testing.T) {
-	daemon := ordered_daemon.New()
+func TestShutdown(t *testing.T) {
+	d := daemon.New()
+	d.Start()
+	assert.True(t, d.IsRunning())
+	d.ShutdownAndWait()
+	assert.False(t, d.IsRunning())
+	assert.True(t, d.IsStopped())
+}
 
-	var workerStarted typeutils.AtomicBool
-	err := daemon.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		workerStarted.Set()
-		<-shutdownSignal
-	})
-	require.NoError(t, err)
-
-	assert.False(t, workerStarted.IsSet())
-
-	var runFinished typeutils.AtomicBool
-	go func() {
-		daemon.Run()
-		runFinished.Set()
-	}()
-	time.Sleep(graceTime)
-
-	assert.False(t, runFinished.IsSet())
-	daemon.ShutdownAndWait()
-	time.Sleep(graceTime)
-	assert.True(t, runFinished.IsSet())
+func TestShutdownWithoutStart(t *testing.T) {
+	d := daemon.New()
+	d.ShutdownAndWait()
+	assert.True(t, d.IsStopped())
 }
 
 func TestStartShutdown(t *testing.T) {
-	daemon := ordered_daemon.New()
+	d := daemon.New()
 
 	var isShutdown, wasStarted typeutils.AtomicBool
-	err := daemon.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		wasStarted.Set()
 		<-shutdownSignal
 		isShutdown.Set()
@@ -55,33 +44,58 @@ func TestStartShutdown(t *testing.T) {
 	assert.False(t, wasStarted.IsSet())
 	assert.False(t, isShutdown.IsSet())
 
-	daemon.Start()
+	d.Start()
 	time.Sleep(graceTime)
 	assert.True(t, wasStarted.IsSet())
 	assert.False(t, isShutdown.IsSet())
 
-	daemon.ShutdownAndWait()
+	d.ShutdownAndWait()
 	assert.True(t, wasStarted.IsSet())
 	assert.True(t, isShutdown.IsSet())
 }
 
+func TestRun(t *testing.T) {
+	d := daemon.New()
+
+	var workerStarted typeutils.AtomicBool
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		workerStarted.Set()
+		<-shutdownSignal
+	})
+	require.NoError(t, err)
+
+	assert.False(t, workerStarted.IsSet())
+
+	var runFinished typeutils.AtomicBool
+	go func() {
+		d.Run()
+		runFinished.Set()
+	}()
+	time.Sleep(graceTime)
+	assert.False(t, runFinished.IsSet())
+
+	d.ShutdownAndWait()
+	time.Sleep(graceTime)
+	assert.True(t, runFinished.IsSet())
+}
+
 func TestShutdownOrder(t *testing.T) {
-	daemon := ordered_daemon.New()
+	d := daemon.New()
 
 	orders := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	feedback := make(chan int, len(orders))
 	for _, order := range orders {
 		o := order
-		err := daemon.BackgroundWorker(strconv.Itoa(o), func(shutdownSignal <-chan struct{}) {
+		err := d.BackgroundWorker(strconv.Itoa(o), func(shutdownSignal <-chan struct{}) {
 			<-shutdownSignal
 			feedback <- o
 		}, o)
 		require.NoError(t, err)
 	}
 
-	daemon.Start()
-	daemon.ShutdownAndWait()
+	d.Start()
+	d.ShutdownAndWait()
 	close(feedback)
 
 	for i := len(orders) - 1; i >= 0; i-- {
@@ -90,28 +104,23 @@ func TestShutdownOrder(t *testing.T) {
 }
 
 func TestReRun(t *testing.T) {
-	daemon := ordered_daemon.New()
+	d := daemon.New()
 
 	terminate := make(chan struct{}, 1)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	require.NoError(t, daemon.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		defer wg.Done()
+	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		<-terminate
 	}))
-
-	daemon.Start()
+	d.Start()
 
 	terminate <- struct{}{}
-	wg.Wait()
+	time.Sleep(graceTime)
 
 	var wasStarted typeutils.AtomicBool
-	require.NoError(t, daemon.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		wasStarted.Set()
 		<-shutdownSignal
 	}))
 
-	daemon.ShutdownAndWait()
+	d.ShutdownAndWait()
 	assert.True(t, wasStarted.IsSet())
 }
