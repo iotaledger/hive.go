@@ -69,7 +69,6 @@ func New() *OrderedDaemon {
 		workers:                make(map[string]*worker),
 		shutdownOrderWorker:    make([]string, 0),
 		wgPerSameShutdownOrder: make(map[int]*sync.WaitGroup),
-		closed:                 make(chan struct{}),
 	}
 }
 
@@ -80,7 +79,6 @@ type OrderedDaemon struct {
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
-	closed                 chan struct{}
 	lock                   syncutils.Mutex
 }
 
