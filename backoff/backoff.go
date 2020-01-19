@@ -1,3 +1,9 @@
+// Package backoff implements backoff algorithms for retrying operations.
+//
+// Use Retry function for retrying operations that may fail.
+// If Retry does not meet your needs, you can create an own backoff Policy.
+//
+// See Examples section below for usage examples.
 package backoff
 
 import (
