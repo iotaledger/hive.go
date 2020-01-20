@@ -16,6 +16,9 @@ const Stop time.Duration = -1
 
 // Permanent wraps the given err in a permanent error signaling that the operation should not be retried.
 func Permanent(err error) error {
+	if err == nil {
+		panic("no error specified")
+	}
 	return &permanentError{
 		err: err,
 	}
