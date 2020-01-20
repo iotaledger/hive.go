@@ -16,7 +16,7 @@ type ObjectStorage struct {
 	cachedObjects map[string]*CachedObject
 	cacheMutex    syncutils.RWMutex
 	options       *ObjectStorageOptions
-	flushMutex    sync.RWMutex
+	flushMutex    syncutils.RWMutex
 	emptyWg       sync.WaitGroup
 }
 
