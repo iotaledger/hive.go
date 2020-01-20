@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go
 go 1.13
 
 require (
+	github.com/dgraph-io/badger v1.5.4
 	github.com/dgraph-io/badger/v2 v2.0.1
 	github.com/google/open-location-code/go v0.0.0-20190903173953-119bc96a3a51
 	github.com/iotaledger/iota.go v1.0.0-beta.9
