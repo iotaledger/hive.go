@@ -1,8 +1,9 @@
 package objectstorage
 
 import (
-	"github.com/dgraph-io/badger/v2"
 	"time"
+
+	"github.com/dgraph-io/badger/v2"
 )
 
 type ObjectStorageOptions struct {
@@ -14,7 +15,7 @@ type ObjectStorageOptions struct {
 
 func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStorageOptions {
 	result := &ObjectStorageOptions{
-		cacheTime: 0,
+		cacheTime:          0,
 		persistenceEnabled: true,
 	}
 
@@ -22,7 +23,7 @@ func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStora
 		optionalOption(result)
 	}
 
-	if result.badgerInstance == nil {
+	if result.badgerInstance == nil && result.persistenceEnabled {
 		result.badgerInstance = GetBadgerInstance()
 	}
 

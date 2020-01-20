@@ -56,11 +56,10 @@ func BenchmarkStore(b *testing.B) {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
 
-	objects.StopBatchWriter()
+	objects.Flush()
 }
 
 func BenchmarkLoad(b *testing.B) {
-
 	objects := objectstorage.New([]byte("TestObjectStorage"), testObjectFactory)
 
 	for i := 0; i < b.N; i++ {
@@ -79,7 +78,6 @@ func BenchmarkLoad(b *testing.B) {
 }
 
 func BenchmarkLoadCachingEnabled(b *testing.B) {
-
 	objects := objectstorage.New([]byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
 
 	for i := 0; i < b.N; i++ {
@@ -96,7 +94,6 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 }
 
 func TestStoreIfAbsent(t *testing.T) {
-
 	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.CacheTime(1*time.Second))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
@@ -118,7 +115,7 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error("the object should be nil if it wasn't stored")
 	}
 
-	objects.WaitForWritesToFlush()
+	objects.Flush()
 }
 
 func TestDelete(t *testing.T) {
@@ -140,7 +137,7 @@ func TestDelete(t *testing.T) {
 	}
 	cachedObject.Release()
 
-	objects.WaitForWritesToFlush()
+	objects.Flush()
 }
 
 func TestConcurrency(t *testing.T) {
