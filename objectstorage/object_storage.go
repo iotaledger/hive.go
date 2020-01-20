@@ -288,10 +288,6 @@ func (objectStorage *ObjectStorage) Prune() error {
 	return nil
 }
 
-func (objectStorage *ObjectStorage) WaitForWritesToFlush() {
-	objectStorage.options.batchedWriterInstance.WaitForWritesToFlush()
-}
-
 func (objectStorage *ObjectStorage) Flush() {
 	objectStorage.flushMutex.Lock()
 

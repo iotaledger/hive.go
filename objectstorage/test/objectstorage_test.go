@@ -115,7 +115,7 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error("the object should be nil if it wasn't stored")
 	}
 
-	objects.WaitForWritesToFlush()
+	objects.Flush()
 }
 
 func TestDelete(t *testing.T) {
@@ -137,7 +137,7 @@ func TestDelete(t *testing.T) {
 	}
 	cachedObject.Release()
 
-	objects.WaitForWritesToFlush()
+	objects.Flush()
 }
 
 func TestConcurrency(t *testing.T) {

@@ -19,24 +19,20 @@ const (
 )
 
 type BatchedWriter struct {
-	badgerInstance    *badger.DB
-	writeWg           sync.WaitGroup
-	timeoutWg         sync.WaitGroup
-	waitingForTimeout bool
-	startStopMutex    syncutils.Mutex
-	running           int32
-	batchQueue        chan *CachedObject
+	badgerInstance *badger.DB
+	writeWg        sync.WaitGroup
+	startStopMutex syncutils.Mutex
+	running        int32
+	batchQueue     chan *CachedObject
 }
 
 func NewBatchedWriter(badgerInstance *badger.DB) *BatchedWriter {
 	return &BatchedWriter{
-		badgerInstance:    badgerInstance,
-		writeWg:           sync.WaitGroup{},
-		timeoutWg:         sync.WaitGroup{},
-		waitingForTimeout: false,
-		startStopMutex:    syncutils.Mutex{},
-		running:           0,
-		batchQueue:        make(chan *CachedObject, BATCH_WRITER_QUEUE_SIZE),
+		badgerInstance: badgerInstance,
+		writeWg:        sync.WaitGroup{},
+		startStopMutex: syncutils.Mutex{},
+		running:        0,
+		batchQueue:     make(chan *CachedObject, BATCH_WRITER_QUEUE_SIZE),
 	}
 }
 
@@ -58,10 +54,6 @@ func (bw *BatchedWriter) StopBatchWriter() {
 		bw.writeWg.Wait()
 	}
 	bw.startStopMutex.Unlock()
-}
-
-func (bw *BatchedWriter) WaitForWritesToFlush() {
-	bw.timeoutWg.Wait()
 }
 
 func (bw *BatchedWriter) batchWrite(object *CachedObject) {
@@ -131,11 +123,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 	for atomic.LoadInt32(&bw.running) == 1 {
 		bw.writeWg.Add(1)
 
-		if !bw.waitingForTimeout {
-			bw.waitingForTimeout = true
-			bw.timeoutWg.Add(1)
-		}
-
 		wb := bw.badgerInstance.NewWriteBatch()
 
 		writtenValues := make([]*CachedObject, BATCH_WRITER_BATCH_SIZE)
@@ -148,9 +135,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++
 			case <-time.After(BATCH_WRITER_BATCH_TIMEOUT):
-				bw.waitingForTimeout = false
-				bw.timeoutWg.Done()
-
 				break COLLECT_VALUES
 			}
 		}
