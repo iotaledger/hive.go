@@ -1,91 +1,126 @@
 package daemon_test
 
 import (
-	"log"
 	"strconv"
 	"testing"
+	"time"
 
-	ordered_daemon "github.com/iotaledger/hive.go/daemon"
+	"github.com/iotaledger/hive.go/daemon"
+	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// graceTime for go routines to start
+const graceTime = 5 * time.Millisecond
+
+func TestShutdown(t *testing.T) {
+	d := daemon.New()
+	d.Start()
+	assert.True(t, d.IsRunning())
+	d.ShutdownAndWait()
+	assert.False(t, d.IsRunning())
+	assert.True(t, d.IsStopped())
+}
+
+func TestShutdownWithoutStart(t *testing.T) {
+	d := daemon.New()
+	d.ShutdownAndWait()
+	assert.True(t, d.IsStopped())
+}
+
 func TestStartShutdown(t *testing.T) {
+	d := daemon.New()
 
-	daemonA := ordered_daemon.New()
-
-	var isShutdown, wasStarted bool
-	if err := daemonA.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		wasStarted = true
+	var isShutdown, wasStarted typeutils.AtomicBool
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		wasStarted.Set()
 		<-shutdownSignal
-		isShutdown = true
-	}); err != nil {
-		t.Fatal(err)
-	}
+		isShutdown.Set()
+	})
+	require.NoError(t, err)
+	time.Sleep(graceTime)
 
-	daemonA.Start()
-	daemonA.ShutdownAndWait()
+	assert.False(t, wasStarted.IsSet())
+	assert.False(t, isShutdown.IsSet())
 
-	if !wasStarted {
-		log.Fatalf("expected worker A to be started")
-	}
+	d.Start()
+	time.Sleep(graceTime)
+	assert.True(t, wasStarted.IsSet())
+	assert.False(t, isShutdown.IsSet())
 
-	if !isShutdown {
-		log.Fatalf("expected worker A to be shutdown")
-	}
+	d.ShutdownAndWait()
+	assert.True(t, wasStarted.IsSet())
+	assert.True(t, isShutdown.IsSet())
+}
+
+func TestRun(t *testing.T) {
+	d := daemon.New()
+
+	var workerStarted typeutils.AtomicBool
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		workerStarted.Set()
+		<-shutdownSignal
+	})
+	require.NoError(t, err)
+
+	assert.False(t, workerStarted.IsSet())
+
+	var runFinished typeutils.AtomicBool
+	go func() {
+		d.Run()
+		runFinished.Set()
+	}()
+	time.Sleep(graceTime)
+	assert.False(t, runFinished.IsSet())
+
+	d.ShutdownAndWait()
+	time.Sleep(graceTime)
+	assert.True(t, runFinished.IsSet())
 }
 
 func TestShutdownOrder(t *testing.T) {
+	d := daemon.New()
 
-	daemonB := ordered_daemon.New()
+	orders := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-	order := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-
-	feedback := make(chan int, len(order))
-	for _, o := range order {
-		func(o int) {
-			if err := daemonB.BackgroundWorker(strconv.Itoa(o), func(shutdownSignal <-chan struct{}) {
-				<-shutdownSignal
-				feedback <- o
-			}, o); err != nil {
-				t.Fatal(err)
-			}
-		}(o)
+	feedback := make(chan int, len(orders))
+	for _, order := range orders {
+		o := order
+		err := d.BackgroundWorker(strconv.Itoa(o), func(shutdownSignal <-chan struct{}) {
+			<-shutdownSignal
+			feedback <- o
+		}, o)
+		require.NoError(t, err)
 	}
 
-	daemonB.Start()
-	daemonB.ShutdownAndWait()
+	d.Start()
+	d.ShutdownAndWait()
+	close(feedback)
 
-	for i := len(order) - 1; i >= 0; i-- {
-		n := <-feedback
-		if n != i {
-			t.Fatalf("wrong shutdown sequence, expected %d but was %d", i, n)
-		}
+	for i := len(orders) - 1; i >= 0; i-- {
+		assert.Equal(t, i, <-feedback)
 	}
 }
 
 func TestReRun(t *testing.T) {
-
-	daemonC := ordered_daemon.New()
+	d := daemon.New()
 
 	terminate := make(chan struct{}, 1)
-	feedback := make(chan struct{}, 1)
-
-	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		<-terminate
-		feedback <- struct{}{}
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	daemonC.Start()
+	}))
+	d.Start()
 
 	terminate <- struct{}{}
-	<-feedback
+	time.Sleep(graceTime)
 
-	if err := daemonC.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	var wasStarted typeutils.AtomicBool
+	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		wasStarted.Set()
 		<-shutdownSignal
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
-	daemonC.ShutdownAndWait()
+	d.ShutdownAndWait()
+	assert.True(t, wasStarted.IsSet())
 }

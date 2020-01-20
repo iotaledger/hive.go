@@ -1,8 +1,9 @@
 package daemon
 
-// A function accepting its shutdown signal handler channel.
+// WorkerFunc is the function to run a worker accepting its shutdown signal handler channel.
 type WorkerFunc = func(shutdownSignal <-chan struct{})
 
+// Daemon specifies an interface to run background go routines.
 type Daemon interface {
 
 	// GetRunningBackgroundWorkers gets the running background workers.
