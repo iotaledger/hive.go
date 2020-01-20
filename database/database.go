@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
@@ -67,6 +68,17 @@ func (pdb *prefixDb) Set(entry Entry) error {
 	defer wb.Cancel()
 
 	err := wb.SetEntry(badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta))
+	if err != nil {
+		return err
+	}
+	return wb.Flush()
+}
+
+func (pdb *prefixDb) SetWithTTL(entry Entry, ttl time.Duration) error {
+	wb := pdb.db.NewWriteBatch()
+	defer wb.Cancel()
+
+	err := wb.SetEntry(badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta).WithTTL(ttl))
 	if err != nil {
 		return err
 	}

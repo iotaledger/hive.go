@@ -1,5 +1,7 @@
 package database
 
+import "time"
+
 type KeyPrefix []byte
 type Key []byte
 type Value []byte
@@ -23,6 +25,7 @@ type Database interface {
 
 	// Write
 	Set(entry Entry) error
+	SetWithTTL(entry Entry, ttl time.Duration) error
 	Delete(key Key) error
 	DeletePrefix(keyPrefix KeyPrefix) error
 
