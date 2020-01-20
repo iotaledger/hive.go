@@ -56,7 +56,20 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	return size
 }
 
+func (objectStorage *ObjectStorage) Get(key []byte) *CachedObject {
+	cachedObject, cacheHit := objectStorage.accessCache(key, true)
+	if !cacheHit {
+		cachedObject.publishResult(nil)
+	}
+
+	return cachedObject.waitForInitialResult()
+}
+
 func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
+	if !objectStorage.options.persistenceEnabled {
+		panic("persistence is disabled - use Get(object StorableObject) instead of Load(object StorableObject)")
+	}
+
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
 		loadedObject := objectStorage.loadObjectFromBadger(key)
