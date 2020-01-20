@@ -1,30 +1,32 @@
 package objectstorage
 
 import (
+	"sync"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-	"sync"
+
 	"sync/atomic"
 	"time"
 )
 
 type ObjectStorage struct {
-	storageId      []byte
-	objectFactory  StorableObjectFactory
-	cachedObjects  map[string]*CachedObject
-	cacheMutex     syncutils.RWMutex
-	options        *ObjectStorageOptions
-	flushMutex     sync.RWMutex
-	emptyWg        sync.WaitGroup
+	storageId     []byte
+	objectFactory StorableObjectFactory
+	cachedObjects map[string]*CachedObject
+	cacheMutex    syncutils.RWMutex
+	options       *ObjectStorageOptions
+	flushMutex    sync.RWMutex
+	emptyWg       sync.WaitGroup
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
 	return &ObjectStorage{
-		storageId:      storageId,
-		objectFactory:  objectFactory,
-		cachedObjects:  map[string]*CachedObject{},
-		options:        newObjectStorageOptions(optionalOptions),
+		storageId:     storageId,
+		objectFactory: objectFactory,
+		cachedObjects: map[string]*CachedObject{},
+		options:       newObjectStorageOptions(optionalOptions),
 	}
 }
 
@@ -160,8 +162,6 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 			cachedObject.Release()
 		}
-
-		return
 	}
 
 	cachedObject, cacheHit := objectStorage.accessCache(key, false)
@@ -181,8 +181,6 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 	cachedObject.blindDelete.Set()
 	cachedObject.publishResult(nil)
 	cachedObject.Release()
-
-	return
 }
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
