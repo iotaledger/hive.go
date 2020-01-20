@@ -2,13 +2,12 @@ package objectstorage
 
 import (
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-
-	"sync/atomic"
-	"time"
 )
 
 type ObjectStorage struct {
@@ -295,6 +294,10 @@ func (objectStorage *ObjectStorage) Flush() {
 	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
 	i := 0
 	for _, cachedObject := range objectStorage.cachedObjects {
+		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
+			(*(*time.Timer)(timer)).Stop()
+		}
+
 		cachedObjects[i] = cachedObject
 
 		i++
@@ -302,10 +305,6 @@ func (objectStorage *ObjectStorage) Flush() {
 	objectStorage.cacheMutex.RUnlock()
 
 	for _, cachedObject := range cachedObjects {
-		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-			(*(*time.Timer)(timer)).Stop()
-		}
-
 		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
 	}
 
