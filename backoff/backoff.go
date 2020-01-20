@@ -8,7 +8,6 @@ package backoff
 
 import (
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -77,7 +76,7 @@ func Retry(p Policy, f func() error) (err error) {
 
 		time.Sleep(duration)
 	}
-	return fmt.Errorf("retry failed: %w", err)
+	return err
 }
 
 // permanentError signals that the operation should not be retried.
