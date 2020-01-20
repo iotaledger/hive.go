@@ -1,6 +1,7 @@
 package objectstorage
 
 import (
+	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -114,14 +114,19 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		// only delete if the object is still empty or was not modified since the write
 		if storableObject := cachedObject.Get(); storableObject == nil || !storableObject.IsModified() {
+			previousLength := len(objectStorage.cachedObjects)
+
 			delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
+
+			if previousLength == 1 && len(objectStorage.cachedObjects) == 0 {
+				objectStorage.emptyWg.Done()
+			}
 		}
 	}
 	objectStorage.cacheMutex.Unlock()
 }
 
 func (bw *BatchedWriter) runBatchWriter() {
-
 	for atomic.LoadInt32(&bw.running) == 1 {
 		bw.writeWg.Add(1)
 

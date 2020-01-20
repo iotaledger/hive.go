@@ -1,10 +1,12 @@
 package objectstorage
 
 import (
+	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-
-	"github.com/dgraph-io/badger/v2"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type ObjectStorage struct {
@@ -13,6 +15,8 @@ type ObjectStorage struct {
 	cachedObjects  map[string]*CachedObject
 	cacheMutex     syncutils.RWMutex
 	options        *ObjectStorageOptions
+	flushMutex     sync.RWMutex
+	emptyWg        sync.WaitGroup
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
@@ -40,9 +44,14 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
+	objectStorage.flushMutex.RLock()
+
 	objectStorage.cacheMutex.RLock()
 	size := len(objectStorage.cachedObjects)
 	objectStorage.cacheMutex.RUnlock()
+
+	objectStorage.flushMutex.RUnlock()
+
 	return size
 }
 
@@ -264,12 +273,19 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
+	objectStorage.flushMutex.Lock()
+
 	objectStorage.cacheMutex.Lock()
 	if err := objectStorage.options.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
+		objectStorage.cacheMutex.Unlock()
+		objectStorage.flushMutex.Unlock()
+
 		return err
 	}
 	objectStorage.cachedObjects = map[string]*CachedObject{}
 	objectStorage.cacheMutex.Unlock()
+
+	objectStorage.flushMutex.Unlock()
 
 	return nil
 }
@@ -278,11 +294,39 @@ func (objectStorage *ObjectStorage) WaitForWritesToFlush() {
 	objectStorage.options.batchedWriterInstance.WaitForWritesToFlush()
 }
 
+func (objectStorage *ObjectStorage) Flush() {
+	objectStorage.flushMutex.Lock()
+
+	objectStorage.cacheMutex.RLock()
+	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
+	i := 0
+	for _, cachedObject := range objectStorage.cachedObjects {
+		cachedObjects[i] = cachedObject
+
+		i++
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	for _, cachedObject := range cachedObjects {
+		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
+			(*(*time.Timer)(timer)).Stop()
+		}
+
+		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+	}
+
+	objectStorage.emptyWg.Wait()
+
+	objectStorage.flushMutex.Unlock()
+}
+
 func (objectStorage *ObjectStorage) StopBatchWriter() {
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObject, cacheHit bool) {
+	objectStorage.flushMutex.RLock()
+
 	copiedKey := make([]byte, len(key))
 	copy(copiedKey, key)
 	stringKey := typeutils.BytesToString(copiedKey)
@@ -309,6 +353,10 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 				alreadyCachedObject = newCachedObject(objectStorage, copiedKey)
 				alreadyCachedObject.RegisterConsumer()
 
+				if len(objectStorage.cachedObjects) == 0 {
+					objectStorage.emptyWg.Add(1)
+				}
+
 				objectStorage.cachedObjects[stringKey] = alreadyCachedObject
 			}
 			objectStorage.cacheMutex.Unlock()
@@ -316,6 +364,8 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 	}
 
 	cachedObject = alreadyCachedObject
+
+	objectStorage.flushMutex.RUnlock()
 
 	return
 }
