@@ -26,7 +26,6 @@ type Database interface {
 
 	// Write
 	Set(entry Entry) error
-	SetWithTTL(entry Entry, ttl time.Duration) error
 	Delete(key Key) error
 	DeletePrefix(keyPrefix KeyPrefix) error
 
