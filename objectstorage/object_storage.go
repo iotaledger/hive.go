@@ -24,11 +24,15 @@ func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions 
 	}
 }
 
-func (objectStorage *ObjectStorage) Prepare(object StorableObject) *CachedObject {
+func (objectStorage *ObjectStorage) Put(object StorableObject) *CachedObject {
 	return objectStorage.putObjectInCache(object)
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
+	if !objectStorage.options.persistenceEnabled {
+		panic("persistence is disabled - use Put(object StorableObject) instead of Store(object StorableObject)")
+	}
+
 	object.Persist()
 	object.SetModified()
 
@@ -326,6 +330,10 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 }
 
 func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObject {
+	if !objectStorage.options.persistenceEnabled {
+		return nil
+	}
+
 	var marshaledData []byte
 	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
@@ -350,6 +358,10 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 }
 
 func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
+	if !objectStorage.options.persistenceEnabled {
+		return false
+	}
+
 	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) (err error) {
 		_, err = txn.Get(append(objectStorage.storageId, key...))
 

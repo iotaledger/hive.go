@@ -73,6 +73,13 @@ func (bw *BatchedWriter) batchWrite(object *CachedObject) {
 
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
 	objectStorage := cachedObject.objectStorage
+	if !objectStorage.options.persistenceEnabled {
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.SetModified(false)
+		}
+
+		return
+	}
 
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		if storableObject := cachedObject.Get(); storableObject != nil {

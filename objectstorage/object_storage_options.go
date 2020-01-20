@@ -15,6 +15,7 @@ type ObjectStorageOptions struct {
 func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStorageOptions {
 	result := &ObjectStorageOptions{
 		cacheTime: 0,
+		persistenceEnabled: true,
 	}
 
 	for _, optionalOption := range optionalOptions {
