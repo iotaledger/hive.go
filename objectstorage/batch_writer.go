@@ -1,14 +1,15 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/typeutils"
 	"sync"
+
 	"sync/atomic"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
