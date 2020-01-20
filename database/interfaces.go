@@ -10,7 +10,7 @@ type Entry struct {
 	Key   Key
 	Value Value
 	Meta  byte
-	TTL   *time.Duration
+	TTL   time.Duration
 }
 
 type KeyOnlyEntry struct {
