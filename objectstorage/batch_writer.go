@@ -123,7 +123,10 @@ func (bw *BatchedWriter) runBatchWriter() {
 	for atomic.LoadInt32(&bw.running) == 1 {
 		bw.writeWg.Add(1)
 
-		wb := bw.badgerInstance.NewWriteBatch()
+		var wb *badger.WriteBatch
+		if bw.badgerInstance != nil {
+			wb = bw.badgerInstance.NewWriteBatch()
+		}
 
 		writtenValues := make([]*CachedObject, BATCH_WRITER_BATCH_SIZE)
 		writtenValuesCounter := 0
