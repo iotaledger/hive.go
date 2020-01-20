@@ -67,7 +67,11 @@ func (pdb *prefixDb) Set(entry Entry) error {
 	wb := pdb.db.NewWriteBatch()
 	defer wb.Cancel()
 
-	err := wb.SetEntry(badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta))
+	e := badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta)
+	if entry.TTL != nil {
+		e.WithTTL(*entry.TTL)
+	}
+	err := wb.SetEntry(e)
 	if err != nil {
 		return err
 	}
