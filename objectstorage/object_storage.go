@@ -18,6 +18,7 @@ type ObjectStorage struct {
 	options       *ObjectStorageOptions
 	flushMutex    syncutils.RWMutex
 	emptyWg       sync.WaitGroup
+	shutdown      typeutils.AtomicBool
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
@@ -30,10 +31,18 @@ func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions 
 }
 
 func (objectStorage *ObjectStorage) Put(object StorableObject) *CachedObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	return objectStorage.putObjectInCache(object)
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	if !objectStorage.options.persistenceEnabled {
 		panic("persistence is disabled - use Put(object StorableObject) instead of Store(object StorableObject)")
 	}
@@ -45,6 +54,10 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	objectStorage.flushMutex.RLock()
 
 	objectStorage.cacheMutex.RLock()
@@ -57,6 +70,10 @@ func (objectStorage *ObjectStorage) GetSize() int {
 }
 
 func (objectStorage *ObjectStorage) Get(key []byte) *CachedObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
 		cachedObject.publishResult(nil)
@@ -66,6 +83,10 @@ func (objectStorage *ObjectStorage) Get(key []byte) *CachedObject {
 }
 
 func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	if !objectStorage.options.persistenceEnabled {
 		panic("persistence is disabled - use Get(object StorableObject) instead of Load(object StorableObject)")
 	}
@@ -84,6 +105,10 @@ func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
 }
 
 func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
 		result = cachedObject.waitForInitialResult().Exists()
 
@@ -96,6 +121,10 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) *CachedObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if cacheHit {
 		cachedObject.wg.Wait()
@@ -119,6 +148,10 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 
 // This method deletes an element and return true if the element was deleted.
 func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	deleteExistingEntry := func(cachedObject *CachedObject) bool {
 		cachedObject.wg.Wait()
 
@@ -161,6 +194,10 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 
 // Performs a "blind delete", where we do not check the objects existence.
 func (objectStorage *ObjectStorage) Delete(key []byte) {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	deleteExistingEntry := func(cachedObject *CachedObject) {
 		cachedObject.wg.Wait()
 
@@ -198,6 +235,10 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
 func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (cachedObject *CachedObject, stored bool) {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 	if cacheHit {
 		existingCachedObject.wg.Wait()
@@ -242,6 +283,10 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
 func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefixes ...[]byte) error {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	return objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefixes)
@@ -283,6 +328,10 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
 	objectStorage.flushMutex.Lock()
 
 	objectStorage.cacheMutex.Lock()
@@ -301,33 +350,17 @@ func (objectStorage *ObjectStorage) Prune() error {
 }
 
 func (objectStorage *ObjectStorage) Flush() {
-	objectStorage.flushMutex.Lock()
-
-	objectStorage.cacheMutex.RLock()
-	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
-	i := 0
-	for _, cachedObject := range objectStorage.cachedObjects {
-		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-			(*(*time.Timer)(timer)).Stop()
-		}
-
-		cachedObjects[i] = cachedObject
-
-		i++
-	}
-	objectStorage.cacheMutex.RUnlock()
-
-	for _, cachedObject := range cachedObjects {
-		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
 	}
 
-	objectStorage.emptyWg.Wait()
-
-	objectStorage.flushMutex.Unlock()
+	objectStorage.flush()
 }
 
-func (objectStorage *ObjectStorage) StopBatchWriter() {
-	objectStorage.options.batchedWriterInstance.StopBatchWriter()
+func (objectStorage *ObjectStorage) Shutdown() {
+	objectStorage.shutdown.Set()
+
+	objectStorage.flush()
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObject, cacheHit bool) {
@@ -449,4 +482,30 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 	}
 
 	return
+}
+
+func (objectStorage *ObjectStorage) flush() {
+	objectStorage.flushMutex.Lock()
+
+	objectStorage.cacheMutex.RLock()
+	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
+	i := 0
+	for _, cachedObject := range objectStorage.cachedObjects {
+		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
+			(*(*time.Timer)(timer)).Stop()
+		}
+
+		cachedObjects[i] = cachedObject
+
+		i++
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	for _, cachedObject := range cachedObjects {
+		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+	}
+
+	objectStorage.emptyWg.Wait()
+
+	objectStorage.flushMutex.Unlock()
 }

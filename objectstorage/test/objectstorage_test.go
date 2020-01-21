@@ -56,7 +56,7 @@ func BenchmarkStore(b *testing.B) {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
 
-	objects.Flush()
+	objects.Shutdown()
 }
 
 func BenchmarkLoad(b *testing.B) {
@@ -115,7 +115,7 @@ func TestStoreIfAbsent(t *testing.T) {
 		t.Error("the object should be nil if it wasn't stored")
 	}
 
-	objects.Flush()
+	objects.Shutdown()
 }
 
 func TestDelete(t *testing.T) {
@@ -137,7 +137,7 @@ func TestDelete(t *testing.T) {
 	}
 	cachedObject.Release()
 
-	objects.Flush()
+	objects.Shutdown()
 }
 
 func TestConcurrency(t *testing.T) {
