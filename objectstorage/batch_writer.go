@@ -142,8 +142,10 @@ func (bw *BatchedWriter) runBatchWriter() {
 			}
 		}
 
-		if err := wb.Flush(); err != nil && err != badger.ErrBlockedWrites {
-			panic(err)
+		if wb != nil {
+			if err := wb.Flush(); err != nil && err != badger.ErrBlockedWrites {
+				panic(err)
+			}
 		}
 
 		for _, cachedObject := range writtenValues {
