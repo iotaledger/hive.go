@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -13,6 +14,24 @@ import (
 )
 
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
+
+func TestPrefixes(t *testing.T) {
+	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	storedObject1, stored1 := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
+	storedObject1.Release()
+
+	fmt.Println(stored1)
+
+	storedObject2 := objects.Load([]byte("12"))
+
+	fmt.Println(storedObject2.Get())
+
+	storedObject2.Release()
+}
 
 func TestStorableObjectFlags(t *testing.T) {
 	testObject := NewTestObject("Batman", 44)
