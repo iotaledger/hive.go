@@ -436,7 +436,9 @@ func (objectStorage *ObjectStorage) Flush() {
 		panic("trying to access shutdown object storage")
 	}
 
+	objectStorage.flushMutex.Lock()
 	objectStorage.flush()
+	objectStorage.flushMutex.Unlock()
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
@@ -543,6 +545,53 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 	return
 }
 
+func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
+	if objectStorage.options.keyPartition == nil {
+		return objectStorage.deleteElementFromUnpartitionedCache(key)
+	} else {
+		return objectStorage.deleteElementFromPartitionedCache(key)
+	}
+}
+
+func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
+	_, cachedObjectExists := objectStorage.cachedObjects[typeutils.BytesToString(key)]
+	if cachedObjectExists {
+		delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
+
+		objectStorage.size--
+	}
+
+	return cachedObjectExists
+}
+
+func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExisted bool) {
+	currentMap := objectStorage.cachedObjects
+	keyPartitionCount := len(objectStorage.options.keyPartition)
+	keyOffset := 0
+
+	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartition {
+		partitionStringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
+
+		if keyPartitionId == keyPartitionCount-1 {
+			_, elementExisted = currentMap[typeutils.BytesToString(key[keyOffset:])]
+			if elementExisted {
+				delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
+
+				objectStorage.size--
+			}
+		} else {
+			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
+				currentMap = subMap.(map[string]interface{})
+			} else {
+				return
+			}
+		}
+	}
+
+	return
+}
+
 func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *CachedObject {
 	cachedObject, _ := objectStorage.accessCache(object.GetStorageKey(), true)
 	if !cachedObject.publishResult(object) {
@@ -619,8 +668,6 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 }
 
 func (objectStorage *ObjectStorage) flush() {
-	objectStorage.flushMutex.Lock()
-
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	objectStorage.cacheMutex.RLock()
 	cachedObjects := make([]*CachedObject, objectStorage.size)
@@ -641,8 +688,6 @@ func (objectStorage *ObjectStorage) flush() {
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
-
-	objectStorage.flushMutex.Unlock()
 }
 
 func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {

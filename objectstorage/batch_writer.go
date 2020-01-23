@@ -9,7 +9,6 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -106,14 +105,8 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		// only delete if the object is still empty or was not modified since the write
-		if storableObject := cachedObject.Get(); storableObject == nil || !storableObject.IsModified() {
-			previousLength := objectStorage.size
-
-			delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
-
-			if previousLength == 1 && objectStorage.size == 0 {
-				objectStorage.cachedObjectsEmpty.Done()
-			}
+		if storableObject := cachedObject.Get(); (storableObject == nil || !storableObject.IsModified()) && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
+			objectStorage.cachedObjectsEmpty.Done()
 		}
 	}
 	objectStorage.cacheMutex.Unlock()

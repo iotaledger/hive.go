@@ -1,11 +1,12 @@
 package test
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/iotaledger/hive.go/types"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -30,11 +31,17 @@ func TestPrefixes(t *testing.T) {
 	storedObject3 := objects.Load([]byte("12"))
 	storedObject3.Release()
 
-	_ = objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
-		fmt.Println(string(key))
+	expectedKeys := make(map[string]types.Empty)
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		delete(expectedKeys, string(key))
 
 		return true
 	}, []byte(""))
+
+	assert.Equal(t, 0, len(expectedKeys))
 }
 
 func TestStorableObjectFlags(t *testing.T) {
