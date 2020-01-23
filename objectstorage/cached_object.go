@@ -7,9 +7,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/iotaledger/hive.go/typeutils"
-
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type CachedObject struct {
