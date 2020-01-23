@@ -333,7 +333,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 				cachedObject.waitForInitialResult()
 
-				if !consumer(key, cachedObject) {
+				if cachedObject.Exists() && !consumer(key, cachedObject) {
 					break
 				}
 			}
@@ -668,10 +668,13 @@ func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byt
 	seenElements := make(map[string]types.Empty)
 	objectStorage.cacheMutex.RLock()
 	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
-		cachedObject.RegisterConsumer()
-
 		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
+		if !cachedObject.Exists() {
+			return true
+		}
+
+		cachedObject.RegisterConsumer()
 		return consumer(key, cachedObject)
 	}) {
 		objectStorage.cacheMutex.RUnlock()
@@ -696,10 +699,13 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 	for i, keyPartitionLength := range keyPartitions {
 		if keyOffset == optionalPrefixLength {
 			if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
-				cachedObject.RegisterConsumer()
-
 				seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
+				if !cachedObject.Exists() {
+					return true
+				}
+
+				cachedObject.RegisterConsumer()
 				return consumer(key, cachedObject)
 			}) {
 				objectStorage.cacheMutex.RUnlock()
@@ -727,12 +733,15 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 			}
 
 			cachedObject := currentMap[partitionStringKey].(*CachedObject)
-			cachedObject.RegisterConsumer()
+			seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
-			if !consumer(cachedObject.key, cachedObject) {
-				objectStorage.cacheMutex.RUnlock()
+			if cachedObject.Exists() {
+				cachedObject.RegisterConsumer()
+				if !consumer(cachedObject.key, cachedObject) {
+					objectStorage.cacheMutex.RUnlock()
 
-				return nil
+					return nil
+				}
 			}
 		} else {
 			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
