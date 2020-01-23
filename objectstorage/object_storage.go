@@ -306,12 +306,13 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 		objectStorage.cacheMutex.RUnlock()
 	} else {
+		optionalPrefixLength := len(optionalPrefix[0])
 		keyPartitionCount := len(keyPartition)
 		currentMap := objectStorage.cachedObjects
 		keyOffset := 0
 
 		for i, keyPartitionLength := range keyPartition {
-			if keyOffset == len(optionalPrefix[0]) {
+			if keyOffset == optionalPrefixLength {
 				if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
 					seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
@@ -323,7 +324,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				break
 			}
 
-			if keyOffset+keyPartitionLength > len(optionalPrefix[0]) {
+			if keyOffset+keyPartitionLength > optionalPrefixLength {
 				panic("the prefix length does not align with the set KeyPartition")
 			}
 
@@ -331,7 +332,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			keyOffset += keyPartitionLength
 
 			if i == keyPartitionCount-1 {
-				if keyOffset < len(optionalPrefix[0]) {
+				if keyOffset < optionalPrefixLength {
 					panic("the prefix is too long for the set KeyPartition")
 				}
 
@@ -349,7 +350,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			}
 		}
 
-		if keyOffset > len(optionalPrefix[0]) {
+		if keyOffset > optionalPrefixLength {
 			panic("the prefix length does not align with the set KeyPartition")
 		}
 	}

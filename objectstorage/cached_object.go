@@ -93,12 +93,6 @@ func (cachedObject *CachedObject) RegisterConsumer() {
 	cachedObject.cancelScheduledRelease()
 }
 
-func (cachedObject *CachedObject) cancelScheduledRelease() {
-	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-		(*(*time.Timer)(timer)).Stop()
-	}
-}
-
 func (cachedObject *CachedObject) Exists() bool {
 	storableObject := cachedObject.Get()
 
@@ -153,4 +147,10 @@ func (cachedObject *CachedObject) waitForInitialResult() *CachedObject {
 	cachedObject.wg.Wait()
 
 	return cachedObject
+}
+
+func (cachedObject *CachedObject) cancelScheduledRelease() {
+	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
+		(*(*time.Timer)(timer)).Stop()
+	}
 }
