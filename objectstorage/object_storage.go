@@ -394,10 +394,10 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 	if keyPartitions == nil {
 		keyPartitions = []int{len(key)}
 	}
+	keyPartitionCount := len(keyPartitions)
 
 	currentMap := objectStorage.cachedObjects
 	keyOffset := 0
-	keyPartitionCount := len(keyPartitions)
 
 	objectStorage.cacheMutex.RLock()
 	var writeLocked bool
