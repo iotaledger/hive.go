@@ -1,7 +1,6 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/typeutils"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -9,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type CachedObject struct {
@@ -90,9 +90,7 @@ func (cachedObject *CachedObject) Consume(consumer func(StorableObject)) {
 func (cachedObject *CachedObject) RegisterConsumer() {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
 
-	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-		(*(*time.Timer)(timer)).Stop()
-	}
+	cachedObject.cancelScheduledRelease()
 }
 
 func (cachedObject *CachedObject) Exists() bool {
@@ -149,4 +147,10 @@ func (cachedObject *CachedObject) waitForInitialResult() *CachedObject {
 	cachedObject.wg.Wait()
 
 	return cachedObject
+}
+
+func (cachedObject *CachedObject) cancelScheduledRelease() {
+	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
+		(*(*time.Timer)(timer)).Stop()
+	}
 }

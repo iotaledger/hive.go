@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iotaledger/hive.go/types"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -13,6 +15,89 @@ import (
 )
 
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
+
+func TestPrefixIteration(t *testing.T) {
+	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	storedObject1, _ := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
+	storedObject1.Release()
+
+	storedObject2, _ := objects.StoreIfAbsent([]byte("13"), NewTestObject("12345", 33))
+	storedObject2.Release()
+
+	storedObject3 := objects.Load([]byte("12"))
+	storedObject3.Release()
+
+	expectedKeys := make(map[string]types.Empty)
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+
+		cachedObject.Release()
+
+		return true
+	})
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+
+		cachedObject.Release()
+
+		return true
+	}, []byte(""))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+
+		cachedObject.Release()
+
+		return true
+	}, []byte("1"))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	expectedKeys["12"] = types.Void
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+
+		cachedObject.Release()
+
+		return true
+	}, []byte("12"))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	objects.Shutdown()
+}
 
 func TestStorableObjectFlags(t *testing.T) {
 	testObject := NewTestObject("Batman", 44)

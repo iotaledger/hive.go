@@ -2,30 +2,30 @@ package objectstorage
 
 import (
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type ObjectStorage struct {
-	storageId     []byte
-	objectFactory StorableObjectFactory
-	cachedObjects map[string]*CachedObject
-	cacheMutex    syncutils.RWMutex
-	options       *ObjectStorageOptions
-	flushMutex    syncutils.RWMutex
-	emptyWg       sync.WaitGroup
-	shutdown      typeutils.AtomicBool
+	storageId          []byte
+	objectFactory      StorableObjectFactory
+	cachedObjects      map[string]interface{}
+	cacheMutex         syncutils.RWMutex
+	options            *ObjectStorageOptions
+	size               int
+	flushMutex         syncutils.RWMutex
+	cachedObjectsEmpty sync.WaitGroup
+	shutdown           typeutils.AtomicBool
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
 	return &ObjectStorage{
 		storageId:     storageId,
 		objectFactory: objectFactory,
-		cachedObjects: map[string]*CachedObject{},
+		cachedObjects: make(map[string]interface{}),
 		options:       newObjectStorageOptions(optionalOptions),
 	}
 }
@@ -61,7 +61,7 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	objectStorage.flushMutex.RLock()
 
 	objectStorage.cacheMutex.RLock()
-	size := len(objectStorage.cachedObjects)
+	size := objectStorage.size
 	objectStorage.cacheMutex.RUnlock()
 
 	objectStorage.flushMutex.RUnlock()
@@ -282,49 +282,68 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefixes ...[]byte) error {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefix ...[]byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	return objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
+	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
+		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+	}
+
+	var seenElements map[string]types.Empty
+	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
+		if seenElements = objectStorage.forEachCachedElement(consumer); seenElements == nil {
+			return
+		}
+	} else {
+		if seenElements = objectStorage.forEachCachedElementWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
+			return
+		}
+	}
+
+	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefixes)
+		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
 
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			key := item.Key()[len(objectStorage.storageId):]
 
-			cachedObject, cacheHit := objectStorage.accessCache(key, true)
-			if !cacheHit {
-				if err := item.Value(func(val []byte) error {
-					marshaledData := make([]byte, len(val))
-					copy(marshaledData, val)
+			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; !elementSeen {
+				cachedObject, cacheHit := objectStorage.accessCache(key, true)
+				if !cacheHit {
+					if err := item.Value(func(val []byte) error {
+						marshaledData := make([]byte, len(val))
+						copy(marshaledData, val)
 
-					storableObject := objectStorage.unmarshalObject(key, marshaledData)
-					if storableObject != nil {
-						storableObject.Persist()
+						storableObject := objectStorage.unmarshalObject(key, marshaledData)
+						if storableObject != nil {
+							storableObject.Persist()
+						}
+
+						cachedObject.publishResult(storableObject)
+
+						return nil
+					}); err != nil {
+						panic(err)
 					}
-
-					cachedObject.publishResult(storableObject)
-
-					return nil
-				}); err != nil {
-					panic(err)
 				}
-			}
 
-			cachedObject.waitForInitialResult()
+				cachedObject.waitForInitialResult()
 
-			if !consumer(key, cachedObject) {
-				break
+				if cachedObject.Exists() && !consumer(key, cachedObject) {
+					break
+				}
 			}
 		}
 		it.Close()
 
 		return nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
@@ -341,7 +360,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 
 		return err
 	}
-	objectStorage.cachedObjects = map[string]*CachedObject{}
+	objectStorage.cachedObjects = make(map[string]interface{})
 	objectStorage.cacheMutex.Unlock()
 
 	objectStorage.flushMutex.Unlock()
@@ -354,7 +373,9 @@ func (objectStorage *ObjectStorage) Flush() {
 		panic("trying to access shutdown object storage")
 	}
 
+	objectStorage.flushMutex.Lock()
 	objectStorage.flush()
+	objectStorage.flushMutex.Unlock()
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
@@ -368,43 +389,163 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 
 	copiedKey := make([]byte, len(key))
 	copy(copiedKey, key)
-	stringKey := typeutils.BytesToString(copiedKey)
+
+	keyPartitions := objectStorage.options.keyPartitions
+	if keyPartitions == nil {
+		keyPartitions = []int{len(key)}
+	}
+	keyPartitionCount := len(keyPartitions)
+
+	currentMap := objectStorage.cachedObjects
+	keyOffset := 0
 
 	objectStorage.cacheMutex.RLock()
-	alreadyCachedObject, cachedObjectExists := objectStorage.cachedObjects[stringKey]
-	if cachedObjectExists {
-		alreadyCachedObject.RegisterConsumer()
+	var writeLocked bool
+	for i, keyPartitionLength := range keyPartitions {
+		partitionStringKey := typeutils.BytesToString(copiedKey[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
 
-		objectStorage.cacheMutex.RUnlock()
+		if i == keyPartitionCount-1 {
+			alreadyCachedObject, cachedObjectExists := currentMap[partitionStringKey]
+			if cachedObjectExists {
+				alreadyCachedObject.(*CachedObject).RegisterConsumer()
 
-		cacheHit = true
-	} else {
-		objectStorage.cacheMutex.RUnlock()
-		objectStorage.cacheMutex.Lock()
-		if alreadyCachedObject, cachedObjectExists = objectStorage.cachedObjects[stringKey]; cachedObjectExists {
-			alreadyCachedObject.RegisterConsumer()
+				cacheHit = true
+			} else {
+				if !createMissingCachedObject {
+					objectStorage.cacheMutex.RUnlock()
 
-			objectStorage.cacheMutex.Unlock()
-
-			cacheHit = true
-		} else {
-			if createMissingCachedObject {
-				alreadyCachedObject = newCachedObject(objectStorage, copiedKey)
-				alreadyCachedObject.RegisterConsumer()
-
-				if len(objectStorage.cachedObjects) == 0 {
-					objectStorage.emptyWg.Add(1)
+					return
 				}
 
-				objectStorage.cachedObjects[stringKey] = alreadyCachedObject
+				if !writeLocked {
+					objectStorage.cacheMutex.RUnlock()
+					objectStorage.cacheMutex.Lock()
+					writeLocked = true
+				}
+
+				if alreadyCachedObject, cachedObjectExists = currentMap[partitionStringKey]; cachedObjectExists {
+					alreadyCachedObject.(*CachedObject).RegisterConsumer()
+
+					cacheHit = true
+				} else {
+					alreadyCachedObject = newCachedObject(objectStorage, copiedKey)
+					alreadyCachedObject.(*CachedObject).RegisterConsumer()
+
+					if objectStorage.size == 0 {
+						objectStorage.cachedObjectsEmpty.Add(1)
+					}
+
+					currentMap[partitionStringKey] = alreadyCachedObject
+					objectStorage.size++
+				}
 			}
-			objectStorage.cacheMutex.Unlock()
+
+			cachedObject = alreadyCachedObject.(*CachedObject)
+		} else {
+			subMap, subMapExists := currentMap[partitionStringKey]
+			if subMapExists {
+				currentMap = subMap.(map[string]interface{})
+			} else {
+				if !createMissingCachedObject {
+					objectStorage.cacheMutex.RUnlock()
+
+					return
+				}
+
+				if !writeLocked {
+					objectStorage.cacheMutex.RUnlock()
+					objectStorage.cacheMutex.Lock()
+					writeLocked = true
+				}
+
+				subMap, subMapExists = currentMap[partitionStringKey]
+				if subMapExists {
+					currentMap = subMap.(map[string]interface{})
+				} else {
+					subMap = make(map[string]interface{})
+
+					currentMap[partitionStringKey] = subMap
+
+					currentMap = subMap.(map[string]interface{})
+				}
+			}
 		}
 	}
 
-	cachedObject = alreadyCachedObject
+	if writeLocked {
+		objectStorage.cacheMutex.Unlock()
+	} else {
+		objectStorage.cacheMutex.RUnlock()
+	}
 
-	objectStorage.flushMutex.RUnlock()
+	return
+}
+
+func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
+	if objectStorage.options.keyPartitions == nil {
+		return objectStorage.deleteElementFromUnpartitionedCache(key)
+	} else {
+		return objectStorage.deleteElementFromPartitionedCache(key)
+	}
+}
+
+func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
+	_, cachedObjectExists := objectStorage.cachedObjects[typeutils.BytesToString(key)]
+	if cachedObjectExists {
+		delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
+
+		objectStorage.size--
+	}
+
+	return cachedObjectExists
+}
+
+func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExisted bool) {
+	keyPartitionCount := len(objectStorage.options.keyPartitions)
+	keyOffset := 0
+	mapStack := make([]map[string]interface{}, 1)
+	mapStack[0] = objectStorage.cachedObjects
+
+	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
+		currentMap := mapStack[len(mapStack)-1]
+
+		partitionStringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
+
+		if keyPartitionId == keyPartitionCount-1 {
+			lastPartitionStringKey := typeutils.BytesToString(key[keyOffset-keyPartitionLength:])
+
+			_, elementExisted = currentMap[lastPartitionStringKey]
+			if elementExisted {
+				delete(currentMap, lastPartitionStringKey)
+
+				if len(currentMap) == 0 && len(mapStack) > 1 {
+					parentKeyPartitionId := keyPartitionId
+					keyOffset -= keyPartitionLength
+					for len(currentMap) == 0 && len(mapStack) > 1 {
+						parentMap := mapStack[len(mapStack)-2]
+						parentKeyPartitionId = parentKeyPartitionId - 1
+						parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
+
+						delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
+						keyOffset -= parentKeyLength
+
+						currentMap = parentMap
+						mapStack = mapStack[:len(mapStack)-1]
+					}
+				}
+
+				objectStorage.size--
+			}
+		} else {
+			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
+				mapStack = append(mapStack, subMap.(map[string]interface{}))
+			} else {
+				return
+			}
+		}
+	}
 
 	return
 }
@@ -485,27 +626,136 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 }
 
 func (objectStorage *ObjectStorage) flush() {
-	objectStorage.flushMutex.Lock()
-
+	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	objectStorage.cacheMutex.RLock()
-	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
-	i := 0
-	for _, cachedObject := range objectStorage.cachedObjects {
-		if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-			(*(*time.Timer)(timer)).Stop()
-		}
+	cachedObjects := make([]*CachedObject, objectStorage.size)
+	var i int
+	objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+		cachedObject.cancelScheduledRelease()
 
 		cachedObjects[i] = cachedObject
-
 		i++
-	}
+
+		return true
+	})
 	objectStorage.cacheMutex.RUnlock()
 
+	// manually push the objects to the BatchWriter
 	for _, cachedObject := range cachedObjects {
 		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
 	}
 
-	objectStorage.emptyWg.Wait()
+	objectStorage.cachedObjectsEmpty.Wait()
+}
 
-	objectStorage.flushMutex.Unlock()
+func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {
+	for _, value := range sourceMap {
+		if cachedObject, cachedObjectReached := value.(*CachedObject); cachedObjectReached {
+			if !consumer(cachedObject.key, cachedObject) {
+				return false
+			}
+		} else {
+			if !objectStorage.iterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byte, cachedObject *CachedObject) bool) map[string]types.Empty {
+	seenElements := make(map[string]types.Empty)
+	objectStorage.cacheMutex.RLock()
+	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+		if !cachedObject.Exists() {
+			return true
+		}
+
+		cachedObject.RegisterConsumer()
+		return consumer(key, cachedObject)
+	}) {
+		objectStorage.cacheMutex.RUnlock()
+
+		return nil
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	return seenElements
+}
+
+func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func(key []byte, cachedObject *CachedObject) bool, prefix []byte) map[string]types.Empty {
+	seenElements := make(map[string]types.Empty)
+
+	optionalPrefixLength := len(prefix)
+	keyPartitions := objectStorage.options.keyPartitions
+	keyPartitionCount := len(keyPartitions)
+	currentMap := objectStorage.cachedObjects
+	keyOffset := 0
+
+	objectStorage.cacheMutex.RLock()
+	for i, keyPartitionLength := range keyPartitions {
+		if keyOffset == optionalPrefixLength {
+			if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
+				seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+				if !cachedObject.Exists() {
+					return true
+				}
+
+				cachedObject.RegisterConsumer()
+				return consumer(key, cachedObject)
+			}) {
+				objectStorage.cacheMutex.RUnlock()
+
+				return nil
+			}
+
+			break
+		}
+
+		if keyOffset+keyPartitionLength > optionalPrefixLength {
+			objectStorage.cacheMutex.RUnlock()
+
+			panic("the prefix length does not align with the set KeyPartition")
+		}
+
+		partitionStringKey := typeutils.BytesToString(prefix[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
+
+		if i == keyPartitionCount-1 {
+			if keyOffset < optionalPrefixLength {
+				objectStorage.cacheMutex.RUnlock()
+
+				panic("the prefix is too long for the set KeyPartition")
+			}
+
+			cachedObject := currentMap[partitionStringKey].(*CachedObject)
+			seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+			if cachedObject.Exists() {
+				cachedObject.RegisterConsumer()
+				if !consumer(cachedObject.key, cachedObject) {
+					objectStorage.cacheMutex.RUnlock()
+
+					return nil
+				}
+			}
+		} else {
+			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
+				currentMap = subMap.(map[string]interface{})
+			} else {
+				break
+			}
+		}
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	if keyOffset > optionalPrefixLength {
+		panic("the prefix length does not align with the set KeyPartition")
+	}
+
+	return seenElements
 }
