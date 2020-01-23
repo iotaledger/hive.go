@@ -565,24 +565,45 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExisted bool) {
-	currentMap := objectStorage.cachedObjects
 	keyPartitionCount := len(objectStorage.options.keyPartition)
 	keyOffset := 0
+	mapStack := make([]map[string]interface{}, 1)
+	mapStack[0] = objectStorage.cachedObjects
 
 	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartition {
+		currentMap := mapStack[len(mapStack)-1]
+
 		partitionStringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
 		keyOffset += keyPartitionLength
 
 		if keyPartitionId == keyPartitionCount-1 {
-			_, elementExisted = currentMap[typeutils.BytesToString(key[keyOffset:])]
+			lastPartitionStringKey := typeutils.BytesToString(key[keyOffset-keyPartitionLength:])
+
+			_, elementExisted = currentMap[lastPartitionStringKey]
 			if elementExisted {
-				delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
+				delete(currentMap, lastPartitionStringKey)
+
+				if len(currentMap) == 0 && len(mapStack) > 1 {
+					parentKeyPartitionId := keyPartitionId
+					keyOffset -= keyPartitionLength
+					for len(currentMap) == 0 && len(mapStack) > 1 {
+						parentMap := mapStack[len(mapStack)-2]
+						parentKeyPartitionId = parentKeyPartitionId - 1
+						parentKeyLength := objectStorage.options.keyPartition[parentKeyPartitionId]
+
+						delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
+						keyOffset -= parentKeyLength
+
+						currentMap = parentMap
+						mapStack = mapStack[:len(mapStack)-1]
+					}
+				}
 
 				objectStorage.size--
 			}
 		} else {
 			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
-				currentMap = subMap.(map[string]interface{})
+				mapStack = append(mapStack, subMap.(map[string]interface{}))
 			} else {
 				return
 			}

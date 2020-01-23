@@ -42,6 +42,8 @@ func TestPrefixes(t *testing.T) {
 	}, []byte(""))
 
 	assert.Equal(t, 0, len(expectedKeys))
+
+	objects.Shutdown()
 }
 
 func TestStorableObjectFlags(t *testing.T) {
