@@ -282,7 +282,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefix ...[]byte) error {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefix ...[]byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -302,7 +302,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}) {
 			objectStorage.cacheMutex.RUnlock()
 
-			return nil
+			return
 		}
 		objectStorage.cacheMutex.RUnlock()
 	} else {
@@ -311,6 +311,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		currentMap := objectStorage.cachedObjects
 		keyOffset := 0
 
+		objectStorage.cacheMutex.RLock()
 		for i, keyPartitionLength := range keyPartition {
 			if keyOffset == optionalPrefixLength {
 				if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
@@ -318,13 +319,17 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 					return consumer(key, cachedObject)
 				}) {
-					return nil
+					objectStorage.cacheMutex.RUnlock()
+
+					return
 				}
 
 				break
 			}
 
 			if keyOffset+keyPartitionLength > optionalPrefixLength {
+				objectStorage.cacheMutex.RUnlock()
+
 				panic("the prefix length does not align with the set KeyPartition")
 			}
 
@@ -333,13 +338,17 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			if i == keyPartitionCount-1 {
 				if keyOffset < optionalPrefixLength {
+					objectStorage.cacheMutex.RUnlock()
+
 					panic("the prefix is too long for the set KeyPartition")
 				}
 
 				cachedObject := currentMap[partitionStringKey].(*CachedObject)
 
 				if !consumer(cachedObject.key, cachedObject) {
-					return nil
+					objectStorage.cacheMutex.RUnlock()
+
+					return
 				}
 			} else {
 				if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
@@ -349,13 +358,14 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				}
 			}
 		}
+		objectStorage.cacheMutex.RUnlock()
 
 		if keyOffset > optionalPrefixLength {
 			panic("the prefix length does not align with the set KeyPartition")
 		}
 	}
 
-	return objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
+	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
 
@@ -394,7 +404,9 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		it.Close()
 
 		return nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
