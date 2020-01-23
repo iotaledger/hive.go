@@ -293,11 +293,11 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 	var seenElements map[string]types.Empty
 	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
-		if seenElements = objectStorage.forEachCachedElements(consumer); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElement(consumer); seenElements == nil {
 			return
 		}
 	} else {
-		if seenElements = objectStorage.forEachCachedElementsWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElementWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
 			return
 		}
 	}
@@ -311,7 +311,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			item := it.Item()
 			key := item.Key()[len(objectStorage.storageId):]
 
-			if _, itemSeen := seenElements[typeutils.BytesToString(key)]; !itemSeen {
+			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; !elementSeen {
 				cachedObject, cacheHit := objectStorage.accessCache(key, true)
 				if !cacheHit {
 					if err := item.Value(func(val []byte) error {
@@ -664,7 +664,7 @@ func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[s
 	return true
 }
 
-func (objectStorage *ObjectStorage) forEachCachedElements(consumer func(key []byte, cachedObject *CachedObject) bool) map[string]types.Empty {
+func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byte, cachedObject *CachedObject) bool) map[string]types.Empty {
 	seenElements := make(map[string]types.Empty)
 	objectStorage.cacheMutex.RLock()
 	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
@@ -683,7 +683,7 @@ func (objectStorage *ObjectStorage) forEachCachedElements(consumer func(key []by
 	return seenElements
 }
 
-func (objectStorage *ObjectStorage) forEachCachedElementsWithPrefix(consumer func(key []byte, cachedObject *CachedObject) bool, prefix []byte) map[string]types.Empty {
+func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func(key []byte, cachedObject *CachedObject) bool, prefix []byte) map[string]types.Empty {
 	seenElements := make(map[string]types.Empty)
 
 	optionalPrefixLength := len(prefix)
