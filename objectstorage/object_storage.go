@@ -3,10 +3,9 @@ package objectstorage
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/types"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -279,22 +278,6 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 	}
 
 	return
-}
-
-func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {
-	for _, value := range sourceMap {
-		if cachedObject, cachedObjectReached := value.(*CachedObject); cachedObjectReached {
-			if !consumer(cachedObject.key, cachedObject) {
-				return false
-			}
-		} else {
-			if !objectStorage.iterateThroughCachedElements(value.(map[string]interface{}), consumer) {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
@@ -647,4 +630,20 @@ func (objectStorage *ObjectStorage) flush() {
 	objectStorage.cachedObjectsEmpty.Wait()
 
 	objectStorage.flushMutex.Unlock()
+}
+
+func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {
+	for _, value := range sourceMap {
+		if cachedObject, cachedObjectReached := value.(*CachedObject); cachedObjectReached {
+			if !consumer(cachedObject.key, cachedObject) {
+				return false
+			}
+		} else {
+			if !objectStorage.iterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+				return false
+			}
+		}
+	}
+
+	return true
 }
