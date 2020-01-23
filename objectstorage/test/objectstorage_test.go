@@ -38,6 +38,8 @@ func TestPrefixes(t *testing.T) {
 	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
 		delete(expectedKeys, string(key))
 
+		cachedObject.Release()
+
 		return true
 	}, []byte(""))
 

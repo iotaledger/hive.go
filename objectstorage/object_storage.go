@@ -287,81 +287,18 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		panic("trying to access shutdown object storage")
 	}
 
-	keyPartition := objectStorage.options.keyPartition
-	if keyPartition == nil && len(optionalPrefix) >= 1 {
+	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
 		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
 	}
 
-	seenElements := make(map[string]types.Empty)
+	var seenElements map[string]types.Empty
 	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
-		objectStorage.cacheMutex.RLock()
-		if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
-			seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
-
-			return consumer(key, cachedObject)
-		}) {
-			objectStorage.cacheMutex.RUnlock()
-
+		if seenElements = objectStorage.forEachCachedElements(consumer); seenElements == nil {
 			return
 		}
-		objectStorage.cacheMutex.RUnlock()
 	} else {
-		optionalPrefixLength := len(optionalPrefix[0])
-		keyPartitionCount := len(keyPartition)
-		currentMap := objectStorage.cachedObjects
-		keyOffset := 0
-
-		objectStorage.cacheMutex.RLock()
-		for i, keyPartitionLength := range keyPartition {
-			if keyOffset == optionalPrefixLength {
-				if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
-					seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
-
-					return consumer(key, cachedObject)
-				}) {
-					objectStorage.cacheMutex.RUnlock()
-
-					return
-				}
-
-				break
-			}
-
-			if keyOffset+keyPartitionLength > optionalPrefixLength {
-				objectStorage.cacheMutex.RUnlock()
-
-				panic("the prefix length does not align with the set KeyPartition")
-			}
-
-			partitionStringKey := typeutils.BytesToString(optionalPrefix[0][keyOffset : keyOffset+keyPartitionLength])
-			keyOffset += keyPartitionLength
-
-			if i == keyPartitionCount-1 {
-				if keyOffset < optionalPrefixLength {
-					objectStorage.cacheMutex.RUnlock()
-
-					panic("the prefix is too long for the set KeyPartition")
-				}
-
-				cachedObject := currentMap[partitionStringKey].(*CachedObject)
-
-				if !consumer(cachedObject.key, cachedObject) {
-					objectStorage.cacheMutex.RUnlock()
-
-					return
-				}
-			} else {
-				if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
-					currentMap = subMap.(map[string]interface{})
-				} else {
-					break
-				}
-			}
-		}
-		objectStorage.cacheMutex.RUnlock()
-
-		if keyOffset > optionalPrefixLength {
-			panic("the prefix length does not align with the set KeyPartition")
+		if seenElements = objectStorage.forEachCachedElementsWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
+			return
 		}
 	}
 
@@ -453,7 +390,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 	copiedKey := make([]byte, len(key))
 	copy(copiedKey, key)
 
-	keyPartitions := objectStorage.options.keyPartition
+	keyPartitions := objectStorage.options.keyPartitions
 	if keyPartitions == nil {
 		keyPartitions = []int{len(key)}
 	}
@@ -546,7 +483,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
-	if objectStorage.options.keyPartition == nil {
+	if objectStorage.options.keyPartitions == nil {
 		return objectStorage.deleteElementFromUnpartitionedCache(key)
 	} else {
 		return objectStorage.deleteElementFromPartitionedCache(key)
@@ -565,12 +502,12 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExisted bool) {
-	keyPartitionCount := len(objectStorage.options.keyPartition)
+	keyPartitionCount := len(objectStorage.options.keyPartitions)
 	keyOffset := 0
 	mapStack := make([]map[string]interface{}, 1)
 	mapStack[0] = objectStorage.cachedObjects
 
-	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartition {
+	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
 		currentMap := mapStack[len(mapStack)-1]
 
 		partitionStringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
@@ -589,7 +526,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 					for len(currentMap) == 0 && len(mapStack) > 1 {
 						parentMap := mapStack[len(mapStack)-2]
 						parentKeyPartitionId = parentKeyPartitionId - 1
-						parentKeyLength := objectStorage.options.keyPartition[parentKeyPartitionId]
+						parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
 
 						delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
 						keyOffset -= parentKeyLength
@@ -725,4 +662,91 @@ func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[s
 	}
 
 	return true
+}
+
+func (objectStorage *ObjectStorage) forEachCachedElements(consumer func(key []byte, cachedObject *CachedObject) bool) map[string]types.Empty {
+	seenElements := make(map[string]types.Empty)
+	objectStorage.cacheMutex.RLock()
+	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+		cachedObject.RegisterConsumer()
+
+		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+		return consumer(key, cachedObject)
+	}) {
+		objectStorage.cacheMutex.RUnlock()
+
+		return nil
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	return seenElements
+}
+
+func (objectStorage *ObjectStorage) forEachCachedElementsWithPrefix(consumer func(key []byte, cachedObject *CachedObject) bool, prefix []byte) map[string]types.Empty {
+	seenElements := make(map[string]types.Empty)
+
+	optionalPrefixLength := len(prefix)
+	keyPartitions := objectStorage.options.keyPartitions
+	keyPartitionCount := len(keyPartitions)
+	currentMap := objectStorage.cachedObjects
+	keyOffset := 0
+
+	objectStorage.cacheMutex.RLock()
+	for i, keyPartitionLength := range keyPartitions {
+		if keyOffset == optionalPrefixLength {
+			if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
+				cachedObject.RegisterConsumer()
+
+				seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+				return consumer(key, cachedObject)
+			}) {
+				objectStorage.cacheMutex.RUnlock()
+
+				return nil
+			}
+
+			break
+		}
+
+		if keyOffset+keyPartitionLength > optionalPrefixLength {
+			objectStorage.cacheMutex.RUnlock()
+
+			panic("the prefix length does not align with the set KeyPartition")
+		}
+
+		partitionStringKey := typeutils.BytesToString(prefix[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
+
+		if i == keyPartitionCount-1 {
+			if keyOffset < optionalPrefixLength {
+				objectStorage.cacheMutex.RUnlock()
+
+				panic("the prefix is too long for the set KeyPartition")
+			}
+
+			cachedObject := currentMap[partitionStringKey].(*CachedObject)
+			cachedObject.RegisterConsumer()
+
+			if !consumer(cachedObject.key, cachedObject) {
+				objectStorage.cacheMutex.RUnlock()
+
+				return nil
+			}
+		} else {
+			if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
+				currentMap = subMap.(map[string]interface{})
+			} else {
+				break
+			}
+		}
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	if keyOffset > optionalPrefixLength {
+		panic("the prefix length does not align with the set KeyPartition")
+	}
+
+	return seenElements
 }

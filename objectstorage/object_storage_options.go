@@ -10,7 +10,7 @@ type ObjectStorageOptions struct {
 	badgerInstance        *badger.DB
 	batchedWriterInstance *BatchedWriter
 	cacheTime             time.Duration
-	keyPartition          []int
+	keyPartitions         []int
 	persistenceEnabled    bool
 }
 
@@ -63,6 +63,6 @@ func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 
 func PartitionKey(keyPartitions ...int) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
-		args.keyPartition = keyPartitions
+		args.keyPartitions = keyPartitions
 	}
 }
