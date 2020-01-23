@@ -1,12 +1,13 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/typeutils"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/iotaledger/hive.go/syncutils"
 )
@@ -90,6 +91,10 @@ func (cachedObject *CachedObject) Consume(consumer func(StorableObject)) {
 func (cachedObject *CachedObject) RegisterConsumer() {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
 
+	cachedObject.cancelScheduledRelease()
+}
+
+func (cachedObject *CachedObject) cancelScheduledRelease() {
 	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
 		(*(*time.Timer)(timer)).Stop()
 	}

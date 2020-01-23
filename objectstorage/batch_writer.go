@@ -112,7 +112,7 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
 			delete(objectStorage.cachedObjects, typeutils.BytesToString(cachedObject.key))
 
 			if previousLength == 1 && len(objectStorage.cachedObjects) == 0 {
-				objectStorage.emptyWg.Done()
+				objectStorage.cachedObjectsEmpty.Done()
 			}
 		}
 	}

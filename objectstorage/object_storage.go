@@ -2,8 +2,8 @@ package objectstorage
 
 import (
 	"sync"
-	"sync/atomic"
-	"time"
+
+	"github.com/iotaledger/hive.go/types"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
@@ -11,15 +11,15 @@ import (
 )
 
 type ObjectStorage struct {
-	storageId     []byte
-	objectFactory StorableObjectFactory
-	cachedObjects map[string]interface{}
-	cacheMutex    syncutils.RWMutex
-	options       *ObjectStorageOptions
-	size          int
-	flushMutex    syncutils.RWMutex
-	emptyWg       sync.WaitGroup
-	shutdown      typeutils.AtomicBool
+	storageId          []byte
+	objectFactory      StorableObjectFactory
+	cachedObjects      map[string]interface{}
+	cacheMutex         syncutils.RWMutex
+	options            *ObjectStorageOptions
+	size               int
+	flushMutex         syncutils.RWMutex
+	cachedObjectsEmpty sync.WaitGroup
+	shutdown           typeutils.AtomicBool
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
@@ -62,7 +62,7 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	objectStorage.flushMutex.RLock()
 
 	objectStorage.cacheMutex.RLock()
-	size := len(objectStorage.cachedObjects)
+	size := objectStorage.size
 	objectStorage.cacheMutex.RUnlock()
 
 	objectStorage.flushMutex.RUnlock()
@@ -281,45 +281,130 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 	return
 }
 
+func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {
+	for _, value := range sourceMap {
+		if cachedObject, cachedObjectReached := value.(*CachedObject); cachedObjectReached {
+			if !consumer(cachedObject.key, cachedObject) {
+				return false
+			}
+		} else {
+			if !objectStorage.iterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefixes ...[]byte) error {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefix ...[]byte) error {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
+	keyPartition := objectStorage.options.keyPartition
+	if keyPartition == nil && len(optionalPrefix) >= 1 {
+		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+	}
+
+	seenElements := make(map[string]types.Empty)
+	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
+		objectStorage.cacheMutex.RLock()
+		if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+			seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+			return consumer(key, cachedObject)
+		}) {
+			objectStorage.cacheMutex.RUnlock()
+
+			return nil
+		}
+		objectStorage.cacheMutex.RUnlock()
+	} else {
+		keyPartitionCount := len(keyPartition)
+		currentMap := objectStorage.cachedObjects
+		keyOffset := 0
+
+		for i, keyPartitionLength := range keyPartition {
+			if keyOffset == len(optionalPrefix[0]) {
+				if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
+					seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+
+					return consumer(key, cachedObject)
+				}) {
+					return nil
+				}
+
+				break
+			}
+
+			if keyOffset+keyPartitionLength > len(optionalPrefix[0]) {
+				panic("the prefix length does not align with the set KeyPartition")
+			}
+
+			partitionStringKey := typeutils.BytesToString(optionalPrefix[0][keyOffset : keyOffset+keyPartitionLength])
+			keyOffset += keyPartitionLength
+
+			if i == keyPartitionCount-1 {
+				if keyOffset < len(optionalPrefix[0]) {
+					panic("the prefix is too long for the set KeyPartition")
+				}
+
+				cachedObject := currentMap[partitionStringKey].(*CachedObject)
+
+				if !consumer(cachedObject.key, cachedObject) {
+					return nil
+				}
+			} else {
+				if subMap, subMapExists := currentMap[partitionStringKey]; subMapExists {
+					currentMap = subMap.(map[string]interface{})
+				} else {
+					break
+				}
+			}
+		}
+
+		if keyOffset > len(optionalPrefix[0]) {
+			panic("the prefix length does not align with the set KeyPartition")
+		}
+	}
+
 	return objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefixes)
+		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
 
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			key := item.Key()[len(objectStorage.storageId):]
 
-			cachedObject, cacheHit := objectStorage.accessCache(key, true)
-			if !cacheHit {
-				if err := item.Value(func(val []byte) error {
-					marshaledData := make([]byte, len(val))
-					copy(marshaledData, val)
+			if _, itemSeen := seenElements[typeutils.BytesToString(key)]; !itemSeen {
+				cachedObject, cacheHit := objectStorage.accessCache(key, true)
+				if !cacheHit {
+					if err := item.Value(func(val []byte) error {
+						marshaledData := make([]byte, len(val))
+						copy(marshaledData, val)
 
-					storableObject := objectStorage.unmarshalObject(key, marshaledData)
-					if storableObject != nil {
-						storableObject.Persist()
+						storableObject := objectStorage.unmarshalObject(key, marshaledData)
+						if storableObject != nil {
+							storableObject.Persist()
+						}
+
+						cachedObject.publishResult(storableObject)
+
+						return nil
+					}); err != nil {
+						panic(err)
 					}
-
-					cachedObject.publishResult(storableObject)
-
-					return nil
-				}); err != nil {
-					panic(err)
 				}
-			}
 
-			cachedObject.waitForInitialResult()
+				cachedObject.waitForInitialResult()
 
-			if !consumer(key, cachedObject) {
-				break
+				if !consumer(key, cachedObject) {
+					break
+				}
 			}
 		}
 		it.Close()
@@ -413,7 +498,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 					alreadyCachedObject.(*CachedObject).RegisterConsumer()
 
 					if objectStorage.size == 0 {
-						objectStorage.emptyWg.Add(1)
+						objectStorage.cachedObjectsEmpty.Add(1)
 					}
 
 					currentMap[partitionStringKey] = alreadyCachedObject
@@ -540,25 +625,26 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 func (objectStorage *ObjectStorage) flush() {
 	objectStorage.flushMutex.Lock()
 
+	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	objectStorage.cacheMutex.RLock()
-	cachedObjects := make([]*CachedObject, len(objectStorage.cachedObjects))
-	i := 0
-	for _, cachedObject := range objectStorage.cachedObjects {
-		if timer := atomic.SwapPointer(&cachedObject.(*CachedObject).releaseTimer, nil); timer != nil {
-			(*(*time.Timer)(timer)).Stop()
-		}
+	cachedObjects := make([]*CachedObject, objectStorage.size)
+	var i int
+	objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+		cachedObject.cancelScheduledRelease()
 
-		cachedObjects[i] = cachedObject.(*CachedObject)
-
+		cachedObjects[i] = cachedObject
 		i++
-	}
+
+		return true
+	})
 	objectStorage.cacheMutex.RUnlock()
 
+	// manually push the objects to the BatchWriter
 	for _, cachedObject := range cachedObjects {
 		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
 	}
 
-	objectStorage.emptyWg.Wait()
+	objectStorage.cachedObjectsEmpty.Wait()
 
 	objectStorage.flushMutex.Unlock()
 }

@@ -21,16 +21,20 @@ func TestPrefixes(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, stored1 := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
+	storedObject1, _ := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
 	storedObject1.Release()
 
-	fmt.Println(stored1)
-
-	storedObject2 := objects.Load([]byte("12"))
-
-	fmt.Println(storedObject2.Get())
-
+	storedObject2, _ := objects.StoreIfAbsent([]byte("13"), NewTestObject("12345", 33))
 	storedObject2.Release()
+
+	storedObject3 := objects.Load([]byte("12"))
+	storedObject3.Release()
+
+	_ = objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+		fmt.Println(string(key))
+
+		return true
+	}, []byte(""))
 }
 
 func TestStorableObjectFlags(t *testing.T) {
