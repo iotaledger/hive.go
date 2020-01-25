@@ -764,15 +764,24 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 	return seenElements
 }
 
-func (objectStorage *ObjectStorage) optionalWrap(baseCachedObject *CachedObjectImpl, callerLevel int) WrappedCachedObject {
-	caller := reflect.GetCaller(callerLevel)
-	callerIdentifier := caller.File + ":" + strconv.Itoa(caller.Line)
+func (objectStorage *ObjectStorage) optionalWrap(baseCachedObject *CachedObjectImpl, callerLevel int) CachedObject {
+	if baseCachedObject == nil {
+		return nil
+	}
 
-	// TODO: ONLY PRINT IF RETAINED REFERENCES EXCEEDS NUMBER OR TIME
-	fmt.Println("[OBJECT STORAGE::DEBUG] possible object storage leak detected at: " + callerIdentifier)
+	if objectStorage.options.cachedObjectWrapper != nil {
+		wrappedCachedObject := objectStorage.options.cachedObjectWrapper(baseCachedObject)
 
-	result := &WrappedCachedObjectImpl{CachedObjectImpl: baseCachedObject}
-	result.SetIdentifier(callerIdentifier)
+		// 		result := &WrappedCachedObjectImpl{CachedObjectImpl: baseCachedObject}
 
-	return result
+		caller := reflect.GetCaller(callerLevel)
+		callerIdentifier := caller.File + ":" + strconv.Itoa(caller.Line)
+		// TODO: ONLY PRINT IF RETAINED REFERENCES EXCEEDS NUMBER OR TIME
+		fmt.Println("[OBJECT STORAGE::DEBUG] possible object storage leak detected at: " + callerIdentifier)
+		wrappedCachedObject.SetIdentifier(callerIdentifier)
+
+		return wrappedCachedObject
+	}
+
+	return baseCachedObject
 }

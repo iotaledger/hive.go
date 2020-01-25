@@ -13,6 +13,7 @@ type ObjectStorageOptions struct {
 	keyPartitions         []int
 	persistenceEnabled    bool
 	debug                 bool
+	cachedObjectWrapper   func(cachedObject CachedObject) WrappedCachedObject
 }
 
 func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStorageOptions {
@@ -65,6 +66,12 @@ func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 func Debug(debug bool) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
 		args.debug = debug
+	}
+}
+
+func CachedObjectWrapper(wrapper func(cachedObject CachedObject) WrappedCachedObject) ObjectStorageOption {
+	return func(args *ObjectStorageOptions) {
+		args.cachedObjectWrapper = wrapper
 	}
 }
 
