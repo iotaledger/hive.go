@@ -2,6 +2,7 @@ package objectstorage
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/iotaledger/hive.go/reflect"
@@ -765,8 +766,13 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 
 func (objectStorage *ObjectStorage) optionalWrap(baseCachedObject *CachedObjectImpl, callerLevel int) WrappedCachedObject {
 	caller := reflect.GetCaller(callerLevel)
+	callerIdentifier := caller.File + ":" + strconv.Itoa(caller.Line)
 
-	fmt.Println(caller.File, caller.Line)
+	// TODO: ONLY PRINT IF RETAINED REFERENCES EXCEEDS NUMBER OR TIME
+	fmt.Println("[OBJECT STORAGE::DEBUG] possible object storage leak detected at: " + callerIdentifier)
 
-	return &WrappedCachedObjectImpl{CachedObjectImpl: baseCachedObject}
+	result := &WrappedCachedObjectImpl{CachedObjectImpl: baseCachedObject}
+	result.SetIdentifier(callerIdentifier)
+
+	return result
 }

@@ -12,6 +12,7 @@ type ObjectStorageOptions struct {
 	cacheTime             time.Duration
 	keyPartitions         []int
 	persistenceEnabled    bool
+	debug                 bool
 }
 
 func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStorageOptions {
@@ -58,6 +59,12 @@ func BatchedWriterInstance(batchedWriterInstance *BatchedWriter) ObjectStorageOp
 func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
 		args.persistenceEnabled = persistenceEnabled
+	}
+}
+
+func Debug(debug bool) ObjectStorageOption {
+	return func(args *ObjectStorageOptions) {
+		args.debug = debug
 	}
 }
 
