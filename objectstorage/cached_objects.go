@@ -1,6 +1,6 @@
 package objectstorage
 
-type CachedObjects []*CachedObject
+type CachedObjects []*CachedObjectImpl
 
 func (cachedObjects CachedObjects) Release() {
 	for _, cachedObject := range cachedObjects {

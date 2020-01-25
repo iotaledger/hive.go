@@ -35,7 +35,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -51,7 +51,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -67,7 +67,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -82,7 +82,7 @@ func TestPrefixIteration(t *testing.T) {
 	assert.Equal(t, 0, len(expectedKeys))
 
 	expectedKeys["12"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObject) bool {
+	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
