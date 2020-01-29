@@ -8,14 +8,14 @@ import (
 type TestObject struct {
 	objectstorage.StorableObjectFlags
 
-	id      []byte
-	value   uint32
+	id    []byte
+	value uint32
 }
 
 func NewTestObject(id string, value uint32) *TestObject {
 	return &TestObject{
-		id:      []byte(id),
-		value:   value,
+		id:    []byte(id),
+		value: value,
 	}
 }
 
