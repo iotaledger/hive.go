@@ -17,12 +17,13 @@ import (
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
 
 func TestPrefixIteration(t *testing.T) {
-	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second))
+	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second), objectstorage.EnableLeakDetection())
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
 
 	storedObject1, _ := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
+	_ = storedObject1.Retain()
 	storedObject1.Release()
 
 	storedObject2, _ := objects.StoreIfAbsent([]byte("13"), NewTestObject("12345", 33))
@@ -35,7 +36,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
+	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -51,7 +52,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
+	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -67,7 +68,7 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
+	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}
@@ -82,7 +83,7 @@ func TestPrefixIteration(t *testing.T) {
 	assert.Equal(t, 0, len(expectedKeys))
 
 	expectedKeys["12"] = types.Void
-	objects.ForEach(func(key []byte, cachedObject *objectstorage.CachedObjectImpl) bool {
+	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
 		}

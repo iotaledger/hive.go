@@ -1,11 +1,7 @@
 package objectstorage
 
 import (
-	"fmt"
-	"strconv"
 	"sync"
-
-	"github.com/iotaledger/hive.go/reflect"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
@@ -39,7 +35,7 @@ func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
 		panic("trying to access shutdown object storage")
 	}
 
-	return objectStorage.putObjectInCache(object)
+	return LeakDetection.WrapCachedObject(objectStorage.putObjectInCache(object), 0)
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
@@ -54,7 +50,7 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
 	object.Persist()
 	object.SetModified()
 
-	return objectStorage.optionalWrap(objectStorage.putObjectInCache(object), 2)
+	return LeakDetection.WrapCachedObject(objectStorage.putObjectInCache(object), 0)
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
@@ -73,7 +69,7 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	return size
 }
 
-func (objectStorage *ObjectStorage) Get(key []byte) *CachedObjectImpl {
+func (objectStorage *ObjectStorage) Get(key []byte) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -83,10 +79,10 @@ func (objectStorage *ObjectStorage) Get(key []byte) *CachedObjectImpl {
 		cachedObject.publishResult(nil)
 	}
 
-	return cachedObject.waitForInitialResult()
+	return LeakDetection.WrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
-func (objectStorage *ObjectStorage) Load(key []byte) *CachedObjectImpl {
+func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -105,7 +101,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) *CachedObjectImpl {
 		cachedObject.publishResult(loadedObject)
 	}
 
-	return cachedObject.waitForInitialResult()
+	return LeakDetection.WrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
 func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
@@ -124,7 +120,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 	return
 }
 
-func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) *CachedObjectImpl {
+func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -147,7 +143,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 		}
 	}
 
-	return cachedObject.waitForInitialResult()
+	return LeakDetection.WrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
 // This method deletes an element and return true if the element was deleted.
@@ -238,10 +234,12 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObjectImpl is nil and does not need to be Released.
-func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (cachedObject *CachedObjectImpl, stored bool) {
+func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (result CachedObject, stored bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
+
+	var cachedObject *CachedObjectImpl
 
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 	if cacheHit {
@@ -278,7 +276,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 	}
 
 	if cachedObject != nil {
-		cachedObject.waitForInitialResult()
+		result = LeakDetection.WrapCachedObject(cachedObject.waitForInitialResult(), 0)
 	}
 
 	return
@@ -286,7 +284,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObjectImpl) bool, optionalPrefix ...[]byte) {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject CachedObject) bool, optionalPrefix ...[]byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -297,11 +295,15 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 	var seenElements map[string]types.Empty
 	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
-		if seenElements = objectStorage.forEachCachedElement(consumer); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+			return consumer(key, LeakDetection.WrapCachedObject(cachedObject, 0))
+		}); seenElements == nil {
 			return
 		}
 	} else {
-		if seenElements = objectStorage.forEachCachedElementWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+			return consumer(key, LeakDetection.WrapCachedObject(cachedObject, 0))
+		}, optionalPrefix[0]); seenElements == nil {
 			return
 		}
 	}
@@ -337,7 +339,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 				cachedObject.waitForInitialResult()
 
-				if cachedObject.Exists() && !consumer(key, cachedObject) {
+				if cachedObject.Exists() && !consumer(key, LeakDetection.WrapCachedObject(cachedObject, 0)) {
 					break
 				}
 			}
@@ -762,26 +764,4 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 	}
 
 	return seenElements
-}
-
-func (objectStorage *ObjectStorage) optionalWrap(baseCachedObject *CachedObjectImpl, callerLevel int) CachedObject {
-	if baseCachedObject == nil {
-		return nil
-	}
-
-	if objectStorage.options.cachedObjectWrapper != nil {
-		wrappedCachedObject := objectStorage.options.cachedObjectWrapper(baseCachedObject)
-
-		// 		result := &WrappedCachedObjectImpl{CachedObjectImpl: baseCachedObject}
-
-		caller := reflect.GetCaller(callerLevel)
-		callerIdentifier := caller.File + ":" + strconv.Itoa(caller.Line)
-		// TODO: ONLY PRINT IF RETAINED REFERENCES EXCEEDS NUMBER OR TIME
-		fmt.Println("[OBJECT STORAGE::DEBUG] possible object storage leak detected at: " + callerIdentifier)
-		wrappedCachedObject.SetIdentifier(callerIdentifier)
-
-		return wrappedCachedObject
-	}
-
-	return baseCachedObject
 }

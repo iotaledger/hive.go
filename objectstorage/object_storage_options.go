@@ -12,8 +12,8 @@ type ObjectStorageOptions struct {
 	cacheTime             time.Duration
 	keyPartitions         []int
 	persistenceEnabled    bool
-	debug                 bool
-	cachedObjectWrapper   func(cachedObject CachedObject) WrappedCachedObject
+	leakDetectionOptions  *LeakDetectionOptions
+	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
 }
 
 func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStorageOptions {
@@ -24,6 +24,14 @@ func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStora
 
 	for _, optionalOption := range optionalOptions {
 		optionalOption(result)
+	}
+
+	if result.leakDetectionOptions != nil && result.leakDetectionWrapper == nil {
+		result.leakDetectionWrapper = func(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
+			return &LeakDetectionWrapperImpl{
+				CachedObjectImpl: cachedObject,
+			}
+		}
 	}
 
 	if result.badgerInstance == nil && result.persistenceEnabled {
@@ -63,15 +71,26 @@ func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 	}
 }
 
-func Debug(debug bool) ObjectStorageOption {
+func EnableLeakDetection(options ...LeakDetectionOptions) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
-		args.debug = debug
+		switch len(options) {
+		case 0:
+			args.leakDetectionOptions = &LeakDetectionOptions{
+				MaxSingleEntityConsumers: 10,
+				MaxGlobalEntityConsumers: 100000,
+				MaxConsumerHoldTime:      10 * time.Second,
+			}
+		case 1:
+			args.leakDetectionOptions = &options[0]
+		default:
+			panic("too many arguments in call to EnableLeakDetection (only 0 or 1 allowed")
+		}
 	}
 }
 
-func CachedObjectWrapper(wrapper func(cachedObject CachedObject) WrappedCachedObject) ObjectStorageOption {
+func OverrideLeakDetectionWrapper(wrapperFunc func(cachedObject *CachedObjectImpl) LeakDetectionWrapper) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
-		args.cachedObjectWrapper = wrapper
+		args.leakDetectionWrapper = wrapperFunc
 	}
 }
 
