@@ -5,9 +5,9 @@ import (
 )
 
 type MultiMutex struct {
-	locks         map[interface{}]empty
-	locksCond     *sync.Cond
-	initOnce      sync.Once
+	locks     map[interface{}]empty
+	locksCond *sync.Cond
+	initOnce  sync.Once
 }
 
 func NewMultiMutex() *MultiMutex {
@@ -19,15 +19,15 @@ func NewMultiMutex() *MultiMutex {
 	}
 }
 
-func (mutex *MultiMutex) Lock(identifiers... interface{}) {
+func (mutex *MultiMutex) Lock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.locks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()
 
-	AcquireLocks:
+AcquireLocks:
 	for i, identifier := range identifiers {
 		if _, isLocked := mutex.locks[identifier]; !isLocked {
 			mutex.locks[identifier] = void
@@ -48,10 +48,10 @@ func (mutex *MultiMutex) Lock(identifiers... interface{}) {
 	mutex.locksCond.L.Unlock()
 }
 
-func (mutex *MultiMutex) Unlock(identifiers... interface{}) {
+func (mutex *MultiMutex) Unlock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.locks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()

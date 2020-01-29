@@ -5,8 +5,8 @@ import (
 )
 
 type StorableObjectFlags struct {
-	persist typeutils.AtomicBool
-	delete  typeutils.AtomicBool
+	persist  typeutils.AtomicBool
+	delete   typeutils.AtomicBool
 	modified typeutils.AtomicBool
 }
 

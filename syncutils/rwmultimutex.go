@@ -11,11 +11,11 @@ type RWMultiMutex struct {
 	initOnce  sync.Once
 }
 
-func (mutex *RWMultiMutex) Lock(identifiers... interface{}) {
+func (mutex *RWMultiMutex) Lock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.rLocks = make(map[interface{}]int)
 		mutex.wLocks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()
@@ -54,16 +54,16 @@ AcquireLocks:
 	mutex.locksCond.L.Unlock()
 }
 
-func (mutex *RWMultiMutex) RLock(identifiers... interface{}) {
+func (mutex *RWMultiMutex) RLock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.rLocks = make(map[interface{}]int)
 		mutex.wLocks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()
 
-	AcquireLocks:
+AcquireLocks:
 	for i, identifier := range identifiers {
 		if _, isWLocked := mutex.wLocks[identifier]; isWLocked {
 			for j := 0; j < i; j++ {
@@ -88,11 +88,11 @@ func (mutex *RWMultiMutex) RLock(identifiers... interface{}) {
 	mutex.locksCond.L.Unlock()
 }
 
-func (mutex *RWMultiMutex) RUnlock(identifiers... interface{}) {
+func (mutex *RWMultiMutex) RUnlock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.rLocks = make(map[interface{}]int)
 		mutex.wLocks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()
@@ -109,11 +109,11 @@ func (mutex *RWMultiMutex) RUnlock(identifiers... interface{}) {
 	mutex.locksCond.Broadcast()
 }
 
-func (mutex *RWMultiMutex) Unlock(identifiers... interface{}) {
+func (mutex *RWMultiMutex) Unlock(identifiers ...interface{}) {
 	mutex.initOnce.Do(func() {
 		mutex.rLocks = make(map[interface{}]int)
 		mutex.wLocks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{ L: &sync.Mutex{} }
+		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
 	})
 
 	mutex.locksCond.L.Lock()

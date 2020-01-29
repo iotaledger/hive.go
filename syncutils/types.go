@@ -1,5 +1,5 @@
 package syncutils
 
-type empty struct {}
+type empty struct{}
 
 var void = empty{}
