@@ -209,7 +209,7 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 	}
 	instancesByKey[wrappedCachedObject.GetInternalId()] = wrappedCachedObject
 
-	if len(instancesByKey) > options.MaxSingleEntityConsumers {
+	if len(instancesByKey) > options.MaxConsumersPerObject {
 
 		var oldestEntry LeakDetectionWrapper = nil
 		var oldestTime = time.Now()
@@ -220,7 +220,7 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 			}
 		}
 
-		messageChan <- "[objectstorage::leakkdetection] possible leak detected - more than " + strconv.Itoa(options.MaxSingleEntityConsumers) + " (" + strconv.Itoa(len(instancesByKey)) + ") CachedObjects in cache (showing oldest):" + platform.LineBreak +
+		messageChan <- "[objectstorage::leakkdetection] possible leak detected - more than " + strconv.Itoa(options.MaxConsumersPerObject) + " (" + strconv.Itoa(len(instancesByKey)) + ") CachedObjects in cache (showing oldest):" + platform.LineBreak +
 			"\tretained: " + oldestEntry.GetRetainCallStack().ExternalEntryPoint() + platform.LineBreak +
 			platform.LineBreak +
 			"\tretain call stack (full):" + platform.LineBreak +
@@ -253,9 +253,8 @@ func registerCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, opti
 // region options //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type LeakDetectionOptions struct {
-	MaxSingleEntityConsumers int
-	MaxGlobalEntityConsumers int
-	MaxConsumerHoldTime      time.Duration
+	MaxConsumersPerObject int
+	MaxConsumerHoldTime   time.Duration
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -72,9 +72,8 @@ func EnableLeakDetection(options ...LeakDetectionOptions) ObjectStorageOption {
 		switch len(options) {
 		case 0:
 			args.leakDetectionOptions = &LeakDetectionOptions{
-				MaxSingleEntityConsumers: 10,
-				MaxGlobalEntityConsumers: 100000,
-				MaxConsumerHoldTime:      240 * time.Second,
+				MaxConsumersPerObject: 20,
+				MaxConsumerHoldTime:   240 * time.Second,
 			}
 		case 1:
 			args.leakDetectionOptions = &options[0]
