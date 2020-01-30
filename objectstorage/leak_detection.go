@@ -60,6 +60,14 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Base() *CachedObjectImpl {
 	return wrappedCachedObject.CachedObjectImpl
 }
 
+func (wrappedCachedObject *LeakDetectionWrapperImpl) Consume(consumer func(StorableObject)) {
+	if storableObject := wrappedCachedObject.CachedObjectImpl.Get(); storableObject != nil && !storableObject.IsDeleted() {
+		consumer(storableObject)
+	}
+
+	wrappedCachedObject.Release()
+}
+
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Retain() CachedObject {
 	baseCachedObject := wrappedCachedObject.CachedObjectImpl
 	baseCachedObject.Retain()
