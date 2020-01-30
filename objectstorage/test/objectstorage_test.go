@@ -23,8 +23,6 @@ func TestPrefixIteration(t *testing.T) {
 	}
 
 	storedObject1, _ := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
-	_ = storedObject1.Retain()
-	_ = storedObject1.Retain()
 	storedObject1.Release()
 
 	storedObject2, _ := objects.StoreIfAbsent([]byte("13"), NewTestObject("12345", 33))
