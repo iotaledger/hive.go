@@ -2,7 +2,6 @@ package objectstorage
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -80,12 +79,11 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Retain() CachedObject {
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Release() {
 	if atomic.AddInt32(&(wrappedCachedObject.released), 1) != 1 {
-		wrappedCachedObject.SetReleaseCallStack(reflect.GetExternalCallers("objectstorage", 0))
-
 		reportCachedObjectClosedTooOften(wrappedCachedObject)
 	} else {
 		baseCachedObject := wrappedCachedObject.CachedObjectImpl
 
+		wrappedCachedObject.SetReleaseCallStack(reflect.GetExternalCallers("objectstorage", 0))
 		registerCachedObjectReleased(wrappedCachedObject, baseCachedObject.objectStorage.options.leakDetectionOptions)
 
 		baseCachedObject.Release()
@@ -133,7 +131,7 @@ func init() {
 			if message, isString := (<-messageChan).(string); isString {
 				fmt.Println(message)
 			} else {
-				os.Exit(-1)
+				panic("fatal error: stopping program")
 			}
 		}
 	}()
