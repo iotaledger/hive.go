@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/iotaledger/hive.go/platform"
+	"github.com/iotaledger/hive.go/typeutils"
 
+	"github.com/iotaledger/hive.go/platform"
 	"github.com/iotaledger/hive.go/reflect"
 )
 
@@ -17,6 +19,8 @@ import (
 type LeakDetectionWrapper interface {
 	CachedObject
 
+	Base() *CachedObjectImpl
+	GetInternalId() int64
 	SetRetainCallStack(callStack *reflect.CallStack)
 	GetRetainCallStack() *reflect.CallStack
 	GetRetainTime() time.Time
@@ -32,10 +36,28 @@ type LeakDetectionWrapper interface {
 type LeakDetectionWrapperImpl struct {
 	*CachedObjectImpl
 
+	internalId       int64
 	retainTime       time.Time
 	released         int32
 	retainCallStack  *reflect.CallStack
 	releaseCallStack *reflect.CallStack
+}
+
+var internalIdCounter int64
+
+func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
+	return &LeakDetectionWrapperImpl{
+		CachedObjectImpl: cachedObject,
+		internalId:       atomic.AddInt64(&internalIdCounter, 1),
+	}
+}
+
+func (wrappedCachedObject *LeakDetectionWrapperImpl) GetInternalId() int64 {
+	return wrappedCachedObject.internalId
+}
+
+func (wrappedCachedObject *LeakDetectionWrapperImpl) Base() *CachedObjectImpl {
+	return wrappedCachedObject.CachedObjectImpl
 }
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Retain() CachedObject {
@@ -56,8 +78,7 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Release() {
 	} else {
 		baseCachedObject := wrappedCachedObject.CachedObjectImpl
 
-		// unregister identifier in debug list
-		wrappedCachedObject.GetRetainCallStack()
+		registerCachedObjectReleased(wrappedCachedObject, baseCachedObject.objectStorage.options.leakDetectionOptions)
 
 		baseCachedObject.Release()
 	}
@@ -93,7 +114,9 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) WasReleased() bool {
 // region public API ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 var (
-	messageChan = make(chan interface{})
+	messageChan           = make(chan interface{})
+	instanceRegister      = make(map[string]map[int64]LeakDetectionWrapper)
+	instanceRegisterMutex = sync.Mutex{}
 )
 
 func init() {
@@ -112,10 +135,14 @@ var LeakDetection = struct {
 	WrapCachedObject                 func(cachedObject *CachedObjectImpl, skipCallerFrames int) CachedObject
 	ReportCachedObjectClosedTooOften func(wrappedCachedObject LeakDetectionWrapper)
 	MonitorCachedObjectReleased      func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
+	RegisterCachedObjectRetained     func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
+	RegisterCachedObjectReleased     func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
 }{
 	WrapCachedObject:                 wrapCachedObject,
 	ReportCachedObjectClosedTooOften: reportCachedObjectClosedTooOften,
 	MonitorCachedObjectReleased:      monitorCachedObjectReleased,
+	RegisterCachedObjectRetained:     registerCachedObjectRetained,
+	RegisterCachedObjectReleased:     registerCachedObjectReleased,
 }
 
 func wrapCachedObject(baseCachedObject *CachedObjectImpl, skipCallerFrames int) CachedObject {
@@ -129,6 +156,7 @@ func wrapCachedObject(baseCachedObject *CachedObjectImpl, skipCallerFrames int) 
 		wrappedCachedObject := wrapCachedObject(baseCachedObject)
 		wrappedCachedObject.SetRetainCallStack(reflect.GetExternalCallers("objectstorage", skipCallerFrames))
 
+		registerCachedObjectRetained(wrappedCachedObject, options.leakDetectionOptions)
 		monitorCachedObjectReleased(wrappedCachedObject, options.leakDetectionOptions)
 
 		return wrappedCachedObject
@@ -165,6 +193,59 @@ func monitorCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, optio
 			monitorCachedObjectReleased(wrappedCachedObject, options)
 		}
 	})
+}
+
+func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
+	stringKey := typeutils.BytesToString(wrappedCachedObject.Base().key)
+	wrappedCachedObject.GetInternalId()
+
+	instanceRegisterMutex.Lock()
+
+	instancesByKey, instancesByKeyExists := instanceRegister[stringKey]
+	if !instancesByKeyExists {
+		instancesByKey = make(map[int64]LeakDetectionWrapper)
+
+		instanceRegister[stringKey] = instancesByKey
+	}
+	instancesByKey[wrappedCachedObject.GetInternalId()] = wrappedCachedObject
+
+	if len(instancesByKey) > options.MaxSingleEntityConsumers {
+
+		var oldestEntry LeakDetectionWrapper = nil
+		var oldestTime = time.Now()
+		for _, wrappedCachedObject := range instancesByKey {
+			if oldestEntry == nil || wrappedCachedObject.GetRetainTime().Before(oldestTime) {
+				oldestEntry = wrappedCachedObject
+				oldestTime = wrappedCachedObject.GetRetainTime()
+			}
+		}
+
+		messageChan <- "[objectstorage::leakkdetection] possible leak detected - more than " + strconv.Itoa(options.MaxSingleEntityConsumers) + " (" + strconv.Itoa(len(instancesByKey)) + ") CachedObjects in cache (showing oldest):" + platform.LineBreak +
+			"\tretained: " + oldestEntry.GetRetainCallStack().ExternalEntryPoint() + platform.LineBreak +
+			platform.LineBreak +
+			"\tretain call stack (full):" + platform.LineBreak +
+			oldestEntry.GetRetainCallStack().String()
+	}
+
+	instanceRegisterMutex.Unlock()
+}
+
+func registerCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
+	stringKey := typeutils.BytesToString(wrappedCachedObject.Base().key)
+	wrappedCachedObject.GetInternalId()
+
+	instanceRegisterMutex.Lock()
+
+	instancesByKey, instancesByKeyExists := instanceRegister[stringKey]
+	if instancesByKeyExists {
+		delete(instancesByKey, wrappedCachedObject.GetInternalId())
+
+		if len(instancesByKey) == 0 {
+			delete(instanceRegister, stringKey)
+		}
+	}
+
+	instanceRegisterMutex.Unlock()
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

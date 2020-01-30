@@ -27,11 +27,7 @@ func newObjectStorageOptions(optionalOptions []ObjectStorageOption) *ObjectStora
 	}
 
 	if result.leakDetectionOptions != nil && result.leakDetectionWrapper == nil {
-		result.leakDetectionWrapper = func(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
-			return &LeakDetectionWrapperImpl{
-				CachedObjectImpl: cachedObject,
-			}
-		}
+		result.leakDetectionWrapper = newLeakDetectionWrapperImpl
 	}
 
 	if result.badgerInstance == nil && result.persistenceEnabled {
@@ -78,7 +74,7 @@ func EnableLeakDetection(options ...LeakDetectionOptions) ObjectStorageOption {
 			args.leakDetectionOptions = &LeakDetectionOptions{
 				MaxSingleEntityConsumers: 10,
 				MaxGlobalEntityConsumers: 100000,
-				MaxConsumerHoldTime:      10 * time.Second,
+				MaxConsumerHoldTime:      240 * time.Second,
 			}
 		case 1:
 			args.leakDetectionOptions = &options[0]
