@@ -2,6 +2,7 @@ package objectstorage
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -79,7 +80,7 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Retain() CachedObject {
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Release() {
 	if atomic.AddInt32(&(wrappedCachedObject.released), 1) != 1 {
-		reportCachedObjectClosedTooOften(wrappedCachedObject)
+		reportCachedObjectClosedTooOften(wrappedCachedObject, reflect.GetExternalCallers("objectstorage", 0))
 	} else {
 		baseCachedObject := wrappedCachedObject.CachedObjectImpl
 
@@ -131,7 +132,7 @@ func init() {
 			if message, isString := (<-messageChan).(string); isString {
 				fmt.Println(message)
 			} else {
-				panic("fatal error: stopping program")
+				os.Exit(-1)
 			}
 		}
 	}()
@@ -139,7 +140,7 @@ func init() {
 
 var LeakDetection = struct {
 	WrapCachedObject                 func(cachedObject *CachedObjectImpl, skipCallerFrames int) CachedObject
-	ReportCachedObjectClosedTooOften func(wrappedCachedObject LeakDetectionWrapper)
+	ReportCachedObjectClosedTooOften func(wrappedCachedObject LeakDetectionWrapper, secondCallStack *reflect.CallStack)
 	MonitorCachedObjectReleased      func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
 	RegisterCachedObjectRetained     func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
 	RegisterCachedObjectReleased     func(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions)
@@ -171,18 +172,21 @@ func wrapCachedObject(baseCachedObject *CachedObjectImpl, skipCallerFrames int) 
 	return baseCachedObject
 }
 
-func reportCachedObjectClosedTooOften(wrappedCachedObject LeakDetectionWrapper) {
+func reportCachedObjectClosedTooOften(wrappedCachedObject LeakDetectionWrapper, secondCallStack *reflect.CallStack) {
 	retainCallStack := wrappedCachedObject.GetRetainCallStack()
 	releaseCallStack := wrappedCachedObject.GetReleaseCallStack()
 
 	messageChan <- "[objectstorage::leakkdetection] CachedObject released too often:" + platform.LineBreak +
 		"\tretained: " + retainCallStack.ExternalEntryPoint() + platform.LineBreak +
-		"\treleased: " + releaseCallStack.ExternalEntryPoint() + platform.LineBreak +
+		"\treleased (1): " + releaseCallStack.ExternalEntryPoint() + platform.LineBreak +
+		"\treleased (2): " + secondCallStack.ExternalEntryPoint() + platform.LineBreak +
 		platform.LineBreak +
 		"\tretain call stack (full):" + platform.LineBreak +
 		retainCallStack.String() + platform.LineBreak +
-		"\trelease call stack (full):" + platform.LineBreak +
-		releaseCallStack.String()
+		"\trelease call stack (1/2 full):" + platform.LineBreak +
+		releaseCallStack.String() + platform.LineBreak +
+		"\trelease call stack (2/2 full):" + platform.LineBreak +
+		secondCallStack.String()
 
 	messageChan <- nil
 }
