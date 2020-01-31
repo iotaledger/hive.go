@@ -3,9 +3,9 @@ package objectstorage
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/events"
-
 	"github.com/dgraph-io/badger/v2"
+
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
