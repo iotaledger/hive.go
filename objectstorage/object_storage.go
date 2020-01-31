@@ -30,15 +30,15 @@ func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions 
 	}
 }
 
-func (objectStorage *ObjectStorage) Put(object StorableObject) *CachedObject {
+func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	return objectStorage.putObjectInCache(object)
+	return wrapCachedObject(objectStorage.putObjectInCache(object), 0)
 }
 
-func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
+func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -50,7 +50,7 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) *CachedObject {
 	object.Persist()
 	object.SetModified()
 
-	return objectStorage.putObjectInCache(object)
+	return wrapCachedObject(objectStorage.putObjectInCache(object), 0)
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
@@ -69,7 +69,7 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	return size
 }
 
-func (objectStorage *ObjectStorage) Get(key []byte) *CachedObject {
+func (objectStorage *ObjectStorage) Get(key []byte) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -79,10 +79,10 @@ func (objectStorage *ObjectStorage) Get(key []byte) *CachedObject {
 		cachedObject.publishResult(nil)
 	}
 
-	return cachedObject.waitForInitialResult()
+	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
-func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
+func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -101,7 +101,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) *CachedObject {
 		cachedObject.publishResult(loadedObject)
 	}
 
-	return cachedObject.waitForInitialResult()
+	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
 func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
@@ -120,7 +120,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 	return
 }
 
-func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) *CachedObject {
+func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -143,7 +143,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 		}
 	}
 
-	return cachedObject.waitForInitialResult()
+	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
 // This method deletes an element and return true if the element was deleted.
@@ -152,7 +152,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		panic("trying to access shutdown object storage")
 	}
 
-	deleteExistingEntry := func(cachedObject *CachedObject) bool {
+	deleteExistingEntry := func(cachedObject *CachedObjectImpl) bool {
 		cachedObject.wg.Wait()
 
 		if storableObject := cachedObject.Get(); storableObject != nil {
@@ -198,7 +198,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 		panic("trying to access shutdown object storage")
 	}
 
-	deleteExistingEntry := func(cachedObject *CachedObject) {
+	deleteExistingEntry := func(cachedObject *CachedObjectImpl) {
 		cachedObject.wg.Wait()
 
 		if storableObject := cachedObject.Get(); storableObject != nil {
@@ -234,10 +234,12 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
-func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (cachedObject *CachedObject, stored bool) {
+func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (result CachedObject, stored bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
+
+	var cachedObject *CachedObjectImpl
 
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 	if cacheHit {
@@ -274,7 +276,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 	}
 
 	if cachedObject != nil {
-		cachedObject.waitForInitialResult()
+		result = wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 	}
 
 	return
@@ -282,7 +284,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObj
 
 // Foreach can only iterate over persisted entries, so there might be a slight delay before you can find previously
 // stored items in such an iteration.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject *CachedObject) bool, optionalPrefix ...[]byte) {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject CachedObject) bool, optionalPrefix ...[]byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
@@ -293,11 +295,15 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 	var seenElements map[string]types.Empty
 	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
-		if seenElements = objectStorage.forEachCachedElement(consumer); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+			return consumer(key, wrapCachedObject(cachedObject, 0))
+		}); seenElements == nil {
 			return
 		}
 	} else {
-		if seenElements = objectStorage.forEachCachedElementWithPrefix(consumer, optionalPrefix[0]); seenElements == nil {
+		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+			return consumer(key, wrapCachedObject(cachedObject, 0))
+		}, optionalPrefix[0]); seenElements == nil {
 			return
 		}
 	}
@@ -333,7 +339,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 				cachedObject.waitForInitialResult()
 
-				if cachedObject.Exists() && !consumer(key, cachedObject) {
+				if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
 					break
 				}
 			}
@@ -384,7 +390,7 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.flush()
 }
 
-func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObject, cacheHit bool) {
+func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
 	objectStorage.flushMutex.RLock()
 
 	copiedKey := make([]byte, len(key))
@@ -408,7 +414,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 		if i == keyPartitionCount-1 {
 			alreadyCachedObject, cachedObjectExists := currentMap[partitionStringKey]
 			if cachedObjectExists {
-				alreadyCachedObject.(*CachedObject).RegisterConsumer()
+				alreadyCachedObject.(*CachedObjectImpl).Retain()
 
 				cacheHit = true
 			} else {
@@ -425,12 +431,12 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 				}
 
 				if alreadyCachedObject, cachedObjectExists = currentMap[partitionStringKey]; cachedObjectExists {
-					alreadyCachedObject.(*CachedObject).RegisterConsumer()
+					alreadyCachedObject.(*CachedObjectImpl).Retain()
 
 					cacheHit = true
 				} else {
 					alreadyCachedObject = newCachedObject(objectStorage, copiedKey)
-					alreadyCachedObject.(*CachedObject).RegisterConsumer()
+					alreadyCachedObject.(*CachedObjectImpl).Retain()
 
 					if objectStorage.size == 0 {
 						objectStorage.cachedObjectsEmpty.Add(1)
@@ -441,7 +447,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 				}
 			}
 
-			cachedObject = alreadyCachedObject.(*CachedObject)
+			cachedObject = alreadyCachedObject.(*CachedObjectImpl)
 		} else {
 			subMap, subMapExists := currentMap[partitionStringKey]
 			if subMapExists {
@@ -550,7 +556,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 	return
 }
 
-func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *CachedObject {
+func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *CachedObjectImpl {
 	cachedObject, _ := objectStorage.accessCache(object.GetStorageKey(), true)
 	if !cachedObject.publishResult(object) {
 		cachedObject.updateResult(object)
@@ -628,9 +634,9 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 func (objectStorage *ObjectStorage) flush() {
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	objectStorage.cacheMutex.RLock()
-	cachedObjects := make([]*CachedObject, objectStorage.size)
+	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
-	objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+	objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		cachedObject.cancelScheduledRelease()
 
 		cachedObjects[i] = cachedObject
@@ -648,9 +654,9 @@ func (objectStorage *ObjectStorage) flush() {
 	objectStorage.cachedObjectsEmpty.Wait()
 }
 
-func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObject) bool) bool {
+func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[string]interface{}, consumer func(key []byte, cachedObject *CachedObjectImpl) bool) bool {
 	for _, value := range sourceMap {
-		if cachedObject, cachedObjectReached := value.(*CachedObject); cachedObjectReached {
+		if cachedObject, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
 			if !consumer(cachedObject.key, cachedObject) {
 				return false
 			}
@@ -664,17 +670,17 @@ func (objectStorage *ObjectStorage) iterateThroughCachedElements(sourceMap map[s
 	return true
 }
 
-func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byte, cachedObject *CachedObject) bool) map[string]types.Empty {
+func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byte, cachedObject *CachedObjectImpl) bool) map[string]types.Empty {
 	seenElements := make(map[string]types.Empty)
 	objectStorage.cacheMutex.RLock()
-	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObject) bool {
+	if !objectStorage.iterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 		if !cachedObject.Exists() {
 			return true
 		}
 
-		cachedObject.RegisterConsumer()
+		cachedObject.Retain()
 		return consumer(key, cachedObject)
 	}) {
 		objectStorage.cacheMutex.RUnlock()
@@ -686,7 +692,7 @@ func (objectStorage *ObjectStorage) forEachCachedElement(consumer func(key []byt
 	return seenElements
 }
 
-func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func(key []byte, cachedObject *CachedObject) bool, prefix []byte) map[string]types.Empty {
+func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func(key []byte, cachedObject *CachedObjectImpl) bool, prefix []byte) map[string]types.Empty {
 	seenElements := make(map[string]types.Empty)
 
 	optionalPrefixLength := len(prefix)
@@ -698,14 +704,14 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 	objectStorage.cacheMutex.RLock()
 	for i, keyPartitionLength := range keyPartitions {
 		if keyOffset == optionalPrefixLength {
-			if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObject) bool {
+			if !objectStorage.iterateThroughCachedElements(currentMap, func(key []byte, cachedObject *CachedObjectImpl) bool {
 				seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 				if !cachedObject.Exists() {
 					return true
 				}
 
-				cachedObject.RegisterConsumer()
+				cachedObject.Retain()
 				return consumer(key, cachedObject)
 			}) {
 				objectStorage.cacheMutex.RUnlock()
@@ -732,11 +738,11 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer func
 				panic("the prefix is too long for the set KeyPartition")
 			}
 
-			cachedObject := currentMap[partitionStringKey].(*CachedObject)
+			cachedObject := currentMap[partitionStringKey].(*CachedObjectImpl)
 			seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 			if cachedObject.Exists() {
-				cachedObject.RegisterConsumer()
+				cachedObject.Retain()
 				if !consumer(cachedObject.key, cachedObject) {
 					objectStorage.cacheMutex.RUnlock()
 

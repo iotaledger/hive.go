@@ -22,7 +22,7 @@ type BatchedWriter struct {
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
 	running        int32
-	batchQueue     chan *CachedObject
+	batchQueue     chan *CachedObjectImpl
 }
 
 func NewBatchedWriter(badgerInstance *badger.DB) *BatchedWriter {
@@ -31,7 +31,7 @@ func NewBatchedWriter(badgerInstance *badger.DB) *BatchedWriter {
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
 		running:        0,
-		batchQueue:     make(chan *CachedObject, BATCH_WRITER_QUEUE_SIZE),
+		batchQueue:     make(chan *CachedObjectImpl, BATCH_WRITER_QUEUE_SIZE),
 	}
 }
 
@@ -55,7 +55,7 @@ func (bw *BatchedWriter) StopBatchWriter() {
 	bw.startStopMutex.Unlock()
 }
 
-func (bw *BatchedWriter) batchWrite(object *CachedObject) {
+func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	if atomic.LoadInt32(&bw.running) == 0 {
 		bw.StartBatchWriter()
 	}
@@ -63,7 +63,7 @@ func (bw *BatchedWriter) batchWrite(object *CachedObject) {
 	bw.batchQueue <- object
 }
 
-func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObject) {
+func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 	if !objectStorage.options.persistenceEnabled {
 		if storableObject := cachedObject.Get(); storableObject != nil {
@@ -99,7 +99,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 	}
 }
 
-func (bw *BatchedWriter) releaseObject(cachedObject *CachedObject) {
+func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 
 	objectStorage.cacheMutex.Lock()
@@ -121,7 +121,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 			wb = bw.badgerInstance.NewWriteBatch()
 		}
 
-		writtenValues := make([]*CachedObject, BATCH_WRITER_BATCH_SIZE)
+		writtenValues := make([]*CachedObjectImpl, BATCH_WRITER_BATCH_SIZE)
 		writtenValuesCounter := 0
 	COLLECT_VALUES:
 		for writtenValuesCounter < BATCH_WRITER_BATCH_SIZE {

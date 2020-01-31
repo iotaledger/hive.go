@@ -11,7 +11,15 @@ import (
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
-type CachedObject struct {
+type CachedObject interface {
+	Exists() bool
+	Get() (result StorableObject)
+	Consume(consumer func(StorableObject))
+	Retain() CachedObject
+	Release()
+}
+
+type CachedObjectImpl struct {
 	key           []byte
 	objectStorage *ObjectStorage
 	value         StorableObject
@@ -23,8 +31,8 @@ type CachedObject struct {
 	blindDelete   typeutils.AtomicBool
 }
 
-func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObject) {
-	result = &CachedObject{
+func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
+	result = &CachedObjectImpl{
 		objectStorage: database,
 		key:           key,
 	}
@@ -34,13 +42,13 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObject)
 	return
 }
 
-// Creates an "empty" CachedObject, that is not part of any ObjectStorage.
+// Creates an "empty" CachedObjectImpl, that is not part of any ObjectStorage.
 //
 // Sometimes, we want to be able to offer a "filtered view" on the ObjectStorage and therefore be able to return an
 // "empty" value on load operations even if the underlying object exists (i.e. the value tangle on top of the normal
 // tangle only returns value transactions in its load operations).
-func NewEmptyCachedObject(key []byte) (result *CachedObject) {
-	result = &CachedObject{
+func NewEmptyCachedObject(key []byte) (result *CachedObjectImpl) {
+	result = &CachedObjectImpl{
 		key:       key,
 		published: 1,
 		consumers: math.MinInt32,
@@ -50,7 +58,7 @@ func NewEmptyCachedObject(key []byte) (result *CachedObject) {
 }
 
 // Retrieves the StorableObject, that is cached in this container.
-func (cachedObject *CachedObject) Get() (result StorableObject) {
+func (cachedObject *CachedObjectImpl) Get() (result StorableObject) {
 	cachedObject.valueMutex.RLock()
 	result = cachedObject.value
 	cachedObject.valueMutex.RUnlock()
@@ -59,7 +67,7 @@ func (cachedObject *CachedObject) Get() (result StorableObject) {
 }
 
 // Releases the object, to be picked up by the persistence layer (as soon as all consumers are done).
-func (cachedObject *CachedObject) Release() {
+func (cachedObject *CachedObjectImpl) Release() {
 	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
 		if cachedObject.objectStorage.options.cacheTime != 0 {
 			atomic.StorePointer(&cachedObject.releaseTimer, unsafe.Pointer(time.AfterFunc(cachedObject.objectStorage.options.cacheTime, func() {
@@ -78,7 +86,7 @@ func (cachedObject *CachedObject) Release() {
 }
 
 // Directly consumes the StorableObject. This method automatically Release()s the object when the callback is done.
-func (cachedObject *CachedObject) Consume(consumer func(StorableObject)) {
+func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) {
 	if storableObject := cachedObject.Get(); storableObject != nil && !storableObject.IsDeleted() {
 		consumer(storableObject)
 	}
@@ -87,19 +95,21 @@ func (cachedObject *CachedObject) Consume(consumer func(StorableObject)) {
 }
 
 // Registers a new consumer for this cached object.
-func (cachedObject *CachedObject) RegisterConsumer() {
+func (cachedObject *CachedObjectImpl) Retain() CachedObject {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
 
 	cachedObject.cancelScheduledRelease()
+
+	return cachedObject
 }
 
-func (cachedObject *CachedObject) Exists() bool {
+func (cachedObject *CachedObjectImpl) Exists() bool {
 	storableObject := cachedObject.Get()
 
 	return storableObject != nil && !storableObject.IsDeleted()
 }
 
-func (cachedObject *CachedObject) publishResult(result StorableObject) bool {
+func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
 	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
 		cachedObject.value = result
 		cachedObject.wg.Done()
@@ -110,7 +120,7 @@ func (cachedObject *CachedObject) publishResult(result StorableObject) bool {
 	return false
 }
 
-func (cachedObject *CachedObject) updateResult(object StorableObject) {
+func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
 	if cachedObject.value == nil {
 		cachedObject.value = object
@@ -120,7 +130,7 @@ func (cachedObject *CachedObject) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Unlock()
 }
 
-func (cachedObject *CachedObject) updateEmptyResult(update interface{}) (updated bool) {
+func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {
 	cachedObject.valueMutex.RLock()
 	if cachedObject.value == nil {
 		cachedObject.valueMutex.RUnlock()
@@ -143,13 +153,13 @@ func (cachedObject *CachedObject) updateEmptyResult(update interface{}) (updated
 	return
 }
 
-func (cachedObject *CachedObject) waitForInitialResult() *CachedObject {
+func (cachedObject *CachedObjectImpl) waitForInitialResult() *CachedObjectImpl {
 	cachedObject.wg.Wait()
 
 	return cachedObject
 }
 
-func (cachedObject *CachedObject) cancelScheduledRelease() {
+func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
 	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
 		(*(*time.Timer)(timer)).Stop()
 	}
