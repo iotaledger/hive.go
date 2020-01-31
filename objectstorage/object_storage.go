@@ -3,6 +3,8 @@ package objectstorage
 import (
 	"sync"
 
+	"github.com/iotaledger/hive.go/events"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/types"
@@ -19,6 +21,8 @@ type ObjectStorage struct {
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
+
+	Events Events
 }
 
 func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
@@ -27,6 +31,10 @@ func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions 
 		objectFactory: objectFactory,
 		cachedObjects: make(map[string]interface{}),
 		options:       newObjectStorageOptions(optionalOptions),
+
+		Events: Events{
+			ObjectEvicted: events.NewEvent(evictionEvent),
+		},
 	}
 }
 
@@ -497,11 +505,17 @@ func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
-	_, cachedObjectExists := objectStorage.cachedObjects[typeutils.BytesToString(key)]
+	_cachedObject, cachedObjectExists := objectStorage.cachedObjects[typeutils.BytesToString(key)]
 	if cachedObjectExists {
 		delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
 
 		objectStorage.size--
+
+		cachedObject := _cachedObject.(*CachedObjectImpl)
+		storableObject := cachedObject.Get()
+		if storableObject != nil && !storableObject.IsDeleted() {
+			objectStorage.Events.ObjectEvicted.Trigger(key, cachedObject.Get())
+		}
 	}
 
 	return cachedObjectExists

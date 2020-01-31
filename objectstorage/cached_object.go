@@ -16,7 +16,7 @@ type CachedObject interface {
 	Get() (result StorableObject)
 	Consume(consumer func(StorableObject))
 	Retain() CachedObject
-	Release()
+	Release(force ...bool)
 }
 
 type CachedObjectImpl struct {
@@ -67,9 +67,14 @@ func (cachedObject *CachedObjectImpl) Get() (result StorableObject) {
 }
 
 // Releases the object, to be picked up by the persistence layer (as soon as all consumers are done).
-func (cachedObject *CachedObjectImpl) Release() {
+func (cachedObject *CachedObjectImpl) Release(force ...bool) {
+	var forceRelease bool
+	if len(force) >= 1 {
+		forceRelease = force[0]
+	}
+
 	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
-		if cachedObject.objectStorage.options.cacheTime != 0 {
+		if !forceRelease && cachedObject.objectStorage.options.cacheTime != 0 {
 			atomic.StorePointer(&cachedObject.releaseTimer, unsafe.Pointer(time.AfterFunc(cachedObject.objectStorage.options.cacheTime, func() {
 				atomic.StorePointer(&cachedObject.releaseTimer, nil)
 
@@ -82,6 +87,8 @@ func (cachedObject *CachedObjectImpl) Release() {
 		} else {
 			cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
 		}
+	} else if consumers < 0 {
+		panic("called Release() too often")
 	}
 }
 
