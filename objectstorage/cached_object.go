@@ -17,7 +17,6 @@ type CachedObject interface {
 	Consume(consumer func(StorableObject))
 	Retain() CachedObject
 	Release(force ...bool)
-	ForceRelease()
 }
 
 type CachedObjectImpl struct {
@@ -90,14 +89,6 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 		}
 	} else if consumers < 0 {
 		panic("called Release() too often")
-	}
-}
-
-// Releases the object and immediately pushes it to the BatchWriter ignoring the default CacheTime (if no other
-// consumers hold references).
-func (cachedObject *CachedObjectImpl) ForceRelease() {
-	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
-		cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
 	}
 }
 
