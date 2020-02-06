@@ -8,12 +8,14 @@ import (
 
 // Events contains all the events that are triggered by the logger.
 var Events = struct {
+	DebugMsg   *events.Event
 	InfoMsg    *events.Event
 	WarningMsg *events.Event
 	ErrorMsg   *events.Event
 	PanicMsg   *events.Event
 	AnyMsg     *events.Event
 }{
+	DebugMsg:   events.NewEvent(logCaller),
 	InfoMsg:    events.NewEvent(logCaller),
 	WarningMsg: events.NewEvent(logCaller),
 	ErrorMsg:   events.NewEvent(logCaller),
@@ -27,10 +29,8 @@ func logCaller(handler interface{}, params ...interface{}) {
 
 // NewEventCore creates a core that publishes log messages as events.
 func NewEventCore(enabler zapcore.LevelEnabler) zapcore.Core {
-	// assure that nothing below info is enabled
 	enablerFunc := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		// there are no events below LevelInfo
-		return lvl >= zapcore.InfoLevel && enabler.Enabled(lvl)
+		return enabler.Enabled(lvl)
 	})
 	enc := zapcore.NewConsoleEncoder(eventCoreEncoderConfig)
 
@@ -80,6 +80,8 @@ func (c *eventCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 	msg := buf.String()
 
 	switch ent.Level {
+	case zapcore.DebugLevel:
+		Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.InfoLevel:
 		Events.InfoMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.WarnLevel:

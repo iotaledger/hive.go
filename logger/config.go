@@ -28,9 +28,10 @@ type Config struct {
 }
 
 var defaultCfg = Config{
-	Level:       "info",
-	Encoding:    "console",
-	OutputPaths: []string{"stdout"},
+	Level:         "info",
+	Encoding:      "console",
+	OutputPaths:   []string{"stdout"},
+	DisableEvents: true,
 }
 
 var defaultEncoderConfig = zapcore.EncoderConfig{
