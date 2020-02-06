@@ -14,7 +14,7 @@ import (
 type CachedObject interface {
 	Exists() bool
 	Get() (result StorableObject)
-	Consume(consumer func(StorableObject))
+	Consume(consumer func(StorableObject)) bool
 	Retain() CachedObject
 	Release(force ...bool)
 }
@@ -93,12 +93,17 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 }
 
 // Directly consumes the StorableObject. This method automatically Release()s the object when the callback is done.
-func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) {
+// Returns true if the callback was called.
+func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) bool {
+	defer cachedObject.Release()
+
 	if storableObject := cachedObject.Get(); storableObject != nil && !storableObject.IsDeleted() {
 		consumer(storableObject)
+
+		return true
 	}
 
-	cachedObject.Release()
+	return false
 }
 
 // Registers a new consumer for this cached object.
