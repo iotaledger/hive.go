@@ -22,10 +22,10 @@ func TestPrefixIteration(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, _ := objects.StoreIfAbsent([]byte("12"), NewTestObject("12345", 33))
+	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
 	storedObject1.Release()
 
-	storedObject2, _ := objects.StoreIfAbsent([]byte("13"), NewTestObject("12345", 33))
+	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
 	storedObject2.Release()
 
 	storedObject3 := objects.Load([]byte("12"))
@@ -187,14 +187,14 @@ func TestStoreIfAbsent(t *testing.T) {
 	loadedObject := objects.Load([]byte("Hans"))
 	loadedObject.Release()
 
-	storedObject1, stored1 := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
+	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 	if storedObject1 == nil {
 		t.Error("the object should NOT be nil if it was stored")
 	}
 	storedObject1.Release()
 
-	storedObject2, stored2 := objects.StoreIfAbsent([]byte("Hans"), NewTestObject("Hans", 33))
+	storedObject2, stored2 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
 	assert.Equal(t, false, stored2)
 	if storedObject2 != nil {
 		t.Error("the object should be nil if it wasn't stored")
