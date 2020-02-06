@@ -242,12 +242,13 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
-func (objectStorage *ObjectStorage) StoreIfAbsent(key []byte, object StorableObject) (result CachedObject, stored bool) {
+func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result CachedObject, stored bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
 	var cachedObject *CachedObjectImpl
+	key := object.GetStorageKey()
 
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 	if cacheHit {
