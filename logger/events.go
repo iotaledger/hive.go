@@ -41,14 +41,15 @@ func NewEventCore(enabler zapcore.LevelEnabler) zapcore.Core {
 }
 
 var eventCoreEncoderConfig = zapcore.EncoderConfig{
-	MessageKey:  "M", // show encoded message
-	LevelKey:    "",  // hide log level
-	TimeKey:     "",  // hide timestamp
-	NameKey:     "",  // hide logger name
-	CallerKey:   "",  // hide log caller
-	EncodeLevel: zapcore.CapitalLevelEncoder,
-	EncodeTime:  zapcore.RFC3339TimeEncoder,
-	EncodeName:  zapcore.FullNameEncoder,
+	MessageKey:     "M", // show encoded message
+	LevelKey:       "",  // hide log level
+	TimeKey:        "",  // hide timestamp
+	NameKey:        "",  // hide logger name
+	CallerKey:      "",  // hide log caller
+	EncodeLevel:    zapcore.CapitalLevelEncoder,
+	EncodeTime:     zapcore.RFC3339TimeEncoder,
+	EncodeDuration: zapcore.SecondsDurationEncoder,
+	EncodeName:     zapcore.FullNameEncoder,
 }
 
 type eventCore struct {
@@ -81,7 +82,7 @@ func (c *eventCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 
 	switch ent.Level {
 	case zapcore.DebugLevel:
-		Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		//Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.InfoLevel:
 		Events.InfoMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.WarnLevel:
