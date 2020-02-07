@@ -82,7 +82,7 @@ func (c *eventCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 
 	switch ent.Level {
 	case zapcore.DebugLevel:
-		//Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.InfoLevel:
 		Events.InfoMsg.Trigger(ent.Level, ent.LoggerName, msg)
 	case zapcore.WarnLevel:
