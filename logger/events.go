@@ -41,14 +41,15 @@ func NewEventCore(enabler zapcore.LevelEnabler) zapcore.Core {
 }
 
 var eventCoreEncoderConfig = zapcore.EncoderConfig{
-	MessageKey:  "M", // show encoded message
-	LevelKey:    "",  // hide log level
-	TimeKey:     "",  // hide timestamp
-	NameKey:     "",  // hide logger name
-	CallerKey:   "",  // hide log caller
-	EncodeLevel: zapcore.CapitalLevelEncoder,
-	EncodeTime:  zapcore.RFC3339TimeEncoder,
-	EncodeName:  zapcore.FullNameEncoder,
+	MessageKey:     "M", // show encoded message
+	LevelKey:       "",  // hide log level
+	TimeKey:        "",  // hide timestamp
+	NameKey:        "",  // hide logger name
+	CallerKey:      "",  // hide log caller
+	EncodeLevel:    zapcore.CapitalLevelEncoder,
+	EncodeTime:     zapcore.RFC3339TimeEncoder,
+	EncodeDuration: zapcore.SecondsDurationEncoder,
+	EncodeName:     zapcore.FullNameEncoder,
 }
 
 type eventCore struct {
