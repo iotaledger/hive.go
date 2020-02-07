@@ -19,13 +19,6 @@ func TestNewEventCore(t *testing.T) {
 	// initialize the mock
 	m, teardown := newEventMock(t)
 
-	t.Run("debugLevel", func(t *testing.T) {
-		logger := zap.New(NewEventCore(LevelDebug))
-
-		// there should not be any events for debug-level logs.
-		logger.Debug(testMsg)
-	})
-
 	t.Run("levelDisabled", func(t *testing.T) {
 		logger := zap.New(NewEventCore(LevelWarn))
 
@@ -34,7 +27,11 @@ func TestNewEventCore(t *testing.T) {
 	})
 
 	t.Run("eventsTriggered", func(t *testing.T) {
-		logger := zap.New(NewEventCore(LevelInfo)).Named(testName)
+		logger := zap.New(NewEventCore(LevelDebug)).Named(testName)
+
+		m.On("debug", LevelDebug, testName, testLoggedMsg).Once()
+		m.On("any", LevelDebug, testName, testLoggedMsg).Once()
+		logger.Debug(testMsg)
 
 		m.On("info", LevelInfo, testName, testLoggedMsg).Once()
 		m.On("any", LevelInfo, testName, testLoggedMsg).Once()
@@ -61,6 +58,7 @@ func TestNewEventCore(t *testing.T) {
 
 type eventMock struct{ mock.Mock }
 
+func (e *eventMock) debug(lvl Level, name string, msg string) { e.Called(lvl, name, msg) }
 func (e *eventMock) info(lvl Level, name string, msg string)  { e.Called(lvl, name, msg) }
 func (e *eventMock) warn(lvl Level, name string, msg string)  { e.Called(lvl, name, msg) }
 func (e *eventMock) error(lvl Level, name string, msg string) { e.Called(lvl, name, msg) }
@@ -71,12 +69,14 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	m := &eventMock{}
 	m.Test(t)
 
+	debugC := events.NewClosure(m.debug)
 	infoC := events.NewClosure(m.info)
 	warnC := events.NewClosure(m.warn)
 	errorC := events.NewClosure(m.error)
 	panicC := events.NewClosure(m.panic)
 	anyC := events.NewClosure(m.any)
 
+	Events.DebugMsg.Attach(debugC)
 	Events.InfoMsg.Attach(infoC)
 	Events.WarningMsg.Attach(warnC)
 	Events.ErrorMsg.Attach(errorC)
@@ -84,6 +84,7 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	Events.AnyMsg.Attach(anyC)
 
 	teardown := func() {
+		Events.DebugMsg.Detach(debugC)
 		Events.InfoMsg.Detach(infoC)
 		Events.WarningMsg.Detach(warnC)
 		Events.ErrorMsg.Detach(errorC)
