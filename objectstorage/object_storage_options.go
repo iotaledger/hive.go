@@ -67,18 +67,20 @@ func PersistenceEnabled(persistenceEnabled bool) ObjectStorageOption {
 	}
 }
 
-func EnableLeakDetection(options ...LeakDetectionOptions) ObjectStorageOption {
+func LeakDetectionEnabled(leakDetectionEnabled bool, options ...LeakDetectionOptions) ObjectStorageOption {
 	return func(args *ObjectStorageOptions) {
-		switch len(options) {
-		case 0:
-			args.leakDetectionOptions = &LeakDetectionOptions{
-				MaxConsumersPerObject: 20,
-				MaxConsumerHoldTime:   240 * time.Second,
+		if leakDetectionEnabled {
+			switch len(options) {
+			case 0:
+				args.leakDetectionOptions = &LeakDetectionOptions{
+					MaxConsumersPerObject: 20,
+					MaxConsumerHoldTime:   240 * time.Second,
+				}
+			case 1:
+				args.leakDetectionOptions = &options[0]
+			default:
+				panic("too many arguments in call to EnableLeakDetection (only 0 or 1 allowed")
 			}
-		case 1:
-			args.leakDetectionOptions = &options[0]
-		default:
-			panic("too many arguments in call to EnableLeakDetection (only 0 or 1 allowed")
 		}
 	}
 }
