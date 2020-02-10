@@ -88,9 +88,9 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 }
 
 // GetVerifiedPeer returns the verified peer with the given ID, or nil if no such peer exists.
-func (p *Protocol) GetVerifiedPeer(id peer.ID, addr string) *peer.Peer {
+func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
 	for _, verified := range p.mgr.getVerifiedPeers() {
-		if verified.ID() == id && verified.Address() == addr {
+		if verified.ID() == id {
 			return unwrapPeer(verified)
 		}
 	}

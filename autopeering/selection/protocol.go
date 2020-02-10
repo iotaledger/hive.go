@@ -32,7 +32,7 @@ type DiscoverProtocol interface {
 	IsVerified(id peer.ID, addr string) bool
 	EnsureVerified(*peer.Peer) error
 
-	GetVerifiedPeer(id peer.ID, addr string) *peer.Peer
+	GetVerifiedPeer(id peer.ID) *peer.Peer
 	GetVerifiedPeers() []*peer.Peer
 }
 
@@ -300,23 +300,35 @@ func (p *Protocol) validatePeeringRequest(fromAddr string, fromID peer.ID, m *pb
 }
 
 func (p *Protocol) handlePeeringRequest(s *server.Server, fromAddr string, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
-	salt, err := salt.FromProto(m.GetSalt())
+	fromSalt, err := salt.FromProto(m.GetSalt())
 	if err != nil {
 		// this should not happen as it is checked in validation
 		p.log.Warnw("invalid salt", "err", err)
 		return
 	}
 
-	from := p.disc.GetVerifiedPeer(fromID, fromAddr)
+	from := p.disc.GetVerifiedPeer(fromID)
 	if from == nil {
-		// this should not happen as it is checked in validation
-		p.log.Warnw("invalid stored peer",
-			"id", fromID,
-		)
-		return
+		// if the sender is not verified, try to load it from DB
+		from, err = p.local().Database().Peer(fromID)
+		if err != nil {
+			// this should not happen as this is checked in validation
+			p.log.Warnw("invalid stored peer",
+				"id", fromID,
+				"err", err,
+			)
+			return
+		}
+		// TODO: ping the peer from DB
 	}
 
-	res := newPeeringResponse(rawData, p.mgr.requestPeering(from, salt))
+	var status bool
+	if from.Address() != fromAddr {
+		status = false
+	} else {
+		status = p.mgr.requestPeering(from, fromSalt)
+	}
+	res := newPeeringResponse(rawData, status)
 
 	p.logSend(fromAddr, res)
 	s.Send(fromAddr, marshal(res))

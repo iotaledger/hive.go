@@ -127,10 +127,10 @@ func TestProtocol(t *testing.T) {
 // dummyDiscovery is a dummy implementation of DiscoveryProtocol never returning any verified peers.
 type dummyDiscovery struct{}
 
-func (d dummyDiscovery) IsVerified(peer.ID, string) bool                 { return true }
-func (d dummyDiscovery) EnsureVerified(*peer.Peer) error                 { return nil }
-func (d dummyDiscovery) GetVerifiedPeer(id peer.ID, _ string) *peer.Peer { return peerMap[id] }
-func (d dummyDiscovery) GetVerifiedPeers() []*peer.Peer                  { return []*peer.Peer{} }
+func (d dummyDiscovery) IsVerified(peer.ID, string) bool       { return true }
+func (d dummyDiscovery) EnsureVerified(*peer.Peer) error       { return nil }
+func (d dummyDiscovery) GetVerifiedPeer(id peer.ID) *peer.Peer { return peerMap[id] }
+func (d dummyDiscovery) GetVerifiedPeers() []*peer.Peer        { return []*peer.Peer{} }
 
 // newTestProtocol creates a new neighborhood server and also returns the teardown.
 func newTestProtocol(trans transport.Transport) (*Protocol, func()) {
