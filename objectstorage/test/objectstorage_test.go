@@ -17,7 +17,7 @@ import (
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
 
 func TestPrefixIteration(t *testing.T) {
-	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second), objectstorage.EnableLeakDetection())
+	objects := objectstorage.New([]byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}

@@ -79,7 +79,7 @@ func LeakDetectionEnabled(leakDetectionEnabled bool, options ...LeakDetectionOpt
 			case 1:
 				args.leakDetectionOptions = &options[0]
 			default:
-				panic("too many arguments in call to EnableLeakDetection (only 0 or 1 allowed")
+				panic("too many additional arguments in call to LeakDetectionEnabled (only 0 or 1 allowed")
 			}
 		}
 	}
