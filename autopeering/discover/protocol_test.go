@@ -108,7 +108,7 @@ func TestProtVerifiedPeers(t *testing.T) {
 	// protA should have peerB as the single verified peer
 	assert.ElementsMatch(t, []*peer.Peer{peerB}, protA.GetVerifiedPeers())
 	for _, p := range protA.GetVerifiedPeers() {
-		assert.Equal(t, p, protA.GetVerifiedPeer(p.ID(), p.Address()))
+		assert.Equal(t, p, protA.GetVerifiedPeer(p.ID()))
 	}
 }
 
@@ -129,11 +129,9 @@ func TestProtVerifiedPeer(t *testing.T) {
 	time.Sleep(graceTime)
 
 	// we should have peerB as a verified peer
-	assert.Equal(t, peerB, protA.GetVerifiedPeer(peerB.ID(), peerB.Address()))
+	assert.Equal(t, peerB, protA.GetVerifiedPeer(peerB.ID()))
 	// we should not have ourselves as a verified peer
-	assert.Nil(t, protA.GetVerifiedPeer(peerA.ID(), peerA.Address()))
-	// the address of peerB should match
-	assert.Nil(t, protA.GetVerifiedPeer(peerB.ID(), ""))
+	assert.Nil(t, protA.GetVerifiedPeer(peerA.ID()))
 }
 
 func TestProtDiscoveryRequest(t *testing.T) {

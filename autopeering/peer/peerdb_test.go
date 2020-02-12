@@ -36,7 +36,9 @@ func TestPeerDB(t *testing.T) {
 		err := db.UpdatePeer(p)
 		require.NoError(t, err)
 
-		assert.Equal(t, p, db.Peer(p.ID()))
+		dbPeer, err := db.Peer(p.ID())
+		assert.NoError(t, err)
+		assert.Equal(t, p, dbPeer)
 	})
 
 	t.Run("LastPing", func(t *testing.T) {

@@ -165,19 +165,19 @@ func (db *DB) UpdatePeer(p *Peer) error {
 	return db.setPeerWithTTL(p, peerExpiration)
 }
 
-func parsePeer(data []byte) *Peer {
+func parsePeer(data []byte) (*Peer, error) {
 	p, err := Unmarshal(data)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return p
+	return p, nil
 }
 
 // Peer retrieves a peer from the database.
-func (db *DB) Peer(id ID) *Peer {
+func (db *DB) Peer(id ID) (*Peer, error) {
 	data, err := db.db.Get(nodeKey(id))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	return parsePeer(data.Value)
 }
@@ -205,8 +205,8 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 		}
 		copy(id[:], entry.Key)
 
-		p := parsePeer(entry.Value)
-		if p == nil || p.ID() != id {
+		p, err := parsePeer(entry.Value)
+		if err != nil || p.ID() != id {
 			return false
 		}
 		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.Address())) > maxAge {

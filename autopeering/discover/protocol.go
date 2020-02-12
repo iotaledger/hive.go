@@ -88,9 +88,9 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 }
 
 // GetVerifiedPeer returns the verified peer with the given ID, or nil if no such peer exists.
-func (p *Protocol) GetVerifiedPeer(id peer.ID, addr string) *peer.Peer {
+func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
 	for _, verified := range p.mgr.getVerifiedPeers() {
-		if verified.ID() == id && verified.Address() == addr {
+		if verified.ID() == id {
 			return unwrapPeer(verified)
 		}
 	}
@@ -170,7 +170,7 @@ func (p *Protocol) publicAddr() string {
 // Ping sends a Ping to the specified peer and blocks until a reply is received or timeout.
 func (p *Protocol) Ping(to *peer.Peer) error {
 	return backoff.Retry(retryPolicy, func() error {
-		err := <-p.sendPing(to.Address(), to.ID())
+		err := <-p.SendPing(to.Address(), to.ID())
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
@@ -178,9 +178,9 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 	})
 }
 
-// sendPing sends a Ping to the specified address and expects a matching reply.
+// SendPing sends a Ping to the specified address and expects a matching reply.
 // This method is non-blocking, but it returns a channel that can be used to query potential errors.
-func (p *Protocol) sendPing(toAddr string, toID peer.ID) <-chan error {
+func (p *Protocol) SendPing(toAddr string, toID peer.ID) <-chan error {
 	ping := newPing(p.publicAddr(), toAddr)
 	data := marshal(ping)
 
@@ -360,7 +360,7 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID,
 
 	// if the peer is new or expired, send a Ping to verify
 	if !p.IsVerified(fromID, fromAddr) {
-		p.sendPing(fromAddr, fromID)
+		p.SendPing(fromAddr, fromID)
 	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new
 		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), fromAddr))
 	}
