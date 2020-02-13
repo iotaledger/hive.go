@@ -41,9 +41,7 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
-
 		cachedObject.Release()
-
 		return true
 	})
 
@@ -57,9 +55,7 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
-
 		cachedObject.Release()
-
 		return true
 	}, []byte(""))
 
@@ -73,9 +69,7 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
-
 		cachedObject.Release()
-
 		return true
 	}, []byte("1"))
 
@@ -88,15 +82,37 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
-
 		cachedObject.Release()
-
 		return true
 	}, []byte("12"))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
 	objects.Shutdown()
+}
+
+func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
+	objects := objectstorage.New([]byte("Nakamoto"), testObjectFactory,
+		objectstorage.PartitionKey(1, 1, 1),
+		objectstorage.CacheTime(5*time.Second),
+		objectstorage.LeakDetectionEnabled(true))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	cachedObj, _ := objects.StoreIfAbsent(NewThreeLevelObj(1, 2, 3))
+	cachedObj.Release()
+
+	sizeBeforeFlush := objects.GetSize()
+	if sizeBeforeFlush != 1 {
+		t.Fatalf("expected object storage size to be 1 but was %d", sizeBeforeFlush)
+	}
+
+	objects.Flush()
+	sizeAfterFlush := objects.GetSize()
+	if sizeAfterFlush != 0 {
+		t.Fatalf("expected object storage size to be zero but was %d", sizeAfterFlush)
+	}
 }
 
 func TestStorableObjectFlags(t *testing.T) {
