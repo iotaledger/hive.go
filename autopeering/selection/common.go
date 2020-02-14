@@ -11,7 +11,7 @@ import (
 const (
 	DefaultInboundNeighborSize        = 4
 	DefaultOutboundNeighborSize       = 4
-	DefaultSaltLifetime               = 30 * time.Minute
+	DefaultSaltLifetime               = 2 * time.Hour
 	DefaultOutboundUpdateInterval     = 1 * time.Second
 	DefaultFullOutboundUpdateInterval = 1 * time.Minute
 )
