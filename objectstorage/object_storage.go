@@ -424,8 +424,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 	currentMap := objectStorage.cachedObjects
 
 	objectStorage.cacheMutex.RLock()
-	alreadyCachedObject, cachedObjectExists := currentMap[objectKey]
-	if cachedObjectExists {
+	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
 		alreadyCachedObject.(*CachedObjectImpl).Retain()
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
@@ -438,10 +437,18 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 		return
 	}
 
-	// create a new cached object to hold the object
 	objectStorage.cacheMutex.Lock()
 	defer objectStorage.cacheMutex.Unlock()
 
+	// check if the object was created in the meantime
+	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
+		alreadyCachedObject.(*CachedObjectImpl).Retain()
+		cacheHit = true
+		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
+		return
+	}
+
+	// create a new cached object to hold the object
 	newlyCachedObject := newCachedObject(objectStorage, key)
 	newlyCachedObject.Retain()
 
@@ -592,7 +599,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 
 		subPartition, subMapExists := currentPartition[partitionKey]
 		if !subMapExists {
-			// partition doesn't exist, so we can't deleted anything
+			// partition doesn't exist, so we can't delete anything
 			return
 		}
 		partitionStack = append(partitionStack, subPartition.(map[string]interface{}))
