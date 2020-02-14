@@ -39,7 +39,6 @@ func (bw *BatchedWriter) StartBatchWriter() {
 	bw.startStopMutex.Lock()
 	if atomic.LoadInt32(&bw.running) == 0 {
 		atomic.StoreInt32(&bw.running, 1)
-
 		go bw.runBatchWriter()
 	}
 	bw.startStopMutex.Unlock()
@@ -59,7 +58,6 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	if atomic.LoadInt32(&bw.running) == 0 {
 		bw.StartBatchWriter()
 	}
-
 	bw.batchQueue <- object
 }
 
