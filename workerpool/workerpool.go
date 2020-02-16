@@ -37,9 +37,10 @@ func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
 	return
 }
 
-func (wp *WorkerPool) Submit(params ...interface{}) (result chan interface{}) {
+func (wp *WorkerPool) Submit(params ...interface{}) (result chan interface{}, added bool) {
 
 	wp.mutex.RLock()
+	defer wp.mutex.RUnlock()
 
 	if !wp.shutdown {
 		result = make(chan interface{}, 1)
@@ -48,16 +49,16 @@ func (wp *WorkerPool) Submit(params ...interface{}) (result chan interface{}) {
 			params:     params,
 			resultChan: result,
 		}
+		return result, true
 	}
 
-	wp.mutex.RUnlock()
-
-	return
+	return nil, false
 }
 
 func (wp *WorkerPool) TrySubmit(params ...interface{}) (result chan interface{}, added bool) {
 
 	wp.mutex.RLock()
+	defer wp.mutex.RUnlock()
 
 	if !wp.shutdown {
 		result = make(chan interface{}, 1)
@@ -67,17 +68,15 @@ func (wp *WorkerPool) TrySubmit(params ...interface{}) (result chan interface{},
 			params:     params,
 			resultChan: result,
 		}:
-			added = true
+			return result, true
 		default:
 			// Queue full => drop the task
-			added = false
 			close(result)
+			return nil, false
 		}
 	}
 
-	wp.mutex.RUnlock()
-
-	return
+	return nil, false
 }
 
 func (wp *WorkerPool) Start() {
