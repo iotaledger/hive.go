@@ -16,7 +16,8 @@ func Benchmark(b *testing.B) {
 		wg.Add(1)
 
 		go func(i int) {
-			<-pool.Submit(i)
+			result, _ := pool.Submit(i)
+			<-result
 
 			wg.Done()
 		}(i)
