@@ -38,9 +38,10 @@ func New(workerFnc func([]Task), optionalOptions ...Option) (result *BatchWorker
 	return
 }
 
-func (wp *BatchWorkerPool) Submit(params ...interface{}) (result chan interface{}) {
+func (wp *BatchWorkerPool) Submit(params ...interface{}) (result chan interface{}, added bool) {
 
 	wp.mutex.RLock()
+	defer wp.mutex.RUnlock()
 
 	if !wp.shutdown {
 		result = make(chan interface{}, 1)
@@ -49,11 +50,10 @@ func (wp *BatchWorkerPool) Submit(params ...interface{}) (result chan interface{
 			params:     params,
 			resultChan: result,
 		}
+		return result, true
 	}
 
-	wp.mutex.RUnlock()
-
-	return
+	return nil, false
 }
 
 func (wp *BatchWorkerPool) Start() {
