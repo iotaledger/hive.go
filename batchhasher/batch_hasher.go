@@ -1,10 +1,11 @@
 package batchhasher
 
 import (
-	"github.com/iotaledger/hive.go/batchworkerpool"
-	"github.com/iotaledger/hive.go/ternary_mux"
 	"runtime"
 	"strconv"
+
+	"github.com/iotaledger/hive.go/batchworkerpool"
+	"github.com/iotaledger/hive.go/ternary_mux"
 
 	"github.com/iotaledger/iota.go/trinary"
 )
@@ -48,7 +49,8 @@ func (this *BatchHasher) GetPendingQueueSize() int {
 }
 
 func (this *BatchHasher) Hash(trits trinary.Trits) trinary.Trits {
-	return (<-this.workerPool.Submit(trits)).(trinary.Trits)
+	result, _ := this.workerPool.Submit(trits)
+	return (<-result).(trinary.Trits)
 }
 
 func (this *BatchHasher) processHashes(tasks []batchworkerpool.Task) {
