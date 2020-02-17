@@ -13,11 +13,12 @@ import (
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
+	badgerInstance     *badger.DB
 	storageId          []byte
 	objectFactory      StorableObjectFactory
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
-	options            *ObjectStorageOptions
+	options            *Options
 	size               int
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
@@ -28,17 +29,21 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...ObjectStorageOption) *ObjectStorage {
-	return &ObjectStorage{
-		storageId:     storageId,
-		objectFactory: objectFactory,
-		cachedObjects: make(map[string]interface{}),
-		options:       newObjectStorageOptions(optionalOptions),
+func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+	result := &ObjectStorage{
+		badgerInstance: badgerInstance,
+		storageId:      storageId,
+		objectFactory:  objectFactory,
+		cachedObjects:  make(map[string]interface{}),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
+
+	result.options = newOptions(result, optionalOptions)
+
+	return result
 }
 
 func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
@@ -321,7 +326,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
 
@@ -375,7 +380,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	objectStorage.flushMutex.Lock()
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.options.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
+	if err := objectStorage.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
 
@@ -658,7 +663,7 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 		return nil
 	}
 	var marshaledData []byte
-	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) error {
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
 			return err
 		} else {
@@ -685,7 +690,7 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 		return false
 	}
 
-	if err := objectStorage.options.badgerInstance.View(func(txn *badger.Txn) (err error) {
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
 		_, err = txn.Get(append(objectStorage.storageId, key...))
 
 		return
