@@ -195,15 +195,14 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		return deleteExistingEntry(cachedObject)
 	}
 
+	cachedObject.publishResult(nil)
+	cachedObject.Release()
+
 	if objectStorage.objectExistsInBadger(key) {
 		cachedObject.blindDelete.Set()
-		cachedObject.publishResult(nil)
-		cachedObject.Release()
 
 		return true
 	}
-
-	cachedObject.Release()
 
 	return false
 }
@@ -564,6 +563,7 @@ func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
 	if objectStorage.options.keyPartitions == nil {
 		return objectStorage.deleteElementFromUnpartitionedCache(key)
 	}
+
 	return objectStorage.deleteElementFromPartitionedCache(key)
 }
 

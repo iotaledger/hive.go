@@ -26,7 +26,7 @@ func init() {
 func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
 
 func TestPrefixIteration(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.CacheTime(10*time.Second), objectstorage.LeakDetectionEnabled(true))
+	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -103,7 +103,6 @@ func TestPrefixIteration(t *testing.T) {
 func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
 	objects := objectstorage.New(testDatabase, []byte("Nakamoto"), testObjectFactory,
 		objectstorage.PartitionKey(1, 1, 1),
-		objectstorage.CacheTime(5*time.Second),
 		objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
@@ -204,7 +203,7 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 }
 
 func TestStoreIfAbsent(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.CacheTime(1*time.Second))
+	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -262,11 +261,11 @@ func TestConcurrency(t *testing.T) {
 
 		cachedObject := objects.Load([]byte("Hans"))
 
+		// make sure the 2nd goroutine "processes" the object first
+		time.Sleep(1000 * time.Millisecond)
+
 		// check if we "see" the modifications of the 2nd goroutine (using the "consume" method)
 		cachedObject.Consume(func(object objectstorage.StorableObject) {
-			// make sure the 2nd goroutine "processes" the object first
-			time.Sleep(100 * time.Millisecond)
-
 			// test if the changes of the 2nd goroutine are visible
 			if object.(*TestObject).value != 3 {
 				t.Error(errors.New("the modifications of the 2nd goroutine should be visible"))
