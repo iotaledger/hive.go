@@ -584,68 +584,60 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 	return cachedObjectExists
 }
 
-func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExisted bool) {
-	keyPartitions := objectStorage.options.keyPartitions
-	partitionCount := len(keyPartitions)
+func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExists bool) {
+	keyPartitionCount := len(objectStorage.options.keyPartitions)
 	keyOffset := 0
+	mapStack := make([]map[string]interface{}, 1)
+	mapStack[0] = objectStorage.cachedObjects
 
-	// holds a stack of partitions
-	partitionStack := []map[string]interface{}{objectStorage.cachedObjects}
+	// iterate through partitions towards the value
+	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
+		// retrieve current partition
+		currentMap := mapStack[len(mapStack)-1]
 
-	// stack up partitions as long as we aren't at the object layer
-	var partitionId int
-	var currentPartition map[string]interface{}
-	for ; partitionId < partitionCount-1; partitionId++ {
-		partitionKeyLength := keyPartitions[partitionId]
-		currentPartition = partitionStack[len(partitionStack)-1]
+		// determine current key segment
+		stringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
 
-		partitionKey := typeutils.BytesToString(key[keyOffset : keyOffset+partitionKeyLength])
-		keyOffset += partitionKeyLength
+		// if we didn't arrive at the values, yet
+		if keyPartitionId != keyPartitionCount-1 {
+			// retrieve next partition
+			subMap, subMapExists := currentMap[stringKey]
 
-		subPartition, subMapExists := currentPartition[partitionKey]
-		if !subMapExists {
-			// partition doesn't exist, so we can't delete anything
-			return
+			// abort if the partition does not exist
+			if !subMapExists {
+				return
+			}
+
+			// advance to the next "level" of partitions
+			mapStack = append(mapStack, subMap.(map[string]interface{}))
+			continue
 		}
-		partitionStack = append(partitionStack, subPartition.(map[string]interface{}))
+
+		// check if value exists
+		if _, elementExists = currentMap[stringKey]; elementExists {
+			// remove value
+			delete(currentMap, stringKey)
+
+			// clean up empty parent partitions (recursively)
+			parentKeyPartitionId := keyPartitionId
+			keyOffset -= keyPartitionLength
+			for len(currentMap) == 0 && len(mapStack) > 1 {
+				parentMap := mapStack[len(mapStack)-2]
+				parentKeyPartitionId = parentKeyPartitionId - 1
+				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
+
+				delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
+				keyOffset -= parentKeyLength
+
+				currentMap = parentMap
+				mapStack = mapStack[:len(mapStack)-1]
+			}
+
+			objectStorage.size--
+		}
 	}
 
-	// forward current partition to object layer
-	objectLayer := partitionStack[len(partitionStack)-1]
-
-	// grab the object key
-	objectKey := typeutils.BytesToString(key[keyOffset:])
-	if _, elementExisted = objectLayer[objectKey]; !elementExisted {
-		return
-	}
-
-	// delete the object from the partition
-	delete(objectLayer, objectKey)
-	objectStorage.size--
-
-	// if there are other elements in this partition or this object storage contains
-	// only two partitions, we can stop the deletion op.
-	if len(objectLayer) != 0 || len(partitionStack) <= 1 {
-		return
-	}
-
-	// if the current partition is empty and we have parent partitions, we start to delete
-	// partitions bottom-up, if the corresponding partitions became empty
-	parentPartitionId := partitionId
-	for ; len(currentPartition) == 0 && len(partitionStack) >= 2; parentPartitionId-- {
-
-		// get parent partition
-		parentPartition := partitionStack[len(partitionStack)-2]
-		parentKeyLength := objectStorage.options.keyPartitions[parentPartitionId]
-
-		// since the previous partition became empty, we delete the key leading to it from the parent partition
-		delete(parentPartition, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
-		keyOffset -= parentKeyLength
-
-		// now recursively go up a partition and check whether it became empty by the deletion
-		currentPartition = parentPartition
-		partitionStack = partitionStack[:len(partitionStack)-1]
-	}
 	return
 }
 
