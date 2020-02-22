@@ -24,7 +24,7 @@ type Plugin struct {
 
 // Creates a new plugin with the given name, default status and callbacks.
 // The last specified callback is the mandatory run callback, while all other callbacks are configure callbacks.
-func NewPlugin(name string, status int, callback Callback, callbacks ...Callback) *Plugin {
+func NewPlugin(name string, status int, callbacks ...Callback) *Plugin {
 	plugin := &Plugin{
 		Name:   name,
 		Status: status,
@@ -36,15 +36,16 @@ func NewPlugin(name string, status int, callback Callback, callbacks ...Callback
 
 	AddPlugin(name, status)
 
-	if len(callbacks) >= 1 {
-		plugin.Events.Configure.Attach(events.NewClosure(callback))
-		for _, callback = range callbacks[:len(callbacks)-1] {
-			plugin.Events.Configure.Attach(events.NewClosure(callback))
-		}
-
-		plugin.Events.Run.Attach(events.NewClosure(callbacks[len(callbacks)-1]))
-	} else {
-		plugin.Events.Run.Attach(events.NewClosure(callback))
+	switch len(callbacks) {
+	case 0:
+		// plugin doesn't have any callbacks (i.e. plugins that execute stuff on init())
+	case 1:
+		plugin.Events.Run.Attach(events.NewClosure(callbacks[0]))
+	case 2:
+		plugin.Events.Configure.Attach(events.NewClosure(callbacks[0]))
+		plugin.Events.Run.Attach(events.NewClosure(callbacks[1]))
+	default:
+		panic("too many callbacks in NewPlugin(...)")
 	}
 
 	return plugin
