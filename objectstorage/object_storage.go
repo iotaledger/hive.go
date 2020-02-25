@@ -732,7 +732,9 @@ func (objectStorage *ObjectStorage) flush() {
 
 	// manually push the objects to the BatchWriter
 	for _, cachedObject := range cachedObjects {
-		objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+		if cachedObject != nil {
+			objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+		}
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
