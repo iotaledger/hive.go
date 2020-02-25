@@ -27,6 +27,8 @@ type Config struct {
 	// These settings are required and configure the listener:
 	Log *logger.Logger
 
+	Version uint32 // Protocol version
+
 	// These settings are optional:
 	MasterPeers []*peer.Peer // list of master peers used for bootstrapping
 }

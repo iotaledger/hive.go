@@ -48,6 +48,9 @@ func New(local *peer.Local, cfg Config) *Protocol {
 		log:      cfg.Log,
 		running:  typeutils.NewAtomicBool(),
 	}
+
+	VersionNum = cfg.Version
+
 	p.mgr = newManager(p, cfg.MasterPeers, cfg.Log.Named("mgr"))
 
 	return p

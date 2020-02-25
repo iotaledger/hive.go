@@ -17,9 +17,11 @@ const (
 	MaxPeersInResponse = 6
 	// MaxServices is the maximum number of services a peer can support.
 	MaxServices = 5
+)
 
+var (
 	// VersionNum specifies the expected version number for this Protocol.
-	VersionNum = 0
+	VersionNum = uint32(0)
 )
 
 type network interface {
