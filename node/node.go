@@ -71,6 +71,10 @@ func isEnabled(plugin *Plugin) bool {
 
 func (node *Node) configure(plugins ...*Plugin) {
 	for _, plugin := range plugins {
+		plugin.Events.Init.Trigger(plugin)
+	}
+
+	for _, plugin := range plugins {
 		if IsSkipped(plugin) {
 			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
 			continue

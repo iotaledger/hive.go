@@ -5,6 +5,7 @@ import (
 )
 
 type pluginEvents struct {
+	Init      *events.Event
 	Configure *events.Event
 	Run       *events.Event
 }
