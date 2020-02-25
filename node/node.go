@@ -25,9 +25,14 @@ func New(optionalOptions ...NodeOption) *Node {
 	node := &Node{
 		wg:            &sync.WaitGroup{},
 		loadedPlugins: make([]*Plugin, 0),
-		Logger:        logger.NewLogger("Node"),
 		options:       newNodeOptions(optionalOptions),
 	}
+
+	// initialize plugins
+	node.init(node.options.plugins...)
+
+	// initialize logger after init phase because plugins could modify it
+	node.Logger = logger.NewLogger("Node")
 
 	// configure the enabled plugins
 	node.configure(node.options.plugins...)
@@ -69,11 +74,13 @@ func isEnabled(plugin *Plugin) bool {
 	return exists
 }
 
-func (node *Node) configure(plugins ...*Plugin) {
+func (node *Node) init(plugins ...*Plugin) {
 	for _, plugin := range plugins {
 		plugin.Events.Init.Trigger(plugin)
 	}
+}
 
+func (node *Node) configure(plugins ...*Plugin) {
 	for _, plugin := range plugins {
 		if IsSkipped(plugin) {
 			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
