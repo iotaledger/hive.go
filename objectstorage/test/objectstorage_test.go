@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -285,4 +286,30 @@ func TestConcurrency(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestEvictionBug(t *testing.T) {
+	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(1500), objectstorage.PersistenceEnabled(true))
+
+	//testCount := 500 // good
+	testCount := 4000 // fails (if not, make the number bigger)
+
+	// create the test objects
+	for i := 0; i < testCount; i++ {
+		objects.Store(NewTestObject(fmt.Sprintf("%v", i), 0)).Release()
+	}
+
+	for i := 0; i < testCount; i++ {
+		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
+		cachedObject.Get().(*TestObject).value = 1
+		cachedObject.Release()
+	}
+
+	for i := 0; i < testCount; i++ {
+		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
+		if cachedObject.Get().(*TestObject).value != 1 {
+			t.Error(fmt.Errorf("the modifications should be visible %v", i))
+		}
+		cachedObject.Release()
+	}
 }
