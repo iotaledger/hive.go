@@ -656,12 +656,10 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 				}
 
 				parentKeyPartitionId--
-
 				parentMap := mapStack[parentKeyPartitionId]
 				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
-				parentKey := typeutils.BytesToString(key[keyOffset-parentKeyLength : keyOffset])
 
-				delete(parentMap, parentKey)
+				delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
 				keyOffset -= parentKeyLength
 			}
 		}
