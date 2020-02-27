@@ -109,7 +109,7 @@ func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
 		t.Error(err)
 	}
 
-	cachedObj, _ := objects.StoreIfAbsent(NewThreeLevelObj(1, 2, 3))
+	cachedObj, _ := objects.StoreIfAbsent(NewThreeLevelObj(65, 66, 67))
 	cachedObj.Release()
 
 	sizeBeforeFlush := objects.GetSize()
@@ -292,7 +292,7 @@ func TestEvictionBug(t *testing.T) {
 	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(1500), objectstorage.PersistenceEnabled(true))
 
 	//testCount := 500 // good
-	testCount := 4000 // fails (if not, make the number bigger)
+	testCount := 80000 // fails (if not, make the number bigger)
 
 	// create the test objects
 	for i := 0; i < testCount; i++ {
@@ -302,6 +302,7 @@ func TestEvictionBug(t *testing.T) {
 	for i := 0; i < testCount; i++ {
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
 		cachedObject.Get().(*TestObject).value = 1
+		cachedObject.Get().SetModified(true)
 		cachedObject.Release()
 	}
 
@@ -309,6 +310,8 @@ func TestEvictionBug(t *testing.T) {
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
 		if cachedObject.Get().(*TestObject).value != 1 {
 			t.Error(fmt.Errorf("the modifications should be visible %v", i))
+
+			return
 		}
 		cachedObject.Release()
 	}

@@ -23,6 +23,7 @@ type ObjectStorage struct {
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
+	retainedPartitions *RetainedPartition
 
 	Events Events
 }
@@ -31,10 +32,11 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
-		badgerInstance: badgerInstance,
-		storageId:      storageId,
-		objectFactory:  objectFactory,
-		cachedObjects:  make(map[string]interface{}),
+		badgerInstance:     badgerInstance,
+		storageId:          storageId,
+		objectFactory:      objectFactory,
+		cachedObjects:      make(map[string]interface{}),
+		retainedPartitions: NewRetainedPartition(),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
@@ -483,6 +485,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	keyPartitionCount := len(objectStorage.options.keyPartitions)
 	currentPartition := objectStorage.cachedObjects
 	keyOffset := 0
+	traversedPartitions := make([]string, 0)
 
 	// loop through partitions up until the object layer
 	for i := 0; i < keyPartitionCount-1; i++ {
@@ -496,6 +499,8 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 		if subPartitionExists {
 			currentPartition = subPartition.(map[string]interface{})
 
+			traversedPartitions = append(traversedPartitions, partitionKey)
+
 			continue
 		}
 
@@ -506,6 +511,9 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 		// switch to write locks and check for existence again
 		if !writeLocked {
+			objectStorage.retainedPartitions.Retain(traversedPartitions)
+			defer objectStorage.retainedPartitions.Release(traversedPartitions)
+
 			objectStorage.cacheMutex.RUnlock()
 			objectStorage.cacheMutex.Lock()
 			writeLocked = true
@@ -544,6 +552,9 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// switch to write locks and check for existence again
 	if !writeLocked {
+		objectStorage.retainedPartitions.Retain(traversedPartitions)
+		defer objectStorage.retainedPartitions.Release(traversedPartitions)
+
 		objectStorage.cacheMutex.RUnlock()
 		objectStorage.cacheMutex.Lock()
 		writeLocked = true
@@ -602,6 +613,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 	keyOffset := 0
 	mapStack := make([]map[string]interface{}, 1)
 	mapStack[0] = objectStorage.cachedObjects
+	traversedPartitions := make([]string, 0)
 
 	// iterate through partitions towards the value
 	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
@@ -624,6 +636,8 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 
 			// advance to the next "level" of partitions
 			mapStack = append(mapStack, subMap.(map[string]interface{}))
+			traversedPartitions = append(traversedPartitions, stringKey)
+
 			continue
 		}
 
@@ -631,23 +645,25 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		if _, elementExists = currentMap[stringKey]; elementExists {
 			// remove value
 			delete(currentMap, stringKey)
+			objectStorage.size--
 
 			// clean up empty parent partitions (recursively)
 			parentKeyPartitionId := keyPartitionId
 			keyOffset -= keyPartitionLength
-			for len(currentMap) == 0 && len(mapStack) > 1 {
-				parentMap := mapStack[len(mapStack)-2]
-				parentKeyPartitionId = parentKeyPartitionId - 1
+			for parentKeyPartitionId >= 1 && len(mapStack[parentKeyPartitionId]) == 0 {
+				if objectStorage.retainedPartitions.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
+					return
+				}
+
+				parentKeyPartitionId--
+
+				parentMap := mapStack[parentKeyPartitionId]
 				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
+				parentKey := typeutils.BytesToString(key[keyOffset-parentKeyLength : keyOffset])
 
-				delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
+				delete(parentMap, parentKey)
 				keyOffset -= parentKeyLength
-
-				currentMap = parentMap
-				mapStack = mapStack[:len(mapStack)-1]
 			}
-
-			objectStorage.size--
 		}
 	}
 
