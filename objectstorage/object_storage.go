@@ -664,6 +664,10 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 			delete(currentMap, stringKey)
 			objectStorage.size--
 
+			if !objectStorage.checkSize() {
+				panic(fmt.Errorf("Error after removing key " + hex.EncodeToString(key)))
+			}
+
 			// clean up empty parent partitions (recursively)
 			parentKeyPartitionId := keyPartitionId
 			keyOffset -= keyPartitionLength
