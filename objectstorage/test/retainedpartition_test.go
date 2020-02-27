@@ -9,7 +9,7 @@ import (
 )
 
 func TestRetainedPartition(t *testing.T) {
-	retainedPartition := objectstorage.NewRetainedPartition()
+	retainedPartition := objectstorage.NewPartitionsManager()
 
 	assert.Equal(t, false, retainedPartition.IsRetained([]string{"A"}))
 	assert.Equal(t, false, retainedPartition.IsRetained([]string{"A", "B"}))
@@ -20,8 +20,12 @@ func TestRetainedPartition(t *testing.T) {
 	assert.Equal(t, true, retainedPartition.IsRetained([]string{"A", "B"}))
 	assert.Equal(t, false, retainedPartition.IsRetained([]string{"A", "B", "C"}))
 
+	retainedPartition.Retain([]string{"A"})
+
 	retainedPartition.Release([]string{"A", "B"})
 
-	assert.Equal(t, false, retainedPartition.IsRetained([]string{"A"}))
+	assert.Equal(t, true, retainedPartition.IsRetained([]string{"A"}))
 	assert.Equal(t, false, retainedPartition.IsRetained([]string{"A", "B"}))
+
+	retainedPartition.Release([]string{"A"})
 }

@@ -1,8 +1,6 @@
 package objectstorage
 
 import (
-	"encoding/hex"
-	"fmt"
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
@@ -25,7 +23,7 @@ type ObjectStorage struct {
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
-	retainedPartitions *RetainedPartition
+	partitionsManager  *PartitionsManager
 
 	Events Events
 }
@@ -34,11 +32,11 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
-		badgerInstance:     badgerInstance,
-		storageId:          storageId,
-		objectFactory:      objectFactory,
-		cachedObjects:      make(map[string]interface{}),
-		retainedPartitions: NewRetainedPartition(),
+		badgerInstance:    badgerInstance,
+		storageId:         storageId,
+		objectFactory:     objectFactory,
+		cachedObjects:     make(map[string]interface{}),
+		partitionsManager: NewPartitionsManager(),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
@@ -513,8 +511,8 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 		// switch to write locks and check for existence again
 		if !writeLocked {
-			objectStorage.retainedPartitions.Retain(traversedPartitions)
-			defer objectStorage.retainedPartitions.Release(traversedPartitions)
+			objectStorage.partitionsManager.Retain(traversedPartitions)
+			defer objectStorage.partitionsManager.Release(traversedPartitions)
 
 			objectStorage.cacheMutex.RUnlock()
 			objectStorage.cacheMutex.Lock()
@@ -554,8 +552,8 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// switch to write locks and check for existence again
 	if !writeLocked {
-		objectStorage.retainedPartitions.Retain(traversedPartitions)
-		defer objectStorage.retainedPartitions.Release(traversedPartitions)
+		objectStorage.partitionsManager.Retain(traversedPartitions)
+		defer objectStorage.partitionsManager.Release(traversedPartitions)
 
 		objectStorage.cacheMutex.RUnlock()
 		objectStorage.cacheMutex.Lock()
@@ -582,22 +580,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	currentPartition[partitionKey] = cachedObject
 	objectStorage.size++
 
-	if !objectStorage.checkSize() {
-		panic(fmt.Errorf("Error after adding key " + hex.EncodeToString(key)))
-	}
-
 	return
-}
-
-func (objectStorage *ObjectStorage) checkSize() bool {
-	var foundObjectCount int
-	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		foundObjectCount++
-
-		return true
-	})
-
-	return foundObjectCount == objectStorage.size
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
@@ -664,15 +647,11 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 			delete(currentMap, stringKey)
 			objectStorage.size--
 
-			if !objectStorage.checkSize() {
-				panic(fmt.Errorf("Error after removing key " + hex.EncodeToString(key)))
-			}
-
 			// clean up empty parent partitions (recursively)
 			parentKeyPartitionId := keyPartitionId
 			keyOffset -= keyPartitionLength
 			for parentKeyPartitionId >= 1 && len(mapStack[parentKeyPartitionId]) == 0 {
-				if objectStorage.retainedPartitions.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
+				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
 					return
 				}
 
