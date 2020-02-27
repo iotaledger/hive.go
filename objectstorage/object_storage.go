@@ -23,6 +23,7 @@ type ObjectStorage struct {
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
+	partitionsManager  *PartitionsManager
 
 	Events Events
 }
@@ -31,10 +32,11 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
-		badgerInstance: badgerInstance,
-		storageId:      storageId,
-		objectFactory:  objectFactory,
-		cachedObjects:  make(map[string]interface{}),
+		badgerInstance:    badgerInstance,
+		storageId:         storageId,
+		objectFactory:     objectFactory,
+		cachedObjects:     make(map[string]interface{}),
+		partitionsManager: NewPartitionsManager(),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
@@ -466,50 +468,11 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 }
 
 func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
-	keyPartitions := objectStorage.options.keyPartitions
-	currentPartition := objectStorage.cachedObjects
-	keyOffset := 0
-
+	// acquire read lock so nobody can write to the cache
 	objectStorage.cacheMutex.RLock()
-	var writeLocked bool
-
-	// advance and create partitions up until the object layer
-	var partitionKey string
-	for i := 0; i < len(keyPartitions)-1; i++ {
-		keyPartitionLength := keyPartitions[i]
-		partitionKey = typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
-		keyOffset += keyPartitionLength
-
-		subPartition, subPartitionExists := currentPartition[partitionKey]
-		if subPartitionExists {
-			currentPartition = subPartition.(map[string]interface{})
-			continue
-		}
-
-		if !createMissingCachedObject {
-			objectStorage.cacheMutex.RUnlock()
-			return
-		}
-
-		if !writeLocked {
-			objectStorage.cacheMutex.RUnlock()
-			objectStorage.cacheMutex.Lock()
-			writeLocked = true
-		}
-
-		subPartition, subPartitionExists = currentPartition[partitionKey]
-		if subPartitionExists {
-			currentPartition = subPartition.(map[string]interface{})
-			continue
-		}
-
-		// create and advance partition
-		subPartition = make(map[string]interface{})
-		currentPartition[partitionKey] = subPartition
-		currentPartition = subPartition.(map[string]interface{})
-	}
 
 	// ensure appropriate lock is unlocked
+	var writeLocked bool
 	defer func() {
 		if writeLocked {
 			objectStorage.cacheMutex.Unlock()
@@ -518,45 +481,106 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 		}
 	}()
 
-	// grab the object key
-	objectLayer := currentPartition
-	objectKey := typeutils.BytesToString(key[keyOffset:])
-	alreadyCachedObject, cachedObjectExists := objectLayer[objectKey]
-	if cachedObjectExists {
-		alreadyCachedObject.(*CachedObjectImpl).Retain()
+	// initialize variables for the loop
+	keyPartitionCount := len(objectStorage.options.keyPartitions)
+	currentPartition := objectStorage.cachedObjects
+	keyOffset := 0
+	traversedPartitions := make([]string, 0)
+
+	// loop through partitions up until the object layer
+	for i := 0; i < keyPartitionCount-1; i++ {
+		// determine the current key segment
+		keyPartitionLength := objectStorage.options.keyPartitions[i]
+		partitionKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		keyOffset += keyPartitionLength
+
+		// if the target partition is found: advance to the next level
+		subPartition, subPartitionExists := currentPartition[partitionKey]
+		if subPartitionExists {
+			currentPartition = subPartition.(map[string]interface{})
+
+			traversedPartitions = append(traversedPartitions, partitionKey)
+
+			continue
+		}
+
+		// abort if we are not supposed to create new entries
+		if !createMissingCachedObject {
+			return
+		}
+
+		// switch to write locks and check for existence again
+		if !writeLocked {
+			objectStorage.partitionsManager.Retain(traversedPartitions)
+			defer objectStorage.partitionsManager.Release(traversedPartitions)
+
+			objectStorage.cacheMutex.RUnlock()
+			objectStorage.cacheMutex.Lock()
+			writeLocked = true
+
+			// if the target partition was created while switching locks: advance to the next level
+			subPartition, subPartitionExists = currentPartition[partitionKey]
+			if subPartitionExists {
+				currentPartition = subPartition.(map[string]interface{})
+
+				continue
+			}
+		}
+
+		// create and advance partition
+		subPartition = make(map[string]interface{})
+		currentPartition[partitionKey] = subPartition
+		currentPartition = subPartition.(map[string]interface{})
+	}
+
+	// determine the object key
+	keyPartitionLength := objectStorage.options.keyPartitions[keyPartitionCount-1]
+	partitionKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+
+	// return if object exists
+	if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
 		cacheHit = true
-		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
+		cachedObject = alreadyCachedObject.(*CachedObjectImpl).Retain().(*CachedObjectImpl)
+
 		return
 	}
 
+	// abort if we are not supposed to create new entries
 	if !createMissingCachedObject {
 		return
 	}
 
+	// switch to write locks and check for existence again
 	if !writeLocked {
+		objectStorage.partitionsManager.Retain(traversedPartitions)
+		defer objectStorage.partitionsManager.Release(traversedPartitions)
+
 		objectStorage.cacheMutex.RUnlock()
 		objectStorage.cacheMutex.Lock()
 		writeLocked = true
+
+		if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
+			cacheHit = true
+			cachedObject = alreadyCachedObject.(*CachedObjectImpl).Retain().(*CachedObjectImpl)
+
+			return
+		}
 	}
 
-	if alreadyCachedObject, cachedObjectExists = objectLayer[objectKey]; cachedObjectExists {
-		alreadyCachedObject.(*CachedObjectImpl).Retain()
-		cacheHit = true
-		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
-		return
-	}
-
-	// create a new cached object to hold the object
-	newlyCachedObj := newCachedObject(objectStorage, key)
-	newlyCachedObj.Retain()
-
+	// mark objectStorage as non-empty
 	if objectStorage.size == 0 {
 		objectStorage.cachedObjectsEmpty.Add(1)
 	}
 
-	objectLayer[objectKey] = newlyCachedObj
+	// create a new cached object ...
+	cachedObject = newCachedObject(objectStorage, key)
+	cachedObject.Retain()
+
+	// ... and store it
+	currentPartition[partitionKey] = cachedObject
 	objectStorage.size++
-	return newlyCachedObj, false
+
+	return
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
@@ -589,6 +613,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 	keyOffset := 0
 	mapStack := make([]map[string]interface{}, 1)
 	mapStack[0] = objectStorage.cachedObjects
+	traversedPartitions := make([]string, 0)
 
 	// iterate through partitions towards the value
 	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
@@ -611,6 +636,8 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 
 			// advance to the next "level" of partitions
 			mapStack = append(mapStack, subMap.(map[string]interface{}))
+			traversedPartitions = append(traversedPartitions, stringKey)
+
 			continue
 		}
 
@@ -618,23 +645,23 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		if _, elementExists = currentMap[stringKey]; elementExists {
 			// remove value
 			delete(currentMap, stringKey)
+			objectStorage.size--
 
 			// clean up empty parent partitions (recursively)
 			parentKeyPartitionId := keyPartitionId
 			keyOffset -= keyPartitionLength
-			for len(currentMap) == 0 && len(mapStack) > 1 {
-				parentMap := mapStack[len(mapStack)-2]
-				parentKeyPartitionId = parentKeyPartitionId - 1
+			for parentKeyPartitionId >= 1 && len(mapStack[parentKeyPartitionId]) == 0 {
+				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
+					return
+				}
+
+				parentKeyPartitionId--
+				parentMap := mapStack[parentKeyPartitionId]
 				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
 
 				delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
 				keyOffset -= parentKeyLength
-
-				currentMap = parentMap
-				mapStack = mapStack[:len(mapStack)-1]
 			}
-
-			objectStorage.size--
 		}
 	}
 
