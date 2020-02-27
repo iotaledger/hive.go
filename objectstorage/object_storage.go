@@ -1,6 +1,8 @@
 package objectstorage
 
 import (
+	"encoding/hex"
+	"fmt"
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
@@ -580,7 +582,22 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	currentPartition[partitionKey] = cachedObject
 	objectStorage.size++
 
+	if !objectStorage.checkSize() {
+		panic(fmt.Errorf("Error after adding key " + hex.EncodeToString(key)))
+	}
+
 	return
+}
+
+func (objectStorage *ObjectStorage) checkSize() bool {
+	var foundObjectCount int
+	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
+		foundObjectCount++
+
+		return true
+	})
+
+	return foundObjectCount == objectStorage.size
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
