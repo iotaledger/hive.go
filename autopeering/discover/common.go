@@ -31,21 +31,24 @@ type Options struct {
 
 type option func(*Options)
 
+// Logger sets the logger
 func Logger(log *logger.Logger) option {
-	return func(c *Options) {
-		c.Log = log
+	return func(args *Options) {
+		args.Log = log
 	}
 }
 
+// Version sets the VersionNumber of the protocol
 func Version(version uint32) option {
-	return func(c *Options) {
-		c.Version = version
+	return func(args *Options) {
+		args.Version = version
 	}
 }
 
+// MasterPeers sets the masterPeers to use
 func MasterPeers(masterPeers []*peer.Peer) option {
-	return func(c *Options) {
-		c.MasterPeers = masterPeers
+	return func(args *Options) {
+		args.MasterPeers = masterPeers
 	}
 }
 

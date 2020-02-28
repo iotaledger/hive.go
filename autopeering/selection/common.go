@@ -33,18 +33,21 @@ type Options struct {
 
 type option func(*Options)
 
+// Logger sets the logger
 func Logger(log *logger.Logger) option {
 	return func(args *Options) {
 		args.Log = log
 	}
 }
 
+// DropOnUpdate sets the option to drop all neighbors when the salt is updated
 func DropOnUpdate(dropOnUpdate bool) option {
 	return func(args *Options) {
 		args.DropOnUpdate = dropOnUpdate
 	}
 }
 
+// NeighborValidator sets the potential neighbor validator
 func NeighborValidator(neighborValidator Validator) option {
 	return func(args *Options) {
 		args.NeighborValidator = neighborValidator
