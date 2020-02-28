@@ -22,33 +22,29 @@ var (
 	maxReplacements  = DefaultMaxReplacements  // maximum number of peers kept in the replacement list
 )
 
-// Config holds discovery related settings.
-type Config struct {
-	// These settings are required and configure the listener:
-	Log *logger.Logger
-
-	Version uint32 // Protocol version
-
-	// These settings are optional:
-	MasterPeers []*peer.Peer // list of master peers used for bootstrapping
+// Options holds discovery related settings.
+type Options struct {
+	Log         *logger.Logger // Logger
+	Version     uint32         // Protocol version
+	MasterPeers []*peer.Peer   // list of master peers used for bootstrapping
 }
 
-type option func(*Config)
+type option func(*Options)
 
-func SetLogger(log *logger.Logger) option {
-	return func(c *Config) {
+func Logger(log *logger.Logger) option {
+	return func(c *Options) {
 		c.Log = log
 	}
 }
 
-func SetVersion(version uint32) option {
-	return func(c *Config) {
+func Version(version uint32) option {
+	return func(c *Options) {
 		c.Version = version
 	}
 }
 
-func SetMasterPeers(masterPeers []*peer.Peer) option {
-	return func(c *Config) {
+func MasterPeers(masterPeers []*peer.Peer) option {
+	return func(c *Options) {
 		c.MasterPeers = masterPeers
 	}
 }

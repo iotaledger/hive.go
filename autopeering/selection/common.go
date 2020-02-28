@@ -24,33 +24,30 @@ var (
 	fullOutboundUpdateInterval = DefaultFullOutboundUpdateInterval // time after which full out neighbors are updated
 )
 
-// Config holds settings for the peer selection.
-type Config struct {
-	// Logger
-	Log *logger.Logger
-
-	// These settings are optional:
-	DropOnUpdate      bool      // set true to drop all neighbors when the salt is updated
-	NeighborValidator Validator // potential neighbor validator
+// Options holds settings for the peer selection.
+type Options struct {
+	Log               *logger.Logger // Logger
+	DropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
+	NeighborValidator Validator      // potential neighbor validator
 }
 
-type option func(*Config)
+type option func(*Options)
 
-func SetLogger(log *logger.Logger) option {
-	return func(c *Config) {
-		c.Log = log
+func Logger(log *logger.Logger) option {
+	return func(args *Options) {
+		args.Log = log
 	}
 }
 
-func SetDropOnUpdate(dropOnUpdate bool) option {
-	return func(c *Config) {
-		c.DropOnUpdate = dropOnUpdate
+func DropOnUpdate(dropOnUpdate bool) option {
+	return func(args *Options) {
+		args.DropOnUpdate = dropOnUpdate
 	}
 }
 
-func SetNeighborValidator(neighborValidator Validator) option {
-	return func(c *Config) {
-		c.NeighborValidator = neighborValidator
+func NeighborValidator(neighborValidator Validator) option {
+	return func(args *Options) {
+		args.NeighborValidator = neighborValidator
 	}
 }
 

@@ -141,7 +141,7 @@ func newTestProtocol(trans transport.Transport) (*Protocol, func()) {
 	peerMap[local.ID()] = &local.Peer
 	l := log.Named(trans.LocalAddr().String())
 
-	prot := New(local, dummyDiscovery{}, SetLogger(l.Named("sel")))
+	prot := New(local, dummyDiscovery{}, Logger(l.Named("sel")))
 	srv := server.Serve(local, trans, l.Named("srv"), prot)
 	prot.Start(srv)
 
@@ -160,8 +160,11 @@ func newFullTestProtocol(trans transport.Transport, masterPeers ...*peer.Peer) (
 	peerMap[local.ID()] = &local.Peer
 	l := log.Named(trans.LocalAddr().String())
 
-	discovery := discover.New(local, discover.SetLogger(l.Named("disc")), discover.SetMasterPeers(masterPeers))
-	selection := New(local, discovery, SetLogger(l.Named("sel")))
+	discovery := discover.New(local,
+		discover.Logger(l.Named("disc")),
+		discover.MasterPeers(masterPeers),
+	)
+	selection := New(local, discovery, Logger(l.Named("sel")))
 
 	srv := server.Serve(local, trans, l.Named("srv"), discovery, selection)
 

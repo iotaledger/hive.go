@@ -53,24 +53,24 @@ type Protocol struct {
 }
 
 // New creates a new neighbor selection protocol.
-func New(local *peer.Local, disc DiscoverProtocol, opts ...option) *Protocol {
+func New(local *peer.Local, disc DiscoverProtocol, setters ...option) *Protocol {
 	log := logger.NewExampleLogger("selection")
-	cfg := &Config{
+	args := &Options{
 		Log: log.Named("sel"),
 	}
 
-	for _, opt := range opts {
-		opt(cfg)
+	for _, setter := range setters {
+		setter(args)
 	}
 
 	p := &Protocol{
 		Protocol: server.Protocol{},
 		loc:      local,
 		disc:     disc,
-		log:      cfg.Log,
+		log:      args.Log,
 		running:  typeutils.NewAtomicBool(),
 	}
-	p.mgr = newManager(p, disc.GetVerifiedPeers, cfg.Log.Named("mgr"), *cfg)
+	p.mgr = newManager(p, disc.GetVerifiedPeers, args.Log.Named("mgr"), *args)
 
 	return p
 }

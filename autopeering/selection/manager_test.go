@@ -210,7 +210,7 @@ func newTestManager(name string, mgrMap map[peer.ID]*manager) *manager {
 	db, _ := peer.NewDB(mapdb.NewMapDB())
 	local := peertest.NewLocal("mock", name, db)
 	networkMock := &networkMock{loc: local, mgr: mgrMap}
-	m := newManager(networkMock, networkMock.GetKnownPeers, log.Named(name), Config{})
+	m := newManager(networkMock, networkMock.GetKnownPeers, log.Named(name), Options{})
 	mgrMap[m.getID()] = m
 	return m
 }

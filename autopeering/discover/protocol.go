@@ -41,27 +41,27 @@ type Protocol struct {
 }
 
 // New creates a new discovery protocol.
-func New(local *peer.Local, opts ...option) *Protocol {
+func New(local *peer.Local, setters ...option) *Protocol {
 	log := logger.NewExampleLogger("discover")
-	cfg := &Config{
+	args := &Options{
 		Log:     log.Named("disc"),
 		Version: 0,
 	}
 
-	for _, opt := range opts {
-		opt(cfg)
+	for _, setter := range setters {
+		setter(args)
 	}
 
 	p := &Protocol{
 		Protocol: server.Protocol{},
 		loc:      local,
-		log:      cfg.Log,
+		log:      args.Log,
 		running:  typeutils.NewAtomicBool(),
 	}
 
-	VersionNum = cfg.Version
+	VersionNum = args.Version
 
-	p.mgr = newManager(p, cfg.MasterPeers, cfg.Log.Named("mgr"))
+	p.mgr = newManager(p, args.MasterPeers, args.Log.Named("mgr"))
 
 	return p
 }
