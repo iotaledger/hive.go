@@ -33,6 +33,26 @@ type Config struct {
 	MasterPeers []*peer.Peer // list of master peers used for bootstrapping
 }
 
+type option func(*Config)
+
+func SetLogger(log *logger.Logger) option {
+	return func(c *Config) {
+		c.Log = log
+	}
+}
+
+func SetVersion(version uint32) option {
+	return func(c *Config) {
+		c.Version = version
+	}
+}
+
+func SetMasterPeers(masterPeers []*peer.Peer) option {
+	return func(c *Config) {
+		c.MasterPeers = masterPeers
+	}
+}
+
 // Parameters holds the parameters that can be configured.
 type Parameters struct {
 	ReverifyInterval time.Duration // time interval after which the next peer is reverified

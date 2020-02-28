@@ -274,7 +274,7 @@ func newTestProtocol(trans transport.Transport, logger *logger.Logger, masters .
 	local := peertest.NewLocal(trans.LocalAddr().Network(), trans.LocalAddr().String(), db)
 	log := logger.Named(trans.LocalAddr().String())
 
-	prot := New(local, Config{Log: log, MasterPeers: masters})
+	prot := New(local, SetLogger(log), SetMasterPeers(masters))
 
 	srv := server.Serve(local, trans, log, prot)
 	prot.Start(srv)

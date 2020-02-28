@@ -34,6 +34,26 @@ type Config struct {
 	NeighborValidator Validator // potential neighbor validator
 }
 
+type option func(*Config)
+
+func SetLogger(log *logger.Logger) option {
+	return func(c *Config) {
+		c.Log = log
+	}
+}
+
+func SetDropOnUpdate(dropOnUpdate bool) option {
+	return func(c *Config) {
+		c.DropOnUpdate = dropOnUpdate
+	}
+}
+
+func SetNeighborValidator(neighborValidator Validator) option {
+	return func(c *Config) {
+		c.NeighborValidator = neighborValidator
+	}
+}
+
 // A Validator checks whether a peer is a valid neighbor
 type Validator interface {
 	IsValid(*peer.Peer) bool

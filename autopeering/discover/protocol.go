@@ -41,7 +41,17 @@ type Protocol struct {
 }
 
 // New creates a new discovery protocol.
-func New(local *peer.Local, cfg Config) *Protocol {
+func New(local *peer.Local, opts ...option) *Protocol {
+	log := logger.NewExampleLogger("discover")
+	cfg := &Config{
+		Log:     log.Named("disc"),
+		Version: 0,
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
 	p := &Protocol{
 		Protocol: server.Protocol{},
 		loc:      local,
