@@ -316,6 +316,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
 			return consumer(key, wrapCachedObject(cachedObject, 0))
 		}); seenElements == nil {
+			// Iteration was aborted
 			return
 		}
 	} else {
@@ -323,6 +324,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 			return consumer(key, wrapCachedObject(cachedObject, 0))
 		}, optionalPrefix[0]); seenElements == nil {
+			// Iteration was aborted
 			return
 		}
 	}
@@ -362,6 +364,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			cachedObject.waitForInitialResult()
 
 			if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
+				// Iteration was aborted
 				break
 			}
 		}
@@ -772,11 +775,13 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 	for _, value := range sourceMap {
 		if cachedObject, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
 			if !consumer(cachedObject.key, cachedObject) {
+				// Iteration was aborted
 				return false
 			}
 			continue
 		}
 		if !objectStorage.deepIterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+			// Iteration was aborted
 			return false
 		}
 	}
@@ -800,6 +805,7 @@ func (objectStorage *ObjectStorage) forEachCachedElement(consumer ConsumerFunc) 
 		cachedObject.Retain()
 		return consumer(key, cachedObject)
 	}) {
+		// Iteration was aborted
 		return nil
 	}
 
@@ -836,7 +842,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			subPartition, subPartitionExists := currentPartition[partitionKey]
 			if !subPartitionExists {
 				// no partition exists for the given prefix
-				return nil
+				return seenElements
 			}
 			currentPartition = subPartition.(map[string]interface{})
 			continue
@@ -856,6 +862,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 		cachedObject.Retain()
 		if !consumer(cachedObject.key, cachedObject) {
+			// Iteration was aborted
 			return nil
 		}
 
@@ -873,6 +880,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		cachedObject.Retain()
 		return consumer(key, cachedObject)
 	}) {
+		// Iteration was aborted
 		return nil
 	}
 
