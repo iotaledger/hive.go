@@ -332,6 +332,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+		iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
 
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
@@ -344,21 +345,28 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			cachedObject, cacheHit := objectStorage.accessCache(key, true)
 			if !cacheHit {
-				if err := item.Value(func(val []byte) error {
-					marshaledData := make([]byte, len(val))
-					copy(marshaledData, val)
+				var storableObject StorableObject
 
-					storableObject := objectStorage.unmarshalObject(key, marshaledData)
-					if storableObject != nil {
-						storableObject.Persist()
+				if objectStorage.options.keysOnly {
+					storableObject = objectStorage.objectFactory(key)
+				} else {
+					if err := item.Value(func(val []byte) error {
+						marshaledData := make([]byte, len(val))
+						copy(marshaledData, val)
+
+						storableObject = objectStorage.unmarshalObject(key, marshaledData)
+
+						return nil
+					}); err != nil {
+						panic(err)
 					}
-
-					cachedObject.publishResult(storableObject)
-
-					return nil
-				}); err != nil {
-					panic(err)
 				}
+
+				if storableObject != nil {
+					storableObject.Persist()
+				}
+
+				cachedObject.publishResult(storableObject)
 			}
 
 			cachedObject.waitForInitialResult()
@@ -684,6 +692,11 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
+
+	if objectStorage.options.keysOnly {
+		return objectStorage.objectFactory(key)
+	}
+
 	var marshaledData []byte
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
