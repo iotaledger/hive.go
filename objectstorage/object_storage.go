@@ -693,15 +693,15 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 		return nil
 	}
 
-	if objectStorage.options.keysOnly {
-		return objectStorage.objectFactory(key)
-	}
-
 	var marshaledData []byte
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
 			return err
 		} else {
+			if objectStorage.options.keysOnly {
+				return nil
+			}
+
 			return item.Value(func(val []byte) error {
 				marshaledData = make([]byte, len(val))
 				copy(marshaledData, val)
@@ -716,6 +716,10 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 			panic(err)
 		}
 	} else {
+		if objectStorage.options.keysOnly {
+			return objectStorage.objectFactory(key)
+		}
+
 		return objectStorage.unmarshalObject(key, marshaledData)
 	}
 }
