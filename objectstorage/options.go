@@ -9,6 +9,7 @@ type Options struct {
 	cacheTime             time.Duration
 	keyPartitions         []int
 	persistenceEnabled    bool
+	keysOnly              bool
 	leakDetectionOptions  *LeakDetectionOptions
 	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
 }
@@ -51,6 +52,12 @@ func BatchedWriterInstance(batchedWriterInstance *BatchedWriter) Option {
 func PersistenceEnabled(persistenceEnabled bool) Option {
 	return func(args *Options) {
 		args.persistenceEnabled = persistenceEnabled
+	}
+}
+
+func KeysOnly(keysOnly bool) Option {
+	return func(args *Options) {
+		args.keysOnly = keysOnly
 	}
 }
 
