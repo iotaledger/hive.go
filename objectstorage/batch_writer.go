@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -64,7 +65,7 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 	if !objectStorage.options.persistenceEnabled {
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			storableObject.SetModified(false)
 		}
 
@@ -72,7 +73,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 	}
 
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if storableObject.IsDeleted() {
 				storableObject.SetModified(false)
 
@@ -107,7 +108,7 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		// only delete if the object is still empty or was not modified since the write
-		if storableObject := cachedObject.Get(); (storableObject == nil || !storableObject.IsModified()) && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
+		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
 			objectStorage.cachedObjectsEmpty.Done()
 		}
 	}

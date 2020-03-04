@@ -63,7 +63,7 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Base() *CachedObjectImpl {
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Consume(consumer func(StorableObject)) bool {
 	defer wrappedCachedObject.Release()
 
-	if storableObject := wrappedCachedObject.CachedObjectImpl.Get(); storableObject != nil && !storableObject.IsDeleted() {
+	if storableObject := wrappedCachedObject.CachedObjectImpl.Get(); !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 		consumer(storableObject)
 
 		return true
@@ -228,7 +228,7 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 		var oldestEntry LeakDetectionWrapper = nil
 		var oldestTime = time.Now()
 		for _, wrappedCachedObject := range instancesByKey {
-			if oldestEntry == nil || wrappedCachedObject.GetRetainTime().Before(oldestTime) {
+			if typeutils.IsInterfaceNil(oldestEntry) || wrappedCachedObject.GetRetainTime().Before(oldestTime) {
 				oldestEntry = wrappedCachedObject
 				oldestTime = wrappedCachedObject.GetRetainTime()
 			}

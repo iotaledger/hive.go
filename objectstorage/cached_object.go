@@ -97,7 +97,7 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) bool {
 	defer cachedObject.Release()
 
-	if storableObject := cachedObject.Get(); storableObject != nil && !storableObject.IsDeleted() {
+	if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 		consumer(storableObject)
 
 		return true
@@ -118,7 +118,7 @@ func (cachedObject *CachedObjectImpl) Retain() CachedObject {
 func (cachedObject *CachedObjectImpl) Exists() bool {
 	storableObject := cachedObject.Get()
 
-	return storableObject != nil && !storableObject.IsDeleted()
+	return !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted()
 }
 
 func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
@@ -134,7 +134,7 @@ func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool 
 
 func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
-	if cachedObject.value == nil {
+	if typeutils.IsInterfaceNil(cachedObject.value) {
 		cachedObject.value = object
 	} else {
 		cachedObject.value.Update(object)
@@ -144,11 +144,11 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 
 func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {
 	cachedObject.valueMutex.RLock()
-	if cachedObject.value == nil {
+	if typeutils.IsInterfaceNil(cachedObject.value) {
 		cachedObject.valueMutex.RUnlock()
 
 		cachedObject.valueMutex.Lock()
-		if cachedObject.value == nil {
+		if typeutils.IsInterfaceNil(cachedObject.value) {
 			if object, ok := update.(StorableObject); ok {
 				cachedObject.value = object
 			} else if updater, ok := update.(func() StorableObject); ok {
