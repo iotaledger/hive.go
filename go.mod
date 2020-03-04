@@ -7,6 +7,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/google/open-location-code/go v0.0.0-20190903173953-119bc96a3a51
 	github.com/iotaledger/iota.go v1.0.0-beta.9
+	github.com/kr/text v0.1.0
 	github.com/panjf2000/ants/v2 v2.2.2
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.8.1
