@@ -11,6 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/database"
 	"github.com/iotaledger/hive.go/types"
+	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -214,14 +215,14 @@ func TestStoreIfAbsent(t *testing.T) {
 
 	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
-	if storedObject1 == nil {
+	if typeutils.IsInterfaceNil(storedObject1) {
 		t.Error("the object should NOT be nil if it was stored")
 	}
 	storedObject1.Release()
 
 	storedObject2, stored2 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
 	assert.Equal(t, false, stored2)
-	if storedObject2 != nil {
+	if !typeutils.IsInterfaceNil(storedObject2) {
 		t.Error("the object should be nil if it wasn't stored")
 	}
 

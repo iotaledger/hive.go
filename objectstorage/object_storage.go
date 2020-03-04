@@ -112,7 +112,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
 		loadedObject := objectStorage.loadObjectFromBadger(key)
-		if loadedObject != nil {
+		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 		}
 
@@ -152,7 +152,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 		})
 	} else {
 		loadedObject := objectStorage.loadObjectFromBadger(key)
-		if loadedObject != nil {
+		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 
 			cachedObject.publishResult(loadedObject)
@@ -173,7 +173,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	deleteExistingEntry := func(cachedObject *CachedObjectImpl) bool {
 		cachedObject.wg.Wait()
 
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
 				cachedObject.Release()
@@ -218,7 +218,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 	deleteExistingEntry := func(cachedObject *CachedObjectImpl) {
 		cachedObject.wg.Wait()
 
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
 				cachedObject.Release()
@@ -362,7 +362,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 					}
 				}
 
-				if storableObject != nil {
+				if !typeutils.IsInterfaceNil(storableObject) {
 					storableObject.Persist()
 				}
 
@@ -611,7 +611,7 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 
 		cachedObject := _cachedObject.(*CachedObjectImpl)
 		storableObject := cachedObject.Get()
-		if storableObject != nil && !storableObject.IsDeleted() {
+		if !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 			objectStorage.Events.ObjectEvicted.Trigger(key, cachedObject.Get())
 		}
 	}
