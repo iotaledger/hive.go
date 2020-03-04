@@ -27,7 +27,7 @@ type NodeOption func(*NodeOptions)
 
 func Plugins(plugins ...*Plugin) NodeOption {
 	return func(args *NodeOptions) {
-		args.plugins = plugins
+		args.plugins = append(args.plugins, plugins...)
 	}
 }
 

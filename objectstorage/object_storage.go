@@ -112,7 +112,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
 		loadedObject := objectStorage.loadObjectFromBadger(key)
-		if loadedObject != nil {
+		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 		}
 
@@ -152,7 +152,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 		})
 	} else {
 		loadedObject := objectStorage.loadObjectFromBadger(key)
-		if loadedObject != nil {
+		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 
 			cachedObject.publishResult(loadedObject)
@@ -173,7 +173,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	deleteExistingEntry := func(cachedObject *CachedObjectImpl) bool {
 		cachedObject.wg.Wait()
 
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
 				cachedObject.Release()
@@ -218,7 +218,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 	deleteExistingEntry := func(cachedObject *CachedObjectImpl) {
 		cachedObject.wg.Wait()
 
-		if storableObject := cachedObject.Get(); storableObject != nil {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
 				cachedObject.Release()
@@ -316,6 +316,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
 			return consumer(key, wrapCachedObject(cachedObject, 0))
 		}); seenElements == nil {
+			// Iteration was aborted
 			return
 		}
 	} else {
@@ -323,6 +324,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 			return consumer(key, wrapCachedObject(cachedObject, 0))
 		}, optionalPrefix[0]); seenElements == nil {
+			// Iteration was aborted
 			return
 		}
 	}
@@ -330,6 +332,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+		iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
 
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
@@ -342,26 +345,34 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			cachedObject, cacheHit := objectStorage.accessCache(key, true)
 			if !cacheHit {
-				if err := item.Value(func(val []byte) error {
-					marshaledData := make([]byte, len(val))
-					copy(marshaledData, val)
+				var storableObject StorableObject
 
-					storableObject := objectStorage.unmarshalObject(key, marshaledData)
-					if storableObject != nil {
-						storableObject.Persist()
+				if objectStorage.options.keysOnly {
+					storableObject = objectStorage.objectFactory(key)
+				} else {
+					if err := item.Value(func(val []byte) error {
+						marshaledData := make([]byte, len(val))
+						copy(marshaledData, val)
+
+						storableObject = objectStorage.unmarshalObject(key, marshaledData)
+
+						return nil
+					}); err != nil {
+						panic(err)
 					}
-
-					cachedObject.publishResult(storableObject)
-
-					return nil
-				}); err != nil {
-					panic(err)
 				}
+
+				if !typeutils.IsInterfaceNil(storableObject) {
+					storableObject.Persist()
+				}
+
+				cachedObject.publishResult(storableObject)
 			}
 
 			cachedObject.waitForInitialResult()
 
 			if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
+				// Iteration was aborted
 				break
 			}
 		}
@@ -600,7 +611,7 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 
 		cachedObject := _cachedObject.(*CachedObjectImpl)
 		storableObject := cachedObject.Get()
-		if storableObject != nil && !storableObject.IsDeleted() {
+		if !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 			objectStorage.Events.ObjectEvicted.Trigger(key, cachedObject.Get())
 		}
 	}
@@ -681,11 +692,16 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
+
 	var marshaledData []byte
 	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
 		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
 			return err
 		} else {
+			if objectStorage.options.keysOnly {
+				return nil
+			}
+
 			return item.Value(func(val []byte) error {
 				marshaledData = make([]byte, len(val))
 				copy(marshaledData, val)
@@ -700,6 +716,10 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 			panic(err)
 		}
 	} else {
+		if objectStorage.options.keysOnly {
+			return objectStorage.objectFactory(key)
+		}
+
 		return objectStorage.unmarshalObject(key, marshaledData)
 	}
 }
@@ -772,11 +792,13 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 	for _, value := range sourceMap {
 		if cachedObject, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
 			if !consumer(cachedObject.key, cachedObject) {
+				// Iteration was aborted
 				return false
 			}
 			continue
 		}
 		if !objectStorage.deepIterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+			// Iteration was aborted
 			return false
 		}
 	}
@@ -800,6 +822,7 @@ func (objectStorage *ObjectStorage) forEachCachedElement(consumer ConsumerFunc) 
 		cachedObject.Retain()
 		return consumer(key, cachedObject)
 	}) {
+		// Iteration was aborted
 		return nil
 	}
 
@@ -836,7 +859,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			subPartition, subPartitionExists := currentPartition[partitionKey]
 			if !subPartitionExists {
 				// no partition exists for the given prefix
-				return nil
+				return seenElements
 			}
 			currentPartition = subPartition.(map[string]interface{})
 			continue
@@ -856,6 +879,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 		cachedObject.Retain()
 		if !consumer(cachedObject.key, cachedObject) {
+			// Iteration was aborted
 			return nil
 		}
 
@@ -873,6 +897,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		cachedObject.Retain()
 		return consumer(key, cachedObject)
 	}) {
+		// Iteration was aborted
 		return nil
 	}
 
