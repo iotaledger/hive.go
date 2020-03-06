@@ -123,11 +123,14 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	if strings.Contains(hostname, ":") {
 		hostname = strings.ReplaceAll(hostname, "[", "")
 		hostname = strings.ReplaceAll(hostname, "]", "")
-		if ip := net.ParseIP(hostname); ip != nil {
-			ipAddresses.Add(&IP{IP: ip})
-			return ipAddresses, nil
+		ip := net.ParseIP(hostname)
+		if ip == nil {
+			return nil, ErrInvalidIPAddressOrHost
 		}
-		return nil, ErrInvalidIPAddressOrHost
+
+		ipAddresses.Add(&IP{IP: ip})
+		return ipAddresses, nil
+
 	}
 
 	// Check if it's an IPv4 address
@@ -147,16 +150,16 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	}
 
 	for _, addr := range ipAddr {
-		if ip := net.ParseIP(addr); ip != nil {
-			ipAddresses.Add(&IP{IP: ip})
-		} else {
+		ip := net.ParseIP(addr)
+		if ip == nil {
 			return nil, ErrInvalidIPAddressOrHost
 		}
+		ipAddresses.Add(&IP{IP: ip})
 	}
 
-	if ipAddresses.Len() > 0 {
-		return ipAddresses, nil
+	if ipAddresses.Len() == 0 {
+		return nil, ErrNoIPAddressesFound
 	}
 
-	return nil, ErrNoIPAddressesFound
+	return ipAddresses, nil
 }
