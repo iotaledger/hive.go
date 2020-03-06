@@ -290,27 +290,55 @@ func TestConcurrency(t *testing.T) {
 }
 
 func TestEvictionBug(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(1500), objectstorage.PersistenceEnabled(true))
+	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true))
 
-	//testCount := 500 // good
-	testCount := 80000 // fails (if not, make the number bigger)
+	testCount := 12001 // fails (if not, make the number bigger)
 
 	// create the test objects
+	wait := sync.WaitGroup{}
+	wait.Add(testCount)
 	for i := 0; i < testCount; i++ {
-		objects.Store(NewTestObject(fmt.Sprintf("%v", i), 0)).Release()
+		go func(i int) {
+			objects.Store(NewTestObject(fmt.Sprintf("%v", i), 0)).Release()
+			wait.Done()
+		}(i)
 	}
+	wait.Wait()
 
+	count := uint32(10)
+
+	wait.Add(testCount * int(count))
 	for i := 0; i < testCount; i++ {
-		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
-		cachedObject.Get().(*TestObject).value = 1
-		cachedObject.Get().SetModified(true)
-		cachedObject.Release()
+		for j := 0; j < int(count); j++ {
+			go func(i, j int) {
+				cachedObject1 := objects.Load([]byte(fmt.Sprintf("%v", i)))
+				cachedTestObject1 := cachedObject1.Get().(*TestObject)
+				cachedTestObject1.Lock()
+				cachedObject1.Get().(*TestObject).value++
+				cachedTestObject1.Unlock()
+				cachedTestObject1.SetModified(true)
+				cachedObject1.Release()
+
+				time.Sleep(time.Duration(1) * time.Millisecond)
+
+				cachedObject2 := objects.Load([]byte(fmt.Sprintf("%v", i)))
+				cachedTestObject2 := cachedObject2.Get().(*TestObject)
+				cachedTestObject2.Lock()
+				cachedObject2.Get().(*TestObject).value++
+				cachedTestObject2.Unlock()
+				cachedTestObject2.SetModified(true)
+				cachedObject2.Release()
+				wait.Done()
+			}(i, j)
+		}
 	}
+	wait.Wait()
 
-	for i := 0; i < testCount; i++ {
+	for i := testCount - 1; i >= 0; i-- {
+		//time.Sleep(time.Duration(10) * time.Microsecond)
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
-		if cachedObject.Get().(*TestObject).value != 1 {
-			t.Error(fmt.Errorf("the modifications should be visible %v", i))
+		if cachedObject.Get().(*TestObject).value != count*2 {
+			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*TestObject).value, count))
 
 			return
 		}

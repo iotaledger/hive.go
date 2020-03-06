@@ -82,6 +82,16 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Retain() CachedObject {
 	return result
 }
 
+func (wrappedCachedObject *LeakDetectionWrapperImpl) retain() CachedObject {
+	baseCachedObject := wrappedCachedObject.CachedObjectImpl
+	baseCachedObject.retain()
+
+	result := wrapCachedObject(baseCachedObject, 0).(*LeakDetectionWrapperImpl)
+	result.GetRetainCallStack()
+
+	return result
+}
+
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Release(force ...bool) {
 	if atomic.AddInt32(&(wrappedCachedObject.released), 1) != 1 {
 		reportCachedObjectClosedTooOften(wrappedCachedObject, reflect.GetExternalCallers("objectstorage", 0))

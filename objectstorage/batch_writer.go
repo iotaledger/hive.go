@@ -59,7 +59,10 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	if atomic.LoadInt32(&bw.running) == 0 {
 		bw.StartBatchWriter()
 	}
-	bw.batchQueue <- object
+
+	if atomic.AddInt32(&(object.batchWriteScheduled), 1) == 1 {
+		bw.batchQueue <- object
+	}
 }
 
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
@@ -107,8 +110,8 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		// only delete if the object is still empty or was not modified since the write
-		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
+		// only delete if the object is still empty, or was not modified since the write (and was not evicted yet)
+		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && atomic.AddInt32(&cachedObject.evicted, 1) == 1 && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
 			objectStorage.cachedObjectsEmpty.Done()
 		}
 	}
@@ -130,6 +133,8 @@ func (bw *BatchedWriter) runBatchWriter() {
 		for writtenValuesCounter < BATCH_WRITER_BATCH_SIZE {
 			select {
 			case objectToPersist := <-bw.batchQueue:
+				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
+
 				bw.writeObject(wb, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++

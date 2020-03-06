@@ -3,12 +3,14 @@ package test
 import (
 	"bytes"
 	"encoding/binary"
+	"sync"
 
 	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 type TestObject struct {
 	objectstorage.StorableObjectFlags
+	sync.Mutex
 
 	id    []byte
 	value uint32

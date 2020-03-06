@@ -442,7 +442,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 
 	objectStorage.cacheMutex.RLock()
 	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
-		alreadyCachedObject.(*CachedObjectImpl).Retain()
+		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
@@ -459,7 +459,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 
 	// check if the object was created in the meantime
 	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
-		alreadyCachedObject.(*CachedObjectImpl).Retain()
+		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
 		return
@@ -467,7 +467,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 
 	// create a new cached object to hold the object
 	newlyCachedObject := newCachedObject(objectStorage, key)
-	newlyCachedObject.Retain()
+	newlyCachedObject.retain()
 
 	if objectStorage.size == 0 {
 		objectStorage.cachedObjectsEmpty.Add(1)
@@ -551,7 +551,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	// return if object exists
 	if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
 		cacheHit = true
-		cachedObject = alreadyCachedObject.(*CachedObjectImpl).Retain().(*CachedObjectImpl)
+		cachedObject = alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl)
 
 		return
 	}
@@ -572,7 +572,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 		if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
 			cacheHit = true
-			cachedObject = alreadyCachedObject.(*CachedObjectImpl).Retain().(*CachedObjectImpl)
+			cachedObject = alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl)
 
 			return
 		}
@@ -585,7 +585,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// create a new cached object ...
 	cachedObject = newCachedObject(objectStorage, key)
-	cachedObject.Retain()
+	cachedObject.retain()
 
 	// ... and store it
 	currentPartition[partitionKey] = cachedObject
@@ -819,7 +819,7 @@ func (objectStorage *ObjectStorage) forEachCachedElement(consumer ConsumerFunc) 
 			return true
 		}
 
-		cachedObject.Retain()
+		cachedObject.retain()
 		return consumer(key, cachedObject)
 	}) {
 		// Iteration was aborted
@@ -877,7 +877,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			continue
 		}
 
-		cachedObject.Retain()
+		cachedObject.retain()
 		if !consumer(cachedObject.key, cachedObject) {
 			// Iteration was aborted
 			return nil
@@ -894,7 +894,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			return true
 		}
 
-		cachedObject.Retain()
+		cachedObject.retain()
 		return consumer(key, cachedObject)
 	}) {
 		// Iteration was aborted

@@ -16,19 +16,22 @@ type CachedObject interface {
 	Get() (result StorableObject)
 	Consume(consumer func(StorableObject)) bool
 	Retain() CachedObject
+	retain() CachedObject
 	Release(force ...bool)
 }
 
 type CachedObjectImpl struct {
-	key           []byte
-	objectStorage *ObjectStorage
-	value         StorableObject
-	consumers     int32
-	published     int32
-	wg            sync.WaitGroup
-	valueMutex    syncutils.RWMutex
-	releaseTimer  unsafe.Pointer
-	blindDelete   typeutils.AtomicBool
+	key                 []byte
+	objectStorage       *ObjectStorage
+	value               StorableObject
+	consumers           int32
+	published           int32
+	evicted             int32
+	batchWriteScheduled int32
+	wg                  sync.WaitGroup
+	valueMutex          syncutils.RWMutex
+	releaseTimer        unsafe.Pointer
+	blindDelete         typeutils.AtomicBool
 }
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
@@ -108,6 +111,17 @@ func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) boo
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) Retain() CachedObject {
+	if atomic.AddInt32(&(cachedObject.consumers), 1) == 1 {
+		panic("called Retain() on an already released CachedObject")
+	}
+
+	cachedObject.cancelScheduledRelease()
+
+	return cachedObject
+}
+
+// Registers a new consumer for this cached object.
+func (cachedObject *CachedObjectImpl) retain() CachedObject {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
 
 	cachedObject.cancelScheduledRelease()
