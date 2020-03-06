@@ -107,7 +107,7 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 
 	objectStorage.cacheMutex.Lock()
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		// only delete if the object is still empty or was not modified since the write
+		// only delete if the object is still empty, or was not modified since the write (and was not evicted yet)
 		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && atomic.AddInt32(&cachedObject.evicted, 1) == 1 && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
 			objectStorage.cachedObjectsEmpty.Done()
 		}
