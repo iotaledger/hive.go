@@ -25,6 +25,7 @@ type CachedObjectImpl struct {
 	value         StorableObject
 	consumers     int32
 	published     int32
+	evicted       int32
 	wg            sync.WaitGroup
 	valueMutex    syncutils.RWMutex
 	releaseTimer  unsafe.Pointer
