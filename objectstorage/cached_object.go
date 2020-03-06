@@ -16,6 +16,7 @@ type CachedObject interface {
 	Get() (result StorableObject)
 	Consume(consumer func(StorableObject)) bool
 	Retain() CachedObject
+	retain() CachedObject
 	Release(force ...bool)
 }
 
@@ -109,6 +110,17 @@ func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject)) boo
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) Retain() CachedObject {
+	if atomic.AddInt32(&(cachedObject.consumers), 1) == 1 {
+		panic("called Retain() on an already released CachedObject")
+	}
+
+	cachedObject.cancelScheduledRelease()
+
+	return cachedObject
+}
+
+// Registers a new consumer for this cached object.
+func (cachedObject *CachedObjectImpl) retain() CachedObject {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
 
 	cachedObject.cancelScheduledRelease()
