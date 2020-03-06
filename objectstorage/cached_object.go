@@ -21,16 +21,17 @@ type CachedObject interface {
 }
 
 type CachedObjectImpl struct {
-	key           []byte
-	objectStorage *ObjectStorage
-	value         StorableObject
-	consumers     int32
-	published     int32
-	evicted       int32
-	wg            sync.WaitGroup
-	valueMutex    syncutils.RWMutex
-	releaseTimer  unsafe.Pointer
-	blindDelete   typeutils.AtomicBool
+	key                 []byte
+	objectStorage       *ObjectStorage
+	value               StorableObject
+	consumers           int32
+	published           int32
+	evicted             int32
+	batchWriteScheduled int32
+	wg                  sync.WaitGroup
+	valueMutex          syncutils.RWMutex
+	releaseTimer        unsafe.Pointer
+	blindDelete         typeutils.AtomicBool
 }
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {

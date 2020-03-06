@@ -59,7 +59,10 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	if atomic.LoadInt32(&bw.running) == 0 {
 		bw.StartBatchWriter()
 	}
-	bw.batchQueue <- object
+
+	if atomic.AddInt32(&(object.batchWriteScheduled), 1) == 1 {
+		bw.batchQueue <- object
+	}
 }
 
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
@@ -130,6 +133,8 @@ func (bw *BatchedWriter) runBatchWriter() {
 		for writtenValuesCounter < BATCH_WRITER_BATCH_SIZE {
 			select {
 			case objectToPersist := <-bw.batchQueue:
+				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
+
 				bw.writeObject(wb, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++
