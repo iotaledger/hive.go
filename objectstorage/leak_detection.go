@@ -60,8 +60,8 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Base() *CachedObjectImpl {
 	return wrappedCachedObject.CachedObjectImpl
 }
 
-func (wrappedCachedObject *LeakDetectionWrapperImpl) Consume(consumer func(StorableObject)) bool {
-	defer wrappedCachedObject.Release()
+func (wrappedCachedObject *LeakDetectionWrapperImpl) Consume(consumer func(StorableObject), forceRelease ...bool) bool {
+	defer wrappedCachedObject.Release(forceRelease...)
 
 	if storableObject := wrappedCachedObject.CachedObjectImpl.Get(); !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 		consumer(storableObject)
