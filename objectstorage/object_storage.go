@@ -176,12 +176,12 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
-				cachedObject.Release()
+				cachedObject.Release(true)
 
 				return true
 			}
 
-			cachedObject.Release()
+			cachedObject.Release(true)
 		}
 
 		return false
@@ -198,7 +198,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	}
 
 	cachedObject.publishResult(nil)
-	cachedObject.Release()
+	cachedObject.Release(true)
 
 	if objectStorage.objectExistsInBadger(key) {
 		cachedObject.blindDelete.Set()
@@ -221,12 +221,12 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
-				cachedObject.Release()
+				cachedObject.Release(true)
 
 				return
 			}
 
-			cachedObject.Release()
+			cachedObject.Release(true)
 		}
 	}
 
@@ -246,7 +246,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 	cachedObject.blindDelete.Set()
 	cachedObject.publishResult(nil)
-	cachedObject.Release()
+	cachedObject.Release(true)
 }
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
