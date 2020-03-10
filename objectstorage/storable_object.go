@@ -1,6 +1,14 @@
 package objectstorage
 
+import (
+	"encoding"
+)
+
 type StorableObject interface {
+	// import the default Marshaler interfaces
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
+
 	// Marks the object as modified, which causes it to be written to the disk (if persistence is enabled).
 	// Default value when omitting the parameter: true
 	SetModified(modified ...bool)
@@ -28,10 +36,4 @@ type StorableObject interface {
 
 	// Returns the key that identifies the object in the object storage.
 	GetStorageKey() []byte
-
-	// Returns the marshaled value that shall be stored in the persistence layer (without key)
-	MarshalBinary() (data []byte, err error)
-
-	// Unmarshal the data and set the value of the object.
-	UnmarshalBinary(data []byte) error
 }
