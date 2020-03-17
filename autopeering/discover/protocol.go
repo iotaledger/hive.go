@@ -118,7 +118,7 @@ func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
 		return nil
 	}
 	// send ping to restored peer to ensure that it will be verified
-	p.SendPing(from.Address(), from.ID())
+	p.sendPing(from.Address(), from.ID())
 	return from
 }
 
@@ -198,7 +198,7 @@ func (p *Protocol) localAddr() *net.UDPAddr {
 // Ping sends a Ping to the specified peer and blocks until a reply is received or timeout.
 func (p *Protocol) Ping(to *peer.Peer) error {
 	return backoff.Retry(retryPolicy, func() error {
-		err := <-p.SendPing(to.Address(), to.ID())
+		err := <-p.sendPing(to.Address(), to.ID())
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
@@ -206,9 +206,9 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 	})
 }
 
-// SendPing sends a Ping to the specified address and expects a matching reply.
+// sendPing sends a Ping to the specified address and expects a matching reply.
 // This method is non-blocking, but it returns a channel that can be used to query potential errors.
-func (p *Protocol) SendPing(dstAddr *net.UDPAddr, toID peer.ID) <-chan error {
+func (p *Protocol) sendPing(dstAddr *net.UDPAddr, toID peer.ID) <-chan error {
 	// set the src address to zero to force response to the UDP envelop address
 	srcAddr := p.localAddr()
 	srcAddr.IP = net.IPv4zero
@@ -219,7 +219,14 @@ func (p *Protocol) SendPing(dstAddr *net.UDPAddr, toID peer.ID) <-chan error {
 	// compute the message hash
 	hash := server.PacketHash(data)
 	hashEqual := func(m interface{}) bool {
-		return bytes.Equal(m.(*pb.Pong).GetReqHash(), hash)
+		pong := m.(*pb.Pong)
+		// the peering port must match the destination port
+		peering := pong.Services.GetMap()[string(service.PeeringKey)]
+		if peering == nil || int(peering.GetPort()) != dstAddr.Port {
+			return false
+		}
+		// the hash must be correct
+		return bytes.Equal(pong.GetReqHash(), hash)
 	}
 
 	p.logSend(dstAddr, ping)
@@ -386,10 +393,10 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID pe
 	p.logSend(dstAddr, pong)
 	s.Send(dstAddr, marshal(pong))
 
-	// if the peer is new or expired, send a Ping to verify
+	// if the peer is unknown or expired, send a Ping to verify
 	if !p.IsVerified(fromID, dstAddr) {
-		p.SendPing(dstAddr, fromID)
-	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new
+		p.sendPing(dstAddr, fromID)
+	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new but verified
 		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), dstAddr))
 	}
 
@@ -406,8 +413,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 		return false
 	}
 	// there must a valid number of services
-	numServices := len(m.GetServices().GetMap())
-	if numServices <= 0 || numServices > MaxServices {
+	if numServices := len(m.GetServices().GetMap()); numServices <= 0 || numServices > MaxServices {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"#peers", numServices,

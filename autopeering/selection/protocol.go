@@ -32,8 +32,6 @@ type DiscoverProtocol interface {
 	IsVerified(peer.ID, *net.UDPAddr) bool
 	EnsureVerified(*peer.Peer) error
 
-	SendPing(*net.UDPAddr, peer.ID) <-chan error
-
 	GetVerifiedPeer(peer.ID) *peer.Peer
 	GetVerifiedPeers() []*peer.Peer
 }
