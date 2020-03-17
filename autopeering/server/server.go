@@ -2,7 +2,6 @@ package server
 
 import (
 	"container/list"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
-	"github.com/iotaledger/hive.go/autopeering/transport"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil"
 )
@@ -24,11 +22,10 @@ const (
 // Server offers the functionality to start a server that handles requests and responses from peers.
 type Server struct {
 	local    *peer.Local
-	trans    transport.Transport
+	conn     *net.UDPConn
 	handlers []Handler
 	log      *logger.Logger
 	network  string
-	address  string
 
 	closeOnce sync.Once
 	wg        sync.WaitGroup
@@ -40,8 +37,8 @@ type Server struct {
 
 // a replyMatcher stores the information required to identify and react to an expected replay.
 type replyMatcher struct {
-	// fromAddr must match the sender of the reply
-	fromAddr string
+	// fromIP must match the sender of the reply
+	fromIP net.IP
 	// fromID must match the sender ID
 	fromID peer.ID
 	// mtype must match the type of the reply
@@ -61,24 +58,22 @@ type replyMatcher struct {
 
 // reply is a reply packet from a certain peer
 type reply struct {
-	fromAddr       string
+	fromIP         net.IP
 	fromID         peer.ID
-	mtype          MType
-	msg            interface{} // the actual reply message
+	msg            Message     // the actual reply message
 	matchedRequest chan<- bool // a matching request is indicated via this channel
 }
 
 // Serve starts a new peer server using the given transport layer for communication.
 // Sent data is signed using the identity of the local peer,
 // received data with a valid peer signature is handled according to the provided Handler.
-func Serve(local *peer.Local, t transport.Transport, log *logger.Logger, h ...Handler) *Server {
+func Serve(local *peer.Local, conn *net.UDPConn, log *logger.Logger, h ...Handler) *Server {
 	srv := &Server{
 		local:           local,
-		trans:           t,
+		conn:            conn,
 		handlers:        h,
 		log:             log,
 		network:         local.Network(),
-		address:         local.Address(),
 		addReplyMatcher: make(chan *replyMatcher),
 		replyReceived:   make(chan reply),
 		closing:         make(chan struct{}),
@@ -100,7 +95,7 @@ func Serve(local *peer.Local, t transport.Transport, log *logger.Logger, h ...Ha
 func (s *Server) Close() {
 	s.closeOnce.Do(func() {
 		close(s.closing)
-		s.trans.Close()
+		s.conn.Close()
 		s.wg.Wait()
 	})
 }
@@ -111,21 +106,21 @@ func (s *Server) Local() *peer.Local {
 }
 
 // LocalAddr returns the address of the local peer in string form.
-func (s *Server) LocalAddr() net.Addr {
-	return s.trans.LocalAddr()
+func (s *Server) LocalAddr() *net.UDPAddr {
+	return s.conn.LocalAddr().(*net.UDPAddr)
 }
 
 // Send sends a message to the given address
-func (s *Server) Send(toAddr string, data []byte) {
+func (s *Server) Send(toAddr *net.UDPAddr, data []byte) {
 	pkt := s.encode(data)
-	s.write(toAddr, pkt)
+	s.write(pkt, toAddr)
 }
 
 // SendExpectingReply sends a message to the given address and tells the Server
 // to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) SendExpectingReply(toAddr string, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
-	errc := s.expectReply(toAddr, toID, replyType, callback)
+func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
+	errc := s.expectReply(toAddr.IP, toID, replyType, callback)
 	s.Send(toAddr, data)
 
 	return errc
@@ -133,9 +128,9 @@ func (s *Server) SendExpectingReply(toAddr string, toID peer.ID, data []byte, re
 
 // expectReply tells the Server to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) expectReply(fromAddr string, fromID peer.ID, mtype MType, callback func(interface{}) bool) <-chan error {
+func (s *Server) expectReply(fromIP net.IP, fromID peer.ID, mtype MType, callback func(interface{}) bool) <-chan error {
 	ch := make(chan error, 1)
-	m := &replyMatcher{fromAddr: fromAddr, fromID: fromID, mtype: mtype, callback: callback, errc: ch}
+	m := &replyMatcher{fromIP: fromIP, fromID: fromID, mtype: mtype, callback: callback, errc: ch}
 	select {
 	case s.addReplyMatcher <- m:
 	case <-s.closing:
@@ -144,11 +139,11 @@ func (s *Server) expectReply(fromAddr string, fromID peer.ID, mtype MType, callb
 	return ch
 }
 
-// IsExpectedReply checks whether the given Message matches an expected reply added with SendExpectingReply.
-func (s *Server) IsExpectedReply(fromAddr string, fromID peer.ID, mtype MType, msg interface{}) bool {
+// IsExpectedReply checks whether the given testMessage matches an expected reply added with SendExpectingReply.
+func (s *Server) IsExpectedReply(fromIP net.IP, fromID peer.ID, msg Message) bool {
 	matched := make(chan bool, 1)
 	select {
-	case s.replyReceived <- reply{fromAddr, fromID, mtype, msg, matched}:
+	case s.replyReceived <- reply{fromIP, fromID, msg, matched}:
 		// wait for matcher and return whether a matching request was found
 		return <-matched
 	case <-s.closing:
@@ -191,7 +186,7 @@ func (s *Server) replyLoop() {
 			matched := false
 			for e := matcherList.Front(); e != nil; e = e.Next() {
 				m := e.Value.(*replyMatcher)
-				if m.mtype == r.mtype && m.fromID == r.fromID && m.fromAddr == r.fromAddr {
+				if m.mtype == r.msg.Type() && m.fromID == r.fromID && m.fromIP.Equal(r.fromIP) {
 					if m.callback(r.msg) {
 						// request has been matched
 						matched = true
@@ -226,18 +221,18 @@ func (s *Server) replyLoop() {
 	}
 }
 
-func (s *Server) write(toAddr string, pkt *pb.Packet) {
+func (s *Server) write(pkt *pb.Packet, toAddr *net.UDPAddr) {
 	b, err := proto.Marshal(pkt)
 	if err != nil {
 		s.log.Error("marshal error", "err", err)
 		return
 	}
-	if l := len(b); l > transport.MaxPacketSize {
-		s.log.Error("packet too large", "size", l, "max", transport.MaxPacketSize)
+	if l := len(b); l > MaxPacketSize {
+		s.log.Error("packet too large", "size", l, "max", MaxPacketSize)
 		return
 	}
 
-	err = s.trans.WriteTo(b, toAddr)
+	_, err = s.conn.WriteToUDP(b, toAddr)
 	if err != nil {
 		s.log.Debugw("failed to write packet", "addr", toAddr, "err", err)
 	}
@@ -259,8 +254,9 @@ func (s *Server) encode(data []byte) *pb.Packet {
 func (s *Server) readLoop() {
 	defer s.wg.Done()
 
+	buffer := make([]byte, MaxPacketSize)
 	for {
-		b, fromAddr, err := s.trans.ReadFrom()
+		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
 			// ignore temporary read errors.
 			s.log.Debugw("temporary read error", "err", err)
@@ -276,7 +272,7 @@ func (s *Server) readLoop() {
 		}
 
 		pkt := new(pb.Packet)
-		if err := proto.Unmarshal(b, pkt); err != nil {
+		if err := proto.Unmarshal(buffer[:n], pkt); err != nil {
 			s.log.Debugw("bad packet", "from", fromAddr, "err", err)
 			continue
 		}
@@ -286,10 +282,10 @@ func (s *Server) readLoop() {
 	}
 }
 
-func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
+func (s *Server) handlePacket(pkt *pb.Packet, fromAddr *net.UDPAddr) error {
 	data, key, err := decode(pkt)
 	if err != nil {
-		return fmt.Errorf("invalid packet: %w", err)
+		return err
 	}
 
 	fromID := key.ID()

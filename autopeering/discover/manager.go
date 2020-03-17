@@ -19,11 +19,6 @@ const (
 	MaxServices = 5
 )
 
-var (
-	// VersionNum specifies the expected version number for this Protocol.
-	VersionNum = uint32(0)
-)
-
 type network interface {
 	local() *peer.Local
 

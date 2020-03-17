@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -32,8 +33,9 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 type Protocol struct {
 	server.Protocol
 
-	loc *peer.Local    // local peer that runs the protocol
-	log *logger.Logger // logging
+	versionNum uint32         // specifies the expected version number for this Protocol
+	loc        *peer.Local    // local peer that runs the protocol
+	log        *logger.Logger // logging
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
 	running   *typeutils.AtomicBool
@@ -41,27 +43,24 @@ type Protocol struct {
 }
 
 // New creates a new discovery protocol.
-func New(local *peer.Local, setters ...option) *Protocol {
-	log := logger.NewExampleLogger("discover")
-	args := &Options{
-		Log:     log.Named("disc"),
-		Version: 0,
+func New(local *peer.Local, opts ...Option) *Protocol {
+	args := &options{
+		log:         logger.NewNopLogger(),
+		versionNum:  0,
+		masterPeers: nil,
 	}
-
-	for _, setter := range setters {
-		setter(args)
+	for _, opt := range opts {
+		opt.apply(args)
 	}
 
 	p := &Protocol{
-		Protocol: server.Protocol{},
-		loc:      local,
-		log:      args.Log,
-		running:  typeutils.NewAtomicBool(),
+		versionNum: args.versionNum,
+		loc:        local,
+		log:        args.log,
+		running:    typeutils.NewAtomicBool(),
 	}
 
-	VersionNum = args.Version
-
-	p.mgr = newManager(p, args.MasterPeers, args.Log.Named("mgr"))
+	p.mgr = newManager(p, args.masterPeers, args.log.Named("mgr"))
 
 	return p
 }
@@ -83,8 +82,8 @@ func (p *Protocol) Close() {
 }
 
 // IsVerified checks whether the given peer has recently been verified a recent enough endpoint proof.
-func (p *Protocol) IsVerified(id peer.ID, addr string) bool {
-	return time.Since(p.loc.Database().LastPong(id, addr)) < PingExpiration
+func (p *Protocol) IsVerified(id peer.ID, addr *net.UDPAddr) bool {
+	return time.Since(p.loc.Database().LastPong(id, addr.String())) < PingExpiration
 }
 
 // EnsureVerified checks if the given peer has recently sent a Ping;
@@ -104,10 +103,23 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
 	for _, verified := range p.mgr.getVerifiedPeers() {
 		if verified.ID() == id {
+			// return the verified peer, when it is currently managed
 			return unwrapPeer(verified)
 		}
 	}
-	return nil
+	// if the sender is not managed, try to load it from DB
+	from, err := p.local().Database().Peer(id)
+	if err != nil {
+		// this should not happen as this is checked in validation
+		p.log.Warnw("invalid stored peer",
+			"id", id,
+			"err", err,
+		)
+		return nil
+	}
+	// send ping to restored peer to ensure that it will be verified
+	p.SendPing(from.Address(), from.ID())
+	return from
 }
 
 // GetVerifiedPeers returns all the currently managed peers that have been verified at least once.
@@ -116,7 +128,7 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 }
 
 // HandleMessage responds to incoming peer discovery messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -129,7 +141,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePing(fromAddr, m) {
-			p.handlePing(s, fromAddr, fromID, fromKey, data)
+			p.handlePing(s, fromAddr, fromID, fromKey, m, data)
 		}
 
 	// Pong
@@ -149,7 +161,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validateDiscoveryRequest(fromAddr, fromID, m) {
-			p.handleDiscoveryRequest(s, fromAddr, data)
+			p.handleDiscoveryRequest(s, fromID, data)
 		}
 
 	// DiscoveryResponse
@@ -173,9 +185,12 @@ func (p *Protocol) local() *peer.Local {
 	return p.loc
 }
 
-// publicAddr returns the public address of the peering service in string representation.
-func (p *Protocol) publicAddr() string {
-	return p.loc.Services().Get(service.PeeringKey).String()
+// localAddr returns the address under which the peering service can be reached.
+func (p *Protocol) localAddr() *net.UDPAddr {
+	return &net.UDPAddr{
+		IP:   p.loc.IP(),
+		Port: p.loc.Services().Get(service.PeeringKey).Port(),
+	}
 }
 
 // ------ message senders ------
@@ -193,18 +208,22 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 
 // SendPing sends a Ping to the specified address and expects a matching reply.
 // This method is non-blocking, but it returns a channel that can be used to query potential errors.
-func (p *Protocol) SendPing(toAddr string, toID peer.ID) <-chan error {
-	ping := newPing(p.publicAddr(), toAddr)
+func (p *Protocol) SendPing(dstAddr *net.UDPAddr, toID peer.ID) <-chan error {
+	// set the src address to zero to force response to the UDP envelop address
+	srcAddr := p.localAddr()
+	srcAddr.IP = net.IPv4zero
+
+	ping := newPing(p.versionNum, srcAddr, dstAddr)
 	data := marshal(ping)
 
 	// compute the message hash
 	hash := server.PacketHash(data)
 	hashEqual := func(m interface{}) bool {
-		return bytes.Equal(m.(*pb.Pong).GetPingHash(), hash)
+		return bytes.Equal(m.(*pb.Pong).GetReqHash(), hash)
 	}
 
-	p.logSend(toAddr, ping)
-	return p.Protocol.SendExpectingReply(toAddr, toID, data, pb.MPong, hashEqual)
+	p.logSend(dstAddr, ping)
+	return p.Protocol.SendExpectingReply(dstAddr, toID, data, pb.MPong, hashEqual)
 }
 
 // DiscoveryRequest request known peers from the given target. This method blocks
@@ -214,7 +233,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 		return nil, err
 	}
 
-	req := newDiscoveryRequest(to.Address())
+	req := newDiscoveryRequest()
 	data := marshal(req)
 
 	// compute the message hash
@@ -250,11 +269,11 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 // ------ helper functions ------
 
 // hasVerified returns whether the given peer has recently verified the local peer.
-func (p *Protocol) hasVerified(id peer.ID, addr string) bool {
-	return time.Since(p.loc.Database().LastPing(id, addr)) < PingExpiration
+func (p *Protocol) hasVerified(id peer.ID, addr *net.UDPAddr) bool {
+	return time.Since(p.loc.Database().LastPing(id, addr.String())) < PingExpiration
 }
 
-func (p *Protocol) logSend(toAddr string, msg pb.Message) {
+func (p *Protocol) logSend(toAddr *net.UDPAddr, msg pb.Message) {
 	if logSends {
 		p.log.Debugw("send message", "type", msg.Name(), "addr", toAddr)
 	}
@@ -274,35 +293,37 @@ func marshal(msg pb.Message) []byte {
 }
 
 // newPeer creates a new peer that only has a peering service at the given address.
-func newPeer(key peer.PublicKey, network string, address string) *peer.Peer {
+func newPeer(key peer.PublicKey, network string, addr *net.UDPAddr) *peer.Peer {
 	services := service.New()
-	services.Update(service.PeeringKey, network, address)
+	services.Update(service.PeeringKey, network, addr.Port)
 
-	return peer.NewPeer(key, services)
+	return peer.NewPeer(key, addr.IP, services)
 }
 
 // ------ Message Constructors ------
 
-func newPing(fromAddr string, toAddr string) *pb.Ping {
+func newPing(version uint32, srcAddr *net.UDPAddr, dstAddr *net.UDPAddr) *pb.Ping {
 	return &pb.Ping{
-		Version:   VersionNum,
-		From:      fromAddr,
-		To:        toAddr,
+		Version:   version,
+		SrcAddr:   srcAddr.IP.String(),
+		SrcPort:   uint32(srcAddr.Port),
+		DstAddr:   dstAddr.IP.String(),
+		DstPort:   uint32(dstAddr.Port),
 		Timestamp: time.Now().Unix(),
 	}
 }
 
-func newPong(toAddr string, reqData []byte, services *service.Record) *pb.Pong {
+func newPong(toAddr *net.UDPAddr, reqData []byte, services *service.Record) *pb.Pong {
 	return &pb.Pong{
-		PingHash: server.PacketHash(reqData),
-		To:       toAddr,
+		ReqHash:  server.PacketHash(reqData),
+		DstAddr:  toAddr.IP.String(),
+		DstPort:  uint32(toAddr.Port),
 		Services: services.ToProto(),
 	}
 }
 
-func newDiscoveryRequest(toAddr string) *pb.DiscoveryRequest {
+func newDiscoveryRequest() *pb.DiscoveryRequest {
 	return &pb.DiscoveryRequest{
-		To:        toAddr,
 		Timestamp: time.Now().Unix(),
 	}
 }
@@ -320,31 +341,21 @@ func newDiscoveryResponse(reqData []byte, list []*peer.Peer) *pb.DiscoveryRespon
 
 // ------ Message Handlers ------
 
-func (p *Protocol) validatePing(fromAddr string, m *pb.Ping) bool {
+func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 	// check version number
-	if m.GetVersion() != VersionNum {
+	if m.GetVersion() != p.versionNum {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"version", m.GetVersion(),
-			"want", VersionNum,
+			"want", p.versionNum,
 		)
 		return false
 	}
-	// check that From matches the package sender address
-	if m.GetFrom() != fromAddr {
+	// the src IP address must be unspecified
+	if ip := net.ParseIP(m.SrcAddr); !ip.IsUnspecified() {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
-			"from", m.GetFrom(),
-			"want", fromAddr,
-		)
-		return false
-	}
-	// check that To matches the local address
-	if m.GetTo() != p.publicAddr() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"to", m.GetTo(),
-			"want", p.publicAddr(),
+			"src_addr", ip,
 		)
 		return false
 	}
@@ -364,35 +375,30 @@ func (p *Protocol) validatePing(fromAddr string, m *pb.Ping) bool {
 	return true
 }
 
-func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, rawData []byte) {
+func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.PublicKey, m *pb.Ping, rawData []byte) {
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
-	p.logSend(fromAddr, pong)
-	s.Send(fromAddr, marshal(pong))
+	dstAddr := &net.UDPAddr{
+		IP:   fromAddr.IP,
+		Port: int(m.SrcPort),
+	}
+	p.logSend(dstAddr, pong)
+	s.Send(dstAddr, marshal(pong))
 
 	// if the peer is new or expired, send a Ping to verify
-	if !p.IsVerified(fromID, fromAddr) {
-		p.SendPing(fromAddr, fromID)
+	if !p.IsVerified(fromID, dstAddr) {
+		p.SendPing(dstAddr, fromID)
 	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new
-		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), fromAddr))
+		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), dstAddr))
 	}
 
-	_ = p.loc.Database().UpdateLastPing(fromID, fromAddr, time.Now())
+	_ = p.loc.Database().UpdateLastPing(fromID, dstAddr.String(), time.Now())
 }
 
-func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID peer.ID, m *pb.Pong) bool {
-	// check that To matches the local address
-	if m.GetTo() != p.publicAddr() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"to", m.GetTo(),
-			"want", p.publicAddr(),
-		)
-		return false
-	}
+func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.Pong) bool {
 	// there must be a Ping waiting for this pong as a reply
-	if !s.IsExpectedReply(fromAddr, fromID, m.Type(), m) {
+	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unexpected", fromAddr,
@@ -416,36 +422,27 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID peer.I
 	return true
 }
 
-func (p *Protocol) handlePong(fromAddr string, fromID peer.ID, fromKey peer.PublicKey, m *pb.Pong) {
+func (p *Protocol) handlePong(fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.PublicKey, m *pb.Pong) {
 	services, _ := service.FromProto(m.GetServices())
 	peering := services.Get(service.PeeringKey)
-	if peering == nil || peering.String() != fromAddr {
+	if peering == nil {
 		p.log.Warn("invalid services")
 		return
 	}
 
 	// create a proper key with these services
-	from := peer.NewPeer(fromKey, services)
+	from := peer.NewPeer(fromKey, fromAddr.IP, services)
 
 	// a valid pong verifies the peer
 	p.mgr.addVerifiedPeer(from)
 
 	// update peer database
 	db := p.loc.Database()
-	_ = db.UpdateLastPong(fromID, fromAddr, time.Now())
+	_ = db.UpdateLastPong(fromID, fromAddr.String(), time.Now())
 	_ = db.UpdatePeer(from)
 }
 
-func (p *Protocol) validateDiscoveryRequest(fromAddr string, fromID peer.ID, m *pb.DiscoveryRequest) bool {
-	// check that To matches the local address
-	if m.GetTo() != p.publicAddr() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"to", m.GetTo(),
-			"want", p.publicAddr(),
-		)
-		return false
-	}
+func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID peer.ID, m *pb.DiscoveryRequest) bool {
 	// check Timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
@@ -470,16 +467,18 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr string, fromID peer.ID, m *
 	return true
 }
 
-func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromAddr string, rawData []byte) {
+func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromID peer.ID, rawData []byte) {
 	// get a random list of verified peers
 	peers := p.mgr.getRandomPeers(MaxPeersInResponse, 1)
 	res := newDiscoveryResponse(rawData, peers)
 
-	p.logSend(fromAddr, res)
-	s.Send(fromAddr, marshal(res))
+	from := p.GetVerifiedPeer(fromID)
+
+	p.logSend(from.Address(), res)
+	s.Send(from.Address(), marshal(res))
 }
 
-func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr string, fromID peer.ID, m *pb.DiscoveryResponse) bool {
+func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.DiscoveryResponse) bool {
 	// there must not be too many peers
 	if len(m.GetPeers()) > MaxPeersInResponse {
 		p.log.Debugw("invalid message",
@@ -489,7 +488,7 @@ func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr string, 
 		return false
 	}
 	// there must be a request waiting for this response
-	if !s.IsExpectedReply(fromAddr, fromID, m.Type(), m) {
+	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unexpected", fromAddr,

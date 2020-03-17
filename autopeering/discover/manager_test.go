@@ -1,7 +1,7 @@
 package discover
 
 import (
-	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -25,7 +25,7 @@ func TestMgrVerifyDiscoveredPeer(t *testing.T) {
 	mgr, m, teardown := newManagerTest(t)
 	defer teardown()
 
-	p := peertest.NewPeer(testNetwork, "p")
+	p := peertest.NewPeer(testNetwork, testIP, 0)
 
 	// expect Ping of peer p
 	m.On("Ping", p).Return(nil).Once()
@@ -45,7 +45,7 @@ func TestMgrReverifyPeer(t *testing.T) {
 	mgr, m, teardown := newManagerTest(t)
 	defer teardown()
 
-	p := peertest.NewPeer(testNetwork, "p")
+	p := peertest.NewPeer(testNetwork, testIP, 0)
 
 	// expect Ping of peer p
 	m.On("Ping", p).Return(nil).Once()
@@ -65,8 +65,8 @@ func TestMgrRequestDiscoveredPeer(t *testing.T) {
 	mgr, m, teardown := newManagerTest(t)
 	defer teardown()
 
-	p1 := peertest.NewPeer(testNetwork, "verified")
-	p2 := peertest.NewPeer(testNetwork, "discovered")
+	p1 := peertest.NewPeer(testNetwork, testIP, 1)
+	p2 := peertest.NewPeer(testNetwork, testIP, 2)
 
 	// expect DiscoveryRequest on the discovered peer
 	m.On("DiscoveryRequest", p1).Return([]*peer.Peer{p2}, nil).Once()
@@ -84,7 +84,7 @@ func TestMgrAddManyVerifiedPeers(t *testing.T) {
 	mgr, m, teardown := newManagerTest(t)
 	defer teardown()
 
-	p := peertest.NewPeer(testNetwork, "p")
+	p := peertest.NewPeer(testNetwork, testIP, 999)
 
 	// expect Ping of peer p
 	m.On("Ping", p).Return(nil).Once()
@@ -96,7 +96,7 @@ func TestMgrAddManyVerifiedPeers(t *testing.T) {
 
 	mgr.addVerifiedPeer(p)
 	for i := 0; i < maxManaged+maxReplacements; i++ {
-		mgr.addVerifiedPeer(peertest.NewPeer(testNetwork, fmt.Sprintf("p%d", i)))
+		mgr.addVerifiedPeer(peertest.NewPeer(testNetwork, testIP, i))
 	}
 
 	mgr.doReverify(make(chan struct{})) // manually trigger a verify
@@ -112,7 +112,7 @@ func TestMgrDeleteUnreachablePeer(t *testing.T) {
 	mgr, m, teardown := newManagerTest(t)
 	defer teardown()
 
-	p := peertest.NewPeer(testNetwork, "p")
+	p := peertest.NewPeer(testNetwork, testIP, 999)
 
 	// expect Ping of peer p, but return error
 	m.On("Ping", p).Return(server.ErrTimeout).Times(1)
@@ -124,7 +124,7 @@ func TestMgrDeleteUnreachablePeer(t *testing.T) {
 
 	mgr.addVerifiedPeer(p)
 	for i := 0; i < maxManaged; i++ {
-		mgr.addVerifiedPeer(peertest.NewPeer(testNetwork, fmt.Sprintf("p%d", i)))
+		mgr.addVerifiedPeer(peertest.NewPeer(testNetwork, testIP, i))
 	}
 
 	mgr.doReverify(make(chan struct{})) // manually trigger a verify
@@ -145,7 +145,7 @@ type NetworkMock struct {
 func newManagerTest(t require.TestingT) (*manager, *NetworkMock, func()) {
 	db, err := peer.NewDB(mapdb.NewMapDB())
 	require.NoError(t, err)
-	local := peertest.NewLocal(testNetwork, testAddress, db)
+	local := peertest.NewLocal(testNetwork, net.IPv4zero, testPort, db)
 	networkMock := &NetworkMock{
 		loc: local,
 	}

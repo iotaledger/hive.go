@@ -4,11 +4,9 @@ option go_package = "github.com/iotaledger/hive.go/autopeering/selection/proto";
 
 package proto;
 
-import "salt/proto/salt.proto";
+import "autopeering/salt/proto/salt.proto";
 
 message PeeringRequest {
-  // string form of the recipient address
-  string to = 1;
   // unix time
   int64 timestamp = 2;
   // salt of the requester
@@ -23,8 +21,6 @@ message PeeringResponse {
 }
 
 message PeeringDrop {
-  // string form of the recipient address
-  string to = 1;
   // unix time
   int64 timestamp = 2;
 }

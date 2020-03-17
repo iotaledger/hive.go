@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net"
 	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
@@ -22,8 +23,8 @@ func (p *Protocol) Send(to *peer.Peer, data []byte) {
 
 // SendExpectingReply sends request data to a peer and expects a response of the given type.
 // On an incoming matching request the callback is executed to perform additional verification steps.
-func (p *Protocol) SendExpectingReply(toAddr string, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
-	return p.Sender.SendExpectingReply(toAddr, toID, data, replyType, callback)
+func (p *Protocol) SendExpectingReply(dstAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
+	return p.Sender.SendExpectingReply(dstAddr, toID, data, replyType, callback)
 }
 
 // IsExpired checks whether the given UNIX time stamp is too far in the past.

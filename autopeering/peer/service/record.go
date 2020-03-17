@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/service/proto"
@@ -11,34 +10,39 @@ import (
 // Record defines the mapping between a service ID and its tuple TypePort
 // e.g., map[autopeering:&{TCP, 8000}]
 type Record struct {
-	m map[string]*networkAddress
+	m map[string]endpoint
 }
 
-// networkAddress implements net.Addr
-type networkAddress struct {
+// endpoint implements net.Addr
+type endpoint struct {
 	network string
-	address string
+	port    int
 }
 
 // Network returns the service's network name.
-func (a *networkAddress) Network() string {
+func (a endpoint) Network() string {
 	return a.network
 }
 
 // String returns the service's address in string form.
-func (a *networkAddress) String() string {
-	return a.address
+func (a endpoint) Port() int {
+	return a.port
+}
+
+// String returns the service's address in string form.
+func (a endpoint) String() string {
+	return fmt.Sprintf("%d[%s]", a.port, a.network)
 }
 
 // New initializes and returns an empty new Record
 func New() *Record {
 	return &Record{
-		m: make(map[string]*networkAddress),
+		m: make(map[string]endpoint),
 	}
 }
 
 // Get returns the network end point address of the service with the given name.
-func (s *Record) Get(key Key) net.Addr {
+func (s *Record) Get(key Key) Endpoint {
 	val, ok := s.m[string(key)]
 	if !ok {
 		return nil
@@ -56,9 +60,10 @@ func (s *Record) CreateRecord() *Record {
 }
 
 // Update adds a new service to the map.
-func (s *Record) Update(key Key, network string, address string) {
-	s.m[string(key)] = &networkAddress{
-		network: network, address: address,
+func (s *Record) Update(key Key, network string, port int) {
+	s.m[string(key)] = endpoint{
+		network: network,
+		port:    port,
 	}
 }
 
@@ -76,9 +81,9 @@ func FromProto(in *pb.ServiceMap) (*Record, error) {
 
 	services := New()
 	for service, addr := range m {
-		services.m[service] = &networkAddress{
+		services.m[service] = endpoint{
 			network: addr.GetNetwork(),
-			address: addr.GetAddress(),
+			port:    int(addr.GetPort()),
 		}
 	}
 	return services, nil
@@ -94,7 +99,7 @@ func (s *Record) ToProto() *pb.ServiceMap {
 	for service, addr := range s.m {
 		services[service] = &pb.NetworkAddress{
 			Network: addr.network,
-			Address: addr.address,
+			Port:    uint32(addr.port),
 		}
 	}
 

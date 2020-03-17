@@ -64,7 +64,7 @@ func (db *DB) init() error {
 
 	for _, p := range peers {
 		// if they dont have an associated pong, give them a grace period
-		if db.LastPong(p.ID(), p.Address()).Unix() == 0 {
+		if db.LastPong(p.ID(), p.Address().String()).Unix() == 0 {
 			if err := db.setPeerWithTTL(p, cleanupInterval); err != nil {
 				return err
 			}
@@ -209,7 +209,7 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 		if err != nil || p.ID() != id {
 			return false
 		}
-		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.Address())) > maxAge {
+		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.Address().String())) > maxAge {
 			return false
 		}
 

@@ -4,12 +4,14 @@ option go_package = "github.com/iotaledger/hive.go/autopeering/peer/proto";
 
 package proto;
 
-import "peer/service/proto/service.proto";
+import "autopeering/peer/service/proto/service.proto";
 
 // Minimal encoding of a peer
 message Peer {
   // public key used for signing
   bytes public_key = 1;
+  // string form of the peers ID
+  string ip = 2;
   // services supported by the peer
-  ServiceMap services = 2;
+  ServiceMap services = 3;
 }

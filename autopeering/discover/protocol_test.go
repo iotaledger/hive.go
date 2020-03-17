@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -8,17 +9,17 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/autopeering/transport"
+	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 const (
 	testNetwork = "test"
-	testAddress = "test"
+	testIP      = "127.0.0.1"
+	testPort    = 8000
 	graceTime   = 100 * time.Millisecond
 )
 
@@ -26,7 +27,7 @@ var log = logger.NewExampleLogger("discover")
 
 func init() {
 	// decrease parameters to simplify and speed up tests
-	SetParameter(Parameters{
+	SetParameters(Parameters{
 		ReverifyInterval: 500 * time.Millisecond,
 		QueryInterval:    1000 * time.Millisecond,
 		MaxManaged:       10,
@@ -35,16 +36,18 @@ func init() {
 }
 
 func TestProtVerifyMaster(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
 
 	peerA := getPeer(protA)
 
 	// use peerA as masters peer
-	protB, closeB := newTestProtocol(p2p.B, log, peerA)
+	protB, closeB := newTestProtocol("B", connB, log, peerA)
 
 	time.Sleep(graceTime) // wait for the packages to ripple through the network
 	closeB()              // close srvB to avoid race conditions, when asserting
@@ -56,52 +59,58 @@ func TestProtVerifyMaster(t *testing.T) {
 }
 
 func TestProtPingPong(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerA := getPeer(protA)
 	peerB := getPeer(protB)
 
-	// send a Ping from node A to B
+	// send connA Ping from node A to B
 	t.Run("A->B", func(t *testing.T) { assert.NoError(t, protA.Ping(peerB)) })
 	time.Sleep(graceTime)
 
-	// send a Ping from node B to A
+	// send connA Ping from node B to A
 	t.Run("B->A", func(t *testing.T) { assert.NoError(t, protB.Ping(peerA)) })
 	time.Sleep(graceTime)
 }
 
 func TestProtPingTimeout(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	closeB() // close the connection right away to prevent any replies
 
-	// send a Ping from node A to B
+	// send connA Ping from node A to B
 	err := protA.Ping(getPeer(protB))
 	assert.EqualError(t, err, server.ErrTimeout.Error())
 }
 
 func TestProtVerifiedPeers(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerB := getPeer(protB)
 
-	// send a Ping from node A to B
+	// send connA Ping from node A to B
 	assert.NoError(t, protA.Ping(peerB))
 	time.Sleep(graceTime)
 
@@ -113,34 +122,38 @@ func TestProtVerifiedPeers(t *testing.T) {
 }
 
 func TestProtVerifiedPeer(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerA := getPeer(protA)
 	peerB := getPeer(protB)
 
-	// send a Ping from node A to B
+	// send connA Ping from node A to B
 	assert.NoError(t, protA.Ping(peerB))
 	time.Sleep(graceTime)
 
-	// we should have peerB as a verified peer
+	// we should have peerB as connA verified peer
 	assert.Equal(t, peerB, protA.GetVerifiedPeer(peerB.ID()))
-	// we should not have ourselves as a verified peer
+	// we should not have ourselves as connA verified peer
 	assert.Nil(t, protA.GetVerifiedPeer(peerA.ID()))
 }
 
 func TestProtDiscoveryRequest(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerA := getPeer(protA)
@@ -149,31 +162,38 @@ func TestProtDiscoveryRequest(t *testing.T) {
 	// request peers from node A
 	t.Run("A->B", func(t *testing.T) {
 		if ps, err := protA.DiscoveryRequest(peerB); assert.NoError(t, err) {
-			assert.ElementsMatch(t, []*peer.Peer{peerA}, ps)
+			//assert.ElementsMatch(t, []*peer.Peer{peerA}, ps)
+			if assert.Equal(t, 1, len(ps)) {
+				assert.Equal(t, peerA.ID(), ps[0].ID())
+			}
 		}
 	})
 	// request peers from node B
 	t.Run("B->A", func(t *testing.T) {
 		if ps, err := protB.DiscoveryRequest(peerA); assert.NoError(t, err) {
-			assert.ElementsMatch(t, []*peer.Peer{peerB}, ps)
+			if assert.Equal(t, 1, len(ps)) {
+				assert.Equal(t, peerB.ID(), ps[0].ID())
+			}
 		}
 	})
 }
 
 func TestProtServices(t *testing.T) {
-	p2p := transport.P2P()
-	defer p2p.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
 
-	err := protA.local().UpdateService(service.FPCKey, "fpc", p2p.A.LocalAddr().String())
+	err := protA.local().UpdateService(service.FPCKey, "fpc", 123)
 	require.NoError(t, err)
 
 	peerA := getPeer(protA)
 
 	// use peerA as masters peer
-	protB, closeB := newTestProtocol(p2p.B, log, peerA)
+	protB, closeB := newTestProtocol("B", connB, log, peerA)
 	defer closeB()
 
 	time.Sleep(graceTime) // wait for the packages to ripple through the network
@@ -185,18 +205,24 @@ func TestProtServices(t *testing.T) {
 }
 
 func TestProtDiscovery(t *testing.T) {
-	net := transport.NewNetwork("M", "A", "B", "C")
-	defer net.Close()
+	connM := servertest.NewConn()
+	defer connM.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
+	connC := servertest.NewConn()
+	defer connC.Close()
 
-	protM, closeM := newTestProtocol(net.GetTransport("M"), log)
+	protM, closeM := newTestProtocol("M", connM, log)
 	defer closeM()
 	time.Sleep(graceTime) // wait for the master to initialize
 
-	protA, closeA := newTestProtocol(net.GetTransport("A"), log, getPeer(protM))
+	protA, closeA := newTestProtocol("A", connA, log, getPeer(protM))
 	defer closeA()
-	protB, closeB := newTestProtocol(net.GetTransport("B"), log, getPeer(protM))
+	protB, closeB := newTestProtocol("B", connB, log, getPeer(protM))
 	defer closeB()
-	protC, closeC := newTestProtocol(net.GetTransport("C"), log, getPeer(protM))
+	protC, closeC := newTestProtocol("C", connC, log, getPeer(protM))
 	defer closeC()
 
 	time.Sleep(queryInterval + graceTime)    // wait for the next discovery cycle
@@ -210,17 +236,20 @@ func TestProtDiscovery(t *testing.T) {
 }
 
 func BenchmarkPingPong(b *testing.B) {
-	p2p := transport.P2P()
-	defer p2p.Close()
-	log := zap.NewNop().Sugar() // disable logging
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
+
+	log := logger.NewNopLogger() // disable logging
 
 	// disable query/reverify
 	reverifyInterval = time.Hour
 	queryInterval = time.Hour
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerB := getPeer(protB)
@@ -232,7 +261,7 @@ func BenchmarkPingPong(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		// send a Ping from node A to B
+		// send connA Ping from node A to B
 		_ = protA.Ping(peerB)
 	}
 
@@ -240,17 +269,20 @@ func BenchmarkPingPong(b *testing.B) {
 }
 
 func BenchmarkDiscoveryRequest(b *testing.B) {
-	p2p := transport.P2P()
-	defer p2p.Close()
-	log := zap.NewNop().Sugar() // disable logging
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
+
+	log := logger.NewNopLogger() // disable logging
 
 	// disable query/reverify
 	reverifyInterval = time.Hour
 	queryInterval = time.Hour
 
-	protA, closeA := newTestProtocol(p2p.A, log)
+	protA, closeA := newTestProtocol("A", connA, log)
 	defer closeA()
-	protB, closeB := newTestProtocol(p2p.B, log)
+	protB, closeB := newTestProtocol("B", connB, log)
 	defer closeB()
 
 	peerB := getPeer(protB)
@@ -268,15 +300,16 @@ func BenchmarkDiscoveryRequest(b *testing.B) {
 	b.StopTimer()
 }
 
-// newTestProtocol creates a new discovery server and also returns the teardown.
-func newTestProtocol(trans transport.Transport, logger *logger.Logger, masters ...*peer.Peer) (*Protocol, func()) {
+// newTestProtocol creates connA new discovery server and also returns the teardown.
+func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, masters ...*peer.Peer) (*Protocol, func()) {
 	db, _ := peer.NewDB(mapdb.NewMapDB())
-	local := peertest.NewLocal(trans.LocalAddr().Network(), trans.LocalAddr().String(), db)
-	log := logger.Named(trans.LocalAddr().String())
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	local := peertest.NewLocal(addr.Network(), addr.IP, addr.Port, db)
+	log := logger.Named(name)
 
 	prot := New(local, Logger(log), MasterPeers(masters))
 
-	srv := server.Serve(local, trans, log, prot)
+	srv := server.Serve(local, conn, log, prot)
 	prot.Start(srv)
 
 	teardown := func() {
@@ -287,5 +320,5 @@ func newTestProtocol(trans transport.Transport, logger *logger.Logger, masters .
 }
 
 func getPeer(p *Protocol) *peer.Peer {
-	return &p.local().Peer
+	return p.local().Peer
 }

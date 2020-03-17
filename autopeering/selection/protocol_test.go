@@ -1,6 +1,7 @@
 package selection
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/autopeering/transport"
+	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +19,7 @@ import (
 
 const (
 	testNetwork = "udp"
+	testIP      = "127.0.0.1"
 	graceTime   = 100 * time.Millisecond
 )
 
@@ -34,12 +36,14 @@ func TestProtocol(t *testing.T) {
 	})
 
 	t.Run("PeeringRequest", func(t *testing.T) {
-		p2p := transport.P2P()
-		defer p2p.Close()
+		connA := servertest.NewConn()
+		defer connA.Close()
+		connB := servertest.NewConn()
+		defer connB.Close()
 
-		protA, closeA := newTestProtocol(p2p.A)
+		protA, closeA := newTestProtocol("A", connA)
 		defer closeA()
-		protB, closeB := newTestProtocol(p2p.B)
+		protB, closeB := newTestProtocol("B", connB)
 		defer closeB()
 
 		peerA := getPeer(protA)
@@ -49,25 +53,27 @@ func TestProtocol(t *testing.T) {
 
 		// request peering to peer B
 		t.Run("A->B", func(t *testing.T) {
-			if services, err := protA.PeeringRequest(peerB, saltA); assert.NoError(t, err) {
-				assert.NotEmpty(t, services)
+			if accepted, err := protA.PeeringRequest(peerB, saltA); assert.NoError(t, err) {
+				assert.True(t, accepted)
 			}
 		})
 		// request peering to peer A
 		t.Run("B->A", func(t *testing.T) {
-			if services, err := protB.PeeringRequest(peerA, saltB); assert.NoError(t, err) {
-				assert.NotEmpty(t, services)
+			if accepted, err := protB.PeeringRequest(peerA, saltB); assert.NoError(t, err) {
+				assert.True(t, accepted)
 			}
 		})
 	})
 
 	t.Run("ExpiredSalt", func(t *testing.T) {
-		p2p := transport.P2P()
-		defer p2p.Close()
+		connA := servertest.NewConn()
+		defer connA.Close()
+		connB := servertest.NewConn()
+		defer connB.Close()
 
-		protA, closeA := newTestProtocol(p2p.A)
+		protA, closeA := newTestProtocol("A", connA)
 		defer closeA()
-		protB, closeB := newTestProtocol(p2p.B)
+		protB, closeB := newTestProtocol("B", connB)
 		defer closeB()
 
 		saltA, _ := salt.NewSalt(-1 * time.Second)
@@ -79,12 +85,14 @@ func TestProtocol(t *testing.T) {
 	})
 
 	t.Run("PeeringDrop", func(t *testing.T) {
-		p2p := transport.P2P()
-		defer p2p.Close()
+		connA := servertest.NewConn()
+		defer connA.Close()
+		connB := servertest.NewConn()
+		defer connB.Close()
 
-		protA, closeA := newTestProtocol(p2p.A)
+		protA, closeA := newTestProtocol("A", connA)
 		defer closeA()
-		protB, closeB := newTestProtocol(p2p.B)
+		protB, closeB := newTestProtocol("B", connB)
 		defer closeB()
 
 		peerA := getPeer(protA)
@@ -105,15 +113,17 @@ func TestProtocol(t *testing.T) {
 	})
 
 	t.Run("FullTest", func(t *testing.T) {
-		p2p := transport.P2P()
-		defer p2p.Close()
+		connA := servertest.NewConn()
+		defer connA.Close()
+		connB := servertest.NewConn()
+		defer connB.Close()
 
-		protA, closeA := newFullTestProtocol(p2p.A)
+		protA, closeA := newFullTestProtocol("A", connA)
 		defer closeA()
 
 		time.Sleep(graceTime) // wait for the master to initialize
 
-		protB, closeB := newFullTestProtocol(p2p.B, getPeer(protA))
+		protB, closeB := newFullTestProtocol("B", connB, getPeer(protA))
 		defer closeB()
 
 		time.Sleep(outboundUpdateInterval + graceTime) // wait for the next outbound cycle
@@ -127,22 +137,23 @@ func TestProtocol(t *testing.T) {
 // dummyDiscovery is a dummy implementation of DiscoveryProtocol never returning any verified peers.
 type dummyDiscovery struct{}
 
-func (d dummyDiscovery) IsVerified(_ peer.ID, _ string) bool       { return true }
-func (d dummyDiscovery) EnsureVerified(_ *peer.Peer) error         { return nil }
-func (d dummyDiscovery) SendPing(_ string, _ peer.ID) <-chan error { return nil }
-func (d dummyDiscovery) GetVerifiedPeer(id peer.ID) *peer.Peer     { return peerMap[id] }
-func (d dummyDiscovery) GetVerifiedPeers() []*peer.Peer            { return []*peer.Peer{} }
+func (dummyDiscovery) IsVerified(_ peer.ID, _ *net.UDPAddr) bool       { return true }
+func (dummyDiscovery) EnsureVerified(_ *peer.Peer) error               { return nil }
+func (dummyDiscovery) SendPing(_ *net.UDPAddr, _ peer.ID) <-chan error { return nil }
+func (dummyDiscovery) GetVerifiedPeer(id peer.ID) *peer.Peer           { return peerMap[id] }
+func (dummyDiscovery) GetVerifiedPeers() []*peer.Peer                  { return []*peer.Peer{} }
 
 // newTestProtocol creates a new neighborhood server and also returns the teardown.
-func newTestProtocol(trans transport.Transport) (*Protocol, func()) {
+func newTestProtocol(name string, conn *net.UDPConn) (*Protocol, func()) {
+	addr := conn.LocalAddr().(*net.UDPAddr)
 	db, _ := peer.NewDB(mapdb.NewMapDB())
-	local := peertest.NewLocal(trans.LocalAddr().Network(), trans.LocalAddr().String(), db)
+	local := peertest.NewLocal(addr.Network(), addr.IP, addr.Port, db)
 	// add the new peer to the global map for dummyDiscovery
-	peerMap[local.ID()] = &local.Peer
-	l := log.Named(trans.LocalAddr().String())
+	peerMap[local.ID()] = local.Peer
+	l := log.Named(name)
 
 	prot := New(local, dummyDiscovery{}, Logger(l.Named("sel")))
-	srv := server.Serve(local, trans, l.Named("srv"), prot)
+	srv := server.Serve(local, conn, l.Named("srv"), prot)
 	prot.Start(srv)
 
 	teardown := func() {
@@ -153,12 +164,13 @@ func newTestProtocol(trans transport.Transport) (*Protocol, func()) {
 }
 
 // newTestProtocol creates a new server handling discover as well as neighborhood and also returns the teardown.
-func newFullTestProtocol(trans transport.Transport, masterPeers ...*peer.Peer) (*Protocol, func()) {
+func newFullTestProtocol(name string, conn *net.UDPConn, masterPeers ...*peer.Peer) (*Protocol, func()) {
+	addr := conn.LocalAddr().(*net.UDPAddr)
 	db, _ := peer.NewDB(mapdb.NewMapDB())
-	local := peertest.NewLocal(trans.LocalAddr().Network(), trans.LocalAddr().String(), db)
+	local := peertest.NewLocal(addr.Network(), addr.IP, addr.Port, db)
 	// add the new peer to the global map for dummyDiscovery
-	peerMap[local.ID()] = &local.Peer
-	l := log.Named(trans.LocalAddr().String())
+	peerMap[local.ID()] = local.Peer
+	l := log.Named(name)
 
 	discovery := discover.New(local,
 		discover.Logger(l.Named("disc")),
@@ -166,7 +178,7 @@ func newFullTestProtocol(trans transport.Transport, masterPeers ...*peer.Peer) (
 	)
 	selection := New(local, discovery, Logger(l.Named("sel")))
 
-	srv := server.Serve(local, trans, l.Named("srv"), discovery, selection)
+	srv := server.Serve(local, conn, l.Named("srv"), discovery, selection)
 
 	discovery.Start(srv)
 	selection.Start(srv)
@@ -180,5 +192,5 @@ func newFullTestProtocol(trans transport.Transport, masterPeers ...*peer.Peer) (
 }
 
 func getPeer(p *Protocol) *peer.Peer {
-	return &p.local().Peer
+	return p.local().Peer
 }
