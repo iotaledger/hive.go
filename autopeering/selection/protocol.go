@@ -125,7 +125,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringRequest(fromAddr, fromID, m) {
-			p.handlePeeringRequest(s, fromAddr, fromID, data, m)
+			p.handlePeeringRequest(s, fromID, data, m)
 		}
 
 	// PeeringResponse
@@ -177,7 +177,7 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 	hash := server.PacketHash(data)
 
 	var status bool
-	callback := func(m interface{}) bool {
+	callback := func(m server.Message) bool {
 		res := m.(*pb.PeeringResponse)
 		if !bytes.Equal(res.GetReqHash(), hash) {
 			return false
@@ -292,7 +292,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID peer.ID,
 	return true
 }
 
-func (p *Protocol) handlePeeringRequest(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
+func (p *Protocol) handlePeeringRequest(s *server.Server, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
 	fromSalt, err := salt.FromProto(m.GetSalt())
 	if err != nil {
 		// this should not happen as it is checked in validation

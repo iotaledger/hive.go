@@ -148,7 +148,7 @@ func newTestServer(t require.TestingT, name string, conn *net.UDPConn) (*Server,
 
 func sendPing(s *Server, p *peer.Peer) error {
 	ping := new(Ping)
-	isPong := func(msg interface{}) bool {
+	isPong := func(msg Message) bool {
 		_, ok := msg.(*Pong)
 		return ok
 	}

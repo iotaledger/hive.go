@@ -28,7 +28,7 @@ type Message interface {
 // The Sender interface specifies common method required to send requests.
 type Sender interface {
 	Send(toAddr *net.UDPAddr, data []byte)
-	SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error
+	SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error
 }
 
 // A Handler reacts to an incoming message.

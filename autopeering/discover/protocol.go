@@ -16,6 +16,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/netutil"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -208,29 +209,33 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 
 // sendPing sends a Ping to the specified address and expects a matching reply.
 // This method is non-blocking, but it returns a channel that can be used to query potential errors.
-func (p *Protocol) sendPing(dstAddr *net.UDPAddr, toID peer.ID) <-chan error {
+func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID peer.ID) <-chan error {
 	// set the src address to zero to force response to the UDP envelop address
 	srcAddr := p.localAddr()
 	srcAddr.IP = net.IPv4zero
 
-	ping := newPing(p.versionNum, srcAddr, dstAddr)
+	ping := newPing(p.versionNum, srcAddr, toAddr)
 	data := marshal(ping)
 
 	// compute the message hash
 	hash := server.PacketHash(data)
-	hashEqual := func(m interface{}) bool {
-		pong := m.(*pb.Pong)
+	callback := func(msg server.Message) bool {
+		pong := msg.(*pb.Pong)
 		// the peering port must match the destination port
-		peering := pong.Services.GetMap()[string(service.PeeringKey)]
-		if peering == nil || int(peering.GetPort()) != dstAddr.Port {
+		serviceMap := pong.Services.GetMap()
+		if serviceMap == nil {
+			return false
+		}
+		peering := serviceMap[string(service.PeeringKey)]
+		if peering == nil || int(peering.GetPort()) != toAddr.Port {
 			return false
 		}
 		// the hash must be correct
 		return bytes.Equal(pong.GetReqHash(), hash)
 	}
 
-	p.logSend(dstAddr, ping)
-	return p.Protocol.SendExpectingReply(dstAddr, toID, data, pb.MPong, hashEqual)
+	p.logSend(toAddr, ping)
+	return p.Protocol.SendExpectingReply(toAddr, toID, data, pb.MPong, callback)
 }
 
 // DiscoveryRequest request known peers from the given target. This method blocks
@@ -247,7 +252,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 	hash := server.PacketHash(data)
 
 	peers := make([]*peer.Peer, 0, MaxPeersInResponse)
-	callback := func(m interface{}) bool {
+	callback := func(m server.Message) bool {
 		res := m.(*pb.DiscoveryResponse)
 		if !bytes.Equal(res.GetReqHash(), hash) {
 			return false
@@ -312,20 +317,20 @@ func newPeer(key peer.PublicKey, network string, addr *net.UDPAddr) *peer.Peer {
 func newPing(version uint32, srcAddr *net.UDPAddr, dstAddr *net.UDPAddr) *pb.Ping {
 	return &pb.Ping{
 		Version:   version,
+		Timestamp: time.Now().Unix(),
 		SrcAddr:   srcAddr.IP.String(),
 		SrcPort:   uint32(srcAddr.Port),
 		DstAddr:   dstAddr.IP.String(),
 		DstPort:   uint32(dstAddr.Port),
-		Timestamp: time.Now().Unix(),
 	}
 }
 
-func newPong(toAddr *net.UDPAddr, reqData []byte, services *service.Record) *pb.Pong {
+func newPong(dstAddr *net.UDPAddr, reqData []byte, services *service.Record) *pb.Pong {
 	return &pb.Pong{
 		ReqHash:  server.PacketHash(reqData),
-		DstAddr:  toAddr.IP.String(),
-		DstPort:  uint32(toAddr.Port),
 		Services: services.ToProto(),
+		DstAddr:  dstAddr.IP.String(),
+		DstPort:  uint32(dstAddr.Port),
 	}
 }
 
@@ -358,15 +363,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 		)
 		return false
 	}
-	// the src IP address must be unspecified
-	if ip := net.ParseIP(m.SrcAddr); !ip.IsUnspecified() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"src_addr", ip,
-		)
-		return false
-	}
-	// check Timestamp
+	// check timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
@@ -374,6 +371,24 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 		)
 		return false
 	}
+	// check that the src_addr is valid
+	// currently only the unspecified case is supported, where the source IP address of the packet is used.
+	if ip := net.ParseIP(m.GetSrcAddr()); !ip.IsUnspecified() {
+		p.log.Debugw("invalid message",
+			"type", m.Name(),
+			"src_addr", m.GetSrcAddr(),
+		)
+		return false
+	}
+	// check that src_port is a valid port number
+	if !netutil.IsValidPort(int(m.GetSrcPort())) {
+		p.log.Debugw("invalid message",
+			"type", m.Name(),
+			"src_port", m.GetSrcPort(),
+		)
+		return false
+	}
+	// ignore dst_addr and dst_port for now
 
 	p.log.Debugw("valid message",
 		"type", m.Name(),
@@ -386,6 +401,7 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID pe
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
+	// the destination address takes uses the source IP address of the packet plus the src_port in the message
 	dstAddr := &net.UDPAddr{
 		IP:   fromAddr.IP,
 		Port: int(m.SrcPort),
@@ -420,6 +436,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 		)
 		return false
 	}
+	// ignore dst_addr and dst_port for now
 
 	p.log.Debugw("valid message",
 		"type", m.Name(),
@@ -485,19 +502,19 @@ func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromID peer.ID, rawD
 }
 
 func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.DiscoveryResponse) bool {
-	// there must not be too many peers
-	if len(m.GetPeers()) > MaxPeersInResponse {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"#peers", len(m.GetPeers()),
-		)
-		return false
-	}
 	// there must be a request waiting for this response
 	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unexpected", fromAddr,
+		)
+		return false
+	}
+	// there must not be too many peers
+	if len(m.GetPeers()) > MaxPeersInResponse {
+		p.log.Debugw("invalid message",
+			"type", m.Name(),
+			"#peers", len(m.GetPeers()),
 		)
 		return false
 	}

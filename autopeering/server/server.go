@@ -49,7 +49,7 @@ type replyMatcher struct {
 
 	// callback is called when a matching reply arrives
 	// If it returns true, the reply is acceptable.
-	callback func(msg interface{}) bool
+	callback func(msg Message) bool
 
 	// errc receives nil when the callback indicates completion or an
 	// error if no further reply is received within the timeout
@@ -119,7 +119,7 @@ func (s *Server) Send(toAddr *net.UDPAddr, data []byte) {
 // SendExpectingReply sends a message to the given address and tells the Server
 // to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
+func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error {
 	errc := s.expectReply(toAddr.IP, toID, replyType, callback)
 	s.Send(toAddr, data)
 
@@ -128,7 +128,7 @@ func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID peer.ID, data []by
 
 // expectReply tells the Server to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) expectReply(fromIP net.IP, fromID peer.ID, mtype MType, callback func(interface{}) bool) <-chan error {
+func (s *Server) expectReply(fromIP net.IP, fromID peer.ID, mtype MType, callback func(Message) bool) <-chan error {
 	ch := make(chan error, 1)
 	m := &replyMatcher{fromIP: fromIP, fromID: fromID, mtype: mtype, callback: callback, errc: ch}
 	select {
