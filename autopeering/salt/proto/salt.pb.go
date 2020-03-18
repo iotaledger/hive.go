@@ -73,7 +73,9 @@ func init() {
 	proto.RegisterType((*Salt)(nil), "proto.Salt")
 }
 
-func init() { proto.RegisterFile("autopeering/salt/proto/salt.proto", fileDescriptor_3810a7bc9c8d632d) }
+func init() {
+	proto.RegisterFile("autopeering/salt/proto/salt.proto", fileDescriptor_3810a7bc9c8d632d)
+}
 
 var fileDescriptor_3810a7bc9c8d632d = []byte{
 	// 145 bytes of a gzipped FileDescriptorProto

@@ -8,9 +8,9 @@ import "autopeering/salt/proto/salt.proto";
 
 message PeeringRequest {
   // unix time
-  int64 timestamp = 2;
+  int64 timestamp = 1;
   // salt of the requester
-  Salt salt = 3;
+  Salt salt = 2;
 }
 
 message PeeringResponse {
@@ -22,5 +22,5 @@ message PeeringResponse {
 
 message PeeringDrop {
   // unix time
-  int64 timestamp = 2;
+  int64 timestamp = 1;
 }

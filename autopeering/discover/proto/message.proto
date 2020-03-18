@@ -12,28 +12,28 @@ message Ping {
   // protocol version number
   uint32 version = 1;
 
+  // unix time
+  int64 timestamp = 2;
+
   // endpoint of the sender; port and string form of the return address (e.g. "192.0.2.1", "[2001:db8::1]")
-  string src_addr = 2;
-  uint32 src_port = 3;
+  string src_addr = 3;
+  uint32 src_port = 4;
 
   // endpoint of the receiver, this provides a way to discover the the external address (after NAT).
-  string dst_addr = 4;
-  uint32 dst_port = 5;
-
-  // unix time
-  int64 timestamp = 6;
+  string dst_addr = 5;
+  uint32 dst_port = 6;
 }
 
 message Pong {
   // hash of the ping packet
   bytes req_hash = 1;
 
-  // endpoint of the receiver, this provides a way to discover the the external address (after NAT).
-  string dst_addr = 4;
-  uint32 dst_port = 5;
-
   // services supported by the sender
   ServiceMap services = 2;
+
+  // endpoint of the receiver, this provides a way to discover the the external address (after NAT).
+  string dst_addr = 3;
+  uint32 dst_port = 4;
 }
 
 message DiscoveryRequest {

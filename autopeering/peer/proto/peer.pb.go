@@ -84,7 +84,9 @@ func init() {
 	proto.RegisterType((*Peer)(nil), "proto.Peer")
 }
 
-func init() { proto.RegisterFile("autopeering/peer/proto/peer.proto", fileDescriptor_49a3718f3e1a3ddf) }
+func init() {
+	proto.RegisterFile("autopeering/peer/proto/peer.proto", fileDescriptor_49a3718f3e1a3ddf)
+}
 
 var fileDescriptor_49a3718f3e1a3ddf = []byte{
 	// 185 bytes of a gzipped FileDescriptorProto
