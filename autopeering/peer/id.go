@@ -5,10 +5,17 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/iotaledger/hive.go/signature"
 )
 
 // ID is a unique identifier for each peer.
 type ID [sha256.Size]byte
+
+// CreateID computes the ID corresponding to the given public key.
+func CreateID(key signature.PublicKey) ID {
+	return sha256.Sum256(key)
+}
 
 // Bytes returns the byte slice representation of the ID
 func (id ID) Bytes() []byte {
@@ -32,9 +39,4 @@ func ParseID(s string) (ID, error) {
 	}
 	copy(id[:], b)
 	return id, nil
-}
-
-// ID computes the ID corresponding to the given public key.
-func (k PublicKey) ID() ID {
-	return sha256.Sum256(k)
 }

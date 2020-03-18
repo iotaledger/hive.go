@@ -1,7 +1,6 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/signature"
 )
 
 // Errors in the peer package.
@@ -18,14 +18,11 @@ var (
 	ErrInvalidSignature    = errors.New("invalid signature")
 )
 
-// PublicKey is the type of Ed25519 public keys used for peers.
-type PublicKey ed25519.PublicKey
-
 // Peer defines the immutable data of a peer.
 type Peer struct {
-	id        ID              // comparable node identifier
-	publicKey PublicKey       // public key used to verify signatures
-	services  *service.Record // unmodifiable services supported by the peer
+	id        ID                  // comparable node identifier
+	publicKey signature.PublicKey // public key used to verify signatures
+	services  *service.Record     // unmodifiable services supported by the peer
 }
 
 // ID returns the identifier of the peer.
@@ -34,7 +31,7 @@ func (p *Peer) ID() ID {
 }
 
 // PublicKey returns the public key of the peer.
-func (p *Peer) PublicKey() PublicKey {
+func (p *Peer) PublicKey() signature.PublicKey {
 	return p.publicKey
 }
 
@@ -71,18 +68,18 @@ type SignedData interface {
 }
 
 // RecoverKeyFromSignedData validates and returns the key that was used to sign the data.
-func RecoverKeyFromSignedData(m SignedData) (PublicKey, error) {
+func RecoverKeyFromSignedData(m SignedData) (signature.PublicKey, error) {
 	return recoverKey(m.GetPublicKey(), m.GetData(), m.GetSignature())
 }
 
 // NewPeer creates a new unmodifiable peer.
-func NewPeer(publicKey PublicKey, services service.Service) *Peer {
+func NewPeer(publicKey signature.PublicKey, services service.Service) *Peer {
 	if services.Get(service.PeeringKey) == nil {
 		panic("need peering service")
 	}
 
 	return &Peer{
-		id:        publicKey.ID(),
+		id:        CreateID(publicKey),
 		publicKey: publicKey,
 		services:  services.CreateRecord(),
 	}
@@ -98,8 +95,8 @@ func (p *Peer) ToProto() *pb.Peer {
 
 // FromProto decodes a given proto buffer Peer message (in) and returns the corresponding Peer.
 func FromProto(in *pb.Peer) (*Peer, error) {
-	if l := len(in.GetPublicKey()); l != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PublicKeySize)
+	if l := len(in.GetPublicKey()); l != signature.PublicKeySize {
+		return nil, fmt.Errorf("invalid key length: %d, need %d", l, signature.PublicKeySize)
 	}
 	services, err := service.FromProto(in.GetServices())
 	if err != nil {
@@ -126,18 +123,18 @@ func Unmarshal(data []byte) (*Peer, error) {
 	return FromProto(s)
 }
 
-func recoverKey(key, data, sig []byte) (PublicKey, error) {
-	if l := len(key); l != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("%w: invalid key length: %d, need %d", ErrInvalidSignature, l, ed25519.PublicKeySize)
+func recoverKey(key, data, sig []byte) (signature.PublicKey, error) {
+	if l := len(key); l != signature.PublicKeySize {
+		return nil, fmt.Errorf("%w: invalid key length: %d, need %d", ErrInvalidSignature, l, signature.PublicKeySize)
 	}
-	if l := len(sig); l != ed25519.SignatureSize {
-		return nil, fmt.Errorf("%w: invalid signature length: %d, need %d", ErrInvalidSignature, l, ed25519.SignatureSize)
+	if l := len(sig); l != signature.SignatureSize {
+		return nil, fmt.Errorf("%w: invalid signature length: %d, need %d", ErrInvalidSignature, l, signature.SignatureSize)
 	}
-	if !ed25519.Verify(key, data, sig) {
+	if !signature.Verify(key, data, sig) {
 		return nil, ErrInvalidSignature
 	}
 
-	publicKey := make([]byte, ed25519.PublicKeySize)
+	publicKey := make([]byte, signature.PublicKeySize)
 	copy(publicKey, key)
 	return publicKey, nil
 }

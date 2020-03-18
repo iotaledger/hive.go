@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/signature"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -114,7 +116,7 @@ func (p *Protocol) RemoveNeighbor(id peer.ID) {
 }
 
 // HandleMessage responds to incoming neighbor selection messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, _ peer.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, _ signature.PublicKey, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}

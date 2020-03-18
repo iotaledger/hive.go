@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/signature"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
@@ -292,7 +294,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
 		return fmt.Errorf("invalid packet: %w", err)
 	}
 
-	fromID := key.ID()
+	fromID := peer.CreateID(key)
 	for _, handler := range s.handlers {
 		ok, err := handler.HandleMessage(s, fromAddr, fromID, key, data)
 		if ok {
@@ -302,7 +304,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
 	return ErrInvalidMessage
 }
 
-func decode(pkt *pb.Packet) ([]byte, peer.PublicKey, error) {
+func decode(pkt *pb.Packet) ([]byte, signature.PublicKey, error) {
 	if len(pkt.GetData()) == 0 {
 		return nil, nil, ErrNoMessage
 	}

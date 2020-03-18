@@ -15,6 +15,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/signature"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -116,7 +117,7 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 }
 
 // HandleMessage responds to incoming peer discovery messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -274,7 +275,7 @@ func marshal(msg pb.Message) []byte {
 }
 
 // newPeer creates a new peer that only has a peering service at the given address.
-func newPeer(key peer.PublicKey, network string, address string) *peer.Peer {
+func newPeer(key signature.PublicKey, network string, address string) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, address)
 
@@ -364,7 +365,7 @@ func (p *Protocol) validatePing(fromAddr string, m *pb.Ping) bool {
 	return true
 }
 
-func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, rawData []byte) {
+func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, rawData []byte) {
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
@@ -416,7 +417,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID peer.I
 	return true
 }
 
-func (p *Protocol) handlePong(fromAddr string, fromID peer.ID, fromKey peer.PublicKey, m *pb.Pong) {
+func (p *Protocol) handlePong(fromAddr string, fromID peer.ID, fromKey signature.PublicKey, m *pb.Pong) {
 	services, _ := service.FromProto(m.GetServices())
 	peering := services.Get(service.PeeringKey)
 	if peering == nil || peering.String() != fromAddr {

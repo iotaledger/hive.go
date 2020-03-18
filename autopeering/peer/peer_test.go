@@ -4,6 +4,8 @@ import (
 	"crypto/ed25519"
 	"testing"
 
+	"github.com/iotaledger/hive.go/signature"
+
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,16 +63,16 @@ func TestMarshalUnmarshal(t *testing.T) {
 func TestRecoverKeyFromSignedData(t *testing.T) {
 	msg := []byte(testMessage)
 
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := signature.GenerateKey(nil)
 	require.NoError(t, err)
 
-	sig := ed25519.Sign(priv, msg)
+	sig := signature.Sign(priv, msg)
 
 	d := signedData{pub: pub, msg: msg, sig: sig}
 	key, err := RecoverKeyFromSignedData(d)
 	require.NoError(t, err)
 
-	assert.Equal(t, PublicKey(pub).ID(), key.ID())
+	assert.Equal(t, pub, key)
 }
 
 type signedData struct {

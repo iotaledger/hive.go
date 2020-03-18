@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/iotaledger/hive.go/signature"
+
 	"github.com/iotaledger/hive.go/database"
 )
 
@@ -112,10 +114,10 @@ func (db *DB) setInt64(key []byte, n int64) error {
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
-func (db *DB) LocalPrivateKey() (PrivateKey, error) {
+func (db *DB) LocalPrivateKey() (signature.PrivateKey, error) {
 	entry, err := db.db.Get(localFieldKey(dbLocalKey))
 	if err == database.ErrKeyNotFound {
-		key, genErr := generatePrivateKey()
+		key, genErr := signature.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
 		}
@@ -124,11 +126,11 @@ func (db *DB) LocalPrivateKey() (PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return PrivateKey(entry.Value), nil
+	return signature.PrivateKey(entry.Value), nil
 }
 
 // UpdateLocalPrivateKey stores the provided key in the database.
-func (db *DB) UpdateLocalPrivateKey(key PrivateKey) error {
+func (db *DB) UpdateLocalPrivateKey(key signature.PrivateKey) error {
 	return db.db.Set(database.Entry{Key: localFieldKey(dbLocalKey), Value: []byte(key)})
 }
 

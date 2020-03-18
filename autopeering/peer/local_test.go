@@ -1,30 +1,30 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"testing"
 	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
+	"github.com/iotaledger/hive.go/signature"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestID(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := signature.GenerateKey(nil)
 	require.NoError(t, err)
 
-	local := newLocal(PrivateKey(priv), newTestServiceRecord(), nil)
-	id := PublicKey(pub).ID()
+	local := newLocal(priv, newTestServiceRecord(), nil)
+	id := CreateID(pub)
 	assert.Equal(t, id, local.ID())
 }
 
 func TestPublicKey(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := signature.GenerateKey(nil)
 	require.NoError(t, err)
 
-	local := newLocal(PrivateKey(priv), newTestServiceRecord(), nil)
+	local := newLocal(priv, newTestServiceRecord(), nil)
 	assert.EqualValues(t, pub, local.PublicKey())
 }
 
@@ -57,10 +57,10 @@ func TestPublicSalt(t *testing.T) {
 }
 
 func newTestLocal(t require.TestingT, db *DB) *Local {
-	var priv PrivateKey
+	var priv signature.PrivateKey
 	var err error
 	if db == nil {
-		priv, err = generatePrivateKey()
+		priv, err = signature.GeneratePrivateKey()
 		require.NoError(t, err)
 	} else {
 		priv, err = db.LocalPrivateKey()
