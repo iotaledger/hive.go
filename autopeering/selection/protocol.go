@@ -29,7 +29,7 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 
 // DiscoverProtocol specifies the methods from the peer discovery that are required.
 type DiscoverProtocol interface {
-	IsVerified(peer.ID, *net.UDPAddr) bool
+	IsVerified(peer.ID, net.IP) bool
 	EnsureVerified(*peer.Peer) error
 
 	GetVerifiedPeer(peer.ID) *peer.Peer
@@ -260,7 +260,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID peer.ID,
 		return false
 	}
 	// check whether the sender is verified
-	if !p.disc.IsVerified(fromID, fromAddr) {
+	if !p.disc.IsVerified(fromID, fromAddr.IP) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unverified", fromAddr,

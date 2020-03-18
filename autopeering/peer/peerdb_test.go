@@ -43,18 +43,18 @@ func TestPeerDB(t *testing.T) {
 
 	t.Run("LastPing", func(t *testing.T) {
 		now := time.Now()
-		err := db.UpdateLastPing(p.ID(), p.Address().String(), now)
+		err := db.UpdateLastPing(p.ID(), p.IP(), now)
 		require.NoError(t, err)
 
-		assert.Equal(t, now.Unix(), db.LastPing(p.ID(), p.Address().String()).Unix())
+		assert.Equal(t, now.Unix(), db.LastPing(p.ID(), p.IP()).Unix())
 	})
 
 	t.Run("LastPong", func(t *testing.T) {
 		now := time.Now()
-		err := db.UpdateLastPong(p.ID(), p.Address().String(), now)
+		err := db.UpdateLastPong(p.ID(), p.IP(), now)
 		require.NoError(t, err)
 
-		assert.Equal(t, now.Unix(), db.LastPong(p.ID(), p.Address().String()).Unix())
+		assert.Equal(t, now.Unix(), db.LastPong(p.ID(), p.IP()).Unix())
 	})
 
 	t.Run("getPeers", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestPeerDB(t *testing.T) {
 
 		newPeer := newTestPeer("new")
 		assert.NoError(t, db.UpdatePeer(newPeer))
-		assert.NoError(t, db.UpdateLastPong(newPeer.ID(), newPeer.Address().String(), time.Now()))
+		assert.NoError(t, db.UpdateLastPong(newPeer.ID(), newPeer.IP(), time.Now()))
 
 		peers := db.getPeers(time.Second)
 		assert.ElementsMatch(t, []*Peer{newPeer}, peers)
@@ -72,7 +72,7 @@ func TestPeerDB(t *testing.T) {
 		for i := 0; i < seedCount+1; i++ {
 			p := newTestPeer(fmt.Sprintf("SeedPeers%0d", i))
 			assert.NoError(t, db.UpdatePeer(p))
-			assert.NoError(t, db.UpdateLastPong(p.ID(), p.Address().String(), time.Now()))
+			assert.NoError(t, db.UpdateLastPong(p.ID(), p.IP(), time.Now()))
 		}
 
 		peers := db.SeedPeers()
@@ -83,7 +83,7 @@ func TestPeerDB(t *testing.T) {
 		for i := 0; i < seedCount+1; i++ {
 			p := newTestPeer(fmt.Sprintf("PersistSeeds%0d", i))
 			assert.NoError(t, db.UpdatePeer(p))
-			assert.NoError(t, db.UpdateLastPong(p.ID(), p.Address().String(), time.Now()))
+			assert.NoError(t, db.UpdateLastPong(p.ID(), p.IP(), time.Now()))
 		}
 
 		count := db.PersistSeeds()

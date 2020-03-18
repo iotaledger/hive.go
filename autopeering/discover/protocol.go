@@ -82,14 +82,14 @@ func (p *Protocol) Close() {
 }
 
 // IsVerified checks whether the given peer has recently been verified a recent enough endpoint proof.
-func (p *Protocol) IsVerified(id peer.ID, addr *net.UDPAddr) bool {
-	return time.Since(p.loc.Database().LastPong(id, addr.String())) < PingExpiration
+func (p *Protocol) IsVerified(id peer.ID, ip net.IP) bool {
+	return time.Since(p.loc.Database().LastPong(id, ip)) < PingExpiration
 }
 
 // EnsureVerified checks if the given peer has recently sent a Ping;
 // if not, we send a Ping to trigger a verification.
 func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
-	if !p.hasVerified(peer.ID(), peer.Address()) {
+	if !p.hasVerified(peer.ID(), peer.IP()) {
 		if err := p.Ping(peer); err != nil {
 			return err
 		}
@@ -276,8 +276,8 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 // ------ helper functions ------
 
 // hasVerified returns whether the given peer has recently verified the local peer.
-func (p *Protocol) hasVerified(id peer.ID, addr *net.UDPAddr) bool {
-	return time.Since(p.loc.Database().LastPing(id, addr.String())) < PingExpiration
+func (p *Protocol) hasVerified(id peer.ID, ip net.IP) bool {
+	return time.Since(p.loc.Database().LastPing(id, ip)) < PingExpiration
 }
 
 func (p *Protocol) logSend(toAddr *net.UDPAddr, msg pb.Message) {
@@ -394,13 +394,13 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID pe
 	s.Send(dstAddr, marshal(pong))
 
 	// if the peer is unknown or expired, send a Ping to verify
-	if !p.IsVerified(fromID, dstAddr) {
+	if !p.IsVerified(fromID, dstAddr.IP) {
 		p.sendPing(dstAddr, fromID)
 	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new but verified
 		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), dstAddr))
 	}
 
-	_ = p.loc.Database().UpdateLastPing(fromID, dstAddr.String(), time.Now())
+	_ = p.loc.Database().UpdateLastPing(fromID, dstAddr.IP, time.Now())
 }
 
 func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.Pong) bool {
@@ -444,7 +444,7 @@ func (p *Protocol) handlePong(fromAddr *net.UDPAddr, fromID peer.ID, fromKey pee
 
 	// update peer database
 	db := p.loc.Database()
-	_ = db.UpdateLastPong(fromID, fromAddr.String(), time.Now())
+	_ = db.UpdateLastPong(fromID, fromAddr.IP, time.Now())
 	_ = db.UpdatePeer(from)
 }
 
@@ -458,7 +458,7 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID peer.I
 		return false
 	}
 	// check whether the sender is verified
-	if !p.IsVerified(fromID, fromAddr) {
+	if !p.IsVerified(fromID, fromAddr.IP) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unverified", fromAddr,
