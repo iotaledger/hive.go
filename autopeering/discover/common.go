@@ -24,7 +24,6 @@ var (
 
 type options struct {
 	log         *logger.Logger // Logger
-	versionNum  uint32         // Protocol version
 	masterPeers []*peer.Peer   // list of master peers used for bootstrapping
 }
 
@@ -42,13 +41,6 @@ func (f optionFunc) apply(opts *options) { f(opts) }
 func Logger(log *logger.Logger) Option {
 	return optionFunc(func(opts *options) {
 		opts.log = log
-	})
-}
-
-// Version sets the VersionNumber of the protocol
-func Version(version uint32) Option {
-	return optionFunc(func(opts *options) {
-		opts.versionNum = version
 	})
 }
 

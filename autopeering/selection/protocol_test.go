@@ -171,7 +171,7 @@ func newFullTestProtocol(name string, conn *net.UDPConn, masterPeers ...*peer.Pe
 	peerMap[local.ID()] = local.Peer
 	l := log.Named(name)
 
-	discovery := discover.New(local,
+	discovery := discover.New(local, 0,
 		discover.Logger(l.Named("disc")),
 		discover.MasterPeers(masterPeers),
 	)

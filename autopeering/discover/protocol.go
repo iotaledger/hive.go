@@ -34,20 +34,19 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 type Protocol struct {
 	server.Protocol
 
-	versionNum uint32         // specifies the expected version number for this Protocol
-	loc        *peer.Local    // local peer that runs the protocol
-	log        *logger.Logger // logging
+	version uint32         // specifies the expected version number for this Protocol
+	loc     *peer.Local    // local peer that runs the protocol
+	log     *logger.Logger // logging
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
 	running   *typeutils.AtomicBool
 	closeOnce sync.Once
 }
 
-// New creates a new discovery protocol.
-func New(local *peer.Local, opts ...Option) *Protocol {
+// New creates a new discovery protocol for the local node with the given protocol version.
+func New(local *peer.Local, version uint32, opts ...Option) *Protocol {
 	args := &options{
 		log:         logger.NewNopLogger(),
-		versionNum:  0,
 		masterPeers: nil,
 	}
 	for _, opt := range opts {
@@ -55,10 +54,10 @@ func New(local *peer.Local, opts ...Option) *Protocol {
 	}
 
 	p := &Protocol{
-		versionNum: args.versionNum,
-		loc:        local,
-		log:        args.log,
-		running:    typeutils.NewAtomicBool(),
+		version: version,
+		loc:     local,
+		log:     args.log,
+		running: typeutils.NewAtomicBool(),
 	}
 
 	p.mgr = newManager(p, args.masterPeers, args.log.Named("mgr"))
@@ -219,7 +218,7 @@ func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID peer.ID) <-chan error {
 	srcAddr := p.localAddr()
 	srcAddr.IP = net.IPv4zero
 
-	ping := newPing(p.versionNum, srcAddr, toAddr)
+	ping := newPing(p.version, srcAddr, toAddr)
 	data := marshal(ping)
 
 	// compute the message hash
@@ -358,11 +357,11 @@ func newDiscoveryResponse(reqData []byte, list []*peer.Peer) *pb.DiscoveryRespon
 
 func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 	// check version number
-	if m.GetVersion() != p.versionNum {
+	if m.GetVersion() != p.version {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"version", m.GetVersion(),
-			"want", p.versionNum,
+			"want", p.version,
 		)
 		return false
 	}
