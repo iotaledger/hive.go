@@ -100,7 +100,7 @@ func TestMgrAddManyVerifiedPeers(t *testing.T) {
 	}
 
 	mgr.doReverify(make(chan struct{})) // manually trigger a verify
-	ps := unwrapPeers(mgr.getVerifiedPeers())
+	ps := unwrapPeers(mgr.verifiedPeers())
 
 	assert.Equal(t, maxManaged, len(ps))
 	assert.Contains(t, ps, p)
@@ -128,7 +128,7 @@ func TestMgrDeleteUnreachablePeer(t *testing.T) {
 	}
 
 	mgr.doReverify(make(chan struct{})) // manually trigger a verify
-	ps := unwrapPeers(mgr.getVerifiedPeers())
+	ps := unwrapPeers(mgr.verifiedPeers())
 
 	assert.Equal(t, maxManaged, len(ps))
 	assert.NotContains(t, ps, p)

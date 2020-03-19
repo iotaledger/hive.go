@@ -100,9 +100,14 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 	return nil
 }
 
+// GetMasterPeers returns the list of master peers.
+func (p *Protocol) GetMasterPeers() []*peer.Peer {
+	return unwrapPeers(p.mgr.masterPeers())
+}
+
 // GetVerifiedPeer returns the verified peer with the given ID, or nil if no such peer exists.
 func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
-	for _, verified := range p.mgr.getVerifiedPeers() {
+	for _, verified := range p.mgr.verifiedPeers() {
 		if verified.ID() == id {
 			// return the verified peer, when it is currently managed
 			return unwrapPeer(verified)
@@ -125,7 +130,7 @@ func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
 
 // GetVerifiedPeers returns all the currently managed peers that have been verified at least once.
 func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
-	return unwrapPeers(p.mgr.getVerifiedPeers())
+	return unwrapPeers(p.mgr.verifiedPeers())
 }
 
 // HandleMessage responds to incoming peer discovery messages.
@@ -490,8 +495,8 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID peer.I
 
 func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromID peer.ID, rawData []byte) {
 	// get a random list of verified peers
-	peers := p.mgr.getRandomPeers(MaxPeersInResponse, 1)
-	res := newDiscoveryResponse(rawData, peers)
+	peers := p.mgr.randomPeers(MaxPeersInResponse, 1)
+	res := newDiscoveryResponse(rawData, unwrapPeers(peers))
 
 	from := p.GetVerifiedPeer(fromID)
 
