@@ -2,8 +2,8 @@ package server
 
 import (
 	"container/list"
-	"io"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -262,9 +262,11 @@ func (s *Server) readLoop() {
 			s.log.Debugw("temporary read error", "err", err)
 			continue
 		}
+		// return from the loop on all other errors
 		if err != nil {
-			// return from the loop on all other errors
-			if err != io.EOF {
+			// The error that is returned for an operation on a closed network connection is not exported.
+			// This is the only way to check for the error. See issues #4373 and #19252.
+			if !strings.Contains(err.Error(), "use of closed network connection") {
 				s.log.Warnw("read error", "err", err)
 			}
 			s.log.Debug("reading stopped")
