@@ -1,12 +1,10 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"testing"
 
-	"github.com/iotaledger/hive.go/signature"
-
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,10 +61,10 @@ func TestMarshalUnmarshal(t *testing.T) {
 func TestRecoverKeyFromSignedData(t *testing.T) {
 	msg := []byte(testMessage)
 
-	pub, priv, err := signature.GenerateKey(nil)
+	pub, priv, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
 
-	sig := signature.Sign(priv, msg)
+	sig := ed25519.Sign(priv, msg)
 
 	d := signedData{pub: pub, msg: msg, sig: sig}
 	key, err := RecoverKeyFromSignedData(d)

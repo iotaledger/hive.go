@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/signature"
-
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/transport"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/database/mapdb"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -63,7 +63,7 @@ func setupTest() func(t *testing.T) {
 	}
 }
 
-func handle(s *Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, data []byte) (bool, error) {
+func handle(s *Server, fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error) {
 	msg, err := unmarshal(data)
 	if err != nil {
 		return false, err
@@ -119,7 +119,7 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	require.NoError(t, err)
 
 	msg, _ := unmarshal(data)
-	assert.Equal(t, local.ID(), peer.CreateID(key))
+	assert.Equal(t, local.ID(), identity.NewID(key))
 	assert.Equal(t, msg, ping)
 }
 

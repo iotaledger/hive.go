@@ -1,7 +1,9 @@
-package signature
+package ed25519
 
 import (
 	"crypto/ed25519"
+	"errors"
+	"fmt"
 	"io"
 )
 
@@ -9,6 +11,11 @@ const (
 	PublicKeySize  = ed25519.PublicKeySize
 	SignatureSize  = ed25519.SignatureSize
 	PrivateKeySize = ed25519.PrivateKeySize
+	SeedSize       = ed25519.SeedSize
+)
+
+var (
+	ErrInvalidSignature = errors.New("invalid crypto")
 )
 
 type PrivateKey ed25519.PrivateKey
@@ -37,6 +44,22 @@ type PublicKey ed25519.PublicKey
 
 func Verify(key, data, sig []byte) bool {
 	return ed25519.Verify(key, data, sig)
+}
+
+func RecoverKey(key, data, sig []byte) (PublicKey, error) {
+	if l := len(key); l != PublicKeySize {
+		return nil, fmt.Errorf("%w: invalid key length: %d, need %d", ErrInvalidSignature, l, PublicKeySize)
+	}
+	if l := len(sig); l != SignatureSize {
+		return nil, fmt.Errorf("%w: invalid crypto length: %d, need %d", ErrInvalidSignature, l, SignatureSize)
+	}
+	if !Verify(key, data, sig) {
+		return nil, ErrInvalidSignature
+	}
+
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, key)
+	return publicKey, nil
 }
 
 func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/autopeering/transport"
 	"github.com/iotaledger/hive.go/database/mapdb"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ const (
 
 var (
 	log     = logger.NewExampleLogger("discover")
-	peerMap = make(map[peer.ID]*peer.Peer)
+	peerMap = make(map[identity.ID]*peer.Peer)
 )
 
 func TestProtocol(t *testing.T) {
@@ -127,11 +128,11 @@ func TestProtocol(t *testing.T) {
 // dummyDiscovery is a dummy implementation of DiscoveryProtocol never returning any verified peers.
 type dummyDiscovery struct{}
 
-func (d dummyDiscovery) IsVerified(_ peer.ID, _ string) bool       { return true }
-func (d dummyDiscovery) EnsureVerified(_ *peer.Peer) error         { return nil }
-func (d dummyDiscovery) SendPing(_ string, _ peer.ID) <-chan error { return nil }
-func (d dummyDiscovery) GetVerifiedPeer(id peer.ID) *peer.Peer     { return peerMap[id] }
-func (d dummyDiscovery) GetVerifiedPeers() []*peer.Peer            { return []*peer.Peer{} }
+func (d dummyDiscovery) IsVerified(_ identity.ID, _ string) bool       { return true }
+func (d dummyDiscovery) EnsureVerified(_ *peer.Peer) error             { return nil }
+func (d dummyDiscovery) SendPing(_ string, _ identity.ID) <-chan error { return nil }
+func (d dummyDiscovery) GetVerifiedPeer(id identity.ID) *peer.Peer     { return peerMap[id] }
+func (d dummyDiscovery) GetVerifiedPeers() []*peer.Peer                { return []*peer.Peer{} }
 
 // newTestProtocol creates a new neighborhood server and also returns the teardown.
 func newTestProtocol(trans transport.Transport) (*Protocol, func()) {

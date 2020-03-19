@@ -1,4 +1,4 @@
-package peer
+package identity
 
 import (
 	"crypto/sha256"
@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/iotaledger/hive.go/signature"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
 // ID is a unique identifier for each peer.
 type ID [sha256.Size]byte
 
-// CreateID computes the ID corresponding to the given public key.
-func CreateID(key signature.PublicKey) ID {
+// NewID computes the ID corresponding to the given public key.
+func NewID(key ed25519.PublicKey) ID {
 	return sha256.Sum256(key)
 }
 

@@ -3,9 +3,8 @@ package server
 import (
 	"crypto/sha256"
 
-	"github.com/iotaledger/hive.go/signature"
-
-	"github.com/iotaledger/hive.go/autopeering/peer"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // MType is the type of message type enum.
@@ -14,22 +13,22 @@ type MType uint
 // The Sender interface specifies common method required to send requests.
 type Sender interface {
 	Send(toAddr string, data []byte)
-	SendExpectingReply(toAddr string, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error
+	SendExpectingReply(toAddr string, toID identity.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error
 }
 
 // A Handler reacts to an incoming message.
 type Handler interface {
 	// HandleMessage is called for each incoming message.
 	// It returns true, if that particular message type can be processed by the current Handler.
-	HandleMessage(s *Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, data []byte) (bool, error)
+	HandleMessage(s *Server, fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions as Server handlers.
 // If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(*Server, string, peer.ID, signature.PublicKey, []byte) (bool, error)
+type HandlerFunc func(*Server, string, identity.ID, ed25519.PublicKey, []byte) (bool, error)
 
 // HandleMessage returns f(s, from, data).
-func (f HandlerFunc) HandleMessage(s *Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, data []byte) (bool, error) {
+func (f HandlerFunc) HandleMessage(s *Server, fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error) {
 	return f(s, fromAddr, fromID, fromKey, data)
 }
 

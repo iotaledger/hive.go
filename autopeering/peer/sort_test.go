@@ -1,9 +1,9 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"testing"
 
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/stretchr/testify/assert"
 )
 

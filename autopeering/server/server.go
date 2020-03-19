@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/signature"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
 	"github.com/iotaledger/hive.go/autopeering/transport"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil"
 )
@@ -45,7 +45,7 @@ type replyMatcher struct {
 	// fromAddr must match the sender of the reply
 	fromAddr string
 	// fromID must match the sender ID
-	fromID peer.ID
+	fromID identity.ID
 	// mtype must match the type of the reply
 	mtype MType
 
@@ -64,7 +64,7 @@ type replyMatcher struct {
 // reply is a reply packet from a certain peer
 type reply struct {
 	fromAddr       string
-	fromID         peer.ID
+	fromID         identity.ID
 	mtype          MType
 	msg            interface{} // the actual reply message
 	matchedRequest chan<- bool // a matching request is indicated via this channel
@@ -126,7 +126,7 @@ func (s *Server) Send(toAddr string, data []byte) {
 // SendExpectingReply sends a message to the given address and tells the Server
 // to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) SendExpectingReply(toAddr string, toID peer.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
+func (s *Server) SendExpectingReply(toAddr string, toID identity.ID, data []byte, replyType MType, callback func(interface{}) bool) <-chan error {
 	errc := s.expectReply(toAddr, toID, replyType, callback)
 	s.Send(toAddr, data)
 
@@ -135,7 +135,7 @@ func (s *Server) SendExpectingReply(toAddr string, toID peer.ID, data []byte, re
 
 // expectReply tells the Server to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) expectReply(fromAddr string, fromID peer.ID, mtype MType, callback func(interface{}) bool) <-chan error {
+func (s *Server) expectReply(fromAddr string, fromID identity.ID, mtype MType, callback func(interface{}) bool) <-chan error {
 	ch := make(chan error, 1)
 	m := &replyMatcher{fromAddr: fromAddr, fromID: fromID, mtype: mtype, callback: callback, errc: ch}
 	select {
@@ -147,7 +147,7 @@ func (s *Server) expectReply(fromAddr string, fromID peer.ID, mtype MType, callb
 }
 
 // IsExpectedReply checks whether the given Message matches an expected reply added with SendExpectingReply.
-func (s *Server) IsExpectedReply(fromAddr string, fromID peer.ID, mtype MType, msg interface{}) bool {
+func (s *Server) IsExpectedReply(fromAddr string, fromID identity.ID, mtype MType, msg interface{}) bool {
 	matched := make(chan bool, 1)
 	select {
 	case s.replyReceived <- reply{fromAddr, fromID, mtype, msg, matched}:
@@ -294,7 +294,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
 		return fmt.Errorf("invalid packet: %w", err)
 	}
 
-	fromID := peer.CreateID(key)
+	fromID := identity.NewID(key)
 	for _, handler := range s.handlers {
 		ok, err := handler.HandleMessage(s, fromAddr, fromID, key, data)
 		if ok {
@@ -304,7 +304,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
 	return ErrInvalidMessage
 }
 
-func decode(pkt *pb.Packet) ([]byte, signature.PublicKey, error) {
+func decode(pkt *pb.Packet) ([]byte, ed25519.PublicKey, error) {
 	if len(pkt.GetData()) == 0 {
 		return nil, nil, ErrNoMessage
 	}

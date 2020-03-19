@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/iotaledger/hive.go/signature"
-
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/database"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 const (
@@ -76,12 +76,12 @@ func (db *DB) init() error {
 }
 
 // nodeKey returns the database key for a node record.
-func nodeKey(id ID) []byte {
+func nodeKey(id identity.ID) []byte {
 	return append([]byte(dbNodePrefix), id.Bytes()...)
 }
 
 // nodeFieldKey returns the database key for a node metadata field.
-func nodeFieldKey(id ID, address string, field string) []byte {
+func nodeFieldKey(id identity.ID, address string, field string) []byte {
 	return bytes.Join([][]byte{nodeKey(id), []byte(address), []byte(field)}, []byte{':'})
 }
 
@@ -114,10 +114,10 @@ func (db *DB) setInt64(key []byte, n int64) error {
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
-func (db *DB) LocalPrivateKey() (signature.PrivateKey, error) {
+func (db *DB) LocalPrivateKey() (ed25519.PrivateKey, error) {
 	entry, err := db.db.Get(localFieldKey(dbLocalKey))
 	if err == database.ErrKeyNotFound {
-		key, genErr := signature.GeneratePrivateKey()
+		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
 		}
@@ -126,31 +126,31 @@ func (db *DB) LocalPrivateKey() (signature.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return signature.PrivateKey(entry.Value), nil
+	return ed25519.PrivateKey(entry.Value), nil
 }
 
 // UpdateLocalPrivateKey stores the provided key in the database.
-func (db *DB) UpdateLocalPrivateKey(key signature.PrivateKey) error {
+func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
 	return db.db.Set(database.Entry{Key: localFieldKey(dbLocalKey), Value: []byte(key)})
 }
 
 // LastPing returns that property for the given peer ID and address.
-func (db *DB) LastPing(id ID, address string) time.Time {
+func (db *DB) LastPing(id identity.ID, address string) time.Time {
 	return time.Unix(db.getInt64(nodeFieldKey(id, address, dbNodePing)), 0)
 }
 
 // UpdateLastPing updates that property for the given peer ID and address.
-func (db *DB) UpdateLastPing(id ID, address string, t time.Time) error {
+func (db *DB) UpdateLastPing(id identity.ID, address string, t time.Time) error {
 	return db.setInt64(nodeFieldKey(id, address, dbNodePing), t.Unix())
 }
 
 // LastPong returns that property for the given peer ID and address.
-func (db *DB) LastPong(id ID, address string) time.Time {
+func (db *DB) LastPong(id identity.ID, address string) time.Time {
 	return time.Unix(db.getInt64(nodeFieldKey(id, address, dbNodePong)), 0)
 }
 
 // UpdateLastPong updates that property for the given peer ID and address.
-func (db *DB) UpdateLastPong(id ID, address string, t time.Time) error {
+func (db *DB) UpdateLastPong(id identity.ID, address string, t time.Time) error {
 	return db.setInt64(nodeFieldKey(id, address, dbNodePong), t.Unix())
 }
 
@@ -176,7 +176,7 @@ func parsePeer(data []byte) (*Peer, error) {
 }
 
 // Peer retrieves a peer from the database.
-func (db *DB) Peer(id ID) (*Peer, error) {
+func (db *DB) Peer(id identity.ID) (*Peer, error) {
 	data, err := db.db.Get(nodeKey(id))
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 	now := time.Now()
 	err := db.db.ForEachPrefix([]byte(dbNodePrefix), func(entry database.Entry) bool {
-		var id ID
+		var id identity.ID
 		if len(entry.Key) != len(id) {
 			return false
 		}

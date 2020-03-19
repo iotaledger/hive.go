@@ -2,12 +2,12 @@
 package peertest
 
 import (
-	"crypto/ed25519"
 	"log"
 	"math/rand"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
 func NewPeer(network, address string) *peer.Peer {

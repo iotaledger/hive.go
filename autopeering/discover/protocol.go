@@ -14,8 +14,9 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
-	"github.com/iotaledger/hive.go/signature"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -84,7 +85,7 @@ func (p *Protocol) Close() {
 }
 
 // IsVerified checks whether the given peer has recently been verified a recent enough endpoint proof.
-func (p *Protocol) IsVerified(id peer.ID, addr string) bool {
+func (p *Protocol) IsVerified(id identity.ID, addr string) bool {
 	return time.Since(p.loc.Database().LastPong(id, addr)) < PingExpiration
 }
 
@@ -102,7 +103,7 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 }
 
 // GetVerifiedPeer returns the verified peer with the given ID, or nil if no such peer exists.
-func (p *Protocol) GetVerifiedPeer(id peer.ID) *peer.Peer {
+func (p *Protocol) GetVerifiedPeer(id identity.ID) *peer.Peer {
 	for _, verified := range p.mgr.getVerifiedPeers() {
 		if verified.ID() == id {
 			return unwrapPeer(verified)
@@ -117,7 +118,7 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 }
 
 // HandleMessage responds to incoming peer discovery messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -194,7 +195,7 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 
 // SendPing sends a Ping to the specified address and expects a matching reply.
 // This method is non-blocking, but it returns a channel that can be used to query potential errors.
-func (p *Protocol) SendPing(toAddr string, toID peer.ID) <-chan error {
+func (p *Protocol) SendPing(toAddr string, toID identity.ID) <-chan error {
 	ping := newPing(p.publicAddr(), toAddr)
 	data := marshal(ping)
 
@@ -251,7 +252,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 // ------ helper functions ------
 
 // hasVerified returns whether the given peer has recently verified the local peer.
-func (p *Protocol) hasVerified(id peer.ID, addr string) bool {
+func (p *Protocol) hasVerified(id identity.ID, addr string) bool {
 	return time.Since(p.loc.Database().LastPing(id, addr)) < PingExpiration
 }
 
@@ -275,7 +276,7 @@ func marshal(msg pb.Message) []byte {
 }
 
 // newPeer creates a new peer that only has a peering service at the given address.
-func newPeer(key signature.PublicKey, network string, address string) *peer.Peer {
+func newPeer(key ed25519.PublicKey, network string, address string) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, address)
 
@@ -365,7 +366,7 @@ func (p *Protocol) validatePing(fromAddr string, m *pb.Ping) bool {
 	return true
 }
 
-func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID, fromKey signature.PublicKey, rawData []byte) {
+func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, rawData []byte) {
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
@@ -382,7 +383,7 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr string, fromID peer.ID,
 	_ = p.loc.Database().UpdateLastPing(fromID, fromAddr, time.Now())
 }
 
-func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID peer.ID, m *pb.Pong) bool {
+func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID identity.ID, m *pb.Pong) bool {
 	// check that To matches the local address
 	if m.GetTo() != p.publicAddr() {
 		p.log.Debugw("invalid message",
@@ -417,7 +418,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr string, fromID peer.I
 	return true
 }
 
-func (p *Protocol) handlePong(fromAddr string, fromID peer.ID, fromKey signature.PublicKey, m *pb.Pong) {
+func (p *Protocol) handlePong(fromAddr string, fromID identity.ID, fromKey ed25519.PublicKey, m *pb.Pong) {
 	services, _ := service.FromProto(m.GetServices())
 	peering := services.Get(service.PeeringKey)
 	if peering == nil || peering.String() != fromAddr {
@@ -437,7 +438,7 @@ func (p *Protocol) handlePong(fromAddr string, fromID peer.ID, fromKey signature
 	_ = db.UpdatePeer(from)
 }
 
-func (p *Protocol) validateDiscoveryRequest(fromAddr string, fromID peer.ID, m *pb.DiscoveryRequest) bool {
+func (p *Protocol) validateDiscoveryRequest(fromAddr string, fromID identity.ID, m *pb.DiscoveryRequest) bool {
 	// check that To matches the local address
 	if m.GetTo() != p.publicAddr() {
 		p.log.Debugw("invalid message",
@@ -480,7 +481,7 @@ func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromAddr string, raw
 	s.Send(fromAddr, marshal(res))
 }
 
-func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr string, fromID peer.ID, m *pb.DiscoveryResponse) bool {
+func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr string, fromID identity.ID, m *pb.DiscoveryResponse) bool {
 	// there must not be too many peers
 	if len(m.GetPeers()) > MaxPeersInResponse {
 		p.log.Debugw("invalid message",

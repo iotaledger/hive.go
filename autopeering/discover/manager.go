@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/server"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
 
@@ -63,7 +64,7 @@ func (m *manager) start() {
 	go m.loop()
 }
 
-func (m *manager) self() peer.ID {
+func (m *manager) self() identity.ID {
 	return m.net.local().ID()
 }
 
@@ -337,7 +338,7 @@ func (m *manager) getVerifiedPeers() []*mpeer {
 }
 
 // isKnown returns true if the manager is keeping track of that peer.
-func (m *manager) isKnown(id peer.ID) bool {
+func (m *manager) isKnown(id identity.ID) bool {
 	if id == m.self() {
 		return true
 	}
