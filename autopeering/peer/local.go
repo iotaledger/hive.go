@@ -108,6 +108,7 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 	l.privateSalt = salt
 }
 
+// Sign signs a message using the node's LocalIdentity.
 func (l *Local) Sign(message []byte) []byte {
 	return l.localIdentity.Sign(message)
 }
