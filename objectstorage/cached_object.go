@@ -158,15 +158,17 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 
 func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {
 	cachedObject.valueMutex.RLock()
-	if typeutils.IsInterfaceNil(cachedObject.value) {
+	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
 		cachedObject.valueMutex.RUnlock()
 
 		cachedObject.valueMutex.Lock()
-		if typeutils.IsInterfaceNil(cachedObject.value) {
+		if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
 			if object, ok := update.(StorableObject); ok {
 				cachedObject.value = object
+				cachedObject.blindDelete.UnSet()
 			} else if updater, ok := update.(func() StorableObject); ok {
 				cachedObject.value = updater()
+				cachedObject.blindDelete.UnSet()
 			}
 
 			updated = true
