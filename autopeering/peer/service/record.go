@@ -24,14 +24,14 @@ func (a endpoint) Network() string {
 	return a.network
 }
 
-// String returns the service's address in string form.
+// Port returns the service's port number.
 func (a endpoint) Port() int {
 	return a.port
 }
 
 // String returns the service's address in string form.
 func (a endpoint) String() string {
-	return fmt.Sprintf("%d[%s]", a.port, a.network)
+	return fmt.Sprintf("%d/%s", a.port, a.network)
 }
 
 // New initializes and returns an empty new Record

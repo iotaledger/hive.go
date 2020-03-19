@@ -404,7 +404,7 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID pe
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
-	// the destination address takes uses the source IP address of the packet plus the src_port in the message
+	// the destination address uses the source IP address of the packet plus the src_port from the message
 	dstAddr := &net.UDPAddr{
 		IP:   fromAddr.IP,
 		Port: int(m.SrcPort),
