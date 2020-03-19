@@ -321,7 +321,6 @@ func newPing(version uint32, srcAddr *net.UDPAddr, dstAddr *net.UDPAddr) *pb.Pin
 		SrcAddr:   srcAddr.IP.String(),
 		SrcPort:   uint32(srcAddr.Port),
 		DstAddr:   dstAddr.IP.String(),
-		DstPort:   uint32(dstAddr.Port),
 	}
 }
 
@@ -330,7 +329,6 @@ func newPong(dstAddr *net.UDPAddr, reqData []byte, services *service.Record) *pb
 		ReqHash:  server.PacketHash(reqData),
 		Services: services.ToProto(),
 		DstAddr:  dstAddr.IP.String(),
-		DstPort:  uint32(dstAddr.Port),
 	}
 }
 

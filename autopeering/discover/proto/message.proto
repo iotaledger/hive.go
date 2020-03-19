@@ -15,13 +15,13 @@ message Ping {
   // unix time
   int64 timestamp = 2;
 
-  // endpoint of the sender; port and string form of the return address (e.g. "192.0.2.1", "[2001:db8::1]")
+  // endpoint of the sender; port and string form of the return IP address (e.g. "192.0.2.1", "[2001:db8::1]")
   string src_addr = 3;
   uint32 src_port = 4;
 
-  // endpoint of the receiver, this provides a way to discover the the external address (after NAT).
+  // string form of receiver's IP
+  // This provides a way to discover the the external address (after NAT).
   string dst_addr = 5;
-  uint32 dst_port = 6;
 }
 
 message Pong {
@@ -31,9 +31,9 @@ message Pong {
   // services supported by the sender
   ServiceMap services = 2;
 
-  // endpoint of the receiver, this provides a way to discover the the external address (after NAT).
+  // string form of receiver's IP
+  // This should mirror the source IP of the Ping's IP packet. It provides a way to discover the the external address (after NAT).
   string dst_addr = 3;
-  uint32 dst_port = 4;
 }
 
 message DiscoveryRequest {
