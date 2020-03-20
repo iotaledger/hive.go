@@ -9,15 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IP struct {
-	net.IP
-}
+type IP net.IP
 
-func (ip *IP) IsIPv6() bool {
+func (ip IP) IsIPv6() bool {
 	return len(ip.To4()) != net.IPv4len
 }
 
-func (ip *IP) ToString() string {
+func (ip IP) ToString() string {
 	if ip.IsIPv6() {
 		return "[" + ip.String() + "]"
 	}
@@ -26,11 +24,11 @@ func (ip *IP) ToString() string {
 }
 
 type IPAddresses struct {
-	IPs map[*IP]struct{}
+	IPs map[IP]struct{}
 }
 
 func NewIPAddresses() *IPAddresses {
-	return &IPAddresses{IPs: make(map[*IP]struct{})}
+	return &IPAddresses{IPs: make(map[IP]struct{})}
 }
 
 func (ips *IPAddresses) Union(other *IPAddresses) *IPAddresses {
@@ -48,7 +46,7 @@ func (ips *IPAddresses) Union(other *IPAddresses) *IPAddresses {
 	return union
 }
 
-func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) *IP {
+func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) IP {
 	if !preferIPv6 {
 		for ip := range ips.IPs {
 			if !ip.IsIPv6() {
@@ -69,11 +67,11 @@ func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) *IP {
 	return nil
 }
 
-func (ips *IPAddresses) Add(ip *IP) {
+func (ips *IPAddresses) Add(ip IP) {
 	ips.IPs[ip] = struct{}{}
 }
 
-func (ips *IPAddresses) Remove(ip *IP) {
+func (ips *IPAddresses) Remove(ip IP) {
 	delete(ips.IPs, ip)
 }
 
