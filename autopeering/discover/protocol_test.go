@@ -307,7 +307,7 @@ func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, mast
 	local := peertest.NewLocal(addr.Network(), addr.IP, addr.Port, db)
 	log := logger.Named(name)
 
-	prot := New(local, 0, Logger(log), MasterPeers(masters))
+	prot := New(local, 0, 0, Logger(log), MasterPeers(masters))
 
 	srv := server.Serve(local, conn, log, prot)
 	prot.Start(srv)
