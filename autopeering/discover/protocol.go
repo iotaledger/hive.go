@@ -34,17 +34,18 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 type Protocol struct {
 	server.Protocol
 
-	version uint32         // specifies the expected version number for this Protocol
 	loc     *peer.Local    // local peer that runs the protocol
-	log     *logger.Logger // logging
+	version uint32         // version number of the protocol
+	netID   uint32         // network ID of the protocol
+	log     *logger.Logger // protocol logger
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
 	running   *typeutils.AtomicBool
 	closeOnce sync.Once
 }
 
-// New creates a new discovery protocol for the local node with the given protocol version.
-func New(local *peer.Local, version uint32, opts ...Option) *Protocol {
+// New creates a new discovery protocol for the local node with the given protocol version and networkID.
+func New(local *peer.Local, version uint32, networkID uint32, opts ...Option) *Protocol {
 	args := &options{
 		log:         logger.NewNopLogger(),
 		masterPeers: nil,
@@ -54,8 +55,9 @@ func New(local *peer.Local, version uint32, opts ...Option) *Protocol {
 	}
 
 	p := &Protocol{
-		version: version,
 		loc:     local,
+		version: version,
+		netID:   networkID,
 		log:     args.log,
 		running: typeutils.NewAtomicBool(),
 	}
@@ -218,7 +220,7 @@ func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID peer.ID) <-chan error {
 	srcAddr := p.localAddr()
 	srcAddr.IP = net.IPv4zero
 
-	ping := newPing(p.version, srcAddr, toAddr)
+	ping := newPing(p.version, p.netID, srcAddr, toAddr)
 	data := marshal(ping)
 
 	// compute the message hash
@@ -318,9 +320,10 @@ func newPeer(key peer.PublicKey, network string, addr *net.UDPAddr) *peer.Peer {
 
 // ------ Message Constructors ------
 
-func newPing(version uint32, srcAddr *net.UDPAddr, dstAddr *net.UDPAddr) *pb.Ping {
+func newPing(version uint32, networkID uint32, srcAddr *net.UDPAddr, dstAddr *net.UDPAddr) *pb.Ping {
 	return &pb.Ping{
 		Version:   version,
+		NetworkId: networkID,
 		Timestamp: time.Now().Unix(),
 		SrcAddr:   srcAddr.IP.String(),
 		SrcPort:   uint32(srcAddr.Port),
