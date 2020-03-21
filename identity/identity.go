@@ -27,3 +27,15 @@ func (i Identity) ID() ID {
 func (i Identity) PublicKey() ed25519.PublicKey {
 	return i.publicKey
 }
+
+func GenerateIdentity() *Identity {
+	publicKey, _, err := ed25519.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	return &Identity{
+		id:        NewID(publicKey),
+		publicKey: publicKey,
+	}
+}

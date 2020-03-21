@@ -30,3 +30,15 @@ func NewLocalIdentityWithIdentity(identity *Identity, privateKey ed25519.Private
 func (l LocalIdentity) Sign(message []byte) ed25519.Signature {
 	return l.privateKey.Sign(message)
 }
+
+func GenerateLocalIdentity() *LocalIdentity {
+	publicKey, privateKey, err := ed25519.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	return &LocalIdentity{
+		Identity:   NewIdentity(publicKey),
+		privateKey: privateKey,
+	}
+}
