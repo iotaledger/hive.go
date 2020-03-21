@@ -8,7 +8,7 @@ import (
 )
 
 func newTestPeerWithID(ID byte) *Peer {
-	key := make([]byte, ed25519.PublicKeySize)
+	var key ed25519.PublicKey
 	key[0] = ID
 	return NewPeer(key, newTestServiceRecord())
 }

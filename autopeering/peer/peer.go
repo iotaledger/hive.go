@@ -3,7 +3,6 @@ package peer
 import (
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
@@ -43,7 +42,7 @@ func (p *Peer) Services() service.Service {
 func (p *Peer) String() string {
 	u := url.URL{
 		Scheme: "peer",
-		User:   url.User(base64.StdEncoding.EncodeToString(p.PublicKey())),
+		User:   url.User(base64.StdEncoding.EncodeToString(p.PublicKey().Bytes())),
 		Host:   p.Address(),
 	}
 	return u.String()
@@ -87,16 +86,18 @@ func NewPeerWithIdentity(identity *identity.Identity, services service.Service) 
 // ToProto encodes a given peer into a proto buffer Peer message
 func (p *Peer) ToProto() *pb.Peer {
 	return &pb.Peer{
-		PublicKey: p.PublicKey(),
+		PublicKey: p.PublicKey().Bytes(),
 		Services:  p.services.ToProto(),
 	}
 }
 
 // FromProto decodes a given proto buffer Peer message (in) and returns the corresponding Peer.
 func FromProto(in *pb.Peer) (*Peer, error) {
-	if l := len(in.GetPublicKey()); l != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PublicKeySize)
+	publicKey, err, _ := ed25519.PublicKeyFromBytes(in.GetPublicKey())
+	if err != nil {
+		return nil, err
 	}
+
 	services, err := service.FromProto(in.GetServices())
 	if err != nil {
 		return nil, err
@@ -105,7 +106,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 		return nil, ErrNeedsPeeringService
 	}
 
-	return NewPeer(in.GetPublicKey(), services), nil
+	return NewPeer(publicKey, services), nil
 }
 
 // Marshal serializes a given Peer (p) into a slice of bytes.

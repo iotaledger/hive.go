@@ -27,6 +27,6 @@ func NewLocalIdentityWithIdentity(identity *Identity, privateKey ed25519.Private
 }
 
 // Sign signs the message with the local identity's private key and returns a signature.
-func (l LocalIdentity) Sign(message []byte) []byte {
-	return ed25519.Sign(l.privateKey, message)
+func (l LocalIdentity) Sign(message []byte) ed25519.Signature {
+	return l.privateKey.Sign(message)
 }

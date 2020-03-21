@@ -23,13 +23,13 @@ func newTestServiceRecord() *service.Record {
 }
 
 func newTestPeer(name string) *Peer {
-	key := make([]byte, ed25519.PublicKeySize)
-	copy(key, name)
+	key := ed25519.PublicKey{}
+	copy(key[:], name)
 	return NewPeer(key, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
-	key := make([]byte, ed25519.PublicKeySize)
+	key := ed25519.PublicKey{}
 	services := service.New()
 
 	assert.Panics(t, func() {
@@ -38,7 +38,7 @@ func TestNoServicePeer(t *testing.T) {
 }
 
 func TestInvalidServicePeer(t *testing.T) {
-	key := make([]byte, ed25519.PublicKeySize)
+	key := ed25519.PublicKey{}
 	services := service.New()
 	services.Update(service.FPCKey, "network", "address")
 
@@ -61,12 +61,12 @@ func TestMarshalUnmarshal(t *testing.T) {
 func TestRecoverKeyFromSignedData(t *testing.T) {
 	msg := []byte(testMessage)
 
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
-	sig := ed25519.Sign(priv, msg)
+	sig := priv.Sign(msg)
 
-	d := signedData{pub: pub, msg: msg, sig: sig}
+	d := signedData{pub: pub.Bytes(), msg: msg, sig: sig.Bytes()}
 	key, err := RecoverKeyFromSignedData(d)
 	require.NoError(t, err)
 

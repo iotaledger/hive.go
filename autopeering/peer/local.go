@@ -1,7 +1,6 @@
 package peer
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -41,7 +40,7 @@ func newLocal(key ed25519.PrivateKey, serviceRecord *service.Record, db *DB) *Lo
 func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
 	var key ed25519.PrivateKey
 	if len(seed) > 0 {
-		key = ed25519.NewKeyFromSeed(seed[0])
+		key = ed25519.PrivateKeyFromSeed(seed[0])
 		if db != nil {
 			if err := db.UpdateLocalPrivateKey(key); err != nil {
 				return nil, err
@@ -55,9 +54,6 @@ func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, er
 		}
 	}
 
-	if l := len(key); l != ed25519.PrivateKeySize {
-		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PrivateKeySize)
-	}
 	return newLocal(key, serviceRecord, db), nil
 }
 
@@ -109,6 +105,6 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 }
 
 // Sign signs a message using the node's LocalIdentity.
-func (l *Local) Sign(message []byte) []byte {
+func (l *Local) Sign(message []byte) ed25519.Signature {
 	return l.localIdentity.Sign(message)
 }

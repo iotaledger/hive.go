@@ -14,7 +14,7 @@ type ID [sha256.Size]byte
 
 // NewID computes the ID corresponding to the given public key.
 func NewID(key ed25519.PublicKey) ID {
-	return sha256.Sum256(key)
+	return sha256.Sum256(key.Bytes())
 }
 
 // Bytes returns the byte slice representation of the ID

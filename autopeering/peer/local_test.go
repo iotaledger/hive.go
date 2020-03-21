@@ -13,7 +13,7 @@ import (
 )
 
 func TestID(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
 	local := newLocal(priv, newTestServiceRecord(), nil)
@@ -22,7 +22,7 @@ func TestID(t *testing.T) {
 }
 
 func TestPublicKey(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
 	local := newLocal(priv, newTestServiceRecord(), nil)

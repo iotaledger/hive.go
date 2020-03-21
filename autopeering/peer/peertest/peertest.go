@@ -13,8 +13,8 @@ import (
 func NewPeer(network, address string) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, address)
-	key := make([]byte, ed25519.PublicKeySize)
-	copy(key, address)
+	key := ed25519.PublicKey{}
+	copy(key[:], address)
 	return peer.NewPeer(key, services)
 }
 

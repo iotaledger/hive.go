@@ -252,8 +252,8 @@ func (s *Server) encode(data []byte) *pb.Packet {
 	}
 
 	return &pb.Packet{
-		PublicKey: s.local.PublicKey(),
-		Signature: s.local.Sign(data),
+		PublicKey: s.local.PublicKey().Bytes(),
+		Signature: s.local.Sign(data).Bytes(),
 		Data:      append([]byte(nil), data...),
 	}
 }
@@ -306,12 +306,12 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr string) error {
 
 func decode(pkt *pb.Packet) ([]byte, ed25519.PublicKey, error) {
 	if len(pkt.GetData()) == 0 {
-		return nil, nil, ErrNoMessage
+		return nil, ed25519.PublicKey{}, ErrNoMessage
 	}
 
 	key, err := peer.RecoverKeyFromSignedData(pkt)
 	if err != nil {
-		return nil, nil, err
+		return nil, ed25519.PublicKey{}, err
 	}
 	return pkt.GetData(), key, nil
 }
