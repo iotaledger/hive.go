@@ -22,34 +22,33 @@ var (
 	maxReplacements  = DefaultMaxReplacements  // maximum number of peers kept in the replacement list
 )
 
-// Options holds discovery related settings.
-type Options struct {
-	Log         *logger.Logger // Logger
-	Version     uint32         // Protocol version
-	MasterPeers []*peer.Peer   // list of master peers used for bootstrapping
+type options struct {
+	log         *logger.Logger // Logger
+	masterPeers []*peer.Peer   // list of master peers used for bootstrapping
 }
 
-type option func(*Options)
+// Option modifies discovery related settings.
+type Option interface {
+	apply(*options)
+}
+
+// optionFunc wraps a func so it satisfies the Option interface.
+type optionFunc func(*options)
+
+func (f optionFunc) apply(opts *options) { f(opts) }
 
 // Logger sets the logger
-func Logger(log *logger.Logger) option {
-	return func(args *Options) {
-		args.Log = log
-	}
-}
-
-// Version sets the VersionNumber of the protocol
-func Version(version uint32) option {
-	return func(args *Options) {
-		args.Version = version
-	}
+func Logger(log *logger.Logger) Option {
+	return optionFunc(func(opts *options) {
+		opts.log = log
+	})
 }
 
 // MasterPeers sets the masterPeers to use
-func MasterPeers(masterPeers []*peer.Peer) option {
-	return func(args *Options) {
-		args.MasterPeers = masterPeers
-	}
+func MasterPeers(masterPeers []*peer.Peer) Option {
+	return optionFunc(func(opts *options) {
+		opts.masterPeers = masterPeers
+	})
 }
 
 // Parameters holds the parameters that can be configured.
@@ -62,7 +61,7 @@ type Parameters struct {
 
 // SetParameters sets the global parameters for this package.
 // This function cannot be used concurrently.
-func SetParameter(param Parameters) {
+func SetParameters(param Parameters) {
 	if param.ReverifyInterval > 0 {
 		reverifyInterval = param.ReverifyInterval
 	} else {

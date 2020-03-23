@@ -2,6 +2,7 @@ package peer
 
 import (
 	"crypto/ed25519"
+	"net"
 	"testing"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -9,15 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
+var (
 	testNetwork = "udp"
-	testAddress = "127.0.0.1:8000"
+	testIP      = net.IPv4zero
+	testPort    = 8000
 	testMessage = "Hello World!"
 )
 
 func newTestServiceRecord() *service.Record {
 	services := service.New()
-	services.Update(service.PeeringKey, testNetwork, testAddress)
+	services.Update(service.PeeringKey, testNetwork, testPort)
 
 	return services
 }
@@ -25,7 +27,7 @@ func newTestServiceRecord() *service.Record {
 func newTestPeer(name string) *Peer {
 	key := make([]byte, ed25519.PublicKeySize)
 	copy(key, name)
-	return NewPeer(key, newTestServiceRecord())
+	return NewPeer(key, testIP, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
@@ -33,17 +35,17 @@ func TestNoServicePeer(t *testing.T) {
 	services := service.New()
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, services)
+		_ = NewPeer(key, testIP, services)
 	})
 }
 
 func TestInvalidServicePeer(t *testing.T) {
 	key := make([]byte, ed25519.PublicKeySize)
 	services := service.New()
-	services.Update(service.FPCKey, "network", "address")
+	services.Update(service.FPCKey, "network", 8001)
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, services)
+		_ = NewPeer(key, testIP, services)
 	})
 }
 
