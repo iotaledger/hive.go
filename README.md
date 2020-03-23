@@ -71,6 +71,10 @@ import "github.com/iotaledger/hive.go/logger"
 log = logger.NewLogger('myNewLoggerName')
 ```
 
+### Activating deadlock detection
+
+To replace the mutexes in the `syncutils` package with [Go deadlock](https://github.com/sasha-s/go-deadlock), use the `deadlock` build flag to compiling your program.
+
 ## Supporting the project
 
 If this library has been useful to you and you feel like contributing, consider submitting a [bug report](https://github.com/iotaledger/hive.go/issues/new), [feature request](https://github.com/iotaledger/hive.go/issues/new) or a [pull request](https://github.com/iotaledger/hive.go/pulls/).
