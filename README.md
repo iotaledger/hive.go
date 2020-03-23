@@ -73,7 +73,7 @@ log = logger.NewLogger('myNewLoggerName')
 
 ### Activating deadlock detection
 
-To replace the mutexes in the `syncutils` package with [Go deadlock](https://github.com/sasha-s/go-deadlock), use the `deadlock` build flag to compiling your program.
+To replace the mutexes in the `syncutils` package with [Go deadlock](https://github.com/sasha-s/go-deadlock), use the `deadlock` build flag when compiling your program.
 
 ## Supporting the project
 
