@@ -108,3 +108,8 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 func (l *Local) Sign(message []byte) ed25519.Signature {
 	return l.localIdentity.Sign(message)
 }
+
+// LocalIdentity returns the local identity
+func (l *Local) LocalIdentity() *identity.LocalIdentity {
+	return l.localIdentity
+}
