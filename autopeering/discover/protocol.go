@@ -368,6 +368,15 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 		)
 		return false
 	}
+	// check network identifier
+	if m.GetNetworkId() != p.netID {
+		p.log.Debugw("invalid message",
+			"type", m.Name(),
+			"network_id", m.GetNetworkId(),
+			"want", p.netID,
+		)
+		return false
+	}
 	// check timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
