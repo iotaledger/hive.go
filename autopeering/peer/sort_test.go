@@ -2,6 +2,7 @@ package peer
 
 import (
 	"crypto/ed25519"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 func newTestPeerWithID(ID byte) *Peer {
 	key := make([]byte, ed25519.PublicKeySize)
 	key[0] = ID
-	return NewPeer(key, newTestServiceRecord())
+	return NewPeer(key, net.IPv4zero, newTestServiceRecord())
 }
 
 func TestOrderedDistanceList(t *testing.T) {

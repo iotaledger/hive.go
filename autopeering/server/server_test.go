@@ -1,13 +1,14 @@
 package server
 
 import (
+	"net"
 	"testing"
 	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/autopeering/transport"
+	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
@@ -24,23 +25,29 @@ const (
 	MPong
 )
 
-type Message interface {
-	Type() MType
+type testMessage interface {
+	Message
 	Marshal() []byte
 }
 
 type Ping struct{}
 type Pong struct{}
 
-func (m *Ping) Type() MType     { return MPing }
-func (m *Ping) Marshal() []byte { return append([]byte{}, byte(MPing)) }
+func (m *Ping) Reset()        { *m = Ping{} }
+func (*Ping) String() string  { return "" }
+func (*Ping) ProtoMessage()   {}
+func (*Ping) Type() MType     { return MPing }
+func (*Ping) Marshal() []byte { return append([]byte{}, byte(MPing)) }
 
-func (m *Pong) Type() MType     { return MPong }
-func (m *Pong) Marshal() []byte { return append([]byte{}, byte(MPong)) }
+func (m *Pong) Reset()        { *m = Pong{} }
+func (*Pong) String() string  { return "" }
+func (*Pong) ProtoMessage()   {}
+func (*Pong) Type() MType     { return MPong }
+func (*Pong) Marshal() []byte { return append([]byte{}, byte(MPong)) }
 
 func sendPong(args mock.Arguments) {
 	srv := args.Get(0).(*Server)
-	addr := args.Get(1).(string)
+	addr := args.Get(1).(*net.UDPAddr)
 	srv.Send(addr, new(Pong).Marshal())
 }
 
@@ -61,7 +68,7 @@ func setupTest() func(t *testing.T) {
 	}
 }
 
-func handle(s *Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
+func handle(s *Server, fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
 	msg, err := unmarshal(data)
 	if err != nil {
 		return false, err
@@ -72,7 +79,7 @@ func handle(s *Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, 
 		pingMock.Called(s, fromAddr, fromID, fromKey, data)
 
 	case MPong:
-		if s.IsExpectedReply(fromAddr, fromID, MPong, msg) {
+		if s.IsExpectedReply(fromAddr.IP, fromID, msg) {
 			pongMock.Called(s, fromAddr, fromID, fromKey, data)
 		}
 
@@ -83,7 +90,7 @@ func handle(s *Server, fromAddr string, fromID peer.ID, fromKey peer.PublicKey, 
 	return true, nil
 }
 
-func unmarshal(data []byte) (Message, error) {
+func unmarshal(data []byte) (testMessage, error) {
 	if len(data) != 1 {
 		return nil, ErrInvalidMessage
 	}
@@ -105,8 +112,8 @@ func newTestDB(t require.TestingT) *peer.DB {
 
 func TestSrvEncodeDecodePing(t *testing.T) {
 	services := service.New()
-	services.Update(service.PeeringKey, "dummy", "local")
-	local, err := peer.NewLocal(services, newTestDB(t))
+	services.Update(service.PeeringKey, "dummy", 8000)
+	local, err := peer.NewLocal(net.IPv4zero, services, newTestDB(t))
 	require.NoError(t, err)
 	s := &Server{local: local}
 
@@ -121,12 +128,12 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	assert.Equal(t, msg, ping)
 }
 
-func newTestServer(t require.TestingT, name string, trans transport.Transport) (*Server, func()) {
+func newTestServer(t require.TestingT, name string, conn *net.UDPConn) (*Server, func()) {
 	l := log.Named(name)
 
 	services := service.New()
-	services.Update(service.PeeringKey, trans.LocalAddr().Network(), trans.LocalAddr().String())
-	local, err := peer.NewLocal(services, newTestDB(t))
+	services.Update(service.PeeringKey, conn.LocalAddr().Network(), conn.LocalAddr().(*net.UDPAddr).Port)
+	local, err := peer.NewLocal(conn.LocalAddr().(*net.UDPAddr).IP, services, newTestDB(t))
 	require.NoError(t, err)
 
 	s, _ := salt.NewSalt(100 * time.Second)
@@ -134,14 +141,14 @@ func newTestServer(t require.TestingT, name string, trans transport.Transport) (
 	s, _ = salt.NewSalt(100 * time.Second)
 	local.SetPublicSalt(s)
 
-	srv := Serve(local, trans, l, HandlerFunc(handle))
+	srv := Serve(local, conn, l, HandlerFunc(handle))
 
 	return srv, srv.Close
 }
 
 func sendPing(s *Server, p *peer.Peer) error {
 	ping := new(Ping)
-	isPong := func(msg interface{}) bool {
+	isPong := func(msg Message) bool {
 		_, ok := msg.(*Pong)
 		return ok
 	}
@@ -151,15 +158,18 @@ func sendPing(s *Server, p *peer.Peer) error {
 }
 
 func TestPingPong(t *testing.T) {
-	p2p := transport.P2P()
+	a := servertest.NewConn()
+	defer a.Close()
+	b := servertest.NewConn()
+	defer b.Close()
 
-	srvA, closeA := newTestServer(t, "A", p2p.A)
+	srvA, closeA := newTestServer(t, "A", a)
 	defer closeA()
-	srvB, closeB := newTestServer(t, "B", p2p.B)
+	srvB, closeB := newTestServer(t, "B", b)
 	defer closeB()
 
-	peerA := &srvA.Local().Peer
-	peerB := &srvB.Local().Peer
+	peerA := srvA.Local().Peer
+	peerB := srvB.Local().Peer
 
 	t.Run("A->B", func(t *testing.T) {
 		defer setupTest()(t)
@@ -188,29 +198,35 @@ func TestPingPong(t *testing.T) {
 func TestSrvPingTimeout(t *testing.T) {
 	defer setupTest()(t)
 
-	p2p := transport.P2P()
+	a := servertest.NewConn()
+	defer a.Close()
+	b := servertest.NewConn()
+	defer b.Close()
 
-	srvA, closeA := newTestServer(t, "A", p2p.A)
+	srvA, closeA := newTestServer(t, "A", a)
 	defer closeA()
-	srvB, closeB := newTestServer(t, "B", p2p.B)
+	srvB, closeB := newTestServer(t, "B", b)
 	closeB()
 
-	peerB := &srvB.Local().Peer
+	peerB := srvB.Local().Peer
 	assert.EqualError(t, sendPing(srvA, peerB), ErrTimeout.Error())
 }
 
 func TestUnexpectedPong(t *testing.T) {
 	defer setupTest()(t)
 
-	p2p := transport.P2P()
+	a := servertest.NewConn()
+	defer a.Close()
+	b := servertest.NewConn()
+	defer b.Close()
 
-	srvA, closeA := newTestServer(t, "A", p2p.A)
+	srvA, closeA := newTestServer(t, "A", a)
 	defer closeA()
-	srvB, closeB := newTestServer(t, "B", p2p.B)
+	srvB, closeB := newTestServer(t, "B", b)
 	defer closeB()
 
 	// there should never be a Ping.Handle
 	// there should never be a Pong.Handle
 
-	srvA.Send(srvB.LocalAddr().String(), new(Pong).Marshal())
+	srvA.Send(srvB.LocalAddr(), new(Pong).Marshal())
 }

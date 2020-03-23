@@ -24,34 +24,41 @@ var (
 	fullOutboundUpdateInterval = DefaultFullOutboundUpdateInterval // time after which full out neighbors are updated
 )
 
-// Options holds settings for the peer selection.
-type Options struct {
-	Log               *logger.Logger // Logger
-	DropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
-	NeighborValidator Validator      // potential neighbor validator
+type options struct {
+	log               *logger.Logger // Logger
+	dropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
+	neighborValidator Validator      // potential neighbor validator
 }
 
-type option func(*Options)
+// An Option configures the peer selection.
+type Option interface {
+	apply(*options)
+}
+
+// optionFunc wraps a func so it satisfies the Option interface.
+type optionFunc func(*options)
+
+func (f optionFunc) apply(opts *options) { f(opts) }
 
 // Logger sets the logger
-func Logger(log *logger.Logger) option {
-	return func(args *Options) {
-		args.Log = log
-	}
+func Logger(log *logger.Logger) Option {
+	return optionFunc(func(opts *options) {
+		opts.log = log
+	})
 }
 
-// DropOnUpdate sets the option to drop all neighbors when the salt is updated
-func DropOnUpdate(dropOnUpdate bool) option {
-	return func(args *Options) {
-		args.DropOnUpdate = dropOnUpdate
-	}
+// DropOnUpdate sets the Option to drop all neighbors when the salt is updated
+func DropOnUpdate(dropOnUpdate bool) Option {
+	return optionFunc(func(opts *options) {
+		opts.dropOnUpdate = dropOnUpdate
+	})
 }
 
 // NeighborValidator sets the potential neighbor validator
-func NeighborValidator(neighborValidator Validator) option {
-	return func(args *Options) {
-		args.NeighborValidator = neighborValidator
-	}
+func NeighborValidator(neighborValidator Validator) Option {
+	return optionFunc(func(opts *options) {
+		opts.neighborValidator = neighborValidator
+	})
 }
 
 // A Validator checks whether a peer is a valid neighbor

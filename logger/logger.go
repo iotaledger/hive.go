@@ -146,6 +146,12 @@ func NewExampleLogger(name string) *Logger {
 	return root.Named(name).Sugar()
 }
 
+// NewNopLogger returns a no-op Logger.
+// It never writes out logs or internal errors
+func NewNopLogger() *Logger {
+	return zap.NewNop().Sugar()
+}
+
 func newEncoder(name string, cfg zapcore.EncoderConfig) (zapcore.Encoder, error) {
 	switch strings.ToLower(name) {
 	case "console", "":

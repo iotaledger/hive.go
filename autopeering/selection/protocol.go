@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
@@ -29,10 +29,8 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 
 // DiscoverProtocol specifies the methods from the peer discovery that are required.
 type DiscoverProtocol interface {
-	IsVerified(peer.ID, string) bool
+	IsVerified(peer.ID, net.IP) bool
 	EnsureVerified(*peer.Peer) error
-
-	SendPing(string, peer.ID) <-chan error
 
 	GetVerifiedPeer(peer.ID) *peer.Peer
 	GetVerifiedPeers() []*peer.Peer
@@ -53,24 +51,24 @@ type Protocol struct {
 }
 
 // New creates a new neighbor selection protocol.
-func New(local *peer.Local, disc DiscoverProtocol, setters ...option) *Protocol {
-	log := logger.NewExampleLogger("selection")
-	args := &Options{
-		Log: log.Named("sel"),
+func New(local *peer.Local, disc DiscoverProtocol, opts ...Option) *Protocol {
+	args := &options{
+		log:               logger.NewNopLogger(),
+		dropOnUpdate:      false,
+		neighborValidator: nil,
 	}
-
-	for _, setter := range setters {
-		setter(args)
+	for _, opt := range opts {
+		opt.apply(args)
 	}
 
 	p := &Protocol{
 		Protocol: server.Protocol{},
 		loc:      local,
 		disc:     disc,
-		log:      args.Log,
+		log:      args.log,
 		running:  typeutils.NewAtomicBool(),
 	}
-	p.mgr = newManager(p, disc.GetVerifiedPeers, args.Log.Named("mgr"), *args)
+	p.mgr = newManager(p, disc.GetVerifiedPeers, args.log.Named("mgr"), args)
 
 	return p
 }
@@ -114,7 +112,7 @@ func (p *Protocol) RemoveNeighbor(id peer.ID) {
 }
 
 // HandleMessage responds to incoming neighbor selection messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.ID, _ peer.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, _ peer.PublicKey, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -127,7 +125,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr string, fromID peer.
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringRequest(fromAddr, fromID, m) {
-			p.handlePeeringRequest(s, fromAddr, fromID, data, m)
+			p.handlePeeringRequest(s, fromID, data, m)
 		}
 
 	// PeeringResponse
@@ -161,11 +159,6 @@ func (p *Protocol) local() *peer.Local {
 	return p.loc
 }
 
-// publicAddr returns the public address of the peering service in string representation.
-func (p *Protocol) publicAddr() string {
-	return p.loc.Services().Get(service.PeeringKey).String()
-}
-
 // ------ message senders ------
 
 // PeeringRequest sends a PeeringRequest to the given peer. This method blocks
@@ -177,14 +170,14 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 
 	// create the request package
 	toAddr := to.Address()
-	req := newPeeringRequest(toAddr, salt)
+	req := newPeeringRequest(salt)
 	data := marshal(req)
 
 	// compute the message hash
 	hash := server.PacketHash(data)
 
 	var status bool
-	callback := func(m interface{}) bool {
+	callback := func(m server.Message) bool {
 		res := m.(*pb.PeeringResponse)
 		if !bytes.Equal(res.GetReqHash(), hash) {
 			return false
@@ -206,7 +199,7 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 
 // PeeringDrop sends a peering drop message to the given peer, non-blocking and does not wait for any responses.
 func (p *Protocol) PeeringDrop(to *peer.Peer) {
-	drop := newPeeringDrop(to.Address())
+	drop := newPeeringDrop()
 
 	p.logSend(to.Address(), drop)
 	p.Protocol.Send(to, marshal(drop))
@@ -214,7 +207,7 @@ func (p *Protocol) PeeringDrop(to *peer.Peer) {
 
 // ------ helper functions ------
 
-func (p *Protocol) logSend(toAddr string, msg pb.Message) {
+func (p *Protocol) logSend(toAddr *net.UDPAddr, msg pb.Message) {
 	if logSends {
 		p.log.Debugw("send message", "type", msg.Name(), "addr", toAddr)
 	}
@@ -235,9 +228,8 @@ func marshal(msg pb.Message) []byte {
 
 // ------ Message Constructors ------
 
-func newPeeringRequest(toAddr string, salt *salt.Salt) *pb.PeeringRequest {
+func newPeeringRequest(salt *salt.Salt) *pb.PeeringRequest {
 	return &pb.PeeringRequest{
-		To:        toAddr,
 		Timestamp: time.Now().Unix(),
 		Salt:      salt.ToProto(),
 	}
@@ -250,25 +242,15 @@ func newPeeringResponse(reqData []byte, status bool) *pb.PeeringResponse {
 	}
 }
 
-func newPeeringDrop(toAddr string) *pb.PeeringDrop {
+func newPeeringDrop() *pb.PeeringDrop {
 	return &pb.PeeringDrop{
-		To:        toAddr,
 		Timestamp: time.Now().Unix(),
 	}
 }
 
 // ------ Packet Handlers ------
 
-func (p *Protocol) validatePeeringRequest(fromAddr string, fromID peer.ID, m *pb.PeeringRequest) bool {
-	// check that To matches the local address
-	if m.GetTo() != p.publicAddr() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"to", m.GetTo(),
-			"want", p.publicAddr(),
-		)
-		return false
-	}
+func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID peer.ID, m *pb.PeeringRequest) bool {
 	// check Timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
@@ -278,7 +260,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr string, fromID peer.ID, m *pb
 		return false
 	}
 	// check whether the sender is verified
-	if !p.disc.IsVerified(fromID, fromAddr) {
+	if !p.disc.IsVerified(fromID, fromAddr.IP) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unverified", fromAddr,
@@ -310,7 +292,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr string, fromID peer.ID, m *pb
 	return true
 }
 
-func (p *Protocol) handlePeeringRequest(s *server.Server, fromAddr string, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
+func (p *Protocol) handlePeeringRequest(s *server.Server, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
 	fromSalt, err := salt.FromProto(m.GetSalt())
 	if err != nil {
 		// this should not happen as it is checked in validation
@@ -319,36 +301,16 @@ func (p *Protocol) handlePeeringRequest(s *server.Server, fromAddr string, fromI
 	}
 
 	from := p.disc.GetVerifiedPeer(fromID)
-	if from == nil {
-		// if the sender is not verified, try to load it from DB
-		from, err = p.local().Database().Peer(fromID)
-		if err != nil {
-			// this should not happen as this is checked in validation
-			p.log.Warnw("invalid stored peer",
-				"id", fromID,
-				"err", err,
-			)
-			return
-		}
-		// send ping to restored peer to ensure that it will be verified
-		p.disc.SendPing(from.Address(), from.ID())
-	}
-
-	var status bool
-	if from.Address() != fromAddr {
-		status = false
-	} else {
-		status = p.mgr.requestPeering(from, fromSalt)
-	}
+	status := p.mgr.requestPeering(from, fromSalt)
 	res := newPeeringResponse(rawData, status)
 
-	p.logSend(fromAddr, res)
-	s.Send(fromAddr, marshal(res))
+	p.logSend(from.Address(), res)
+	s.Send(from.Address(), marshal(res))
 }
 
-func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr string, fromID peer.ID, m *pb.PeeringResponse) bool {
+func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.PeeringResponse) bool {
 	// there must be a request waiting for this response
-	if !s.IsExpectedReply(fromAddr, fromID, m.Type(), m) {
+	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
 		p.log.Debugw("invalid message",
 			"type", m.Name(),
 			"unexpected", fromAddr,
@@ -363,16 +325,7 @@ func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr string, fr
 	return true
 }
 
-func (p *Protocol) validatePeeringDrop(fromAddr string, m *pb.PeeringDrop) bool {
-	// check that To matches the local address
-	if m.GetTo() != p.publicAddr() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"to", m.GetTo(),
-			"want", p.publicAddr(),
-		)
-		return false
-	}
+func (p *Protocol) validatePeeringDrop(fromAddr *net.UDPAddr, m *pb.PeeringDrop) bool {
 	// check Timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
