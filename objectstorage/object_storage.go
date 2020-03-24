@@ -773,17 +773,13 @@ func (objectStorage *ObjectStorage) flush() {
 		cachedObjects[i] = cachedObject
 		i++
 
-		cachedObject.Release()
-
 		return true
 	})
 	objectStorage.cacheMutex.RUnlock()
 
-	// manually push the objects to the BatchWriter
-	for _, cachedObject := range cachedObjects {
-		if cachedObject != nil {
-			objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
-		}
+	// force release the collected objects
+	for j := 0; j < i; j++ {
+		cachedObjects[j].Release(true)
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
