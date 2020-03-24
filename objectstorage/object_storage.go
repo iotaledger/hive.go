@@ -814,13 +814,23 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 
 	// The founds objects can not be removed in the mean time since we have retained them already. This means, that we
 	// can safely iterate through them and call the corresponding consumer.
+	aborted := false
 	for i := 0; i < foundObjectsCounter; i++ {
-		cachedObject := foundObjects[i]
+		// release the previously retained objects after we have detected an abort
+		if aborted {
+			foundObjects[i].Release()
 
-		if !consumer(cachedObject.key, cachedObject) {
-			// Iteration was aborted
-			return false
+			continue
 		}
+
+		// Call consumer with the cached object and check if we should abort the iteration.
+		cachedObject := foundObjects[i]
+		if !consumer(cachedObject.key, cachedObject) {
+			aborted = true
+		}
+	}
+	if aborted {
+		return false
 	}
 
 	// It could in theory happen, that the found partition got cleaned up in between storing it in our list and
