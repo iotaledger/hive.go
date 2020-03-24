@@ -22,6 +22,11 @@ func IsIPv4(ip net.IP) bool {
 	return ip.To4() != nil
 }
 
+// IsValidPort returns true if port is a valid port number.
+func IsValidPort(port int) bool {
+	return 0 < port && port < 65536
+}
+
 // GetPublicIP queries the ipify API for the public IP address.
 func GetPublicIP(preferIPv6 bool) (net.IP, error) {
 	var url string

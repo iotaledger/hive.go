@@ -1,7 +1,6 @@
 package selection
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
@@ -12,7 +11,7 @@ import (
 func TestFilterAddPeers(t *testing.T) {
 	p := make([]*peer.Peer, 5)
 	for i := range p {
-		p[i] = peertest.NewPeer(testNetwork, fmt.Sprintf("%d", i))
+		p[i] = peertest.NewPeer(testNetwork, testIP, i)
 	}
 
 	type testCase struct {
@@ -47,7 +46,7 @@ func TestFilterAddPeers(t *testing.T) {
 func TestFilterRemovePeers(t *testing.T) {
 	p := make([]*peer.Peer, 5)
 	for i := range p {
-		p[i] = peertest.NewPeer(testNetwork, fmt.Sprintf("%d", i))
+		p[i] = peertest.NewPeer(testNetwork, testIP, i)
 	}
 
 	type testCase struct {
@@ -83,7 +82,7 @@ func TestFilterRemovePeers(t *testing.T) {
 func TestFilterApply(t *testing.T) {
 	d := make([]peer.PeerDistance, 5)
 	for i := range d {
-		d[i].Remote = peertest.NewPeer(testNetwork, fmt.Sprintf("%d", i))
+		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
 		d[i].Distance = uint32(i + 1)
 	}
 
@@ -117,7 +116,7 @@ func TestFilterApply(t *testing.T) {
 func TestSelection(t *testing.T) {
 	d := make([]peer.PeerDistance, 10)
 	for i := range d {
-		d[i].Remote = peertest.NewPeer(testNetwork, fmt.Sprintf("%d", i))
+		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
 		d[i].Distance = uint32(i + 1)
 	}
 
