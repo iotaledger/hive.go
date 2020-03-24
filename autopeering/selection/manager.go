@@ -50,13 +50,13 @@ type manager struct {
 	closing chan struct{}
 }
 
-func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, opts Options) *manager {
+func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, opts *options) *manager {
 	return &manager{
 		net:               net,
 		getPeersToConnect: peersFunc,
 		log:               log,
-		dropOnUpdate:      opts.DropOnUpdate,
-		neighborValidator: opts.NeighborValidator,
+		dropOnUpdate:      opts.dropOnUpdate,
+		neighborValidator: opts.neighborValidator,
 		inbound:           NewNeighborhood(inboundNeighborSize),
 		outbound:          NewNeighborhood(outboundNeighborSize),
 		rejectionFilter:   NewFilter(),

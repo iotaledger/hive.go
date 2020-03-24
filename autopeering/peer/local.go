@@ -3,6 +3,7 @@ package peer
 import (
 	"crypto/ed25519"
 	"fmt"
+	"net"
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -11,7 +12,7 @@ import (
 
 // Local defines the struct of a local peer
 type Local struct {
-	Peer
+	*Peer
 	key PrivateKey
 	db  *DB
 
@@ -32,9 +33,9 @@ func (priv PrivateKey) Public() PublicKey {
 }
 
 // newLocal creates a new local peer.
-func newLocal(key PrivateKey, serviceRecord *service.Record, db *DB) *Local {
+func newLocal(key PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
 	return &Local{
-		Peer:          *NewPeer(key.Public(), serviceRecord),
+		Peer:          NewPeer(key.Public(), ip, serviceRecord),
 		key:           key,
 		db:            db,
 		serviceRecord: serviceRecord,
@@ -44,7 +45,7 @@ func newLocal(key PrivateKey, serviceRecord *service.Record, db *DB) *Local {
 // NewLocal creates a new local peer linked to the provided db.
 // If an optional seed is provided, the seed is used to generate the private key. Without a seed,
 // the provided key is loaded from the provided database and generated if not stored there.
-func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
+func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
 	var key PrivateKey
 	if len(seed) > 0 {
 		key = PrivateKey(ed25519.NewKeyFromSeed(seed[0]))
@@ -64,7 +65,7 @@ func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, er
 	if l := len(key); l != ed25519.PrivateKeySize {
 		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PrivateKeySize)
 	}
-	return newLocal(key, serviceRecord, db), nil
+	return newLocal(key, ip, serviceRecord, db), nil
 }
 
 // Database returns the node database associated with the local peer.
@@ -78,15 +79,15 @@ func (l *Local) Sign(message []byte) []byte {
 }
 
 // UpdateService updates the endpoint address of the given local service.
-func (l *Local) UpdateService(key service.Key, network string, address string) error {
+func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	// update the service in the read protected map
-	l.serviceRecord.Update(key, network, address)
+	l.serviceRecord.Update(key, network, port)
 
 	// create a new peer with the corresponding services
-	l.Peer = *NewPeer(l.key.Public(), l.serviceRecord)
+	l.Peer = NewPeer(l.key.Public(), l.ip, l.serviceRecord)
 
 	return nil
 }

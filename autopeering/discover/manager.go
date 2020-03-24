@@ -19,11 +19,6 @@ const (
 	MaxServices = 5
 )
 
-var (
-	// VersionNum specifies the expected version number for this Protocol.
-	VersionNum = uint32(0)
-)
-
 type network interface {
 	local() *peer.Local
 
@@ -295,8 +290,13 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	return true
 }
 
-// getRandomPeers returns a list of randomly selected peers.
-func (m *manager) getRandomPeers(n int, minVerified uint) []*peer.Peer {
+// masterPeers returns the master peers.
+func (m *manager) masterPeers() []*mpeer {
+	return m.masters
+}
+
+// randomPeers returns a list of randomly selected peers.
+func (m *manager) randomPeers(n int, minVerified uint) []*mpeer {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -304,24 +304,24 @@ func (m *manager) getRandomPeers(n int, minVerified uint) []*peer.Peer {
 		n = len(m.active)
 	}
 
-	peers := make([]*peer.Peer, 0, n)
+	peers := make([]*mpeer, 0, n)
 	for _, i := range rand.Perm(len(m.active)) {
 		if len(peers) == n {
 			break
 		}
 
-		mp := m.active[i]
-		if mp.verifiedCount < minVerified {
+		p := m.active[i]
+		if p.verifiedCount < minVerified {
 			continue
 		}
-		peers = append(peers, unwrapPeer(mp))
+		peers = append(peers, p)
 	}
 
 	return peers
 }
 
 // getVerifiedPeers returns all the currently managed peers that have been verified at least once.
-func (m *manager) getVerifiedPeers() []*mpeer {
+func (m *manager) verifiedPeers() []*mpeer {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 

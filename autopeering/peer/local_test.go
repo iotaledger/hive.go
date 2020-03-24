@@ -15,7 +15,7 @@ func TestID(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
 
-	local := newLocal(PrivateKey(priv), newTestServiceRecord(), nil)
+	local := newLocal(PrivateKey(priv), testIP, newTestServiceRecord(), nil)
 	id := PublicKey(pub).ID()
 	assert.Equal(t, id, local.ID())
 }
@@ -24,15 +24,16 @@ func TestPublicKey(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
 
-	local := newLocal(PrivateKey(priv), newTestServiceRecord(), nil)
+	local := newLocal(PrivateKey(priv), testIP, newTestServiceRecord(), nil)
 	assert.EqualValues(t, pub, local.PublicKey())
 }
 
 func TestAddress(t *testing.T) {
 	local := newTestLocal(t, nil)
 
-	address := local.Services().Get(service.PeeringKey).String()
-	assert.EqualValues(t, address, local.Address())
+	endpoint := local.Services().Get(service.PeeringKey)
+	assert.EqualValues(t, endpoint.Port(), local.Address().Port)
+	assert.EqualValues(t, endpoint.Network(), local.Address().Network())
 }
 
 func TestPrivateSalt(t *testing.T) {
@@ -67,6 +68,6 @@ func newTestLocal(t require.TestingT, db *DB) *Local {
 		require.NoError(t, err)
 	}
 	services := service.New()
-	services.Update(service.PeeringKey, testNetwork, testAddress)
-	return newLocal(priv, services, db)
+	services.Update(service.PeeringKey, testNetwork, testPort)
+	return newLocal(priv, testIP, services, db)
 }
