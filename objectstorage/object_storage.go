@@ -777,11 +777,9 @@ func (objectStorage *ObjectStorage) flush() {
 	})
 	objectStorage.cacheMutex.RUnlock()
 
-	// manually push the objects to the BatchWriter
-	for _, cachedObject := range cachedObjects {
-		if cachedObject != nil {
-			objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
-		}
+	// force release the collected objects
+	for j := 0; j < i; j++ {
+		cachedObjects[j].Release(true)
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
@@ -789,15 +787,53 @@ func (objectStorage *ObjectStorage) flush() {
 
 // iterates over all cached objects and calls the consumer function on them.
 func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap map[string]interface{}, consumer ConsumerFunc) bool {
+	// We first iterate through the target objects and collect them in a temporary list, so we can release the ReadLock
+	// as fast as possible. This allows us to call the consumers without the ReadLock being set (which avoids
+	// deadlocks by consumers that i.e. try to issue a force release).
+	objectStorage.cacheMutex.RLock()
+	foundObjects := make([]*CachedObjectImpl, len(sourceMap))
+	foundObjectsCounter := 0
+	foundPartitions := make([]map[string]interface{}, len(sourceMap))
+	foundPartitionsCounter := 0
 	for _, value := range sourceMap {
 		if cachedObject, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
-			if !consumer(cachedObject.key, cachedObject) {
-				// Iteration was aborted
-				return false
-			}
+			cachedObject.retain()
+
+			foundObjects[foundObjectsCounter] = cachedObject
+			foundObjectsCounter++
+		} else {
+			foundPartitions[foundPartitionsCounter] = value.(map[string]interface{})
+			foundPartitionsCounter++
+		}
+	}
+	objectStorage.cacheMutex.RUnlock()
+
+	// The founds objects can not be removed in the mean time since we have retained them already. This means, that we
+	// can safely iterate through them and call the corresponding consumer.
+	aborted := false
+	for i := 0; i < foundObjectsCounter; i++ {
+		// release the previously retained objects after we have detected an abort
+		if aborted {
+			foundObjects[i].Release()
+
 			continue
 		}
-		if !objectStorage.deepIterateThroughCachedElements(value.(map[string]interface{}), consumer) {
+
+		// Call consumer with the cached object and check if we should abort the iteration.
+		cachedObject := foundObjects[i]
+		if !consumer(cachedObject.key, cachedObject) {
+			aborted = true
+		}
+	}
+	if aborted {
+		return false
+	}
+
+	// It could in theory happen, that the found partition got cleaned up in between storing it in our list and
+	// iterating through it, but this is not a problem, because then the map will be empty in the consecutive call to
+	// deepIterateThroughCachedElements and we will ignore the previously deleted elements.
+	for i := 0; i < foundPartitionsCounter; i++ {
+		if !objectStorage.deepIterateThroughCachedElements(foundPartitions[i], consumer) {
 			// Iteration was aborted
 			return false
 		}
@@ -808,18 +844,16 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 
 // calls the consumer function on every object within the cache and returns a set of seen keys.
 func (objectStorage *ObjectStorage) forEachCachedElement(consumer ConsumerFunc) map[string]types.Empty {
-	objectStorage.cacheMutex.RLock()
-	defer objectStorage.cacheMutex.RUnlock()
-
 	seenElements := make(map[string]types.Empty)
 	if !objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 		if !cachedObject.Exists() {
+			cachedObject.Release()
+
 			return true
 		}
 
-		cachedObject.retain()
 		return consumer(key, cachedObject)
 	}) {
 		// Iteration was aborted
@@ -838,9 +872,6 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 	currentPartition := objectStorage.cachedObjects
 	keyOffset := 0
 
-	objectStorage.cacheMutex.RLock()
-	defer objectStorage.cacheMutex.RUnlock()
-
 	for i, partitionKeyLength := range keyPartitions {
 		// if the keyOffset equals the prefixLength, we're at the wanted layer
 		if keyOffset == prefixLength {
@@ -856,7 +887,9 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 		// advance partitions as long as we don't hit the object layer
 		if i != partitionCount-1 {
+			objectStorage.cacheMutex.RLock()
 			subPartition, subPartitionExists := currentPartition[partitionKey]
+			objectStorage.cacheMutex.RUnlock()
 			if !subPartitionExists {
 				// no partition exists for the given prefix
 				return seenElements
@@ -869,7 +902,9 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			panic("the prefix is too long for the set KeyPartition")
 		}
 
+		objectStorage.cacheMutex.RLock()
 		cachedObject := currentPartition[partitionKey].(*CachedObjectImpl)
+		objectStorage.cacheMutex.RUnlock()
 		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 		// the given prefix references a partition
@@ -891,10 +926,11 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
 
 		if !cachedObject.Exists() {
+			cachedObject.Release()
+
 			return true
 		}
 
-		cachedObject.retain()
 		return consumer(key, cachedObject)
 	}) {
 		// Iteration was aborted
