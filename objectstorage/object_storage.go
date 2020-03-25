@@ -15,7 +15,7 @@ import (
 type ObjectStorage struct {
 	badgerInstance     *badger.DB
 	storageId          []byte
-	objectFactory      StorableObjectFactory
+	objectFactory      StorableObjectFromKey
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
 	options            *Options
@@ -30,7 +30,7 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
 		badgerInstance:    badgerInstance,
 		storageId:         storageId,
@@ -257,7 +257,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	}
 
 	var cachedObject *CachedObjectImpl
-	key := object.GetStorageKey()
+	key := object.ObjectStorageKey()
 
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 	if cacheHit {
@@ -329,7 +329,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
 		iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
@@ -348,7 +348,9 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				var storableObject StorableObject
 
 				if objectStorage.options.keysOnly {
-					storableObject = objectStorage.objectFactory(key)
+					if storableObject, err = objectStorage.objectFactory(key); err != nil {
+						return
+					}
 				} else {
 					if err := item.Value(func(val []byte) error {
 						marshaledData := make([]byte, len(val))
@@ -680,7 +682,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 }
 
 func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *CachedObjectImpl {
-	cachedObject, _ := objectStorage.accessCache(object.GetStorageKey(), true)
+	cachedObject, _ := objectStorage.accessCache(object.ObjectStorageKey(), true)
 	if !cachedObject.publishResult(object) {
 		cachedObject.updateResult(object)
 	}
@@ -717,7 +719,11 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 		}
 	} else {
 		if objectStorage.options.keysOnly {
-			return objectStorage.objectFactory(key)
+			if object, err := objectStorage.objectFactory(key); err != nil {
+				panic(err)
+			} else {
+				return object
+			}
 		}
 
 		return objectStorage.unmarshalObject(key, marshaledData)
@@ -745,12 +751,16 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object := objectStorage.objectFactory(key)
-	if err := object.UnmarshalBinary(data); err != nil {
+	object, err := objectStorage.objectFactory(key)
+	if err != nil {
 		panic(err)
-	} else {
-		return object
 	}
+
+	if err = object.UnmarshalObjectStorageValue(data); err != nil {
+		panic(err)
+	}
+
+	return object
 }
 
 func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (prefix []byte) {
@@ -943,3 +953,5 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 	return seenElements
 }
+
+type StorableObjectFromKey func(key []byte) (StorableObject, error)

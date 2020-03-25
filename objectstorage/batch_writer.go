@@ -88,7 +88,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 
 				var marshaledObject []byte
 				if !objectStorage.options.keysOnly {
-					marshaledObject, _ = storableObject.MarshalBinary()
+					marshaledObject = storableObject.ObjectStorageValue()
 				}
 
 				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledObject); err != nil {
