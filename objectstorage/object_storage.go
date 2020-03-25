@@ -410,10 +410,7 @@ func (objectStorage *ObjectStorage) Flush() {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
-
-	objectStorage.flushMutex.Lock()
 	objectStorage.flush()
-	objectStorage.flushMutex.Unlock()
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
@@ -763,8 +760,9 @@ func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (p
 }
 
 func (objectStorage *ObjectStorage) flush() {
+	objectStorage.flushMutex.Lock()
+
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
-	objectStorage.cacheMutex.RLock()
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
@@ -775,7 +773,6 @@ func (objectStorage *ObjectStorage) flush() {
 
 		return true
 	})
-	objectStorage.cacheMutex.RUnlock()
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
@@ -783,6 +780,8 @@ func (objectStorage *ObjectStorage) flush() {
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
+
+	objectStorage.flushMutex.Unlock()
 }
 
 // iterates over all cached objects and calls the consumer function on them.
