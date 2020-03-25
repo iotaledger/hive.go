@@ -25,7 +25,9 @@ func init() {
 	testDatabase = database.GetBadgerInstance("objectsdb")
 }
 
-func testObjectFactory(key []byte) objectstorage.StorableObject { return &TestObject{id: key} }
+func testObjectFactory(key []byte) (objectstorage.StorableObject, error) {
+	return &TestObject{id: key}, nil
+}
 
 func TestPrefixIteration(t *testing.T) {
 	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
