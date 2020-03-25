@@ -86,12 +86,12 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
 				storableObject.SetModified(false)
 
-				var marshaledObject []byte
+				var marshaledValue []byte
 				if !objectStorage.options.keysOnly {
-					marshaledObject = storableObject.ObjectStorageValue()
+					marshaledValue = storableObject.ObjectStorageValue()
 				}
 
-				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledObject); err != nil {
+				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledValue); err != nil {
 					panic(err)
 				}
 			}
