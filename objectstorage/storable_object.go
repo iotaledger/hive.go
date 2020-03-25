@@ -1,14 +1,6 @@
 package objectstorage
 
-import (
-	"encoding"
-)
-
 type StorableObject interface {
-	// import the default Marshaler interfaces
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
-
 	// Marks the object as modified, which causes it to be written to the disk (if persistence is enabled).
 	// Default value when omitting the parameter: true
 	SetModified(modified ...bool)
@@ -34,6 +26,12 @@ type StorableObject interface {
 	// Updates the object with the values of another object "in place" (so it should use a pointer receiver)
 	Update(other StorableObject)
 
-	// Returns the key that identifies the object in the object storage.
-	GetStorageKey() []byte
+	// ObjectStorageKey returns the bytes, that are used as a key to store the object in the k/v store.
+	ObjectStorageKey() []byte
+
+	// ObjectStorageValue returns the bytes, that are stored in the value part of the k/v store.
+	ObjectStorageValue() []byte
+
+	// UnmarshalStorageValue parses the value part of the k/v store.
+	UnmarshalObjectStorageValue(valueBytes []byte) error
 }
