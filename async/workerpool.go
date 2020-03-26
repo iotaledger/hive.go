@@ -2,10 +2,11 @@ package async
 
 import (
 	"fmt"
-	"github.com/panjf2000/ants/v2"
 	"runtime"
 	"runtime/debug"
 	"sync"
+
+	"github.com/panjf2000/ants/v2"
 
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -55,12 +56,14 @@ func (workerPool *WorkerPool) Capacity() int {
 }
 
 // Changes the capacity of this pool.
-func (workerPool *WorkerPool) Tune(capacity int) {
+func (workerPool *WorkerPool) Tune(capacity int) *WorkerPool {
 	if workerPool.stopped.IsSet() {
-		return
+		return workerPool
 	}
 
 	workerPool.get().Tune(capacity)
+
+	return workerPool
 }
 
 // Returns the available (idle) workers.

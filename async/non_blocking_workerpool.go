@@ -66,12 +66,14 @@ func (workerPool *NonBlockingWorkerPool) Capacity() int {
 }
 
 // Changes the capacity of this pool.
-func (workerPool *NonBlockingWorkerPool) Tune(capacity int) {
+func (workerPool *NonBlockingWorkerPool) Tune(capacity int) *NonBlockingWorkerPool {
 	if workerPool.stopped.IsSet() {
-		return
+		return workerPool
 	}
 
 	workerPool.get().Tune(capacity)
+
+	return workerPool
 }
 
 // Returns the available (idle) workers.
