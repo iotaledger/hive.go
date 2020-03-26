@@ -2,13 +2,15 @@ package async
 
 import (
 	"crypto/rand"
-	"golang.org/x/crypto/blake2b"
+	"runtime"
 	"sync"
 	"testing"
+
+	"golang.org/x/crypto/blake2b"
 )
 
 func cpuHeavyFunc() {
-	randomData := make([]byte, 102400, 102400)
+	randomData := make([]byte, 102400)
 	_, _ = rand.Read(randomData)
 
 	blake2b.Sum512(randomData)
@@ -36,7 +38,7 @@ func BenchmarkWorkerPool_goroutine(b *testing.B) {
 func BenchmarkWorkerPool_Submit(b *testing.B) {
 	b.ReportAllocs()
 
-	var wp WorkerPool
+	var wp = *(&WorkerPool{}).Tune(runtime.NumCPU())
 
 	b.ResetTimer()
 
