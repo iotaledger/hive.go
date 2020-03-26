@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const TIME_SIZE = INT64_SIZE
+
 // WriteTime marshals the given time into a sequence of bytes, that get appended to the internal buffer.
 func (util *MarshalUtil) WriteTime(timeToWrite time.Time) {
 	nanoSeconds := timeToWrite.UnixNano()
