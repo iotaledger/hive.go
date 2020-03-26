@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/distance"
 	"github.com/iotaledger/hive.go/autopeering/peer"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 type Neighborhood struct {
@@ -72,7 +73,7 @@ func (nh *Neighborhood) Add(toAdd peer.PeerDistance) bool {
 
 // RemovePeer removes the peer with the given ID from the neighborhood.
 // It returns the peer that was removed or nil of no such peer exists.
-func (nh *Neighborhood) RemovePeer(id peer.ID) *peer.Peer {
+func (nh *Neighborhood) RemovePeer(id identity.ID) *peer.Peer {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
 
@@ -92,7 +93,7 @@ func (nh *Neighborhood) RemovePeer(id peer.ID) *peer.Peer {
 	return n.Remote
 }
 
-func (nh *Neighborhood) getPeerIndex(id peer.ID) int {
+func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 	for i, p := range nh.neighbors {
 		if p.Remote.ID() == id {
 			return i

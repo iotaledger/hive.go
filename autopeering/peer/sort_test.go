@@ -1,17 +1,18 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"net"
 	"testing"
 
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 )
 
 func newTestPeerWithID(ID byte) *Peer {
-	key := make([]byte, ed25519.PublicKeySize)
+	var key ed25519.PublicKey
 	key[0] = ID
-	return NewPeer(key, net.IPv4zero, newTestServiceRecord())
+	return NewPeer(identity.NewIdentity(key), net.IPv4zero, newTestServiceRecord())
 }
 
 func TestOrderedDistanceList(t *testing.T) {

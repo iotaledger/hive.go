@@ -5,6 +5,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -134,7 +135,7 @@ func TestDeletePeerByID(t *testing.T) {
 
 	type testCase struct {
 		input    []*mpeer
-		toRemove peer.ID
+		toRemove identity.ID
 		expected []*mpeer
 		deleted  *mpeer
 	}

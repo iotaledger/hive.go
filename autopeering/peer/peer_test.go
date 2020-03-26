@@ -1,11 +1,12 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"net"
 	"testing"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,27 +26,27 @@ func newTestServiceRecord() *service.Record {
 }
 
 func newTestPeer(name string) *Peer {
-	key := make([]byte, ed25519.PublicKeySize)
-	copy(key, name)
-	return NewPeer(key, testIP, newTestServiceRecord())
+	key := ed25519.PublicKey{}
+	copy(key[:], name)
+	return NewPeer(identity.NewIdentity(key), testIP, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
-	key := make([]byte, ed25519.PublicKeySize)
+	key := ed25519.PublicKey{}
 	services := service.New()
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, testIP, services)
+		_ = NewPeer(identity.NewIdentity(key), testIP, services)
 	})
 }
 
 func TestInvalidServicePeer(t *testing.T) {
-	key := make([]byte, ed25519.PublicKeySize)
+	key := ed25519.PublicKey{}
 	services := service.New()
 	services.Update(service.FPCKey, "network", 8001)
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, testIP, services)
+		_ = NewPeer(identity.NewIdentity(key), testIP, services)
 	})
 }
 
@@ -63,16 +64,16 @@ func TestMarshalUnmarshal(t *testing.T) {
 func TestRecoverKeyFromSignedData(t *testing.T) {
 	msg := []byte(testMessage)
 
-	pub, priv, err := ed25519.GenerateKey(nil)
+	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
-	sig := ed25519.Sign(priv, msg)
+	sig := priv.Sign(msg)
 
-	d := signedData{pub: pub, msg: msg, sig: sig}
+	d := signedData{pub: pub.Bytes(), msg: msg, sig: sig.Bytes()}
 	key, err := RecoverKeyFromSignedData(d)
 	require.NoError(t, err)
 
-	assert.Equal(t, PublicKey(pub).ID(), key.ID())
+	assert.Equal(t, pub, key)
 }
 
 type signedData struct {

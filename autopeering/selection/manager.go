@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
 
@@ -42,7 +43,7 @@ type manager struct {
 
 	rejectionFilter *Filter
 
-	dropChan    chan peer.ID
+	dropChan    chan identity.ID
 	requestChan chan peeringRequest
 	replyChan   chan bool
 
@@ -60,7 +61,7 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		inbound:           NewNeighborhood(inboundNeighborSize),
 		outbound:          NewNeighborhood(outboundNeighborSize),
 		rejectionFilter:   NewFilter(),
-		dropChan:          make(chan peer.ID, queueSize),
+		dropChan:          make(chan identity.ID, queueSize),
 		requestChan:       make(chan peeringRequest, queueSize),
 		replyChan:         make(chan bool, 1),
 		closing:           make(chan struct{}),
@@ -80,7 +81,7 @@ func (m *manager) close() {
 	m.wg.Wait()
 }
 
-func (m *manager) getID() peer.ID {
+func (m *manager) getID() identity.ID {
 	return m.net.local().ID()
 }
 
@@ -120,7 +121,7 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 	return status
 }
 
-func (m *manager) removeNeighbor(id peer.ID) {
+func (m *manager) removeNeighbor(id identity.ID) {
 	m.dropChan <- id
 }
 

@@ -1,20 +1,20 @@
 package peer
 
 import (
-	"crypto/ed25519"
-	"fmt"
 	"net"
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // Local defines the struct of a local peer
 type Local struct {
 	*Peer
-	key PrivateKey
-	db  *DB
+	identity *identity.LocalIdentity
+	db       *DB
 
 	// everything below is protected by a lock
 	mu            sync.RWMutex
@@ -23,20 +23,13 @@ type Local struct {
 	privateSalt   *salt.Salt
 }
 
-// PrivateKey is the type of Ed25519 private keys used for the local peer.
-type PrivateKey ed25519.PrivateKey
-
-// Public returns the PublicKey corresponding to priv.
-func (priv PrivateKey) Public() PublicKey {
-	publicKey := ed25519.PrivateKey(priv).Public()
-	return PublicKey(publicKey.(ed25519.PublicKey))
-}
-
 // newLocal creates a new local peer.
-func newLocal(key PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
+func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
+	id := identity.NewIdentity(key.Public())
+
 	return &Local{
-		Peer:          NewPeer(key.Public(), ip, serviceRecord),
-		key:           key,
+		Peer:          NewPeer(id, ip, serviceRecord),
+		identity:      identity.NewLocalIdentityWithIdentity(id, key),
 		db:            db,
 		serviceRecord: serviceRecord,
 	}
@@ -46,9 +39,9 @@ func newLocal(key PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) 
 // If an optional seed is provided, the seed is used to generate the private key. Without a seed,
 // the provided key is loaded from the provided database and generated if not stored there.
 func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
-	var key PrivateKey
+	var key ed25519.PrivateKey
 	if len(seed) > 0 {
-		key = PrivateKey(ed25519.NewKeyFromSeed(seed[0]))
+		key = ed25519.PrivateKeyFromSeed(seed[0])
 		if db != nil {
 			if err := db.UpdateLocalPrivateKey(key); err != nil {
 				return nil, err
@@ -62,20 +55,12 @@ func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) 
 		}
 	}
 
-	if l := len(key); l != ed25519.PrivateKeySize {
-		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PrivateKeySize)
-	}
 	return newLocal(key, ip, serviceRecord, db), nil
 }
 
 // Database returns the node database associated with the local peer.
 func (l *Local) Database() *DB {
 	return l.db
-}
-
-// Sign signs the message with the local peer's private key and returns a signature.
-func (l *Local) Sign(message []byte) []byte {
-	return ed25519.Sign(ed25519.PrivateKey(l.key), message)
 }
 
 // UpdateService updates the endpoint address of the given local service.
@@ -87,7 +72,7 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	l.serviceRecord.Update(key, network, port)
 
 	// create a new peer with the corresponding services
-	l.Peer = NewPeer(l.key.Public(), l.ip, l.serviceRecord)
+	l.Peer = NewPeer(l.identity.Identity, l.IP(), l.serviceRecord)
 
 	return nil
 }
@@ -120,8 +105,12 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 	l.privateSalt = salt
 }
 
-// generatePrivateKey generates a private key that can be used for Local.
-func generatePrivateKey() (PrivateKey, error) {
-	_, priv, err := ed25519.GenerateKey(nil)
-	return PrivateKey(priv), err
+// Sign signs a message using the node's LocalIdentity.
+func (l *Local) Sign(message []byte) ed25519.Signature {
+	return l.identity.Sign(message)
+}
+
+// LocalIdentity returns the local identity
+func (l *Local) LocalIdentity() *identity.LocalIdentity {
+	return l.identity
 }

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 type Selector interface {
@@ -11,14 +12,14 @@ type Selector interface {
 }
 
 type Filter struct {
-	internal   map[peer.ID]bool
+	internal   map[identity.ID]bool
 	conditions []func(*peer.Peer) bool
 	lock       sync.RWMutex
 }
 
 func NewFilter() *Filter {
 	return &Filter{
-		internal: make(map[peer.ID]bool),
+		internal: make(map[identity.ID]bool),
 	}
 }
 
@@ -49,13 +50,13 @@ func (f *Filter) AddPeers(n []*peer.Peer) {
 	f.lock.Unlock()
 }
 
-func (f *Filter) AddPeer(peer peer.ID) {
+func (f *Filter) AddPeer(peer identity.ID) {
 	f.lock.Lock()
 	f.internal[peer] = true
 	f.lock.Unlock()
 }
 
-func (f *Filter) RemovePeer(peer peer.ID) {
+func (f *Filter) RemovePeer(peer identity.ID) {
 	f.lock.Lock()
 	f.internal[peer] = false
 	f.lock.Unlock()
@@ -67,6 +68,6 @@ func (f *Filter) AddCondition(c func(p *peer.Peer) bool) {
 
 func (f *Filter) Clean() {
 	f.lock.Lock()
-	f.internal = make(map[peer.ID]bool)
+	f.internal = make(map[identity.ID]bool)
 	f.lock.Unlock()
 }

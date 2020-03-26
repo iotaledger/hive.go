@@ -1,11 +1,11 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

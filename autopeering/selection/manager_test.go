@@ -12,6 +12,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestMgrNoDuplicates(t *testing.T) {
 		OutboundUpdateInterval: testUpdateInterval,
 	})
 
-	mgrMap := make(map[peer.ID]*manager)
+	mgrMap := make(map[identity.ID]*manager)
 	runTestNetwork(nNodes, mgrMap)
 
 	for _, mgr := range mgrMap {
@@ -57,7 +58,7 @@ func TestEvents(t *testing.T) {
 
 	e, teardown := newEventMock(t)
 	defer teardown()
-	mgrMap := make(map[peer.ID]*manager)
+	mgrMap := make(map[identity.ID]*manager)
 	runTestNetwork(nNodes, mgrMap)
 
 	// the events should lead to exactly the same neighbors
@@ -70,7 +71,7 @@ func TestEvents(t *testing.T) {
 	}
 }
 
-func getValues(m map[peer.ID]*peer.Peer) []*peer.Peer {
+func getValues(m map[identity.ID]*peer.Peer) []*peer.Peer {
 	result := make([]*peer.Peer, 0, len(m))
 	for _, p := range m {
 		result = append(result, p)
@@ -78,7 +79,7 @@ func getValues(m map[peer.ID]*peer.Peer) []*peer.Peer {
 	return result
 }
 
-func runTestNetwork(n int, mgrMap map[peer.ID]*manager) {
+func runTestNetwork(n int, mgrMap map[identity.ID]*manager) {
 	for i := 0; i < n; i++ {
 		_ = newTestManager(fmt.Sprintf("%d", i), mgrMap)
 	}
@@ -96,7 +97,7 @@ func runTestNetwork(n int, mgrMap map[peer.ID]*manager) {
 }
 
 func getDuplicates(peers []*peer.Peer) []*peer.Peer {
-	seen := make(map[peer.ID]bool, len(peers))
+	seen := make(map[identity.ID]bool, len(peers))
 	result := make([]*peer.Peer, 0, len(peers))
 
 	for _, p := range peers {
@@ -111,19 +112,19 @@ func getDuplicates(peers []*peer.Peer) []*peer.Peer {
 }
 
 type neighbors struct {
-	out, in map[peer.ID]*peer.Peer
+	out, in map[identity.ID]*peer.Peer
 }
 
 type eventMock struct {
 	t    *testing.T
 	lock sync.Mutex
-	m    map[peer.ID]neighbors
+	m    map[identity.ID]neighbors
 }
 
 func newEventMock(t *testing.T) (*eventMock, func()) {
 	e := &eventMock{
 		t: t,
-		m: make(map[peer.ID]neighbors),
+		m: make(map[identity.ID]neighbors),
 	}
 
 	outgoingPeeringC := events.NewClosure(e.outgoingPeering)
@@ -150,7 +151,7 @@ func (e *eventMock) outgoingPeering(ev *PeeringEvent) {
 	defer e.lock.Unlock()
 	s, ok := e.m[ev.Self]
 	if !ok {
-		s = neighbors{out: make(map[peer.ID]*peer.Peer), in: make(map[peer.ID]*peer.Peer)}
+		s = neighbors{out: make(map[identity.ID]*peer.Peer), in: make(map[identity.ID]*peer.Peer)}
 		e.m[ev.Self] = s
 	}
 	assert.NotContains(e.t, s.out, ev.Peer)
@@ -165,7 +166,7 @@ func (e *eventMock) incomingPeering(ev *PeeringEvent) {
 	defer e.lock.Unlock()
 	s, ok := e.m[ev.Self]
 	if !ok {
-		s = neighbors{out: make(map[peer.ID]*peer.Peer), in: make(map[peer.ID]*peer.Peer)}
+		s = neighbors{out: make(map[identity.ID]*peer.Peer), in: make(map[identity.ID]*peer.Peer)}
 		e.m[ev.Self] = s
 	}
 	assert.NotContains(e.t, s.in, ev.Peer)
@@ -184,7 +185,7 @@ func (e *eventMock) dropped(ev *DroppedEvent) {
 
 type networkMock struct {
 	loc *peer.Local
-	mgr map[peer.ID]*manager
+	mgr map[identity.ID]*manager
 }
 
 func (n *networkMock) local() *peer.Local {
@@ -207,7 +208,7 @@ func (n *networkMock) GetKnownPeers() []*peer.Peer {
 	return peers
 }
 
-func newTestManager(name string, mgrMap map[peer.ID]*manager) *manager {
+func newTestManager(name string, mgrMap map[identity.ID]*manager) *manager {
 	db, _ := peer.NewDB(mapdb.NewMapDB())
 	local := peertest.NewLocal("mock", net.IPv4zero, 0, db)
 	networkMock := &networkMock{loc: local, mgr: mgrMap}
