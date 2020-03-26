@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"net"
 	"testing"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
@@ -10,7 +11,7 @@ import (
 func newTestPeerWithID(ID byte) *Peer {
 	var key ed25519.PublicKey
 	key[0] = ID
-	return NewPeer(key, newTestServiceRecord())
+	return NewPeer(key, net.IPv4zero, newTestServiceRecord())
 }
 
 func TestOrderedDistanceList(t *testing.T) {

@@ -1,13 +1,15 @@
 package service
 
-import (
-	"net"
-)
+// Endpoint defines where a service can be reached.
+type Endpoint interface {
+	Network() string
+	Port() int
+}
 
 // Service is a read-only interface to access services.
 type Service interface {
 	// Get returns the network end point address of the given service or nil if not supported.
-	Get(Key) net.Addr
+	Get(Key) Endpoint
 
 	// CreateRecord creates a modifyable Record from the services.
 	CreateRecord() *Record

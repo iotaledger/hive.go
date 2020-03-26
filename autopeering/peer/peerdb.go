@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/rand"
+	"net"
 	"time"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
@@ -66,7 +67,7 @@ func (db *DB) init() error {
 
 	for _, p := range peers {
 		// if they dont have an associated pong, give them a grace period
-		if db.LastPong(p.ID(), p.Address()).Unix() == 0 {
+		if db.LastPong(p.ID(), p.IP()).Unix() == 0 {
 			if err := db.setPeerWithTTL(p, cleanupInterval); err != nil {
 				return err
 			}
@@ -81,8 +82,8 @@ func nodeKey(id identity.ID) []byte {
 }
 
 // nodeFieldKey returns the database key for a node metadata field.
-func nodeFieldKey(id identity.ID, address string, field string) []byte {
-	return bytes.Join([][]byte{nodeKey(id), []byte(address), []byte(field)}, []byte{':'})
+func nodeFieldKey(id identity.ID, ip net.IP, field string) []byte {
+	return bytes.Join([][]byte{nodeKey(id), ip.To16(), []byte(field)}, []byte{':'})
 }
 
 func localFieldKey(field string) []byte {
@@ -138,23 +139,23 @@ func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
 }
 
 // LastPing returns that property for the given peer ID and address.
-func (db *DB) LastPing(id identity.ID, address string) time.Time {
-	return time.Unix(db.getInt64(nodeFieldKey(id, address, dbNodePing)), 0)
+func (db *DB) LastPing(id identity.ID, ip net.IP) time.Time {
+	return time.Unix(db.getInt64(nodeFieldKey(id, ip, dbNodePing)), 0)
 }
 
 // UpdateLastPing updates that property for the given peer ID and address.
-func (db *DB) UpdateLastPing(id identity.ID, address string, t time.Time) error {
-	return db.setInt64(nodeFieldKey(id, address, dbNodePing), t.Unix())
+func (db *DB) UpdateLastPing(id identity.ID, ip net.IP, t time.Time) error {
+	return db.setInt64(nodeFieldKey(id, ip, dbNodePing), t.Unix())
 }
 
 // LastPong returns that property for the given peer ID and address.
-func (db *DB) LastPong(id identity.ID, address string) time.Time {
-	return time.Unix(db.getInt64(nodeFieldKey(id, address, dbNodePong)), 0)
+func (db *DB) LastPong(id identity.ID, ip net.IP) time.Time {
+	return time.Unix(db.getInt64(nodeFieldKey(id, ip, dbNodePong)), 0)
 }
 
 // UpdateLastPong updates that property for the given peer ID and address.
-func (db *DB) UpdateLastPong(id identity.ID, address string, t time.Time) error {
-	return db.setInt64(nodeFieldKey(id, address, dbNodePong), t.Unix())
+func (db *DB) UpdateLastPong(id identity.ID, ip net.IP, t time.Time) error {
+	return db.setInt64(nodeFieldKey(id, ip, dbNodePong), t.Unix())
 }
 
 func (db *DB) setPeerWithTTL(p *Peer, ttl time.Duration) error {
@@ -214,7 +215,7 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 		if err != nil || p.ID() != id {
 			return false
 		}
-		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.Address())) > maxAge {
+		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.IP())) > maxAge {
 			return false
 		}
 

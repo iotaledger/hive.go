@@ -4,24 +4,28 @@ package peertest
 import (
 	"log"
 	"math/rand"
+	"net"
+	"strconv"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
-func NewPeer(network, address string) *peer.Peer {
+// NewPeer creates a new peer for tests.
+func NewPeer(network string, ip string, port int) *peer.Peer {
 	services := service.New()
-	services.Update(service.PeeringKey, network, address)
+	services.Update(service.PeeringKey, network, port)
 	key := ed25519.PublicKey{}
-	copy(key[:], address)
-	return peer.NewPeer(key, services)
+	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
+	return peer.NewPeer(key, net.ParseIP(ip), services)
 }
 
-func NewLocal(network, address string, db *peer.DB) *peer.Local {
+// NewLocal crates a new local for tests.
+func NewLocal(network string, ip net.IP, port int, db *peer.DB) *peer.Local {
 	services := service.New()
-	services.Update(service.PeeringKey, network, address)
-	local, err := peer.NewLocal(services, db, randomSeed())
+	services.Update(service.PeeringKey, network, port)
+	local, err := peer.NewLocal(ip, services, db, randomSeed())
 	if err != nil {
 		log.Panic(err)
 	}

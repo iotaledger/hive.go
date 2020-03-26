@@ -23,16 +23,16 @@ func NewTestObject(id string, value uint32) *TestObject {
 	}
 }
 
-func (testObject *TestObject) GetStorageKey() []byte {
+func (testObject *TestObject) ObjectStorageKey() []byte {
 	return testObject.id
 }
 
-func (testObject *TestObject) MarshalBinary() ([]byte, error) {
+func (testObject *TestObject) ObjectStorageValue() []byte {
 	result := make([]byte, 4)
 
 	binary.LittleEndian.PutUint32(result, testObject.value)
 
-	return result, nil
+	return result
 }
 
 func (testObject *TestObject) Update(object objectstorage.StorableObject) {
@@ -43,7 +43,7 @@ func (testObject *TestObject) Update(object objectstorage.StorableObject) {
 	}
 }
 
-func (testObject *TestObject) UnmarshalBinary(data []byte) error {
+func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) error {
 	testObject.value = binary.LittleEndian.Uint32(data)
 
 	return nil
@@ -74,7 +74,7 @@ func (t ThreeLevelObj) Update(object objectstorage.StorableObject) {
 	}
 }
 
-func (t ThreeLevelObj) GetStorageKey() []byte {
+func (t ThreeLevelObj) ObjectStorageKey() []byte {
 	var b bytes.Buffer
 	b.WriteByte(t.id)
 	b.WriteByte(t.id2)
@@ -82,11 +82,11 @@ func (t ThreeLevelObj) GetStorageKey() []byte {
 	return b.Bytes()
 }
 
-func (t ThreeLevelObj) MarshalBinary() (data []byte, err error) {
-	return []byte{t.id3}, nil
+func (t ThreeLevelObj) ObjectStorageValue() []byte {
+	return []byte{t.id3}
 }
 
-func (t ThreeLevelObj) UnmarshalBinary(data []byte) error {
+func (t ThreeLevelObj) UnmarshalObjectStorageValue(data []byte) error {
 	t.id3 = data[0]
 	return nil
 }

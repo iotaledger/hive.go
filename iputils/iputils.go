@@ -9,16 +9,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IP struct {
-	net.IP
-}
-
-func (ip *IP) IsIPv6() bool {
+func IsIPv6(ip net.IP) bool {
 	return len(ip.To4()) != net.IPv4len
 }
 
-func (ip *IP) ToString() string {
-	if ip.IsIPv6() {
+func IPToString(ip net.IP) string {
+	if IsIPv6(ip) {
 		return "[" + ip.String() + "]"
 	}
 
@@ -26,55 +22,55 @@ func (ip *IP) ToString() string {
 }
 
 type IPAddresses struct {
-	IPs map[*IP]struct{}
+	IPs map[*net.IP]struct{}
 }
 
 func NewIPAddresses() *IPAddresses {
-	return &IPAddresses{IPs: make(map[*IP]struct{})}
+	return &IPAddresses{IPs: make(map[*net.IP]struct{})}
 }
 
 func (ips *IPAddresses) Union(other *IPAddresses) *IPAddresses {
 	union := NewIPAddresses()
 	set := map[string]struct{}{}
 	for ip := range ips.IPs {
-		union.Add(ip)
+		union.Add(*ip)
 		set[ip.String()] = struct{}{}
 	}
 	for ip := range other.IPs {
 		if _, ok := set[ip.String()]; !ok {
-			union.Add(ip)
+			union.Add(*ip)
 		}
 	}
 	return union
 }
 
-func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) *IP {
+func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) net.IP {
 	if !preferIPv6 {
 		for ip := range ips.IPs {
-			if !ip.IsIPv6() {
-				return ip
+			if !IsIPv6(*ip) {
+				return *ip
 			}
 		}
 	} else {
 		for ip := range ips.IPs {
-			if ip.IsIPv6() {
-				return ip
+			if IsIPv6(*ip) {
+				return *ip
 			}
 		}
 	}
 	// it's a map/set
 	for ip := range ips.IPs {
-		return ip
+		return *ip
 	}
 	return nil
 }
 
-func (ips *IPAddresses) Add(ip *IP) {
-	ips.IPs[ip] = struct{}{}
+func (ips *IPAddresses) Add(ip net.IP) {
+	ips.IPs[&ip] = struct{}{}
 }
 
-func (ips *IPAddresses) Remove(ip *IP) {
-	delete(ips.IPs, ip)
+func (ips *IPAddresses) Remove(ip net.IP) {
+	delete(ips.IPs, &ip)
 }
 
 func (ips *IPAddresses) Len() int {
@@ -128,14 +124,14 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 			return nil, ErrInvalidIPAddressOrHost
 		}
 
-		ipAddresses.Add(&IP{IP: ip})
+		ipAddresses.Add(ip)
 		return ipAddresses, nil
 
 	}
 
 	// Check if it's an IPv4 address
 	if ip := net.ParseIP(hostname); ip != nil {
-		ipAddresses.Add(&IP{IP: ip})
+		ipAddresses.Add(ip)
 		return ipAddresses, nil
 	}
 
@@ -154,7 +150,7 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 		if ip == nil {
 			return nil, ErrInvalidIPAddressOrHost
 		}
-		ipAddresses.Add(&IP{IP: ip})
+		ipAddresses.Add(ip)
 	}
 
 	if ipAddresses.Len() == 0 {

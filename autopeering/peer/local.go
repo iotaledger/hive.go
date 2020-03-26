@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"net"
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -11,9 +12,9 @@ import (
 
 // Local defines the struct of a local peer
 type Local struct {
-	Peer
-	db            *DB
+	*Peer
 	localIdentity *identity.LocalIdentity
+	db            *DB
 
 	// everything below is protected by a lock
 	mu            sync.RWMutex
@@ -23,12 +24,12 @@ type Local struct {
 }
 
 // newLocal creates a new local peer.
-func newLocal(key ed25519.PrivateKey, serviceRecord *service.Record, db *DB) *Local {
-	i := identity.NewIdentity(key.Public())
+func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
+	id := identity.NewIdentity(key.Public())
 
 	return &Local{
-		Peer:          *NewPeerWithIdentity(i, serviceRecord),
-		localIdentity: identity.NewLocalIdentityWithIdentity(i, key),
+		Peer:          NewPeerWithIdentity(id, ip, serviceRecord),
+		localIdentity: identity.NewLocalIdentityWithIdentity(id, key),
 		db:            db,
 		serviceRecord: serviceRecord,
 	}
@@ -37,7 +38,7 @@ func newLocal(key ed25519.PrivateKey, serviceRecord *service.Record, db *DB) *Lo
 // NewLocal creates a new local peer linked to the provided db.
 // If an optional seed is provided, the seed is used to generate the private key. Without a seed,
 // the provided key is loaded from the provided database and generated if not stored there.
-func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
+func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
 	var key ed25519.PrivateKey
 	if len(seed) > 0 {
 		key = ed25519.PrivateKeyFromSeed(seed[0])
@@ -54,7 +55,7 @@ func NewLocal(serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, er
 		}
 	}
 
-	return newLocal(key, serviceRecord, db), nil
+	return newLocal(key, ip, serviceRecord, db), nil
 }
 
 // Database returns the node database associated with the local peer.
@@ -63,15 +64,15 @@ func (l *Local) Database() *DB {
 }
 
 // UpdateService updates the endpoint address of the given local service.
-func (l *Local) UpdateService(key service.Key, network string, address string) error {
+func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	// update the service in the read protected map
-	l.serviceRecord.Update(key, network, address)
+	l.serviceRecord.Update(key, network, port)
 
 	// create a new peer with the corresponding services
-	l.Peer = *NewPeerWithIdentity(l.localIdentity.Identity, l.serviceRecord)
+	l.Peer = NewPeerWithIdentity(l.localIdentity.Identity, l.IP(), l.serviceRecord)
 
 	return nil
 }

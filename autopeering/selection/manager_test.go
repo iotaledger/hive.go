@@ -2,6 +2,7 @@ package selection
 
 import (
 	"fmt"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -196,22 +197,22 @@ func (n *networkMock) PeeringDrop(p *peer.Peer) {
 }
 
 func (n *networkMock) PeeringRequest(p *peer.Peer, s *salt.Salt) (bool, error) {
-	return n.mgr[p.ID()].requestPeering(&n.local().Peer, s), nil
+	return n.mgr[p.ID()].requestPeering(n.local().Peer, s), nil
 }
 
 func (n *networkMock) GetKnownPeers() []*peer.Peer {
 	peers := make([]*peer.Peer, 0, len(n.mgr))
 	for _, m := range n.mgr {
-		peers = append(peers, &m.net.local().Peer)
+		peers = append(peers, m.net.local().Peer)
 	}
 	return peers
 }
 
 func newTestManager(name string, mgrMap map[identity.ID]*manager) *manager {
 	db, _ := peer.NewDB(mapdb.NewMapDB())
-	local := peertest.NewLocal("mock", name, db)
+	local := peertest.NewLocal("mock", net.IPv4zero, 0, db)
 	networkMock := &networkMock{loc: local, mgr: mgrMap}
-	m := newManager(networkMock, networkMock.GetKnownPeers, log.Named(name), Options{})
+	m := newManager(networkMock, networkMock.GetKnownPeers, log.Named(name), &options{})
 	mgrMap[m.getID()] = m
 	return m
 }

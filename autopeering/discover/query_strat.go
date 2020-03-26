@@ -63,7 +63,7 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 
 // peersToQuery selects the peers that should be queried.
 func (m *manager) peersToQuery() []*mpeer {
-	ps := m.getVerifiedPeers()
+	ps := m.verifiedPeers()
 	if len(ps) == 0 {
 		return nil
 	}
