@@ -1,9 +1,8 @@
 package ed25519
 
 import (
+	"crypto/ed25519"
 	"fmt"
-
-	"github.com/oasislabs/ed25519"
 )
 
 // PrivateKey is the type of Ed25519 private keys.
