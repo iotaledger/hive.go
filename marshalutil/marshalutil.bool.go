@@ -1,5 +1,7 @@
 package marshalutil
 
+const BOOL_SIZE = 1
+
 func (util *MarshalUtil) WriteBool(bool bool) {
 	writeEndOffset := util.expandWriteCapacity(1)
 
