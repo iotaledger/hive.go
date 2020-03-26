@@ -10,7 +10,7 @@ import (
 )
 
 func cpuHeavyFunc() {
-	randomData := make([]byte, 102400, 102400)
+	randomData := make([]byte, 102400)
 	_, _ = rand.Read(randomData)
 
 	blake2b.Sum512(randomData)
@@ -38,7 +38,7 @@ func BenchmarkWorkerPool_goroutine(b *testing.B) {
 func BenchmarkWorkerPool_Submit(b *testing.B) {
 	b.ReportAllocs()
 
-	var wp = *WorkerPool{}.Tune(runtime.NumCPU())
+	var wp = *(&WorkerPool{}).Tune(runtime.NumCPU())
 
 	b.ResetTimer()
 
