@@ -2,7 +2,7 @@ package marshalutil
 
 const BOOL_SIZE = 1
 
-func (util *MarshalUtil) WriteBool(bool bool) {
+func (util *MarshalUtil) WriteBool(bool bool) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(1)
 
 	if bool {
@@ -12,6 +12,8 @@ func (util *MarshalUtil) WriteBool(bool bool) {
 	}
 
 	util.WriteSeek(writeEndOffset)
+
+	return util
 }
 
 func (util *MarshalUtil) ReadBool() (bool, error) {

@@ -7,7 +7,7 @@ import (
 const TIME_SIZE = INT64_SIZE
 
 // WriteTime marshals the given time into a sequence of bytes, that get appended to the internal buffer.
-func (util *MarshalUtil) WriteTime(timeToWrite time.Time) {
+func (util *MarshalUtil) WriteTime(timeToWrite time.Time) *MarshalUtil {
 	nanoSeconds := timeToWrite.UnixNano()
 
 	// the zero value of time translates to -6795364578871345152
@@ -16,6 +16,8 @@ func (util *MarshalUtil) WriteTime(timeToWrite time.Time) {
 	} else {
 		util.WriteInt64(timeToWrite.UnixNano())
 	}
+
+	return util
 }
 
 // ReadTime unmarshals a time object from the internal read buffer.
