@@ -4,6 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // Events contains all the events that are triggered during the neighbor selection.
@@ -25,21 +26,21 @@ var Events = struct {
 
 // SaltUpdatedEvent bundles the information sent in the SaltUpdated event.
 type SaltUpdatedEvent struct {
-	Self            peer.ID    // ID of the peer triggering the event.
-	Public, Private *salt.Salt // the updated salt
+	Self            identity.ID // ID of the peer triggering the event.
+	Public, Private *salt.Salt  // the updated salt
 }
 
 // PeeringEvent bundles the information sent in the OutgoingPeering and IncomingPeering event.
 type PeeringEvent struct {
-	Self   peer.ID    // ID of the peer triggering the event.
-	Peer   *peer.Peer // peering partner
-	Status bool       // true, when the peering partner has accepted the request
+	Self   identity.ID // ID of the peer triggering the event.
+	Peer   *peer.Peer  // peering partner
+	Status bool        // true, when the peering partner has accepted the request
 }
 
 // DroppedEvent bundles the information sent in Dropped events.
 type DroppedEvent struct {
-	Self      peer.ID // ID of the peer triggering the event.
-	DroppedID peer.ID // ID of the peer that gets dropped.
+	Self      identity.ID // ID of the peer triggering the event.
+	DroppedID identity.ID // ID of the peer that gets dropped.
 }
 
 func saltUpdatedCaller(handler interface{}, params ...interface{}) {

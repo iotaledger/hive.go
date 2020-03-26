@@ -10,6 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/database/mapdb"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -68,7 +69,7 @@ func setupTest() func(t *testing.T) {
 	}
 }
 
-func handle(s *Server, fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.PublicKey, data []byte) (bool, error) {
+func handle(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
 	msg, err := unmarshal(data)
 	if err != nil {
 		return false, err
@@ -76,11 +77,11 @@ func handle(s *Server, fromAddr *net.UDPAddr, fromID peer.ID, fromKey peer.Publi
 
 	switch msg.Type() {
 	case MPing:
-		pingMock.Called(s, fromAddr, fromID, fromKey, data)
+		pingMock.Called(s, fromAddr, from, data)
 
 	case MPong:
-		if s.IsExpectedReply(fromAddr.IP, fromID, msg) {
-			pongMock.Called(s, fromAddr, fromID, fromKey, data)
+		if s.IsExpectedReply(fromAddr.IP, from.ID(), msg) {
+			pongMock.Called(s, fromAddr, from, data)
 		}
 
 	default:
@@ -120,11 +121,11 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	ping := new(Ping)
 	packet := s.encode(ping.Marshal())
 
-	data, key, err := decode(packet)
+	data, identity, err := decode(packet)
 	require.NoError(t, err)
 
 	msg, _ := unmarshal(data)
-	assert.Equal(t, local.ID(), key.ID())
+	assert.Equal(t, local.LocalIdentity().Identity, identity)
 	assert.Equal(t, msg, ping)
 }
 
@@ -175,9 +176,9 @@ func TestPingPong(t *testing.T) {
 		defer setupTest()(t)
 
 		// B expects valid ping from A and sends pong back
-		pingMock.On("handle", srvB, peerA.Address(), peerA.ID(), peerA.PublicKey(), mock.Anything).Run(sendPong).Once()
+		pingMock.On("handle", srvB, peerA.Address(), peerA.Identity, mock.Anything).Run(sendPong).Once()
 		// A expects valid pong from B
-		pongMock.On("handle", srvA, peerB.Address(), peerB.ID(), peerB.PublicKey(), mock.Anything).Once()
+		pongMock.On("handle", srvA, peerB.Address(), peerB.Identity, mock.Anything).Once()
 
 		assert.NoError(t, sendPing(srvA, peerB))
 		time.Sleep(graceTime)
@@ -187,8 +188,8 @@ func TestPingPong(t *testing.T) {
 	t.Run("B->A", func(t *testing.T) {
 		defer setupTest()(t)
 
-		pingMock.On("handle", srvA, peerB.Address(), peerB.ID(), peerB.PublicKey(), mock.Anything).Run(sendPong).Once() // A expects valid ping from B and sends pong back
-		pongMock.On("handle", srvB, peerA.Address(), peerA.ID(), peerA.PublicKey(), mock.Anything).Once()               // B expects valid pong from A
+		pingMock.On("handle", srvA, peerB.Address(), peerB.Identity, mock.Anything).Run(sendPong).Once() // A expects valid ping from B and sends pong back
+		pongMock.On("handle", srvB, peerA.Address(), peerA.Identity, mock.Anything).Once()               // B expects valid pong from A
 
 		assert.NoError(t, sendPing(srvB, peerA))
 		time.Sleep(graceTime)

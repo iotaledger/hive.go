@@ -1,7 +1,6 @@
 package peer
 
 import (
-	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -11,6 +10,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // Errors in the peer package.
@@ -24,20 +25,9 @@ type PublicKey ed25519.PublicKey
 
 // Peer defines the immutable data of a peer.
 type Peer struct {
-	id        ID              // comparable node identifier
-	publicKey PublicKey       // public key used to verify signatures
-	ip        net.IP          // destination IP address of the peer
-	services  *service.Record // unmodifiable services supported by the peer
-}
-
-// ID returns the identifier of the peer.
-func (p *Peer) ID() ID {
-	return p.id
-}
-
-// PublicKey returns the public key of the peer.
-func (p *Peer) PublicKey() PublicKey {
-	return p.publicKey
+	*identity.Identity
+	ip       net.IP
+	services *service.Record // unmodifiable services supported by the peer
 }
 
 // IP returns the public IP of the peer.
@@ -67,7 +57,7 @@ func (p *Peer) Services() service.Service {
 func (p *Peer) String() string {
 	u := url.URL{
 		Scheme: "peer",
-		User:   url.User(base64.StdEncoding.EncodeToString(p.PublicKey())),
+		User:   url.User(base64.StdEncoding.EncodeToString(p.PublicKey().Bytes())),
 		Host:   p.Address().String(),
 	}
 	return u.String()
@@ -81,38 +71,40 @@ type SignedData interface {
 }
 
 // RecoverKeyFromSignedData validates and returns the key that was used to sign the data.
-func RecoverKeyFromSignedData(m SignedData) (PublicKey, error) {
-	return recoverKey(m.GetPublicKey(), m.GetData(), m.GetSignature())
+func RecoverKeyFromSignedData(m SignedData) (ed25519.PublicKey, error) {
+	return ed25519.RecoverKey(m.GetPublicKey(), m.GetData(), m.GetSignature())
 }
 
 // NewPeer creates a new unmodifiable peer.
-func NewPeer(publicKey PublicKey, ip net.IP, services service.Service) *Peer {
+func NewPeer(id *identity.Identity, ip net.IP, services service.Service) *Peer {
 	if services.Get(service.PeeringKey) == nil {
 		panic("need peering service")
 	}
 
 	return &Peer{
-		id:        publicKey.ID(),
-		publicKey: publicKey,
-		ip:        ip,
-		services:  services.CreateRecord(),
+		Identity: id,
+		ip:       ip,
+		services: services.CreateRecord(),
 	}
 }
 
 // ToProto encodes a given peer into a proto buffer Peer message
 func (p *Peer) ToProto() *pb.Peer {
 	return &pb.Peer{
-		PublicKey: p.publicKey,
-		Ip:        p.ip.String(),
+		PublicKey: p.PublicKey().Bytes(),
+		Ip:        p.IP().String(),
 		Services:  p.services.ToProto(),
 	}
 }
 
 // FromProto decodes a given proto buffer Peer message (in) and returns the corresponding Peer.
 func FromProto(in *pb.Peer) (*Peer, error) {
-	if l := len(in.GetPublicKey()); l != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("invalid key length: %d, need %d", l, ed25519.PublicKeySize)
+	publicKey, err, _ := ed25519.PublicKeyFromBytes(in.GetPublicKey())
+	if err != nil {
+		return nil, err
 	}
+	id := identity.NewIdentity(publicKey)
+
 	ip := net.ParseIP(in.GetIp())
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP: %s", in.GetIp())
@@ -126,7 +118,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 		return nil, ErrNeedsPeeringService
 	}
 
-	return NewPeer(in.GetPublicKey(), ip, services), nil
+	return NewPeer(id, ip, services), nil
 }
 
 // Marshal serializes a given Peer (p) into a slice of bytes.
@@ -141,20 +133,4 @@ func Unmarshal(data []byte) (*Peer, error) {
 		return nil, err
 	}
 	return FromProto(s)
-}
-
-func recoverKey(key, data, sig []byte) (PublicKey, error) {
-	if l := len(key); l != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("%w: invalid key length: %d, need %d", ErrInvalidSignature, l, ed25519.PublicKeySize)
-	}
-	if l := len(sig); l != ed25519.SignatureSize {
-		return nil, fmt.Errorf("%w: invalid signature length: %d, need %d", ErrInvalidSignature, l, ed25519.SignatureSize)
-	}
-	if !ed25519.Verify(key, data, sig) {
-		return nil, ErrInvalidSignature
-	}
-
-	publicKey := make([]byte, ed25519.PublicKeySize)
-	copy(publicKey, key)
-	return publicKey, nil
 }

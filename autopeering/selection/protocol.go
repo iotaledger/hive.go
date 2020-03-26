@@ -14,6 +14,7 @@ import (
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -29,10 +30,10 @@ var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 
 // DiscoverProtocol specifies the methods from the peer discovery that are required.
 type DiscoverProtocol interface {
-	IsVerified(peer.ID, net.IP) bool
+	IsVerified(identity.ID, net.IP) bool
 	EnsureVerified(*peer.Peer) error
 
-	GetVerifiedPeer(peer.ID) *peer.Peer
+	GetVerifiedPeer(identity.ID) *peer.Peer
 	GetVerifiedPeers() []*peer.Peer
 }
 
@@ -107,12 +108,12 @@ func (p *Protocol) GetOutgoingNeighbors() []*peer.Peer {
 // RemoveNeighbor removes the peer with the given id from the incoming and outgoing neighbors.
 // If such a peer was actually contained in anyone of the neighbor sets, the corresponding event is triggered
 // and the corresponding peering drop is sent. Otherwise the call is ignored.
-func (p *Protocol) RemoveNeighbor(id peer.ID) {
+func (p *Protocol) RemoveNeighbor(id identity.ID) {
 	p.mgr.removeNeighbor(id)
 }
 
 // HandleMessage responds to incoming neighbor selection messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, _ peer.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -124,8 +125,8 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		if p.validatePeeringRequest(fromAddr, fromID, m) {
-			p.handlePeeringRequest(s, fromID, data, m)
+		if p.validatePeeringRequest(fromAddr, from.ID(), m) {
+			p.handlePeeringRequest(s, from.ID(), data, m)
 		}
 
 	// PeeringResponse
@@ -134,7 +135,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		p.validatePeeringResponse(s, fromAddr, fromID, m)
+		p.validatePeeringResponse(s, fromAddr, from.ID(), m)
 		// PeeringResponse messages are handled in the handleReply function of the validation
 
 	// PeeringDrop
@@ -144,7 +145,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringDrop(fromAddr, m) {
-			p.handlePeeringDrop(fromID)
+			p.handlePeeringDrop(from.ID())
 		}
 
 	default:
@@ -250,7 +251,7 @@ func newPeeringDrop() *pb.PeeringDrop {
 
 // ------ Packet Handlers ------
 
-func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID peer.ID, m *pb.PeeringRequest) bool {
+func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity.ID, m *pb.PeeringRequest) bool {
 	// check Timestamp
 	if p.Protocol.IsExpired(m.GetTimestamp()) {
 		p.log.Debugw("invalid message",
@@ -292,7 +293,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID peer.ID,
 	return true
 }
 
-func (p *Protocol) handlePeeringRequest(s *server.Server, fromID peer.ID, rawData []byte, m *pb.PeeringRequest) {
+func (p *Protocol) handlePeeringRequest(s *server.Server, fromID identity.ID, rawData []byte, m *pb.PeeringRequest) {
 	fromSalt, err := salt.FromProto(m.GetSalt())
 	if err != nil {
 		// this should not happen as it is checked in validation
@@ -308,7 +309,7 @@ func (p *Protocol) handlePeeringRequest(s *server.Server, fromID peer.ID, rawDat
 	s.Send(from.Address(), marshal(res))
 }
 
-func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAddr, fromID peer.ID, m *pb.PeeringResponse) bool {
+func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, m *pb.PeeringResponse) bool {
 	// there must be a request waiting for this response
 	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
 		p.log.Debugw("invalid message",
@@ -342,6 +343,6 @@ func (p *Protocol) validatePeeringDrop(fromAddr *net.UDPAddr, m *pb.PeeringDrop)
 	return true
 }
 
-func (p *Protocol) handlePeeringDrop(fromID peer.ID) {
+func (p *Protocol) handlePeeringDrop(fromID identity.ID) {
 	p.mgr.removeNeighbor(fromID)
 }

@@ -2,7 +2,6 @@
 package peertest
 
 import (
-	"crypto/ed25519"
 	"log"
 	"math/rand"
 	"net"
@@ -10,15 +9,17 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // NewPeer creates a new peer for tests.
 func NewPeer(network string, ip string, port int) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, port)
-	key := make([]byte, ed25519.PublicKeySize)
-	copy(key, net.JoinHostPort(ip, strconv.Itoa(port)))
-	return peer.NewPeer(key, net.ParseIP(ip), services)
+	key := ed25519.PublicKey{}
+	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
+	return peer.NewPeer(identity.NewIdentity(key), net.ParseIP(ip), services)
 }
 
 // NewLocal crates a new local for tests.

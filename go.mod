@@ -20,7 +20,7 @@ require (
 	go.uber.org/atomic v1.5.1
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/crypto v0.0.0-20191119213627-4f8c1d86b1ba
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/tools v0.0.0-20200103221440-774c71fcf114 // indirect
 )

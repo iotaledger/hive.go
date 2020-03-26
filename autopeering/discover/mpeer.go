@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // mpeer represents a discovered peer with additional data.
@@ -40,7 +41,7 @@ func unwrapPeers(ps []*mpeer) []*peer.Peer {
 }
 
 // containsPeer returns true if a peer with the given ID is in the list.
-func containsPeer(list []*mpeer, id peer.ID) bool {
+func containsPeer(list []*mpeer, id identity.ID) bool {
 	for _, p := range list {
 		if p.ID() == id {
 			return true
@@ -78,7 +79,7 @@ func deletePeer(list []*mpeer, i int) ([]*mpeer, *mpeer) {
 }
 
 // deletePeerByID deletes the peer with the given ID from the list.
-func deletePeerByID(list []*mpeer, id peer.ID) ([]*mpeer, *mpeer) {
+func deletePeerByID(list []*mpeer, id identity.ID) ([]*mpeer, *mpeer) {
 	for i, p := range list {
 		if p.ID() == id {
 			return deletePeer(list, i)
