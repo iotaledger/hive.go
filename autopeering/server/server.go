@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil"
@@ -287,14 +286,13 @@ func (s *Server) readLoop() {
 }
 
 func (s *Server) handlePacket(pkt *pb.Packet, fromAddr *net.UDPAddr) error {
-	data, key, err := decode(pkt)
+	data, from, err := decode(pkt)
 	if err != nil {
 		return err
 	}
 
-	fromID := identity.NewID(key)
 	for _, handler := range s.handlers {
-		ok, err := handler.HandleMessage(s, fromAddr, fromID, key, data)
+		ok, err := handler.HandleMessage(s, fromAddr, from, data)
 		if ok {
 			return err
 		}
@@ -302,14 +300,14 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr *net.UDPAddr) error {
 	return ErrInvalidMessage
 }
 
-func decode(pkt *pb.Packet) ([]byte, ed25519.PublicKey, error) {
+func decode(pkt *pb.Packet) ([]byte, *identity.Identity, error) {
 	if len(pkt.GetData()) == 0 {
-		return nil, ed25519.PublicKey{}, ErrNoMessage
+		return nil, nil, ErrNoMessage
 	}
 
 	key, err := peer.RecoverKeyFromSignedData(pkt)
 	if err != nil {
-		return nil, ed25519.PublicKey{}, err
+		return nil, nil, err
 	}
-	return pkt.GetData(), key, nil
+	return pkt.GetData(), identity.NewIdentity(key), nil
 }

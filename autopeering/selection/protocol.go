@@ -14,7 +14,6 @@ import (
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/typeutils"
@@ -114,7 +113,7 @@ func (p *Protocol) RemoveNeighbor(id identity.ID) {
 }
 
 // HandleMessage responds to incoming neighbor selection messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, _ ed25519.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -126,8 +125,8 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		if p.validatePeeringRequest(fromAddr, fromID, m) {
-			p.handlePeeringRequest(s, fromID, data, m)
+		if p.validatePeeringRequest(fromAddr, from.ID(), m) {
+			p.handlePeeringRequest(s, from.ID(), data, m)
 		}
 
 	// PeeringResponse
@@ -136,7 +135,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		p.validatePeeringResponse(s, fromAddr, fromID, m)
+		p.validatePeeringResponse(s, fromAddr, from.ID(), m)
 		// PeeringResponse messages are handled in the handleReply function of the validation
 
 	// PeeringDrop
@@ -146,7 +145,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringDrop(fromAddr, m) {
-			p.handlePeeringDrop(fromID)
+			p.handlePeeringDrop(from.ID())
 		}
 
 	default:

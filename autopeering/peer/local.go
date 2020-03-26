@@ -13,8 +13,8 @@ import (
 // Local defines the struct of a local peer
 type Local struct {
 	*Peer
-	localIdentity *identity.LocalIdentity
-	db            *DB
+	identity *identity.LocalIdentity
+	db       *DB
 
 	// everything below is protected by a lock
 	mu            sync.RWMutex
@@ -28,8 +28,8 @@ func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, 
 	id := identity.NewIdentity(key.Public())
 
 	return &Local{
-		Peer:          NewPeerWithIdentity(id, ip, serviceRecord),
-		localIdentity: identity.NewLocalIdentityWithIdentity(id, key),
+		Peer:          NewPeer(id, ip, serviceRecord),
+		identity:      identity.NewLocalIdentityWithIdentity(id, key),
 		db:            db,
 		serviceRecord: serviceRecord,
 	}
@@ -72,7 +72,7 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	l.serviceRecord.Update(key, network, port)
 
 	// create a new peer with the corresponding services
-	l.Peer = NewPeerWithIdentity(l.localIdentity.Identity, l.IP(), l.serviceRecord)
+	l.Peer = NewPeer(l.identity.Identity, l.IP(), l.serviceRecord)
 
 	return nil
 }
@@ -107,10 +107,10 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 
 // Sign signs a message using the node's LocalIdentity.
 func (l *Local) Sign(message []byte) ed25519.Signature {
-	return l.localIdentity.Sign(message)
+	return l.identity.Sign(message)
 }
 
 // LocalIdentity returns the local identity
 func (l *Local) LocalIdentity() *identity.LocalIdentity {
-	return l.localIdentity
+	return l.identity
 }

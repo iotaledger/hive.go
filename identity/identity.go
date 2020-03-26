@@ -6,7 +6,7 @@ import (
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
-// Identity is a node's identity.
+// LocalIdentity is a node's identity.
 type Identity struct {
 	id        ID                // comparable node identifier
 	publicKey ed25519.PublicKey // public key used to verify signatures

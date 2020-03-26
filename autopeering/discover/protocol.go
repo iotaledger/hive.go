@@ -15,7 +15,6 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil"
@@ -136,7 +135,7 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 }
 
 // HandleMessage responds to incoming peer discovery messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
@@ -149,7 +148,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePing(fromAddr, m) {
-			p.handlePing(s, fromAddr, fromID, fromKey, m, data)
+			p.handlePing(s, fromAddr, from, m, data)
 		}
 
 	// Pong
@@ -158,8 +157,8 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		if p.validatePong(s, fromAddr, fromID, m) {
-			p.handlePong(fromAddr, fromID, fromKey, m)
+		if p.validatePong(s, fromAddr, from.ID(), m) {
+			p.handlePong(fromAddr, from, m)
 		}
 
 	// DiscoveryRequest
@@ -168,8 +167,8 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		if p.validateDiscoveryRequest(fromAddr, fromID, m) {
-			p.handleDiscoveryRequest(s, fromID, data)
+		if p.validateDiscoveryRequest(fromAddr, from.ID(), m) {
+			p.handleDiscoveryRequest(s, from.ID(), data)
 		}
 
 	// DiscoveryResponse
@@ -178,7 +177,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, fromID
 		if err := proto.Unmarshal(data[1:], m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
-		p.validateDiscoveryResponse(s, fromAddr, fromID, m)
+		p.validateDiscoveryResponse(s, fromAddr, from.ID(), m)
 		// DiscoveryResponse messages are handled in the handleReply function of the validation
 
 	default:
@@ -312,11 +311,11 @@ func marshal(msg pb.Message) []byte {
 }
 
 // newPeer creates a new peer that only has a peering service at the given address.
-func newPeer(key ed25519.PublicKey, network string, addr *net.UDPAddr) *peer.Peer {
+func newPeer(identity *identity.Identity, network string, addr *net.UDPAddr) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, addr.Port)
 
-	return peer.NewPeer(key, addr.IP, services)
+	return peer.NewPeer(identity, addr.IP, services)
 }
 
 // ------ Message Constructors ------
@@ -412,7 +411,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 	return true
 }
 
-func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, fromKey ed25519.PublicKey, m *pb.Ping, rawData []byte) {
+func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, m *pb.Ping, rawData []byte) {
 	// create and send the pong response
 	pong := newPong(fromAddr, rawData, p.loc.Services().CreateRecord())
 
@@ -425,13 +424,13 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, fromID id
 	s.Send(dstAddr, marshal(pong))
 
 	// if the peer is unknown or expired, send a Ping to verify
-	if !p.IsVerified(fromID, dstAddr.IP) {
-		p.sendPing(dstAddr, fromID)
-	} else if !p.mgr.isKnown(fromID) { // add a discovered peer to the manager if it is new but verified
-		p.mgr.addDiscoveredPeer(newPeer(fromKey, s.LocalAddr().Network(), dstAddr))
+	if !p.IsVerified(from.ID(), dstAddr.IP) {
+		p.sendPing(dstAddr, from.ID())
+	} else if !p.mgr.isKnown(from.ID()) { // add a discovered peer to the manager if it is new but verified
+		p.mgr.addDiscoveredPeer(newPeer(from, s.LocalAddr().Network(), dstAddr))
 	}
 
-	_ = p.loc.Database().UpdateLastPing(fromID, dstAddr.IP, time.Now())
+	_ = p.loc.Database().UpdateLastPing(from.ID(), dstAddr.IP, time.Now())
 }
 
 func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, m *pb.Pong) bool {
@@ -460,7 +459,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 	return true
 }
 
-func (p *Protocol) handlePong(fromAddr *net.UDPAddr, fromID identity.ID, fromKey ed25519.PublicKey, m *pb.Pong) {
+func (p *Protocol) handlePong(fromAddr *net.UDPAddr, from *identity.Identity, m *pb.Pong) {
 	services, _ := service.FromProto(m.GetServices())
 	peering := services.Get(service.PeeringKey)
 	if peering == nil {
@@ -469,15 +468,15 @@ func (p *Protocol) handlePong(fromAddr *net.UDPAddr, fromID identity.ID, fromKey
 	}
 
 	// create a proper key with these services
-	from := peer.NewPeer(fromKey, fromAddr.IP, services)
+	fromPeer := peer.NewPeer(from, fromAddr.IP, services)
 
 	// a valid pong verifies the peer
-	p.mgr.addVerifiedPeer(from)
+	p.mgr.addVerifiedPeer(fromPeer)
 
 	// update peer database
 	db := p.loc.Database()
-	_ = db.UpdateLastPong(fromID, fromAddr.IP, time.Now())
-	_ = db.UpdatePeer(from)
+	_ = db.UpdateLastPong(from.ID(), fromAddr.IP, time.Now())
+	_ = db.UpdatePeer(fromPeer)
 }
 
 func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID identity.ID, m *pb.DiscoveryRequest) bool {

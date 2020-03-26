@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 )
 
@@ -36,16 +35,16 @@ type Sender interface {
 type Handler interface {
 	// HandleMessage is called for each incoming message.
 	// It returns true, if that particular message type can be processed by the current Handler.
-	HandleMessage(s *Server, fromAddr *net.UDPAddr, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error)
+	HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions as Server handlers.
 // If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(*Server, *net.UDPAddr, identity.ID, ed25519.PublicKey, []byte) (bool, error)
+type HandlerFunc func(*Server, *net.UDPAddr, *identity.Identity, []byte) (bool, error)
 
 // HandleMessage returns f(s, from, data).
-func (f HandlerFunc) HandleMessage(s *Server, fromAddr *net.UDPAddr, fromID identity.ID, fromKey ed25519.PublicKey, data []byte) (bool, error) {
-	return f(s, fromAddr, fromID, fromKey, data)
+func (f HandlerFunc) HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
+	return f(s, fromAddr, from, data)
 }
 
 // PacketHash returns the hash of a packet

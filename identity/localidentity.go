@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
-// Identity is a local node's identity.
+// LocalIdentity is a local node's identity.
 type LocalIdentity struct {
 	*Identity
 	privateKey ed25519.PrivateKey
@@ -18,7 +18,7 @@ func NewLocalIdentity(publicKey ed25519.PublicKey, privateKey ed25519.PrivateKey
 	}
 }
 
-// NewLocalIdentityWithIdentity creates a new LocalIdentity with a given Identity.
+// NewLocalIdentityWithIdentity creates a new LocalIdentity with a given LocalIdentity.
 func NewLocalIdentityWithIdentity(identity *Identity, privateKey ed25519.PrivateKey) *LocalIdentity {
 	return &LocalIdentity{
 		Identity:   identity,

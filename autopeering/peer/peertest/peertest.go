@@ -10,6 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 )
 
 // NewPeer creates a new peer for tests.
@@ -18,7 +19,7 @@ func NewPeer(network string, ip string, port int) *peer.Peer {
 	services.Update(service.PeeringKey, network, port)
 	key := ed25519.PublicKey{}
 	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
-	return peer.NewPeer(key, net.ParseIP(ip), services)
+	return peer.NewPeer(identity.NewIdentity(key), net.ParseIP(ip), services)
 }
 
 // NewLocal crates a new local for tests.

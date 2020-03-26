@@ -76,25 +76,13 @@ func RecoverKeyFromSignedData(m SignedData) (ed25519.PublicKey, error) {
 }
 
 // NewPeer creates a new unmodifiable peer.
-func NewPeer(publicKey ed25519.PublicKey, ip net.IP, services service.Service) *Peer {
+func NewPeer(id *identity.Identity, ip net.IP, services service.Service) *Peer {
 	if services.Get(service.PeeringKey) == nil {
 		panic("need peering service")
 	}
 
 	return &Peer{
-		Identity: identity.NewIdentity(publicKey),
-		ip:       ip,
-		services: services.CreateRecord(),
-	}
-}
-
-func NewPeerWithIdentity(identity *identity.Identity, ip net.IP, services service.Service) *Peer {
-	if services.Get(service.PeeringKey) == nil {
-		panic("need peering service")
-	}
-
-	return &Peer{
-		Identity: identity,
+		Identity: id,
 		ip:       ip,
 		services: services.CreateRecord(),
 	}
@@ -115,6 +103,8 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+	id := identity.NewIdentity(publicKey)
+
 	ip := net.ParseIP(in.GetIp())
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP: %s", in.GetIp())
@@ -128,7 +118,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 		return nil, ErrNeedsPeeringService
 	}
 
-	return NewPeer(publicKey, ip, services), nil
+	return NewPeer(id, ip, services), nil
 }
 
 // Marshal serializes a given Peer (p) into a slice of bytes.

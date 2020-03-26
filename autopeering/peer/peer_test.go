@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,7 @@ func newTestServiceRecord() *service.Record {
 func newTestPeer(name string) *Peer {
 	key := ed25519.PublicKey{}
 	copy(key[:], name)
-	return NewPeer(key, testIP, newTestServiceRecord())
+	return NewPeer(identity.NewIdentity(key), testIP, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
@@ -35,7 +36,7 @@ func TestNoServicePeer(t *testing.T) {
 	services := service.New()
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, testIP, services)
+		_ = NewPeer(identity.NewIdentity(key), testIP, services)
 	})
 }
 
@@ -45,7 +46,7 @@ func TestInvalidServicePeer(t *testing.T) {
 	services.Update(service.FPCKey, "network", 8001)
 
 	assert.Panics(t, func() {
-		_ = NewPeer(key, testIP, services)
+		_ = NewPeer(identity.NewIdentity(key), testIP, services)
 	})
 }
 
