@@ -19,7 +19,7 @@ func NewPeer(network string, ip string, port int) *peer.Peer {
 	services.Update(service.PeeringKey, network, port)
 	key := ed25519.PublicKey{}
 	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
-	return peer.NewPeer(identity.NewIdentity(key), net.ParseIP(ip), services)
+	return peer.NewPeer(identity.New(key), net.ParseIP(ip), services)
 }
 
 // NewLocal crates a new local for tests.

@@ -13,7 +13,7 @@ type LocalIdentity struct {
 // NewLocalIdentity creates a new LocalIdentity.
 func NewLocalIdentity(publicKey ed25519.PublicKey, privateKey ed25519.PrivateKey) *LocalIdentity {
 	return &LocalIdentity{
-		Identity:   NewIdentity(publicKey),
+		Identity:   New(publicKey),
 		privateKey: privateKey,
 	}
 }
@@ -38,7 +38,7 @@ func GenerateLocalIdentity() *LocalIdentity {
 	}
 
 	return &LocalIdentity{
-		Identity:   NewIdentity(publicKey),
+		Identity:   New(publicKey),
 		privateKey: privateKey,
 	}
 }

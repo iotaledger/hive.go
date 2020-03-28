@@ -12,7 +12,7 @@ import (
 func newTestPeerWithID(ID byte) *Peer {
 	var key ed25519.PublicKey
 	key[0] = ID
-	return NewPeer(identity.NewIdentity(key), net.IPv4zero, newTestServiceRecord())
+	return NewPeer(identity.New(key), net.IPv4zero, newTestServiceRecord())
 }
 
 func TestOrderedDistanceList(t *testing.T) {

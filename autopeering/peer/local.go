@@ -25,7 +25,7 @@ type Local struct {
 
 // newLocal creates a new local peer.
 func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
-	id := identity.NewIdentity(key.Public())
+	id := identity.New(key.Public())
 
 	return &Local{
 		Peer:          NewPeer(id, ip, serviceRecord),

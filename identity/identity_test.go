@@ -26,7 +26,7 @@ func TestNewIdentity(t *testing.T) {
 	pub, _, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
-	identity := NewIdentity(pub)
+	identity := New(pub)
 	ref := &Identity{
 		id:        NewID(pub),
 		publicKey: pub,
@@ -44,7 +44,7 @@ func TestNewLocalIdentity(t *testing.T) {
 	localIdentity := NewLocalIdentity(pub, priv)
 
 	ref := &LocalIdentity{
-		Identity:   NewIdentity(pub),
+		Identity:   New(pub),
 		privateKey: priv,
 	}
 
@@ -58,7 +58,7 @@ func TestNewLocalIdentityWithIdentity(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
-	identity := NewIdentity(pub)
+	identity := New(pub)
 	localIdentity := NewLocalIdentityWithIdentity(identity, priv)
 
 	assert.Same(t, localIdentity.Identity, identity)
