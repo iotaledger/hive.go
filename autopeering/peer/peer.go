@@ -103,7 +103,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	id := identity.NewIdentity(publicKey)
+	id := identity.New(publicKey)
 
 	ip := net.ParseIP(in.GetIp())
 	if ip == nil {

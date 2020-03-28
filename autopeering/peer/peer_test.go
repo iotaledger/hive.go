@@ -28,7 +28,7 @@ func newTestServiceRecord() *service.Record {
 func newTestPeer(name string) *Peer {
 	key := ed25519.PublicKey{}
 	copy(key[:], name)
-	return NewPeer(identity.NewIdentity(key), testIP, newTestServiceRecord())
+	return NewPeer(identity.New(key), testIP, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
@@ -36,7 +36,7 @@ func TestNoServicePeer(t *testing.T) {
 	services := service.New()
 
 	assert.Panics(t, func() {
-		_ = NewPeer(identity.NewIdentity(key), testIP, services)
+		_ = NewPeer(identity.New(key), testIP, services)
 	})
 }
 
@@ -46,7 +46,7 @@ func TestInvalidServicePeer(t *testing.T) {
 	services.Update(service.FPCKey, "network", 8001)
 
 	assert.Panics(t, func() {
-		_ = NewPeer(identity.NewIdentity(key), testIP, services)
+		_ = NewPeer(identity.New(key), testIP, services)
 	})
 }
 

@@ -309,5 +309,5 @@ func decode(pkt *pb.Packet) ([]byte, *identity.Identity, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return pkt.GetData(), identity.NewIdentity(key), nil
+	return pkt.GetData(), identity.New(key), nil
 }
