@@ -43,3 +43,5 @@ func (signature *Signature) UnmarshalBinary(bytes []byte) (err error) {
 	copy(signature[:], bytes)
 	return
 }
+
+var EmptySignature Signature
