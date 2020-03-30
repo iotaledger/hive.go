@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/iotaledger/iota.go v1.0.0-beta.9
 	github.com/kr/text v0.1.0
+	github.com/mr-tron/base58 v1.1.3
 	github.com/panjf2000/ants/v2 v2.2.2
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.8.1

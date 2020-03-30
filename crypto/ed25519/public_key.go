@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/mr-tron/base58"
 )
 
 // PublicKey is the type of Ed25519 public keys.
@@ -60,6 +61,11 @@ func (publicKey PublicKey) VerifySignature(data []byte, signature Signature) boo
 // Bytes returns the publicKey in bytes.
 func (publicKey PublicKey) Bytes() []byte {
 	return publicKey[:]
+}
+
+// String returns a human readable version of the PublicKey (base58 encoded).
+func (publicKey PublicKey) String() string {
+	return base58.Encode(publicKey[:])
 }
 
 func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
