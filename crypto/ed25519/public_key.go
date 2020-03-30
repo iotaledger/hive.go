@@ -1,12 +1,14 @@
 package ed25519
 
 import (
-	"crypto/ed25519"
 	"errors"
 	"fmt"
 
-	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/oasislabs/ed25519"
+
 	"github.com/mr-tron/base58"
+
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 // PublicKey is the type of Ed25519 public keys.
