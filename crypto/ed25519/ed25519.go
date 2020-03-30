@@ -1,7 +1,7 @@
 package ed25519
 
 import (
-	"crypto/ed25519"
+	"github.com/oasislabs/ed25519"
 )
 
 const (

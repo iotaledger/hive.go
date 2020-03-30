@@ -1,8 +1,10 @@
 package ed25519
 
 import (
-	"crypto/ed25519"
 	"fmt"
+
+	"github.com/mr-tron/base58"
+	"github.com/oasislabs/ed25519"
 )
 
 // PrivateKey is the type of Ed25519 private keys.
@@ -43,4 +45,9 @@ func (privateKey PrivateKey) Public() (result PublicKey) {
 // Bytes returns the privateKey in bytes.
 func (privateKey PrivateKey) Bytes() []byte {
 	return privateKey[:]
+}
+
+// String returns a human readable version of the PrivateKey (base58 encoded).
+func (privateKey PrivateKey) String() string {
+	return base58.Encode(privateKey[:])
 }

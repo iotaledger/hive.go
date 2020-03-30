@@ -1,8 +1,9 @@
 package ed25519
 
 import (
-	"crypto/ed25519"
 	"testing"
+
+	"github.com/oasislabs/ed25519"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

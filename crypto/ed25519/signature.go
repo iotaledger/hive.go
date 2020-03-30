@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/mr-tron/base58"
+
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
@@ -33,6 +35,11 @@ func ParseSignature(marshalUtil *marshalutil.MarshalUtil) (Signature, error) {
 // Bytes returns the signature in bytes.
 func (signature Signature) Bytes() []byte {
 	return signature[:]
+}
+
+// String returns a human readable version of the Signature (base58 encoded).
+func (signature Signature) String() string {
+	return base58.Encode(signature[:])
 }
 
 func (signature *Signature) UnmarshalBinary(bytes []byte) (err error) {
