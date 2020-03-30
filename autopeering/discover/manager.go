@@ -155,7 +155,9 @@ func (m *manager) doReverify(done chan<- struct{}) {
 		m.log.Debugw("remove dead",
 			"peer", p,
 		)
-		Events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
+		if p.verifiedCount > 0 {
+			Events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
+		}
 
 		// add a random replacement, if available
 		if len(m.replacements) > 0 {
