@@ -347,3 +347,40 @@ func TestEvictionBug(t *testing.T) {
 		cachedObject.Release()
 	}
 }
+
+func TestDeleteAndCreate(t *testing.T) {
+	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+
+	for i := 0; i < 5000; i++ {
+		objects.Store(NewTestObject("Hans", 33)).Release()
+
+		cachedObject := objects.Load([]byte("Hans"))
+		if !cachedObject.Exists() {
+			t.Error("the item should exist")
+		}
+		cachedObject.Release()
+
+		objects.Delete([]byte("Hans"))
+		objects.Delete([]byte("Huns"))
+
+		cachedObject = objects.Load([]byte("Hans"))
+		if cachedObject.Exists() {
+			t.Error("the item should not exist exist")
+		}
+		cachedObject.Release()
+
+		newlyAdded := false
+		cachedObject = objects.ComputeIfAbsent([]byte("Hans"), func(key []byte) objectstorage.StorableObject {
+			newlyAdded = true
+			return NewTestObject("Hans", 33)
+		})
+		cachedObject.Release()
+
+		if !newlyAdded {
+			t.Error("the item should not exist")
+		}
+		objects.Delete([]byte("Hans"))
+	}
+
+	objects.Shutdown()
+}
