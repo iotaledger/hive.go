@@ -356,7 +356,7 @@ func TestDeleteAndCreate(t *testing.T) {
 
 		cachedObject := objects.Load([]byte("Hans"))
 		if !cachedObject.Exists() {
-			t.Error("the item should exist")
+			t.Errorf("the item should exist: %d", i)
 		}
 		cachedObject.Release()
 
@@ -365,7 +365,7 @@ func TestDeleteAndCreate(t *testing.T) {
 
 		cachedObject = objects.Load([]byte("Hans"))
 		if cachedObject.Exists() {
-			t.Error("the item should not exist exist")
+			t.Errorf("the item should not exist: %d", i)
 		}
 		cachedObject.Release()
 
@@ -377,7 +377,7 @@ func TestDeleteAndCreate(t *testing.T) {
 		cachedObject.Release()
 
 		if !newlyAdded {
-			t.Error("the item should not exist")
+			t.Errorf("the item should not exist: %d", i)
 		}
 		objects.Delete([]byte("Hans"))
 	}
