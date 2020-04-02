@@ -522,6 +522,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 		// switch to write locks and check for existence again
 		if !writeLocked {
 			objectStorage.partitionsManager.Retain(traversedPartitions)
+			// defer in a loop is usually bad, but this only gets called once because we switch to a write locks once
 			defer objectStorage.partitionsManager.Release(traversedPartitions)
 
 			objectStorage.cacheMutex.RUnlock()
