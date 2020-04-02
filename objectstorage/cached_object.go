@@ -150,8 +150,13 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
 	if typeutils.IsInterfaceNil(cachedObject.value) {
 		cachedObject.value = object
+		cachedObject.blindDelete.UnSet()
 	} else {
+		cachedObject.value.SetModified(object.IsModified())
+		cachedObject.value.Persist(object.PersistenceEnabled())
+		cachedObject.value.Delete(object.IsDeleted())
 		cachedObject.value.Update(object)
+		cachedObject.blindDelete.UnSet()
 	}
 	cachedObject.valueMutex.Unlock()
 }
