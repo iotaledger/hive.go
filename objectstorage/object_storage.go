@@ -181,8 +181,8 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 				return true
 			}
 
-			cachedObject.Release(true)
 		}
+		cachedObject.Release(true)
 
 		return false
 	}
@@ -226,8 +226,8 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 				return
 			}
 
-			cachedObject.Release(true)
 		}
+		cachedObject.Release(true)
 	}
 
 	cachedObject, cacheHit := objectStorage.accessCache(key, false)
