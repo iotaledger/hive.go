@@ -155,6 +155,7 @@ func (e *eventMock) outgoingPeering(ev *PeeringEvent) {
 		e.m[ev.Self] = s
 	}
 	assert.NotContains(e.t, s.out, ev.Peer)
+	assert.Less(e.t, len(s.out), 2)
 	s.out[ev.Peer.ID()] = ev.Peer
 }
 
@@ -170,6 +171,7 @@ func (e *eventMock) incomingPeering(ev *PeeringEvent) {
 		e.m[ev.Self] = s
 	}
 	assert.NotContains(e.t, s.in, ev.Peer)
+	assert.Less(e.t, len(s.in), 2)
 	s.in[ev.Peer.ID()] = ev.Peer
 }
 
