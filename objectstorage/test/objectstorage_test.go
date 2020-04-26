@@ -62,6 +62,19 @@ func TestPrefixIteration(t *testing.T) {
 
 	expectedKeys["12"] = types.Void
 	expectedKeys["13"] = types.Void
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+		return true
+	}, false)
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
 	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
 			t.Error("found an unexpected key")
