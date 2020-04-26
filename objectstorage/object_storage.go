@@ -386,6 +386,66 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 }
 
+// ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
+func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) bool, skipCache bool, optionalPrefix ...[]byte) {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
+	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
+		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+	}
+
+	var seenElements map[string]types.Empty
+	if !skipCache {
+		if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
+			// iterate over all cached elements
+			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				cachedObject.Release(true)
+				return consumer(key)
+			}); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
+		} else {
+			// iterate over cached elements via their key partition
+			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				cachedObject.Release(true)
+				return consumer(key)
+			}, optionalPrefix[0]); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
+		}
+	}
+
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+		iteratorOptions := badger.DefaultIteratorOptions
+		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+		iteratorOptions.PrefetchValues = false
+
+		it := txn.NewIterator(iteratorOptions)
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.Key()[len(objectStorage.storageId):]
+
+			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
+				continue
+			}
+
+			if !consumer(key) {
+				// Iteration was aborted
+				break
+			}
+		}
+		it.Close()
+
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+}
+
 func (objectStorage *ObjectStorage) Prune() error {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
