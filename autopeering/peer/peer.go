@@ -99,7 +99,7 @@ func (p *Peer) ToProto() *pb.Peer {
 
 // FromProto decodes a given proto buffer Peer message (in) and returns the corresponding Peer.
 func FromProto(in *pb.Peer) (*Peer, error) {
-	publicKey, err, _ := ed25519.PublicKeyFromBytes(in.GetPublicKey())
+	publicKey, _, err := ed25519.PublicKeyFromBytes(in.GetPublicKey())
 	if err != nil {
 		return nil, err
 	}
