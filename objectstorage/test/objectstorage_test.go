@@ -25,8 +25,8 @@ func init() {
 	testDatabase = database.GetBadgerInstance("objectsdb")
 }
 
-func testObjectFactory(key []byte) (objectstorage.StorableObject, error, int) {
-	return &TestObject{id: key}, nil, len(key)
+func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
+	return &TestObject{id: key}, len(key), nil
 }
 
 func TestPrefixIteration(t *testing.T) {
