@@ -111,7 +111,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
-		loadedObject := objectStorage.loadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromBadger(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 		}
@@ -151,7 +151,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			return remappingFunction(key)
 		})
 	} else {
-		loadedObject := objectStorage.loadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromBadger(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 
@@ -748,7 +748,8 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 	return cachedObject
 }
 
-func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObject {
+// LoadObjectFromBadger loads a storable object from the persistance layer.
+func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObject {
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
