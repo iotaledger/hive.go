@@ -348,7 +348,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				var storableObject StorableObject
 
 				if objectStorage.options.keysOnly {
-					if storableObject, err, _ = objectStorage.objectFactory(key); err != nil {
+					if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
 						return
 					}
 				} else {
@@ -777,7 +777,7 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 		}
 	} else {
 		if objectStorage.options.keysOnly {
-			if object, err, _ := objectStorage.objectFactory(key); err != nil {
+			if object, _, err := objectStorage.objectFactory(key); err != nil {
 				panic(err)
 			} else {
 				return object
@@ -809,7 +809,7 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object, err, _ := objectStorage.objectFactory(key)
+	object, _, err := objectStorage.objectFactory(key)
 	if err != nil {
 		panic(err)
 	}
@@ -1014,4 +1014,4 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 	return seenElements
 }
 
-type StorableObjectFromKey func(key []byte) (result StorableObject, err error, consumedBytes int)
+type StorableObjectFromKey func(key []byte) (result StorableObject, consumedBytes int, err error)
