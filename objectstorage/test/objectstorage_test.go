@@ -25,8 +25,8 @@ func init() {
 	testDatabase = database.GetBadgerInstance("objectsdb")
 }
 
-func testObjectFactory(key []byte) (objectstorage.StorableObject, error, int) {
-	return &TestObject{id: key}, nil, len(key)
+func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
+	return &TestObject{id: key}, len(key), nil
 }
 
 func TestPrefixIteration(t *testing.T) {
@@ -57,6 +57,19 @@ func TestPrefixIteration(t *testing.T) {
 		cachedObject.Release()
 		return true
 	})
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+		return true
+	}, false)
 
 	assert.Equal(t, 0, len(expectedKeys))
 

@@ -111,7 +111,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
-		loadedObject := objectStorage.loadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromBadger(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 		}
@@ -151,7 +151,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			return remappingFunction(key)
 		})
 	} else {
-		loadedObject := objectStorage.loadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromBadger(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 
@@ -348,7 +348,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				var storableObject StorableObject
 
 				if objectStorage.options.keysOnly {
-					if storableObject, err, _ = objectStorage.objectFactory(key); err != nil {
+					if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
 						return
 					}
 				} else {
@@ -374,6 +374,66 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			cachedObject.waitForInitialResult()
 
 			if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
+				// Iteration was aborted
+				break
+			}
+		}
+		it.Close()
+
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+}
+
+// ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
+func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) bool, skipCache bool, optionalPrefix ...[]byte) {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
+	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
+		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+	}
+
+	var seenElements map[string]types.Empty
+	if !skipCache {
+		if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
+			// iterate over all cached elements
+			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				cachedObject.Release(true)
+				return consumer(key)
+			}); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
+		} else {
+			// iterate over cached elements via their key partition
+			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				cachedObject.Release(true)
+				return consumer(key)
+			}, optionalPrefix[0]); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
+		}
+	}
+
+	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+		iteratorOptions := badger.DefaultIteratorOptions
+		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+		iteratorOptions.PrefetchValues = false
+
+		it := txn.NewIterator(iteratorOptions)
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.Key()[len(objectStorage.storageId):]
+
+			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
+				continue
+			}
+
+			if !consumer(key) {
 				// Iteration was aborted
 				break
 			}
@@ -688,7 +748,8 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 	return cachedObject
 }
 
-func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObject {
+// LoadObjectFromBadger loads a storable object from the persistance layer.
+func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObject {
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
@@ -717,7 +778,7 @@ func (objectStorage *ObjectStorage) loadObjectFromBadger(key []byte) StorableObj
 		}
 	} else {
 		if objectStorage.options.keysOnly {
-			if object, err, _ := objectStorage.objectFactory(key); err != nil {
+			if object, _, err := objectStorage.objectFactory(key); err != nil {
 				panic(err)
 			} else {
 				return object
@@ -749,12 +810,12 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object, err, _ := objectStorage.objectFactory(key)
+	object, _, err := objectStorage.objectFactory(key)
 	if err != nil {
 		panic(err)
 	}
 
-	if err, _ = object.UnmarshalObjectStorageValue(data); err != nil {
+	if _, err = object.UnmarshalObjectStorageValue(data); err != nil {
 		panic(err)
 	}
 
@@ -954,4 +1015,4 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 	return seenElements
 }
 
-type StorableObjectFromKey func(key []byte) (result StorableObject, err error, consumedBytes int)
+type StorableObjectFromKey func(key []byte) (result StorableObject, consumedBytes int, err error)

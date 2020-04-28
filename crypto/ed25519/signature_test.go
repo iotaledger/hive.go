@@ -8,7 +8,7 @@ import (
 
 func TestSignatureFromBytesTooShort(t *testing.T) {
 	bytes := make([]byte, 10)
-	_, err, _ := SignatureFromBytes(bytes)
+	_, _, err := SignatureFromBytes(bytes)
 	assert.EqualError(t, err, "bytes too short")
 }
 
@@ -16,7 +16,7 @@ func TestSignatureFromBytes(t *testing.T) {
 	bytes := make([]byte, 128)
 	copy(bytes, "PublicKeyAndSomeOtherDataAndSomeOtherDataAndSomeOtherDataPrivateKeyAndSomeOtherData")
 
-	signature, err, consumedBytes := SignatureFromBytes(bytes)
+	signature, consumedBytes, err := SignatureFromBytes(bytes)
 
 	assert.Equal(t, signature.Bytes(), bytes[:SignatureSize])
 	assert.NoError(t, err)

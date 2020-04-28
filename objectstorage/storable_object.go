@@ -33,5 +33,5 @@ type StorableObject interface {
 	ObjectStorageValue() []byte
 
 	// UnmarshalStorageValue parses the value part of the k/v store.
-	UnmarshalObjectStorageValue(valueBytes []byte) (err error, consumedBytes int)
+	UnmarshalObjectStorageValue(valueBytes []byte) (consumedBytes int, err error)
 }

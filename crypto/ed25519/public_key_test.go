@@ -9,7 +9,7 @@ import (
 
 func TestPublicKeyFromBytesTooShort(t *testing.T) {
 	bytes := make([]byte, 10)
-	_, err, _ := PublicKeyFromBytes(bytes)
+	_, _, err := PublicKeyFromBytes(bytes)
 	assert.EqualError(t, err, "bytes too short")
 }
 
@@ -17,7 +17,7 @@ func TestPublicKeyFromBytes(t *testing.T) {
 	bytes := make([]byte, 128)
 	copy(bytes, "PublicKeyAndSomeOtherDataAndSomeOtherDataAndSomeOtherDataPrivateKeyAndSomeOtherData")
 
-	publicKey, err, consumedBytes := PublicKeyFromBytes(bytes)
+	publicKey, consumedBytes, err := PublicKeyFromBytes(bytes)
 
 	assert.Equal(t, publicKey.Bytes(), bytes[:PublicKeySize])
 	assert.NoError(t, err)

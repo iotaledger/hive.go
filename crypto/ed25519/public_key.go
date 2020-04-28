@@ -15,7 +15,7 @@ import (
 type PublicKey [PublicKeySize]byte
 
 // PublicKeyFromBytes creates a PublicKey from the given bytes.
-func PublicKeyFromBytes(bytes []byte) (result PublicKey, err error, consumedBytes int) {
+func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
 	if len(bytes) < PublicKeySize {
 		err = fmt.Errorf("bytes too short")
 		return
@@ -48,7 +48,7 @@ func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 }
 
 func ParsePublicKey(marshalUtil *marshalutil.MarshalUtil) (PublicKey, error) {
-	if id, err := marshalUtil.Parse(func(data []byte) (interface{}, error, int) { return PublicKeyFromBytes(data) }); err != nil {
+	if id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return PublicKeyFromBytes(data) }); err != nil {
 		return PublicKey{}, err
 	} else {
 		return id.(PublicKey), nil
