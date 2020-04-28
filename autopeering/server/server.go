@@ -20,10 +20,24 @@ const (
 	ResponseTimeout = 500 * time.Millisecond
 )
 
+// NetConn defines the interface required for a connection.
+type NetConn interface {
+	// Close closes the connection.
+	Close() error
+
+	// LocalAddr returns the local network address.
+	LocalAddr() net.Addr
+
+	// ReadFromUDP acts like ReadFrom but returns a UDPAddr.
+	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
+	// WriteToUDP acts like WriteTo but takes a UDPAddr.
+	WriteToUDP([]byte, *net.UDPAddr) (int, error)
+}
+
 // Server offers the functionality to start a server that handles requests and responses from peers.
 type Server struct {
 	local    *peer.Local
-	conn     *net.UDPConn
+	conn     NetConn
 	handlers []Handler
 	log      *logger.Logger
 	network  string
@@ -68,7 +82,7 @@ type reply struct {
 // Serve starts a new peer server using the given transport layer for communication.
 // Sent data is signed using the identity of the local peer,
 // received data with a valid peer signature is handled according to the provided Handler.
-func Serve(local *peer.Local, conn *net.UDPConn, log *logger.Logger, h ...Handler) *Server {
+func Serve(local *peer.Local, conn NetConn, log *logger.Logger, h ...Handler) *Server {
 	srv := &Server{
 		local:           local,
 		conn:            conn,

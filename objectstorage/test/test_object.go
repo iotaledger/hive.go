@@ -44,10 +44,10 @@ func (testObject *TestObject) Update(object objectstorage.StorableObject) {
 	}
 }
 
-func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) (err error, consumedBytes int) {
+func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int, err error) {
 	testObject.value = binary.LittleEndian.Uint32(data)
 
-	return nil, marshalutil.UINT32_SIZE
+	return marshalutil.UINT32_SIZE, nil
 }
 
 // ThreeLevelObj is an object stored on a 3 partition chunked object storage.
@@ -87,7 +87,7 @@ func (t ThreeLevelObj) ObjectStorageValue() []byte {
 	return []byte{t.id3}
 }
 
-func (t ThreeLevelObj) UnmarshalObjectStorageValue(data []byte) (error, int) {
+func (t ThreeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
 	t.id3 = data[0]
-	return nil, len(data)
+	return len(data), nil
 }
