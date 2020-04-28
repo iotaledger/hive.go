@@ -2,7 +2,6 @@ package mana
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"testing"
 
@@ -48,7 +47,6 @@ func newZipfMana(identities []*identity.Identity, zipf float64) (m map[*identity
 	scalingFactor := math.Pow(10, 10)
 	for i, p := range identities {
 		m[p] = uint64(math.Pow(float64(i+1), -zipf) * scalingFactor)
-		//log.Println(m[p])
 	}
 	return m
 }
@@ -67,139 +65,6 @@ var mana manaFunc
 
 func (f manaFunc) Eval(identity *identity.Identity) uint64 {
 	return testIdentityMana[identity]
-}
-
-func stringID(identities []*identity.Identity) (output []string) {
-	for _, item := range identities {
-		output = append(output, fmt.Sprintf(item.ID().String()))
-	}
-	return
-}
-
-func TestZipfMana(t *testing.T) {
-	IDs := newTestIdentities(100)
-	testIdentityMana = newZipfMana(IDs, 0.82)
-	totalMana := Total(mana.Eval, IDs)
-	log.Println("Total Mana:", totalMana)
-
-	for _, id := range IDs {
-		fmt.Printf("%s - %.4f\n", id.ID().String(), float64(mana.Eval(id))/float64(totalMana))
-	}
-}
-
-func TestAsymmetry(t *testing.T) {
-	IDs := newTestIdentities(1000)
-	testIdentityMana = newZipfMana(IDs, 0.82)
-	totalMana := Total(mana.Eval, IDs)
-
-	R := 10
-	ro := 1.2
-	threshold := 1. / 3.
-
-	// largest mana holder
-	log.Println("largest mana holder ")
-
-	target := IDs[0]
-
-	set := RankByFixedRange(mana.Eval, target, IDs, R)
-	log.Println("RankByFixedRange - len:", len(set))
-	occurance := 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByFixedRange(mana.Eval, identity, IDs, R))
-	}
-	log.Println("RankByFixedRange - asymmetry:", occurance)
-	log.Printf("RankByFixedRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByVariableRange(mana.Eval, target, IDs, R, ro)
-	log.Println("RankByVariableRange - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByVariableRange(mana.Eval, identity, IDs, R, ro))
-	}
-	log.Println("RankByVariableRange - asymmetry:", occurance)
-	log.Printf("RankByVariableRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByThreshold(mana.Eval, target, IDs, threshold)
-	log.Println("RankByThreshold - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByThreshold(mana.Eval, identity, IDs, threshold))
-	}
-	log.Println("RankByThreshold - asymmetry:", occurance)
-	log.Printf("RankByThreshold - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	// smallest mana holder
-	log.Println("smallest mana holder ")
-
-	target = IDs[len(IDs)-1]
-
-	set = RankByFixedRange(mana.Eval, target, IDs, R)
-	log.Println("RankByFixedRange - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByFixedRange(mana.Eval, identity, IDs, R))
-	}
-	log.Println("RankByFixedRange - asymmetry:", occurance)
-	log.Printf("RankByFixedRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByVariableRange(mana.Eval, target, IDs, R, ro)
-	log.Println("RankByVariableRange - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByVariableRange(mana.Eval, identity, IDs, R, ro))
-	}
-	log.Println("RankByVariableRange - asymmetry:", occurance)
-	log.Printf("RankByVariableRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByThreshold(mana.Eval, target, IDs, threshold)
-	log.Println("RankByThreshold - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByThreshold(mana.Eval, identity, IDs, threshold))
-	}
-	log.Println("RankByThreshold - asymmetry:", occurance)
-	log.Printf("RankByThreshold - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	// middle mana holder
-	log.Println("middle mana holder ")
-
-	target = IDs[len(IDs)/2]
-
-	set = RankByFixedRange(mana.Eval, target, IDs, R)
-	log.Println("RankByFixedRange - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByFixedRange(mana.Eval, identity, IDs, R))
-	}
-	log.Println("RankByFixedRange - asymmetry:", occurance)
-	log.Printf("RankByFixedRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByVariableRange(mana.Eval, target, IDs, R, ro)
-	log.Println("RankByVariableRange - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByVariableRange(mana.Eval, identity, IDs, R, ro))
-	}
-	log.Println("RankByVariableRange - asymmetry:", occurance)
-	log.Printf("RankByVariableRange - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-
-	set = RankByThreshold(mana.Eval, target, IDs, threshold)
-	log.Println("RankByThreshold - len:", len(set))
-	occurance = 0
-	for _, identity := range set {
-		occurance += asymmetryCheck(target, RankByThreshold(mana.Eval, identity, IDs, threshold))
-	}
-	log.Println("RankByThreshold - asymmetry:", occurance)
-	log.Printf("RankByThreshold - mana: %.2f %% \n", float64(Total(mana.Eval, set))/float64(totalMana-mana.Eval(target))*100)
-}
-
-func asymmetryCheck(target *identity.Identity, identities []*identity.Identity) int {
-	for _, identity := range identities {
-		if identity == target {
-			return 0
-		}
-	}
-	return 1
 }
 
 func TestRankByFixedRange(t *testing.T) {
