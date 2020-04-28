@@ -6,14 +6,11 @@ import (
 )
 
 // Events contains all the events that are triggered during the peer discovery.
-var Events = struct {
+type Events struct {
 	// A PeerDiscovered event is triggered, when a new peer has been discovered and verified.
 	PeerDiscovered *events.Event
-	// A PeerDeleted event is triggered, when a discovered and verified peer could not be reverified.
+	// A PeerDeleted event is triggered, when a discovered and verified peer could not be re-verified.
 	PeerDeleted *events.Event
-}{
-	PeerDiscovered: events.NewEvent(peerDiscovered),
-	PeerDeleted:    events.NewEvent(peerDeleted),
 }
 
 // DiscoveredEvent bundles the information of the discovered peer.

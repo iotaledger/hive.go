@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/server"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -33,8 +34,9 @@ type manager struct {
 	replacements []*mpeer
 	masters      []*mpeer
 
-	net network
-	log *logger.Logger
+	events Events
+	net    network
+	log    *logger.Logger
 
 	wg      sync.WaitGroup
 	closing chan struct{}
@@ -45,9 +47,13 @@ func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager 
 		active:       make([]*mpeer, 0, maxManaged),
 		replacements: make([]*mpeer, 0, maxReplacements),
 		masters:      wrapPeers(masters),
-		net:          net,
-		log:          log,
-		closing:      make(chan struct{}),
+		events: Events{
+			PeerDiscovered: events.NewEvent(peerDiscovered),
+			PeerDeleted:    events.NewEvent(peerDeleted),
+		},
+		net:     net,
+		log:     log,
+		closing: make(chan struct{}),
 	}
 	m.loadInitialPeers(masters)
 
@@ -156,7 +162,7 @@ func (m *manager) doReverify(done chan<- struct{}) {
 			"peer", p,
 		)
 		if p.verifiedCount > 0 {
-			Events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
+			m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
 		}
 
 		// add a random replacement, if available
@@ -274,7 +280,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	if v := m.updatePeer(p); v > 0 {
 		// trigger the event only for the first time the peer is updated
 		if v == 1 {
-			Events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+			m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
 		}
 		return false
 	}
@@ -286,7 +292,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 		return m.addReplacement(mp)
 	}
 	// trigger the event only when the peer is added to active
-	Events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+	m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
 
 	// new nodes are added to the front
 	m.active = unshiftPeer(m.active, mp, maxManaged)
