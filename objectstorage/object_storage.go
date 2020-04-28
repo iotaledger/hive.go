@@ -815,7 +815,7 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 		panic(err)
 	}
 
-	if err, _ = object.UnmarshalObjectStorageValue(data); err != nil {
+	if _, err = object.UnmarshalObjectStorageValue(data); err != nil {
 		panic(err)
 	}
 
