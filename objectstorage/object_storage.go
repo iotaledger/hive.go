@@ -804,6 +804,26 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 	}
 }
 
+// DeleteEntriesFromBadger deletes entries from the persistance layer.
+func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
+	if !objectStorage.options.persistenceEnabled {
+		return
+	}
+
+	wb := objectStorage.badgerInstance.NewWriteBatch()
+	for _, key := range keys {
+		if err := wb.Delete(objectStorage.generatePrefix([][]byte{key})); err != nil {
+			if err != badger.ErrKeyNotFound {
+				panic(err)
+			}
+		}
+	}
+
+	if err := wb.Flush(); err != nil {
+		panic(err)
+	}
+}
+
 func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 	if !objectStorage.options.persistenceEnabled {
 		return false
