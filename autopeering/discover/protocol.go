@@ -22,12 +22,13 @@ import (
 )
 
 const (
-	maxRetries = 2
-	logSends   = true
+	backoffInterval = 500 * time.Millisecond
+	maxRetries      = 2
+	logSends        = true
 )
 
 //  policy for retrying failed network calls
-var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
+var retryPolicy = backoff.ExponentialBackOff(backoffInterval, 1.5).With(
 	backoff.Jitter(0.5), backoff.MaxRetries(maxRetries))
 
 // The Protocol handles the peer discovery.
@@ -82,6 +83,11 @@ func (p *Protocol) Close() {
 		p.running.UnSet()
 		p.mgr.close()
 	})
+}
+
+// Events returns all the events that are triggered during the peer discovery.
+func (p *Protocol) Events() Events {
+	return p.mgr.events
 }
 
 // IsVerified checks whether the given peer has recently been verified a recent enough endpoint proof.

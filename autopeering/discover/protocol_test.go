@@ -2,6 +2,7 @@ package discover
 
 import (
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/database/mapdb"
+	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -233,6 +236,82 @@ func TestProtDiscovery(t *testing.T) {
 	assert.ElementsMatch(t, []*peer.Peer{getPeer(protM), getPeer(protB), getPeer(protC)}, protA.GetVerifiedPeers())
 	assert.ElementsMatch(t, []*peer.Peer{getPeer(protM), getPeer(protA), getPeer(protC)}, protB.GetVerifiedPeers())
 	assert.ElementsMatch(t, []*peer.Peer{getPeer(protM), getPeer(protA), getPeer(protB)}, protC.GetVerifiedPeers())
+}
+
+func TestProtEvents(t *testing.T) {
+	connM := servertest.NewConn()
+	defer connM.Close()
+	connA := servertest.NewConn()
+	defer connA.Close()
+	connB := servertest.NewConn()
+	defer connB.Close()
+	connC := servertest.NewConn()
+	defer connC.Close()
+
+	protM, closeM := newTestProtocol("M", connM, log)
+	defer closeM()
+
+	e := newEventNetwork(t)
+	protM.Events().PeerDiscovered.Attach(events.NewClosure(e.peerDiscovered))
+	protM.Events().PeerDeleted.Attach(events.NewClosure(e.peerDeleted))
+
+	time.Sleep(graceTime) // wait for the master to initialize
+
+	_, closeA := newTestProtocol("A", connA, log, getPeer(protM))
+	defer closeA()
+	_, closeB := newTestProtocol("B", connB, log, getPeer(protM))
+	defer closeB()
+	_, closeC := newTestProtocol("C", connC, log, getPeer(protM))
+	defer closeC()
+
+	// eventually there should be all three peers discovered
+	assert.Eventually(t, func() bool { return len(e.peers()) == 3 }, 10*time.Second, graceTime)
+
+	// close one peer and wait for it to be removed
+	closeC()
+	assert.Eventually(t, func() bool { return len(e.peers()) < 3 }, 10*time.Second, graceTime)
+
+	// the events should be consistent
+	assert.ElementsMatch(t, e.peers(), protM.GetVerifiedPeers())
+}
+
+type eventNetwork struct {
+	sync.Mutex
+	t *testing.T
+	m map[identity.ID]*peer.Peer
+}
+
+func newEventNetwork(t *testing.T) *eventNetwork {
+	return &eventNetwork{
+		t: t,
+		m: make(map[identity.ID]*peer.Peer),
+	}
+}
+
+func (e *eventNetwork) peerDiscovered(ev *DiscoveredEvent) {
+	require.NotNil(e.t, ev)
+	e.Lock()
+	defer e.Unlock()
+	assert.NotContains(e.t, e.m, ev.Peer.ID())
+	e.m[ev.Peer.ID()] = ev.Peer
+}
+
+func (e *eventNetwork) peerDeleted(ev *DeletedEvent) {
+	require.NotNil(e.t, ev)
+	e.Lock()
+	defer e.Unlock()
+	assert.Contains(e.t, e.m, ev.Peer.ID())
+	delete(e.m, ev.Peer.ID())
+}
+
+func (e *eventNetwork) peers() []*peer.Peer {
+	e.Lock()
+	defer e.Unlock()
+	var result []*peer.Peer
+	for _, p := range e.m {
+		result = append(result, p)
+	}
+	return result
 }
 
 func BenchmarkPingPong(b *testing.B) {

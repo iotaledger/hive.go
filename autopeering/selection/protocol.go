@@ -90,6 +90,11 @@ func (p *Protocol) Close() {
 	})
 }
 
+// Events returns all the events that are triggered during the neighbor selection.
+func (p *Protocol) Events() Events {
+	return p.mgr.events
+}
+
 // GetNeighbors returns the current neighbors.
 func (p *Protocol) GetNeighbors() []*peer.Peer {
 	return p.mgr.getNeighbors()

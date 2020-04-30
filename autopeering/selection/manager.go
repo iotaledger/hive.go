@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -38,6 +39,7 @@ type manager struct {
 	dropOnUpdate      bool      // set true to drop all neighbors when the salt is updated
 	neighborValidator Validator // potential neighbor validator
 
+	events   Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
@@ -58,13 +60,19 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		log:               log,
 		dropOnUpdate:      opts.dropOnUpdate,
 		neighborValidator: opts.neighborValidator,
-		inbound:           NewNeighborhood(inboundNeighborSize),
-		outbound:          NewNeighborhood(outboundNeighborSize),
-		rejectionFilter:   NewFilter(),
-		dropChan:          make(chan identity.ID, queueSize),
-		requestChan:       make(chan peeringRequest, queueSize),
-		replyChan:         make(chan bool, 1),
-		closing:           make(chan struct{}),
+		events: Events{
+			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
+			OutgoingPeering: events.NewEvent(peeringCaller),
+			IncomingPeering: events.NewEvent(peeringCaller),
+			Dropped:         events.NewEvent(droppedCaller),
+		},
+		inbound:         NewNeighborhood(inboundNeighborSize),
+		outbound:        NewNeighborhood(outboundNeighborSize),
+		rejectionFilter: NewFilter(),
+		dropChan:        make(chan identity.ID, queueSize),
+		requestChan:     make(chan peeringRequest, queueSize),
+		replyChan:       make(chan bool, 1),
+		closing:         make(chan struct{}),
 	}
 }
 
@@ -307,7 +315,7 @@ func (m *manager) updateSalt() {
 		"public", saltLifetime,
 		"private", saltLifetime,
 	)
-	Events.SaltUpdated.Trigger(&SaltUpdatedEvent{Self: m.getID(), Public: public, Private: private})
+	m.events.SaltUpdated.Trigger(&SaltUpdatedEvent{Public: public, Private: private})
 }
 
 func (m *manager) dropNeighborhood(nh *Neighborhood) {
@@ -326,7 +334,7 @@ func (m *manager) dropPeering(p *peer.Peer) {
 		"#out", m.outbound,
 		"#in", m.inbound,
 	)
-	Events.Dropped.Trigger(&DroppedEvent{Self: m.getID(), DroppedID: p.ID()})
+	m.events.Dropped.Trigger(&DroppedEvent{DroppedID: p.ID()})
 }
 
 func (m *manager) getConnectedFilter() *Filter {
@@ -358,7 +366,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		Events.OutgoingPeering.Trigger(&PeeringEvent{Self: m.getID(), Peer: p, Status: status})
+		m.events.OutgoingPeering.Trigger(&PeeringEvent{Peer: p, Status: status})
 	} else {
 		m.log.Debugw("peering requested",
 			"direction", "in",
@@ -367,6 +375,6 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		Events.IncomingPeering.Trigger(&PeeringEvent{Self: m.getID(), Peer: p, Status: status})
+		m.events.IncomingPeering.Trigger(&PeeringEvent{Peer: p, Status: status})
 	}
 }
