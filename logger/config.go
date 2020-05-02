@@ -3,8 +3,6 @@ package logger
 import "go.uber.org/zap/zapcore"
 
 const (
-	// ViperKey defines the key name under which the logger config is stored.
-	ViperKey                  = "logger"
 	ViperKeyLevel             = "logger.level"
 	ViperKeyDisableCaller     = "logger.disableCaller"
 	ViperKeyDisableStacktrace = "logger.disableStacktrace"
