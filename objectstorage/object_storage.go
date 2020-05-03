@@ -337,7 +337,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			key := item.Key()[len(objectStorage.storageId):]
+			key := item.KeyCopy(nil)[len(objectStorage.storageId):]
 
 			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
 				continue
@@ -427,7 +427,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		it := txn.NewIterator(iteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			key := item.Key()[len(objectStorage.storageId):]
+			key := item.KeyCopy(nil)[len(objectStorage.storageId):]
 
 			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
 				continue

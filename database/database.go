@@ -201,7 +201,7 @@ func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 			}
 
 			if consumer(Entry{
-				Key:   pdb.keyWithoutPrefix(item.Key()),
+				Key:   pdb.keyWithoutPrefix(item.KeyCopy(nil)),
 				Value: value,
 				Meta:  meta,
 			}) {
@@ -230,7 +230,7 @@ func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) boo
 			}
 
 			if consumer(Entry{
-				Key:   pdb.keyWithoutPrefix(item.Key()).keyWithoutKeyPrefix(keyPrefix),
+				Key:   pdb.keyWithoutPrefix(item.KeyCopy(nil)).keyWithoutKeyPrefix(keyPrefix),
 				Value: value,
 				Meta:  meta,
 			}) {
@@ -255,7 +255,7 @@ func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(Key
 			meta := item.UserMeta()
 
 			if consumer(KeyOnlyEntry{
-				Key:  pdb.keyWithoutPrefix(item.Key()).keyWithoutKeyPrefix(keyPrefix),
+				Key:  pdb.keyWithoutPrefix(item.KeyCopy(nil)).keyWithoutKeyPrefix(keyPrefix),
 				Meta: meta,
 			}) {
 				break
