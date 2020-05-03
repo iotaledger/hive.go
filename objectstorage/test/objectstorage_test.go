@@ -398,3 +398,30 @@ func TestDeleteAndCreate(t *testing.T) {
 
 	objects.Shutdown()
 }
+
+func TestKeyReuse(t *testing.T) {
+	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.PartitionKey(4))
+
+	for i := 0; i < 3000; i++ {
+		objects.Store(NewTestObject(fmt.Sprintf("Hans_%d", i), 33)).Release(true)
+	}
+
+	myFunnyMap := make(map[string]struct{})
+
+	forEachCounter := 0
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		forEachCounter++
+		myFunnyMap[typeutils.BytesToString(key)] = struct{}{}
+		//myFunnyMap[string(key)] = struct{}{}
+		return true
+	}, true, []byte("Hans"))
+
+	assert.Equal(t, forEachCounter, len(myFunnyMap))
+
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		objects.Delete(key)
+		return true
+	}, true, []byte("Hans"))
+
+	objects.Shutdown()
+}
