@@ -9,16 +9,13 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/stretchr/testify/require"
-
 	"github.com/iotaledger/hive.go/database"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/stretchr/testify/require"
 )
 
 func testDatabase(t require.TestingT) *badger.DB {
