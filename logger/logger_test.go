@@ -122,7 +122,12 @@ func TestInitGlobalAfterError(t *testing.T) {
 	cfg.Level = "invalid"
 
 	v := viper.New()
-	v.Set(ViperKey, cfg)
+	v.Set(ViperKeyLevel, cfg.Level)
+	v.Set(ViperKeyDisableCaller, cfg.DisableCaller)
+	v.Set(ViperKeyDisableStacktrace, cfg.DisableStacktrace)
+	v.Set(ViperKeyEncoding, cfg.Encoding)
+	v.Set(ViperKeyOutputPaths, cfg.OutputPaths)
+	v.Set(ViperKeyDisableEvents, cfg.DisableEvents)
 	require.Error(t, InitGlobalLogger(v))
 
 	initGlobal(t, defaultCfg)()
@@ -130,7 +135,12 @@ func TestInitGlobalAfterError(t *testing.T) {
 
 func TestInitGlobalTwice(t *testing.T) {
 	v := viper.New()
-	v.Set(ViperKey, defaultCfg)
+	v.Set(ViperKeyLevel, defaultCfg.Level)
+	v.Set(ViperKeyDisableCaller, defaultCfg.DisableCaller)
+	v.Set(ViperKeyDisableStacktrace, defaultCfg.DisableStacktrace)
+	v.Set(ViperKeyEncoding, defaultCfg.Encoding)
+	v.Set(ViperKeyOutputPaths, defaultCfg.OutputPaths)
+	v.Set(ViperKeyDisableEvents, defaultCfg.DisableEvents)
 
 	require.NoError(t, InitGlobalLogger(v))
 	assert.Errorf(t, InitGlobalLogger(v), ErrGlobalLoggerAlreadyInitialized.Error())
@@ -139,7 +149,12 @@ func TestInitGlobalTwice(t *testing.T) {
 func initGlobal(t require.TestingT, cfg Config) func() {
 	// load into viper
 	v := viper.New()
-	v.Set(ViperKey, cfg)
+	v.Set(ViperKeyLevel, cfg.Level)
+	v.Set(ViperKeyDisableCaller, cfg.DisableCaller)
+	v.Set(ViperKeyDisableStacktrace, cfg.DisableStacktrace)
+	v.Set(ViperKeyEncoding, cfg.Encoding)
+	v.Set(ViperKeyOutputPaths, cfg.OutputPaths)
+	v.Set(ViperKeyDisableEvents, cfg.DisableEvents)
 
 	err := InitGlobalLogger(v)
 	require.NoError(t, err, "Failed to init global logger.")
