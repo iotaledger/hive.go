@@ -2,7 +2,6 @@ package filter
 
 import (
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type ByteArrayFilter struct {
@@ -24,20 +23,20 @@ func (filter *ByteArrayFilter) Contains(byteArray []byte) bool {
 	filter.mutex.RLock()
 	defer filter.mutex.RUnlock()
 
-	_, exists := filter.byteArraysByKey[typeutils.BytesToString(byteArray)]
+	_, exists := filter.byteArraysByKey[string(byteArray)]
 
 	return exists
 }
 
 func (filter *ByteArrayFilter) Add(byteArray []byte) bool {
-	key := typeutils.BytesToString(byteArray)
+	key := string(byteArray)
 
 	filter.mutex.Lock()
 	defer filter.mutex.Unlock()
 
 	if _, exists := filter.byteArraysByKey[key]; !exists {
 		if len(filter.byteArrays) == filter.size {
-			delete(filter.byteArraysByKey, typeutils.BytesToString(filter.byteArrays[0]))
+			delete(filter.byteArraysByKey, string(filter.byteArrays[0]))
 
 			filter.byteArrays = append(filter.byteArrays[1:], byteArray)
 		} else {

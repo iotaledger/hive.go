@@ -184,6 +184,8 @@ func (pdb *prefixDb) DeletePrefix(keyPrefix KeyPrefix) error {
 	return pdb.db.DropPrefix(prefixToDelete)
 }
 
+// ForEach runs consumer for each valid DB Entry.
+// Entry.Key is only valid as long as Entry is valid. If you need to modify it or use it outside, it must be copied.
 func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
@@ -213,6 +215,8 @@ func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 	return err
 }
 
+// ForEachPrefix runs consumer for each valid DB entry matching keyPrefix.
+// Entry.Key is only valid as long as Entry is valid. If you need to modify it or use it outside, it must be copied.
 func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
@@ -242,6 +246,8 @@ func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) boo
 	return err
 }
 
+// ForEachPrefixKeyOnly runs consumer for each valid DB entry matching keyPrefix.
+// KeyOnlyEntry.Key is only valid as long as KeyOnlyEntry is valid. If you need to modify it or use it outside, it must be copied.
 func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(KeyOnlyEntry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
