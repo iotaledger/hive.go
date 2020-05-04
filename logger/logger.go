@@ -67,10 +67,28 @@ func InitGlobalLogger(config *viper.Viper) error {
 // NewRootLoggerFromViper creates a new root logger from the provided viper configuration.
 func NewRootLoggerFromViper(config *viper.Viper, levelOverride ...zap.AtomicLevel) (*Logger, error) {
 	cfg := defaultCfg
-	err := config.UnmarshalKey(ViperKey, &cfg)
-	if err != nil {
-		return nil, err
+
+	// get config from Viper one by one
+	// config.UnmarshalKey does not recognize a configuration group when defined with pflags
+	if val := config.GetString(ViperKeyLevel); val != "" {
+		cfg.Level = val
 	}
+	if val := config.Get(ViperKeyDisableCaller); val != nil {
+		cfg.DisableCaller = val.(bool)
+	}
+	if val := config.Get(ViperKeyDisableStacktrace); val != nil {
+		cfg.DisableStacktrace = val.(bool)
+	}
+	if val := config.GetString(ViperKeyEncoding); val != "" {
+		cfg.Encoding = val
+	}
+	if val := config.GetStringSlice(ViperKeyOutputPaths); len(val) > 0 {
+		cfg.OutputPaths = val
+	}
+	if val := config.Get(ViperKeyDisableEvents); val != nil {
+		cfg.DisableEvents = val.(bool)
+	}
+
 	return NewRootLogger(cfg, levelOverride...)
 }
 
