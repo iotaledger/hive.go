@@ -339,7 +339,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			item := it.Item()
 			key := item.Key()[len(objectStorage.storageId):]
 
-			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
+			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				continue
 			}
 
@@ -429,7 +429,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 			item := it.Item()
 			key := item.Key()[len(objectStorage.storageId):]
 
-			if _, elementSeen := seenElements[typeutils.BytesToString(key)]; elementSeen {
+			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				continue
 			}
 
@@ -496,7 +496,7 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 }
 
 func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
-	objectKey := typeutils.BytesToString(key)
+	objectKey := string(key)
 	currentMap := objectStorage.cachedObjects
 
 	objectStorage.cacheMutex.RLock()
@@ -561,7 +561,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	for i := 0; i < keyPartitionCount-1; i++ {
 		// determine the current key segment
 		keyPartitionLength := objectStorage.options.keyPartitions[i]
-		partitionKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		partitionKey := string(key[keyOffset : keyOffset+keyPartitionLength])
 		keyOffset += keyPartitionLength
 
 		// if the target partition is found: advance to the next level
@@ -606,7 +606,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// determine the object key
 	keyPartitionLength := objectStorage.options.keyPartitions[keyPartitionCount-1]
-	partitionKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+	partitionKey := string(key[keyOffset : keyOffset+keyPartitionLength])
 
 	// return if object exists
 	if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
@@ -663,9 +663,9 @@ func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
-	_cachedObject, cachedObjectExists := objectStorage.cachedObjects[typeutils.BytesToString(key)]
+	_cachedObject, cachedObjectExists := objectStorage.cachedObjects[string(key)]
 	if cachedObjectExists {
-		delete(objectStorage.cachedObjects, typeutils.BytesToString(key))
+		delete(objectStorage.cachedObjects, string(key))
 
 		objectStorage.size--
 
@@ -692,7 +692,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		currentMap := mapStack[len(mapStack)-1]
 
 		// determine current key segment
-		stringKey := typeutils.BytesToString(key[keyOffset : keyOffset+keyPartitionLength])
+		stringKey := string(key[keyOffset : keyOffset+keyPartitionLength])
 		keyOffset += keyPartitionLength
 
 		// if we didn't arrive at the values, yet
@@ -730,7 +730,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 				parentMap := mapStack[parentKeyPartitionId]
 				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
 
-				delete(parentMap, typeutils.BytesToString(key[keyOffset-parentKeyLength:keyOffset]))
+				delete(parentMap, string(key[keyOffset-parentKeyLength:keyOffset]))
 				keyOffset -= parentKeyLength
 			}
 		}
@@ -952,7 +952,7 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 func (objectStorage *ObjectStorage) forEachCachedElement(consumer ConsumerFunc) map[string]types.Empty {
 	seenElements := make(map[string]types.Empty)
 	if !objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+		seenElements[string(cachedObject.key)] = types.Void
 
 		if !cachedObject.Exists() {
 			cachedObject.Release()
@@ -988,7 +988,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			panic("the prefix length does not align with the set KeyPartitions")
 		}
 
-		partitionKey := typeutils.BytesToString(prefix[keyOffset : keyOffset+partitionKeyLength])
+		partitionKey := string(prefix[keyOffset : keyOffset+partitionKeyLength])
 		keyOffset += partitionKeyLength
 
 		// advance partitions as long as we don't hit the object layer
@@ -1011,7 +1011,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		objectStorage.cacheMutex.RLock()
 		cachedObject := currentPartition[partitionKey].(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
-		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+		seenElements[string(cachedObject.key)] = types.Void
 
 		// the given prefix references a partition
 		if !cachedObject.Exists() {
@@ -1029,7 +1029,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 	// deep-iterate over the current partition and call the consumer function on each object
 	if !objectStorage.deepIterateThroughCachedElements(currentPartition, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		seenElements[typeutils.BytesToString(cachedObject.key)] = types.Void
+		seenElements[string(cachedObject.key)] = types.Void
 
 		if !cachedObject.Exists() {
 			cachedObject.Release()

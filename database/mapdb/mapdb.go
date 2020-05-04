@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/database"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // MapDB is a simple implementation of DB using a map.
@@ -34,7 +33,7 @@ func (db *MapDB) Contains(key database.Key) (contains bool, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	_, contains = db.m[typeutils.BytesToString(key)]
+	_, contains = db.m[string(key)]
 	return
 }
 
@@ -42,7 +41,7 @@ func (db *MapDB) Get(key database.Key) (entry database.Entry, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	ent, contains := db.m[typeutils.BytesToString(key)]
+	ent, contains := db.m[string(key)]
 	if !contains {
 		err = database.ErrKeyNotFound
 		return
@@ -57,7 +56,7 @@ func (db *MapDB) GetKeyOnly(key database.Key) (entry database.KeyOnlyEntry, err 
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	ent, contains := db.m[typeutils.BytesToString(key)]
+	ent, contains := db.m[string(key)]
 	if !contains {
 		err = database.ErrKeyNotFound
 		return
@@ -71,7 +70,7 @@ func (db *MapDB) Set(entry database.Entry) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	db.m[typeutils.BytesToString(entry.Key)] = mapEntry{
+	db.m[string(entry.Key)] = mapEntry{
 		value: append([]byte{}, entry.Value...),
 		meta:  entry.Meta,
 	}
@@ -82,7 +81,7 @@ func (db *MapDB) Delete(key database.Key) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	delete(db.m, typeutils.BytesToString(key))
+	delete(db.m, string(key))
 	return nil
 }
 
@@ -90,7 +89,7 @@ func (db *MapDB) DeletePrefix(keyPrefix database.KeyPrefix) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	prefix := typeutils.BytesToString(keyPrefix)
+	prefix := string(keyPrefix)
 	for key := range db.m {
 		if strings.HasPrefix(key, prefix) {
 			delete(db.m, key)
@@ -136,7 +135,7 @@ func (db *MapDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry 
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	prefix := typeutils.BytesToString(keyPrefix)
+	prefix := string(keyPrefix)
 	for key, ent := range db.m {
 		if strings.HasPrefix(key, prefix) {
 			entry := database.Entry{
@@ -156,7 +155,7 @@ func (db *MapDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	prefix := typeutils.BytesToString(keyPrefix)
+	prefix := string(keyPrefix)
 	for key, ent := range db.m {
 		if strings.HasPrefix(key, prefix) {
 			entry := database.KeyOnlyEntry{
@@ -208,13 +207,13 @@ func (db *MapDB) Apply(set []database.Entry, del []database.Key) error {
 	defer db.mu.Unlock()
 
 	for _, entry := range set {
-		db.m[typeutils.BytesToString(entry.Key)] = mapEntry{
+		db.m[string(entry.Key)] = mapEntry{
 			value: append([]byte{}, entry.Value...),
 			meta:  entry.Meta,
 		}
 	}
 	for _, key := range del {
-		delete(db.m, typeutils.BytesToString(key))
+		delete(db.m, string(key))
 	}
 	return nil
 }

@@ -220,7 +220,7 @@ func monitorCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, optio
 }
 
 func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
-	stringKey := typeutils.BytesToString(wrappedCachedObject.Base().key)
+	stringKey := string(wrappedCachedObject.Base().key)
 	wrappedCachedObject.GetInternalId()
 
 	instanceRegisterMutex.Lock()
@@ -255,7 +255,7 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 }
 
 func registerCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
-	stringKey := typeutils.BytesToString(wrappedCachedObject.Base().key)
+	stringKey := string(wrappedCachedObject.Base().key)
 	wrappedCachedObject.GetInternalId()
 
 	instanceRegisterMutex.Lock()

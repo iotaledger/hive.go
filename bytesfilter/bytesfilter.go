@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/types"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type BytesFilter struct {
@@ -23,13 +22,13 @@ func New(size int) *BytesFilter {
 }
 
 func (bytesFilter *BytesFilter) Add(bytes []byte) bool {
-	key := typeutils.BytesToString(bytes)
+	key := string(bytes)
 
 	bytesFilter.mutex.Lock()
 
 	if _, exists := bytesFilter.bytesByKey[key]; !exists {
 		if len(bytesFilter.byteArrays) == bytesFilter.size {
-			delete(bytesFilter.bytesByKey, typeutils.BytesToString(bytesFilter.byteArrays[0]))
+			delete(bytesFilter.bytesByKey, string(bytesFilter.byteArrays[0]))
 
 			bytesFilter.byteArrays[0] = nil
 			bytesFilter.byteArrays = append(bytesFilter.byteArrays[1:], bytes)
@@ -51,7 +50,7 @@ func (bytesFilter *BytesFilter) Add(bytes []byte) bool {
 
 func (bytesFilter *BytesFilter) Contains(byteArray []byte) (exists bool) {
 	bytesFilter.mutex.RLock()
-	_, exists = bytesFilter.bytesByKey[typeutils.BytesToString(byteArray)]
+	_, exists = bytesFilter.bytesByKey[string(byteArray)]
 	bytesFilter.mutex.RUnlock()
 
 	return

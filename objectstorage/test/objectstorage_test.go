@@ -2,27 +2,28 @@ package test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-
 	"github.com/iotaledger/hive.go/database"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/stretchr/testify/require"
 )
 
-var testDatabase *badger.DB
-
-func init() {
-	testDatabase = database.GetBadgerInstance("objectsdb")
+func testDatabase(t require.TestingT) *badger.DB {
+	dir, err := ioutil.TempDir("", "objectsdb")
+	require.NoError(t, err)
+	db, err := database.CreateDB(dir)
+	require.NoError(t, err)
+	return db
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
@@ -30,7 +31,7 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 }
 
 func TestPrefixIteration(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+	objects := objectstorage.New(testDatabase(t), []byte("TestStoreIfAbsentStorage"), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -118,7 +119,7 @@ func TestPrefixIteration(t *testing.T) {
 }
 
 func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("Nakamoto"), testObjectFactory,
+	objects := objectstorage.New(testDatabase(t), []byte("Nakamoto"), testObjectFactory,
 		objectstorage.PartitionKey(1, 1, 1),
 		objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
@@ -171,7 +172,7 @@ func TestStorableObjectFlags(t *testing.T) {
 func BenchmarkStore(b *testing.B) {
 
 	// create our storage
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(b), []byte("TestObjectStorage"), testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		b.Error(err)
 	}
@@ -186,7 +187,7 @@ func BenchmarkStore(b *testing.B) {
 }
 
 func BenchmarkLoad(b *testing.B) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(b), []byte("TestObjectStorage"), testObjectFactory)
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
@@ -204,7 +205,7 @@ func BenchmarkLoad(b *testing.B) {
 }
 
 func BenchmarkLoadCachingEnabled(b *testing.B) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
+	objects := objectstorage.New(testDatabase(b), []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(NewTestObject("Hans"+strconv.Itoa(0), uint32(i)))
@@ -220,7 +221,7 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 }
 
 func TestStoreIfAbsent(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestStoreIfAbsentStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(t), []byte("TestStoreIfAbsentStorage"), testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -245,7 +246,7 @@ func TestStoreIfAbsent(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(t), []byte("TestObjectStorage"), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
 
 	cachedObject := objects.Load([]byte("Hans"))
@@ -267,7 +268,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(t), []byte("TestObjectStorage"), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
 
 	var wg sync.WaitGroup
@@ -279,12 +280,12 @@ func TestConcurrency(t *testing.T) {
 		cachedObject := objects.Load([]byte("Hans"))
 
 		// make sure the 2nd goroutine "processes" the object first
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(time.Second)
 
 		// check if we "see" the modifications of the 2nd goroutine (using the "consume" method)
 		cachedObject.Consume(func(object objectstorage.StorableObject) {
 			// test if the changes of the 2nd goroutine are visible
-			if object.(*TestObject).value != 3 {
+			if object.(*TestObject).get() != 3 {
 				t.Error(errors.New("the modifications of the 2nd goroutine should be visible"))
 			}
 		})
@@ -297,7 +298,7 @@ func TestConcurrency(t *testing.T) {
 		cachedObject := objects.Load([]byte("Hans"))
 
 		// retrieve, modify and release the object manually (without consume)
-		cachedObject.Get().(*TestObject).value = 3
+		cachedObject.Get().(*TestObject).set(3)
 		cachedObject.Release()
 	}()
 
@@ -305,7 +306,7 @@ func TestConcurrency(t *testing.T) {
 }
 
 func TestEvictionBug(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true))
+	objects := objectstorage.New(testDatabase(t), []byte("TestObjectStorage"), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true))
 
 	testCount := 12001 // fails (if not, make the number bigger)
 
@@ -362,7 +363,7 @@ func TestEvictionBug(t *testing.T) {
 }
 
 func TestDeleteAndCreate(t *testing.T) {
-	objects := objectstorage.New(testDatabase, []byte("TestObjectStorage"), testObjectFactory)
+	objects := objectstorage.New(testDatabase(t), []byte("TestObjectStorage"), testObjectFactory)
 
 	for i := 0; i < 5000; i++ {
 		objects.Store(NewTestObject("Hans", 33)).Release()

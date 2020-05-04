@@ -31,8 +31,10 @@ func (testObject *TestObject) ObjectStorageKey() []byte {
 func (testObject *TestObject) ObjectStorageValue() []byte {
 	result := make([]byte, 4)
 
-	binary.LittleEndian.PutUint32(result, testObject.value)
+	testObject.Lock()
+	defer testObject.Unlock()
 
+	binary.LittleEndian.PutUint32(result, testObject.value)
 	return result
 }
 
@@ -40,14 +42,31 @@ func (testObject *TestObject) Update(object objectstorage.StorableObject) {
 	if obj, ok := object.(*TestObject); !ok {
 		panic("invalid object passed to testObject.Update()")
 	} else {
+		testObject.Lock()
+		defer testObject.Unlock()
+
 		testObject.value = obj.value
 	}
 }
 
 func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int, err error) {
-	testObject.value = binary.LittleEndian.Uint32(data)
+	testObject.Lock()
+	defer testObject.Unlock()
 
+	testObject.value = binary.LittleEndian.Uint32(data)
 	return marshalutil.UINT32_SIZE, nil
+}
+
+func (testObject *TestObject) get() uint32 {
+	testObject.Lock()
+	defer testObject.Unlock()
+	return testObject.value
+}
+
+func (testObject *TestObject) set(v uint32) {
+	testObject.Lock()
+	defer testObject.Unlock()
+	testObject.value = v
 }
 
 // ThreeLevelObj is an object stored on a 3 partition chunked object storage.
