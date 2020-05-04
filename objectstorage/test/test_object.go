@@ -57,6 +57,18 @@ func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) (consumed
 	return marshalutil.UINT32_SIZE, nil
 }
 
+func (testObject *TestObject) get() uint32 {
+	testObject.Lock()
+	defer testObject.Unlock()
+	return testObject.value
+}
+
+func (testObject *TestObject) set(v uint32) {
+	testObject.Lock()
+	defer testObject.Unlock()
+	testObject.value = v
+}
+
 // ThreeLevelObj is an object stored on a 3 partition chunked object storage.
 // ID3 corresponds to ThreeLevelObj's value.
 type ThreeLevelObj struct {
