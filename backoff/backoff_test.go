@@ -13,7 +13,8 @@ import (
 var errTest = errors.New("test")
 
 const (
-	intervalDelta = 10 * time.Millisecond // allow 10ms deviation to pass the test
+	intervalDelta = 50 * time.Millisecond // allow 50ms deviation to pass the test
+	retryCount    = 10
 )
 
 func assertInterval(t assert.TestingT, expected time.Duration, actual time.Duration) bool {
@@ -42,7 +43,7 @@ func TestZeroBackOff(t *testing.T) {
 		now := time.Now()
 		assert.LessOrEqual(t, now.Sub(last).Microseconds(), intervalDelta.Microseconds())
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
@@ -67,7 +68,7 @@ func TestConstantBackOff(t *testing.T) {
 			assertInterval(t, interval, now.Sub(last))
 		}
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
@@ -96,7 +97,7 @@ func TestExponentialBackOff(t *testing.T) {
 			assertInterval(t, expected, now.Sub(last))
 		}
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
@@ -129,7 +130,7 @@ func TestExponentialBackOffParallel(t *testing.T) {
 				assertInterval(t, expected, now.Sub(last))
 			}
 			last = now
-			if count >= 10 {
+			if count >= retryCount {
 				return nil
 			}
 			count++
