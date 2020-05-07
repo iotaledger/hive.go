@@ -480,6 +480,8 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.shutdown.Set()
 
 	objectStorage.flush()
+
+	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
