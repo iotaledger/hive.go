@@ -22,7 +22,9 @@ type BatchedWriter struct {
 	badgerInstance *badger.DB
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
+	autoStartMutex sync.Once
 	running        int32
+	scheduledCount int32
 	batchQueue     chan *CachedObjectImpl
 }
 
@@ -56,8 +58,15 @@ func (bw *BatchedWriter) StopBatchWriter() {
 }
 
 func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
+	bw.autoStartMutex.Do(func() {
+		if atomic.LoadInt32(&bw.running) == 0 {
+			bw.StartBatchWriter()
+		}
+	})
+
+	// abort if the BatchWriter has been stopped
 	if atomic.LoadInt32(&bw.running) == 0 {
-		bw.StartBatchWriter()
+		return
 	}
 
 	// abort if the very same object has been queued already
@@ -66,7 +75,7 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	}
 
 	// queue object
-	bw.writeWg.Add(1)
+	atomic.AddInt32(&bw.scheduledCount, 1)
 	bw.batchQueue <- object
 }
 
@@ -124,7 +133,9 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 }
 
 func (bw *BatchedWriter) runBatchWriter() {
-	for atomic.LoadInt32(&bw.running) == 1 {
+	bw.writeWg.Add(1)
+
+	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
 		var wb *badger.WriteBatch
 		if bw.badgerInstance != nil {
 			wb = bw.badgerInstance.NewWriteBatch()
@@ -137,6 +148,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 			select {
 			case objectToPersist := <-bw.batchQueue:
 				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
+				atomic.AddInt32(&bw.scheduledCount, -1)
 
 				bw.writeObject(wb, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
@@ -155,7 +167,8 @@ func (bw *BatchedWriter) runBatchWriter() {
 		// release written values
 		for i := 0; i < writtenValuesCounter; i++ {
 			bw.releaseObject(writtenValues[i])
-			bw.writeWg.Done()
 		}
 	}
+
+	bw.writeWg.Done()
 }
