@@ -88,7 +88,9 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 				}
 			})))
 		} else {
-			cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+			if atomic.LoadPointer(&cachedObject.releaseTimer) == nil {
+				cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+			}
 		}
 	} else if consumers < 0 {
 		panic("called Release() too often")
