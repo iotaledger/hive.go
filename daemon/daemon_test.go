@@ -131,6 +131,24 @@ func TestGetRunningBackgroundWorkers(t *testing.T) {
 	close(blocker)
 }
 
+func TestShutdownTwice(t *testing.T) {
+	d := daemon.New()
+
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+		// sleep longer than the grace time before shutting down
+		time.Sleep(2 * graceTime)
+	})
+	require.NoError(t, err)
+
+	d.Start()
+	time.Sleep(graceTime)
+
+	d.Shutdown()
+	time.Sleep(graceTime)
+	d.ShutdownAndWait()
+}
+
 func TestReRun(t *testing.T) {
 	d := daemon.New()
 

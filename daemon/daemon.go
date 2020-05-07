@@ -222,7 +222,10 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 }
 
 func (d *OrderedDaemon) shutdown() {
-	d.stopped.Set()
+	// prevent attempting to shutdown twice
+	if !d.stopped.SetToIf(false, true) {
+		return
+	}
 	if !d.IsRunning() {
 		return
 	}
