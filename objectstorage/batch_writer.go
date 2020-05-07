@@ -60,10 +60,12 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 		bw.StartBatchWriter()
 	}
 
+	// abort if the very same object has been queued already
 	if atomic.AddInt32(&(object.batchWriteScheduled), 1) != 1 {
 		return
 	}
 
+	// queue object
 	bw.writeWg.Add(1)
 	bw.batchQueue <- object
 }
@@ -150,12 +152,10 @@ func (bw *BatchedWriter) runBatchWriter() {
 			}
 		}
 
-		for _, cachedObject := range writtenValues {
-			if cachedObject != nil {
-				bw.releaseObject(cachedObject)
-
-				bw.writeWg.Done()
-			}
+		// release written values
+		for i := 0; i < writtenValuesCounter; i++ {
+			bw.releaseObject(writtenValues[i])
+			bw.writeWg.Done()
 		}
 	}
 }
