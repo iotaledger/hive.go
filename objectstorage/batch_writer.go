@@ -6,20 +6,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
-	BATCH_WRITER_QUEUE_SIZE    = BATCH_WRITER_BATCH_SIZE
-	BATCH_WRITER_BATCH_SIZE    = 10240
-	BATCH_WRITER_BATCH_TIMEOUT = 500 * time.Millisecond
+	BatchWriterQueueSize    = BatchWriterBatchSize
+	BatchWriterBatchSize    = 10240
+	BatchWriterBatchTimeout = 500 * time.Millisecond
 )
 
 type BatchedWriter struct {
-	badgerInstance *badger.DB
+	storage        Storage
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
 	autoStartOnce  sync.Once
@@ -28,13 +26,13 @@ type BatchedWriter struct {
 	batchQueue     chan *CachedObjectImpl
 }
 
-func NewBatchedWriter(badgerInstance *badger.DB) *BatchedWriter {
+func NewBatchedWriter(storage Storage) *BatchedWriter {
 	return &BatchedWriter{
-		badgerInstance: badgerInstance,
+		storage:        storage,
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
 		running:        0,
-		batchQueue:     make(chan *CachedObjectImpl, BATCH_WRITER_QUEUE_SIZE),
+		batchQueue:     make(chan *CachedObjectImpl, BatchWriterQueueSize),
 	}
 }
 
@@ -79,7 +77,7 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	bw.batchQueue <- object
 }
 
-func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
+func (bw *BatchedWriter) writeObject(batchedMuts BatchedMutations, cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 	if !objectStorage.options.persistenceEnabled {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
@@ -94,7 +92,7 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 			if storableObject.IsDeleted() {
 				storableObject.SetModified(false)
 
-				if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
+				if err := batchedMuts.Delete(objectStorage.storageId, cachedObject.key); err != nil {
 					panic(err)
 				}
 			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
@@ -105,12 +103,12 @@ func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject
 					marshaledValue = storableObject.ObjectStorageValue()
 				}
 
-				if err := writeBatch.Set(objectStorage.generatePrefix([][]byte{cachedObject.key}), marshaledValue); err != nil {
+				if err := batchedMuts.Set(objectStorage.storageId, cachedObject.key, marshaledValue); err != nil {
 					panic(err)
 				}
 			}
 		} else if cachedObject.blindDelete.IsSet() {
-			if err := writeBatch.Delete(objectStorage.generatePrefix([][]byte{cachedObject.key})); err != nil {
+			if err := batchedMuts.Delete(objectStorage.storageId, cachedObject.key); err != nil {
 				panic(err)
 			}
 		}
@@ -136,32 +134,37 @@ func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
 	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
-		var wb *badger.WriteBatch
-		if bw.badgerInstance != nil {
-			wb = bw.badgerInstance.NewWriteBatch()
-		}
+        var batchedMuts BatchedMutations
+        if bw.storage != nil {
+            batchedMuts = bw.storage.Batched()
+        }
 
-		writtenValues := make([]*CachedObjectImpl, BATCH_WRITER_BATCH_SIZE)
+		writtenValues := make([]*CachedObjectImpl, BatchWriterBatchSize)
 		writtenValuesCounter := 0
-	COLLECT_VALUES:
-		for writtenValuesCounter < BATCH_WRITER_BATCH_SIZE {
+	CollectValues:
+		for writtenValuesCounter < BatchWriterBatchSize {
 			select {
 			case objectToPersist := <-bw.batchQueue:
 				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
 				atomic.AddInt32(&bw.scheduledCount, -1)
 
-				bw.writeObject(wb, objectToPersist)
+				bw.writeObject(batchedMuts, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++
-			case <-time.After(BATCH_WRITER_BATCH_TIMEOUT):
-				break COLLECT_VALUES
+			case <-time.After(BatchWriterBatchTimeout):
+				break CollectValues
 			}
 		}
 
-		if wb != nil {
-			if err := wb.Flush(); err != nil && err != badger.ErrBlockedWrites {
+		if batchedMuts != nil {
+			if err := batchedMuts.Commit(); err != nil {
 				panic(err)
 			}
+			/*
+				if err := batchedMuts.Commit(); err != nil && err != badger.ErrBlockedWrites {
+					panic(err)
+				}
+			*/
 		}
 
 		// release written values

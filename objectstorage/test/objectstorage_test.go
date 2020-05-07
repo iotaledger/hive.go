@@ -8,22 +8,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/iotaledger/hive.go/database"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/objectstorage/boltdb"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
 )
 
-func testDatabase(t require.TestingT) *badger.DB {
-	dir, err := ioutil.TempDir("", "objectsdb")
+func testDatabase(t require.TestingT) objectstorage.Storage {
+	dir, err := ioutil.TempDir("", "bboltdb")
 	require.NoError(t, err)
-	db, err := database.CreateDB(dir)
+	dirAndFile := fmt.Sprintf("%s/my.db", dir)
+	db, err := bbolt.Open(dirAndFile, 0666, nil)
 	require.NoError(t, err)
-	return db
+	return boltdb.New(db)
+	/*
+		dir, err := ioutil.TempDir("", "objectsdb")
+		require.NoError(t, err)
+		db, err := database.CreateDB(dir)
+		require.NoError(t, err)
+		return badgerstorage.New(db)
+	*/
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {

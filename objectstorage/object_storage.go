@@ -1,10 +1,9 @@
 package objectstorage
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
-
-	"github.com/dgraph-io/badger/v2"
 
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/syncutils"
@@ -14,7 +13,7 @@ import (
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
-	badgerInstance     *badger.DB
+	storage            Storage
 	storageId          []byte
 	objectFactory      StorableObjectFromKey
 	cachedObjects      map[string]interface{}
@@ -31,9 +30,9 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(badgerInstance *badger.DB, storageId []byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
+func New(storage Storage, storageId []byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
-		badgerInstance:    badgerInstance,
+		storage:           storage,
 		storageId:         storageId,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
@@ -330,18 +329,13 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
-		iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
-
-		it := txn.NewIterator(iteratorOptions)
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			key := item.Key()[len(objectStorage.storageId):]
+	_ = objectStorage.storage.Iterate(
+		objectStorage.storageId, optionalPrefix,
+		!objectStorage.options.keysOnly,
+		func(key []byte, value []byte) bool {
 
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
-				continue
+				return true
 			}
 
 			cachedObject, cacheHit := objectStorage.accessCache(key, true)
@@ -349,20 +343,14 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				var storableObject StorableObject
 
 				if objectStorage.options.keysOnly {
+					var err error
 					if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
-						return
+						return true
 					}
 				} else {
-					if err := item.Value(func(val []byte) error {
-						marshaledData := make([]byte, len(val))
-						copy(marshaledData, val)
-
-						storableObject = objectStorage.unmarshalObject(key, marshaledData)
-
-						return nil
-					}); err != nil {
-						panic(err)
-					}
+					marshaledData := make([]byte, len(value))
+					copy(marshaledData, value)
+					storableObject = objectStorage.unmarshalObject(key, marshaledData)
 				}
 
 				if !typeutils.IsInterfaceNil(storableObject) {
@@ -375,16 +363,71 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			cachedObject.waitForInitialResult()
 
 			if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
-				// Iteration was aborted
-				break
+				// abort iteration
+				return false
 			}
-		}
-		it.Close()
 
-		return nil
-	}); err != nil {
-		panic(err)
-	}
+			return true
+		},
+	)
+
+	/*
+		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+			iteratorOptions := badger.DefaultIteratorOptions
+			iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+			iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
+
+			it := txn.NewIterator(iteratorOptions)
+			for it.Rewind(); it.Valid(); it.Next() {
+				item := it.Item()
+				key := item.Key()[len(objectStorage.storageId):]
+
+				if _, elementSeen := seenElements[string(key)]; elementSeen {
+					continue
+				}
+
+				cachedObject, cacheHit := objectStorage.accessCache(key, true)
+				if !cacheHit {
+					var storableObject StorableObject
+
+					if objectStorage.options.keysOnly {
+						if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
+							return
+						}
+					} else {
+						if err := item.Value(func(val []byte) error {
+							marshaledData := make([]byte, len(val))
+							copy(marshaledData, val)
+
+							storableObject = objectStorage.unmarshalObject(key, marshaledData)
+
+							return nil
+						}); err != nil {
+							panic(err)
+						}
+					}
+
+					if !typeutils.IsInterfaceNil(storableObject) {
+						storableObject.Persist()
+					}
+
+					cachedObject.publishResult(storableObject)
+				}
+
+				cachedObject.waitForInitialResult()
+
+				if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
+					// Iteration was aborted
+					break
+				}
+			}
+			it.Close()
+
+			return nil
+		}); err != nil {
+			panic(err)
+		}
+	*/
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
@@ -420,31 +463,45 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		}
 	}
 
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
-		iteratorOptions.PrefetchValues = false
-
-		it := txn.NewIterator(iteratorOptions)
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			key := item.Key()[len(objectStorage.storageId):]
-
+	_ = objectStorage.storage.IterateKeys(
+		objectStorage.storageId, optionalPrefix,
+		func(key []byte) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
-				continue
+				return true
 			}
 
-			if !consumer(key) {
-				// Iteration was aborted
-				break
+			// the consumer tells the iterator to abort
+			return consumer(key)
+		},
+	)
+
+	/*
+		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+			iteratorOptions := badger.DefaultIteratorOptions
+			iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
+			iteratorOptions.PrefetchValues = false
+
+			it := txn.NewIterator(iteratorOptions)
+			for it.Rewind(); it.Valid(); it.Next() {
+				item := it.Item()
+				key := item.Key()[len(objectStorage.storageId):]
+
+				if _, elementSeen := seenElements[string(key)]; elementSeen {
+					continue
+				}
+
+				if !consumer(key) {
+					// Iteration was aborted
+					break
+				}
 			}
+			it.Close()
+
+			return nil
+		}); err != nil {
+			panic(err)
 		}
-		it.Close()
-
-		return nil
-	}); err != nil {
-		panic(err)
-	}
+	*/
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
@@ -455,12 +512,19 @@ func (objectStorage *ObjectStorage) Prune() error {
 	objectStorage.flushMutex.Lock()
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
+	if err := objectStorage.storage.Clear(objectStorage.storageId); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
-
 		return err
 	}
+	/*
+		if err := objectStorage.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
+			objectStorage.cacheMutex.Unlock()
+			objectStorage.flushMutex.Unlock()
+
+			return err
+		}
+	*/
 	objectStorage.cachedObjects = make(map[string]interface{})
 	objectStorage.cacheMutex.Unlock()
 
@@ -751,45 +815,68 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 	return cachedObject
 }
 
-// LoadObjectFromBadger loads a storable object from the persistance layer.
+// LoadObjectFromBadger loads a storable object from the persistence layer.
 func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObject {
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
 
 	var marshaledData []byte
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
-		if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
-			return err
-		} else {
-			if objectStorage.options.keysOnly {
-				return nil
-			}
-
-			return item.Value(func(val []byte) error {
-				marshaledData = make([]byte, len(val))
-				copy(marshaledData, val)
-
-				return nil
-			})
-		}
-	}); err != nil {
-		if err == badger.ErrKeyNotFound {
+	value, err := objectStorage.storage.Get(objectStorage.storageId, key)
+	if err != nil {
+		if errors.Is(err, ErrKeyNotFound) {
 			return nil
-		} else {
+		}
+		panic(err)
+	}
+
+	if objectStorage.options.keysOnly {
+		object, _, err := objectStorage.objectFactory(key)
+		if err != nil {
 			panic(err)
 		}
-	} else {
-		if objectStorage.options.keysOnly {
-			if object, _, err := objectStorage.objectFactory(key); err != nil {
-				panic(err)
-			} else {
-				return object
-			}
-		}
-
-		return objectStorage.unmarshalObject(key, marshaledData)
+		return object
 	}
+
+	marshaledData = make([]byte, len(value))
+	copy(marshaledData, value)
+
+	return objectStorage.unmarshalObject(key, marshaledData)
+
+	/*
+		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
+			if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
+				return err
+			} else {
+				if objectStorage.options.keysOnly {
+					return nil
+				}
+
+				return item.Value(func(val []byte) error {
+					marshaledData = make([]byte, len(val))
+					copy(marshaledData, val)
+
+					return nil
+				})
+			}
+		}); err != nil {
+			if err == badger.ErrKeyNotFound {
+				return nil
+			} else {
+				panic(err)
+			}
+		} else {
+			if objectStorage.options.keysOnly {
+				if object, _, err := objectStorage.objectFactory(key); err != nil {
+					panic(err)
+				} else {
+					return object
+				}
+			}
+
+			return objectStorage.unmarshalObject(key, marshaledData)
+		}
+	*/
 }
 
 // DeleteEntryFromBadger deletes an entry from the persistance layer.
@@ -798,13 +885,22 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 		return
 	}
 
-	if err := objectStorage.badgerInstance.Update(func(txn *badger.Txn) error {
-		return txn.Delete(objectStorage.generatePrefix([][]byte{key}))
-	}); err != nil {
-		if err != badger.ErrKeyNotFound {
+	if err := objectStorage.storage.Delete(objectStorage.storageId, key); err != nil {
+		if !errors.Is(err, ErrKeyNotFound) {
 			panic(err)
 		}
 	}
+	return
+
+	/*
+		if err := objectStorage.badgerInstance.Update(func(txn *badger.Txn) error {
+			return txn.Delete(objectStorage.generatePrefix([][]byte{key}))
+		}); err != nil {
+			if err != badger.ErrKeyNotFound {
+				panic(err)
+			}
+		}
+	*/
 }
 
 // DeleteEntriesFromBadger deletes entries from the persistance layer.
@@ -813,18 +909,31 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
 		return
 	}
 
-	wb := objectStorage.badgerInstance.NewWriteBatch()
-	for _, key := range keys {
-		if err := wb.Delete(objectStorage.generatePrefix([][]byte{key})); err != nil {
-			if err != badger.ErrKeyNotFound {
-				panic(err)
-			}
+	batchedMuts := objectStorage.storage.Batched()
+	for i := 0; i < len(keys); i++ {
+		if err := batchedMuts.Delete(objectStorage.storageId, keys[i]); err != nil {
+			batchedMuts.Cancel()
+			panic(err)
 		}
 	}
 
-	if err := wb.Flush(); err != nil {
+	if err := batchedMuts.Commit(); err != nil {
 		panic(err)
 	}
+	/*
+		wb := objectStorage.badgerInstance.NewWriteBatch()
+		for _, key := range keys {
+			if err := wb.Delete(objectStorage.generatePrefix([][]byte{key})); err != nil {
+				if err != badger.ErrKeyNotFound {
+					panic(err)
+				}
+			}
+		}
+
+		if err := wb.Flush(); err != nil {
+			panic(err)
+		}
+	*/
 }
 
 func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
@@ -832,19 +941,29 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 		return false
 	}
 
-	if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-		_, err = txn.Get(append(objectStorage.storageId, key...))
-
-		return
-	}); err != nil {
-		if err == badger.ErrKeyNotFound {
-			return false
-		} else {
+	has, err := objectStorage.storage.Has(objectStorage.storageId, key)
+	if err != nil {
+		if !errors.Is(err, ErrKeyNotFound) {
 			panic(err)
 		}
-	} else {
-		return true
 	}
+	return has
+
+	/*
+		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
+			_, err = txn.Get(append(objectStorage.storageId, key...))
+
+			return
+		}); err != nil {
+			if err == badger.ErrKeyNotFound {
+				return false
+			} else {
+				panic(err)
+			}
+		} else {
+			return true
+		}
+	*/
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
