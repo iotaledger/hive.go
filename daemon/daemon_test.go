@@ -147,6 +147,7 @@ func TestShutdownTwice(t *testing.T) {
 	d.Shutdown()
 	time.Sleep(graceTime)
 	d.ShutdownAndWait()
+	assert.False(t, d.IsRunning())
 }
 
 func TestReRun(t *testing.T) {

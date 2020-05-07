@@ -8,3 +8,4 @@ import (
 
 type Mutex = sync.Mutex
 type RWMutex = sync.RWMutex
+type Once = sync.Once

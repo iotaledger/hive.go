@@ -73,9 +73,11 @@ func New() *OrderedDaemon {
 }
 
 // OrderedDaemon is an orchestrator for background workers.
+// stopOnce ensures that the daemon can only be terminated once.
 type OrderedDaemon struct {
 	running                *typeutils.AtomicBool
 	stopped                *typeutils.AtomicBool
+	stopOnce               syncutils.Once
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
@@ -222,10 +224,7 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 }
 
 func (d *OrderedDaemon) shutdown() {
-	// prevent attempting to shutdown twice
-	if !d.stopped.SetToIf(false, true) {
-		return
-	}
+	d.stopped.Set()
 	if !d.IsRunning() {
 		return
 	}
@@ -276,12 +275,12 @@ func (d *OrderedDaemon) clear() {
 // Shutdown signals all background worker of the daemon shut down.
 // This call doesn't await termination of the background workers.
 func (d *OrderedDaemon) Shutdown() {
-	go d.shutdown()
+	go d.stopOnce.Do(d.shutdown)
 }
 
 // ShutdownAndWait signals all background worker of the daemon to shut down and then waits for their termination.
 func (d *OrderedDaemon) ShutdownAndWait() {
-	d.shutdown()
+	d.stopOnce.Do(d.shutdown)
 }
 
 // IsRunning checks whether the daemon is running.
