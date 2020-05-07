@@ -60,9 +60,12 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 		bw.StartBatchWriter()
 	}
 
-	if atomic.AddInt32(&(object.batchWriteScheduled), 1) == 1 {
-		bw.batchQueue <- object
+	if atomic.AddInt32(&(object.batchWriteScheduled), 1) != 1 {
+		return
 	}
+
+	bw.writeWg.Add(1)
+	bw.batchQueue <- object
 }
 
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
@@ -120,8 +123,6 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 
 func (bw *BatchedWriter) runBatchWriter() {
 	for atomic.LoadInt32(&bw.running) == 1 {
-		bw.writeWg.Add(1)
-
 		var wb *badger.WriteBatch
 		if bw.badgerInstance != nil {
 			wb = bw.badgerInstance.NewWriteBatch()
@@ -152,9 +153,9 @@ func (bw *BatchedWriter) runBatchWriter() {
 		for _, cachedObject := range writtenValues {
 			if cachedObject != nil {
 				bw.releaseObject(cachedObject)
+
+				bw.writeWg.Done()
 			}
 		}
-
-		bw.writeWg.Done()
 	}
 }
