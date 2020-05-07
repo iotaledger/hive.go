@@ -22,7 +22,7 @@ type BatchedWriter struct {
 	badgerInstance *badger.DB
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
-	autoStartMutex sync.Once
+	autoStartOnce  sync.Once
 	running        int32
 	scheduledCount int32
 	batchQueue     chan *CachedObjectImpl
@@ -58,7 +58,7 @@ func (bw *BatchedWriter) StopBatchWriter() {
 }
 
 func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
-	bw.autoStartMutex.Do(func() {
+	bw.autoStartOnce.Do(func() {
 		if atomic.LoadInt32(&bw.running) == 0 {
 			bw.StartBatchWriter()
 		}
