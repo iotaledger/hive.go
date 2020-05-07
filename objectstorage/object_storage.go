@@ -2,6 +2,7 @@ package objectstorage
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
 
@@ -19,7 +20,7 @@ type ObjectStorage struct {
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
 	options            *Options
-	size               int
+	size               int32
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
@@ -79,12 +80,12 @@ func (objectStorage *ObjectStorage) GetSize() int {
 	objectStorage.flushMutex.RLock()
 
 	objectStorage.cacheMutex.RLock()
-	size := objectStorage.size
+	size := atomic.LoadInt32(&objectStorage.size)
 	objectStorage.cacheMutex.RUnlock()
 
 	objectStorage.flushMutex.RUnlock()
 
-	return size
+	return int(size)
 }
 
 func (objectStorage *ObjectStorage) Get(key []byte) CachedObject {
@@ -528,12 +529,12 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 	newlyCachedObject := newCachedObject(objectStorage, key)
 	newlyCachedObject.retain()
 
-	if objectStorage.size == 0 {
+	if atomic.LoadInt32(&objectStorage.size) == 0 {
 		objectStorage.cachedObjectsEmpty.Add(1)
 	}
 
 	currentMap[objectKey] = newlyCachedObject
-	objectStorage.size++
+	atomic.AddInt32(&objectStorage.size, 1)
 	return newlyCachedObject, false
 }
 
@@ -639,7 +640,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	}
 
 	// mark objectStorage as non-empty
-	if objectStorage.size == 0 {
+	if atomic.LoadInt32(&objectStorage.size) == 0 {
 		objectStorage.cachedObjectsEmpty.Add(1)
 	}
 
@@ -649,7 +650,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// ... and store it
 	currentPartition[partitionKey] = cachedObject
-	objectStorage.size++
+	atomic.AddInt32(&objectStorage.size, 1)
 
 	return
 }
@@ -667,7 +668,7 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 	if cachedObjectExists {
 		delete(objectStorage.cachedObjects, string(key))
 
-		objectStorage.size--
+		atomic.AddInt32(&objectStorage.size, -1)
 
 		cachedObject := _cachedObject.(*CachedObjectImpl)
 		storableObject := cachedObject.Get()
@@ -716,7 +717,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		if _, elementExists = currentMap[stringKey]; elementExists {
 			// remove value
 			delete(currentMap, stringKey)
-			objectStorage.size--
+			atomic.AddInt32(&objectStorage.size, -1)
 
 			// clean up empty parent partitions (recursively)
 			parentKeyPartitionId := keyPartitionId
@@ -870,7 +871,7 @@ func (objectStorage *ObjectStorage) flush() {
 	objectStorage.flushMutex.Lock()
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
-	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
+	cachedObjects := make([]*CachedObjectImpl, atomic.LoadInt32(&objectStorage.size))
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		cachedObject.cancelScheduledRelease()
