@@ -103,6 +103,53 @@ func TestShutdownOrder(t *testing.T) {
 	}
 }
 
+func TestGetRunningBackgroundWorkers(t *testing.T) {
+	d := daemon.New()
+
+	err := d.BackgroundWorker("quick", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+	})
+	require.NoError(t, err)
+
+	blocker := make(chan struct{})
+	err = d.BackgroundWorker("blocked", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+		<-blocker
+	})
+	require.NoError(t, err)
+
+	d.Start()
+	time.Sleep(graceTime)
+	// both workers should be running
+	assert.ElementsMatch(t, []string{"quick", "blocked"}, d.GetRunningBackgroundWorkers())
+
+	d.Shutdown()
+	time.Sleep(graceTime)
+	// only the blocked worker should still be running
+	assert.ElementsMatch(t, []string{"blocked"}, d.GetRunningBackgroundWorkers())
+	// let the blocker close
+	close(blocker)
+}
+
+func TestShutdownTwice(t *testing.T) {
+	d := daemon.New()
+
+	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+		// sleep longer than the grace time before shutting down
+		time.Sleep(2 * graceTime)
+	})
+	require.NoError(t, err)
+
+	d.Start()
+	time.Sleep(graceTime)
+
+	d.Shutdown()
+	time.Sleep(graceTime)
+	d.ShutdownAndWait()
+	assert.False(t, d.IsRunning())
+}
+
 func TestReRun(t *testing.T) {
 	d := daemon.New()
 

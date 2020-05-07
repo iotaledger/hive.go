@@ -73,13 +73,15 @@ func New() *OrderedDaemon {
 }
 
 // OrderedDaemon is an orchestrator for background workers.
+// stopOnce ensures that the daemon can only be terminated once.
 type OrderedDaemon struct {
 	running                *typeutils.AtomicBool
 	stopped                *typeutils.AtomicBool
+	stopOnce               syncutils.Once
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
-	lock                   syncutils.Mutex
+	lock                   syncutils.RWMutex
 }
 
 type worker struct {
@@ -91,8 +93,8 @@ type worker struct {
 
 // GetRunningBackgroundWorkers gets the running background workers.
 func (d *OrderedDaemon) GetRunningBackgroundWorkers() []string {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 
 	result := make([]string, 0)
 	for name, worker := range d.workers {
@@ -222,13 +224,20 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 }
 
 func (d *OrderedDaemon) shutdown() {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
 	d.stopped.Set()
 	if !d.IsRunning() {
 		return
 	}
+
+	d.stopWorkers()
+	d.running.UnSet()
+	d.clear()
+}
+
+// stopWorkers stops all the workers of the daemon
+func (d *OrderedDaemon) stopWorkers() {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 
 	// stop all the workers
 	if len(d.shutdownOrderWorker) > 0 {
@@ -251,9 +260,13 @@ func (d *OrderedDaemon) shutdown() {
 		// wait for the last priority to finish
 		d.wgPerSameShutdownOrder[prevPriority].Wait()
 	}
+}
 
-	// clear
-	d.running.UnSet()
+// clear clears the daemon
+func (d *OrderedDaemon) clear() {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	d.workers = nil
 	d.shutdownOrderWorker = nil
 	d.wgPerSameShutdownOrder = nil
@@ -262,12 +275,12 @@ func (d *OrderedDaemon) shutdown() {
 // Shutdown signals all background worker of the daemon shut down.
 // This call doesn't await termination of the background workers.
 func (d *OrderedDaemon) Shutdown() {
-	go d.shutdown()
+	go d.stopOnce.Do(d.shutdown)
 }
 
 // ShutdownAndWait signals all background worker of the daemon to shut down and then waits for their termination.
 func (d *OrderedDaemon) ShutdownAndWait() {
-	d.shutdown()
+	d.stopOnce.Do(d.shutdown)
 }
 
 // IsRunning checks whether the daemon is running.
