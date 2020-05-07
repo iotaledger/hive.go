@@ -2,6 +2,7 @@ package objectstorage
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
 
@@ -885,7 +886,9 @@ func (objectStorage *ObjectStorage) flush() {
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
-		cachedObjects[j].Release(true)
+		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
+			objectStorage.options.batchedWriterInstance.batchWrite(cachedObjects[j])
+		}
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
