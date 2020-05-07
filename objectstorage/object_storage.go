@@ -870,6 +870,7 @@ func (objectStorage *ObjectStorage) flush() {
 	objectStorage.flushMutex.Lock()
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
+	objectStorage.cacheMutex.RLock()
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
@@ -880,6 +881,7 @@ func (objectStorage *ObjectStorage) flush() {
 
 		return true
 	})
+	objectStorage.cacheMutex.RUnlock()
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
@@ -988,13 +990,13 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 			panic("the prefix length does not align with the set KeyPartitions")
 		}
 
-		partitionKey := string(prefix[keyOffset : keyOffset+partitionKeyLength])
+		partitionKey := prefix[keyOffset : keyOffset+partitionKeyLength]
 		keyOffset += partitionKeyLength
 
 		// advance partitions as long as we don't hit the object layer
 		if i != partitionCount-1 {
 			objectStorage.cacheMutex.RLock()
-			subPartition, subPartitionExists := currentPartition[partitionKey]
+			subPartition, subPartitionExists := currentPartition[string(partitionKey)]
 			objectStorage.cacheMutex.RUnlock()
 			if !subPartitionExists {
 				// no partition exists for the given prefix
@@ -1009,7 +1011,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		}
 
 		objectStorage.cacheMutex.RLock()
-		cachedObject := currentPartition[partitionKey].(*CachedObjectImpl)
+		cachedObject := currentPartition[string(partitionKey)].(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
 		seenElements[string(cachedObject.key)] = types.Void
 
