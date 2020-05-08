@@ -201,20 +201,16 @@ func (b *BatchedMutations) Cancel() {
 
 func (b *BatchedMutations) Commit() error {
 	return b.instance.Update(func(tx *bbolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists(b.bucket)
+		if err != nil {
+			return err
+		}
 		for i := 0; i < len(b.sets); i++ {
-			bucket, err := tx.CreateBucketIfNotExists(b.bucket)
-			if err != nil {
-				return err
-			}
 			if err := bucket.Put(b.sets[i].key, b.sets[i].value); err != nil {
 				return err
 			}
 		}
 		for i := 0; i < len(b.deletes); i++ {
-			bucket := tx.Bucket(b.bucket)
-			if bucket == nil {
-				continue
-			}
 			if err := bucket.Delete(b.sets[i].key); err != nil {
 				return err
 			}
