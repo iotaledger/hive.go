@@ -14,7 +14,7 @@ import (
 
 const (
 	BATCH_WRITER_QUEUE_SIZE    = BATCH_WRITER_BATCH_SIZE
-	BATCH_WRITER_BATCH_SIZE    = 1024
+	BATCH_WRITER_BATCH_SIZE    = 10240
 	BATCH_WRITER_BATCH_TIMEOUT = 500 * time.Millisecond
 )
 
@@ -22,7 +22,9 @@ type BatchedWriter struct {
 	badgerInstance *badger.DB
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
+	autoStartOnce  sync.Once
 	running        int32
+	scheduledCount int32
 	batchQueue     chan *CachedObjectImpl
 }
 
@@ -56,13 +58,25 @@ func (bw *BatchedWriter) StopBatchWriter() {
 }
 
 func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
+	bw.autoStartOnce.Do(func() {
+		if atomic.LoadInt32(&bw.running) == 0 {
+			bw.StartBatchWriter()
+		}
+	})
+
+	// abort if the BatchWriter has been stopped
 	if atomic.LoadInt32(&bw.running) == 0 {
-		bw.StartBatchWriter()
+		return
 	}
 
-	if atomic.AddInt32(&(object.batchWriteScheduled), 1) == 1 {
-		bw.batchQueue <- object
+	// abort if the very same object has been queued already
+	if atomic.AddInt32(&(object.batchWriteScheduled), 1) != 1 {
+		return
 	}
+
+	// queue object
+	atomic.AddInt32(&bw.scheduledCount, 1)
+	bw.batchQueue <- object
 }
 
 func (bw *BatchedWriter) writeObject(writeBatch *badger.WriteBatch, cachedObject *CachedObjectImpl) {
@@ -119,9 +133,9 @@ func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 }
 
 func (bw *BatchedWriter) runBatchWriter() {
-	for atomic.LoadInt32(&bw.running) == 1 {
-		bw.writeWg.Add(1)
+	bw.writeWg.Add(1)
 
+	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
 		var wb *badger.WriteBatch
 		if bw.badgerInstance != nil {
 			wb = bw.badgerInstance.NewWriteBatch()
@@ -134,6 +148,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 			select {
 			case objectToPersist := <-bw.batchQueue:
 				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
+				atomic.AddInt32(&bw.scheduledCount, -1)
 
 				bw.writeObject(wb, objectToPersist)
 				writtenValues[writtenValuesCounter] = objectToPersist
@@ -149,12 +164,11 @@ func (bw *BatchedWriter) runBatchWriter() {
 			}
 		}
 
-		for _, cachedObject := range writtenValues {
-			if cachedObject != nil {
-				bw.releaseObject(cachedObject)
-			}
+		// release written values
+		for i := 0; i < writtenValuesCounter; i++ {
+			bw.releaseObject(writtenValues[i])
 		}
-
-		bw.writeWg.Done()
 	}
+
+	bw.writeWg.Done()
 }
