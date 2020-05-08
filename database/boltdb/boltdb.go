@@ -1,8 +1,6 @@
 package boltdb
 
 import (
-	"errors"
-
 	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/database"
@@ -11,7 +9,7 @@ import (
 )
 
 var (
-	ErrKeyNotFound = errors.New("Key not found")
+	ErrKeyNotFound = objectstorage.ErrKeyNotFound
 )
 
 type BoltDB struct {
