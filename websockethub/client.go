@@ -7,41 +7,41 @@ import (
 )
 
 const (
-	// Time allowed to write a message to the peer.
+	// time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
 
-	// Time allowed to read the next pong message from the peer.
+	// time allowed to read the next pong message from the peer.
 	pongWait = 60 * time.Second
 
-	// Send pings to peer with this period. Must be less than pongWait.
+	// send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
 
-	// Maximum message size allowed from peer.
+	// maximum message size allowed from peer.
 	maxMessageSize = 125 // 125 is the maximum payload size for ping pongs
-
-	// Maximum size of queued messages that should be sent to the peer.
-	sendChannelSize = 100
 )
 
 // Client is a middleman between the node and the websocket connection.
 type Client struct {
 	hub *Hub
 
-	// The websocket connection.
+	// the websocket connection.
 	conn *websocket.Conn
 
-	// Buffered channel of outbound messages.
+	// a channel which is closed when the websocket client is disconnected.
+	exitSignal chan struct{}
+
+	// buffered channel of outbound messages.
 	sendChan chan interface{}
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
 // that are sent periodically in the writePump function.
 //
-// At most one reader per websocket connection is allowed
+// at most one reader per websocket connection is allowed
 func (c *Client) checkPong() {
 
 	defer func() {
-		// Send a unregister message to the hub
+		// send a unregister message to the hub
 		c.hub.unregister <- c
 	}()
 
@@ -62,7 +62,7 @@ func (c *Client) checkPong() {
 
 // writePump pumps messages from the node to the websocket connection.
 //
-// At most one writer per websocket connection is allowed
+// at most one writer per websocket connection is allowed
 func (c *Client) writePump() {
 
 	pingTicker := time.NewTicker(pingPeriod)
@@ -71,7 +71,7 @@ func (c *Client) writePump() {
 		// stop the ping ticker
 		pingTicker.Stop()
 
-		// Send a unregister message to the hub
+		// send a unregister message to the hub
 		c.hub.unregister <- c
 
 		// close the websocket connection
@@ -84,10 +84,15 @@ func (c *Client) writePump() {
 		case <-c.hub.shutdownSignal:
 			return
 
+		case <-c.exitSignal:
+			// the Hub closed the channel.
+			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			return
+
 		case msg, ok := <-c.sendChan:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The Hub closed the channel.
+				// the Hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -107,8 +112,19 @@ func (c *Client) writePump() {
 }
 
 // Send sends a message to the client
-func (c *Client) Send(msg interface{}) {
+func (c *Client) Send(msg interface{}, dontDrop ...bool) {
+	if len(dontDrop) > 0 && dontDrop[0] {
+		select {
+		case <-c.hub.shutdownSignal:
+		case <-c.exitSignal:
+		case c.sendChan <- msg:
+		}
+		return
+	}
+
 	select {
+	case <-c.hub.shutdownSignal:
+	case <-c.exitSignal:
 	case c.sendChan <- msg:
 	default:
 	}
