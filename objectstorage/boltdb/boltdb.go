@@ -8,15 +8,28 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-// New creates a new Storage with the underlying BoltDB.
-func New(db *bbolt.DB) *Storage {
-	return &Storage{instance: db}
-}
-
 // Storage implements the ObjectStorage Storage interface around a BoltDB instance.
 type Storage struct {
-	bucket   []byte
 	instance *bbolt.DB
+	bucket   []byte
+}
+
+// New creates a new Storage with the underlying BoltDB.
+func New(db *bbolt.DB) objectstorage.Storage {
+	return &Storage{
+		instance: db,
+	}
+}
+
+func (s *Storage) WithRealm(realm []byte) objectstorage.Storage {
+	return &Storage{
+		instance: s.instance,
+		bucket:   realm,
+	}
+}
+
+func (s *Storage) Realm() []byte {
+	return s.bucket
 }
 
 func buildPrefixedKey(prefixes [][]byte) []byte {
@@ -33,9 +46,9 @@ func copyBytes(source []byte) []byte {
 	return cpy
 }
 
-func (s Storage) iterate(realm []byte, prefixes [][]byte, copyValues bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
+func (s Storage) iterate(prefixes [][]byte, copyValues bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(realm)
+		b := tx.Bucket(s.bucket)
 		if b == nil {
 			return nil
 		}
@@ -68,30 +81,30 @@ func (s Storage) iterate(realm []byte, prefixes [][]byte, copyValues bool, kvCon
 	})
 }
 
-func (s *Storage) Iterate(realm []byte, prefixes [][]byte, _ bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
-	return s.iterate(realm, prefixes, true, kvConsumerFunc)
+func (s *Storage) Iterate(prefixes [][]byte, _ bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
+	return s.iterate(prefixes, true, kvConsumerFunc)
 }
 
-func (s *Storage) IterateKeys(realm []byte, prefixes [][]byte, consumerFunc objectstorage.IteratorKeyConsumerFunc) error {
+func (s *Storage) IterateKeys(prefixes [][]byte, consumerFunc objectstorage.IteratorKeyConsumerFunc) error {
 	// same as with values but we simply don't copy them
-	return s.iterate(realm, prefixes, false, func(key []byte, _ []byte) bool {
+	return s.iterate(prefixes, false, func(key []byte, _ []byte) bool {
 		return consumerFunc(key)
 	})
 }
 
-func (s *Storage) Clear(realm []byte) error {
+func (s *Storage) Clear() error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		if tx.Bucket(realm) == nil {
+		if tx.Bucket(s.bucket) == nil {
 			return nil
 		}
-		return tx.DeleteBucket(realm)
+		return tx.DeleteBucket(s.bucket)
 	})
 }
 
-func (s *Storage) Get(realm []byte, key []byte) ([]byte, error) {
+func (s *Storage) Get(key []byte) ([]byte, error) {
 	var val []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(realm)
+		b := tx.Bucket(s.bucket)
 		if b == nil {
 			return nil
 		}
@@ -106,9 +119,9 @@ func (s *Storage) Get(realm []byte, key []byte) ([]byte, error) {
 	return val, nil
 }
 
-func (s *Storage) Set(realm []byte, key []byte, value []byte) error {
+func (s *Storage) Set(key []byte, value []byte) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(realm)
+		b, err := tx.CreateBucketIfNotExists(s.bucket)
 		if err != nil {
 			return err
 		}
@@ -116,10 +129,10 @@ func (s *Storage) Set(realm []byte, key []byte, value []byte) error {
 	})
 }
 
-func (s *Storage) Has(realm []byte, key []byte) (bool, error) {
+func (s *Storage) Has(key []byte) (bool, error) {
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(realm)
+		b := tx.Bucket(s.bucket)
 		if b == nil {
 			return nil
 		}
@@ -129,9 +142,9 @@ func (s *Storage) Has(realm []byte, key []byte) (bool, error) {
 	return has, err
 }
 
-func (s *Storage) Delete(realm []byte, key []byte) error {
+func (s *Storage) Delete(key []byte) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(realm)
+		b := tx.Bucket(s.bucket)
 		if b == nil {
 			return objectstorage.ErrKeyNotFound
 		}
@@ -148,11 +161,13 @@ func (s *Storage) Batched() objectstorage.BatchedMutations {
 	// which is only useful if Batch() is called from multiple goroutines.
 	// instead, if we collect the mutations and then do a single
 	// update, we have the batched mutations we actually want.
-	return &BatchedMutations{instance: s.instance}
+	return &BatchedMutations{
+		instance: s.instance,
+		bucket:   s.bucket,
+	}
 }
 
-type realmkvtuple struct {
-	realm []byte
+type kvtuple struct {
 	key   []byte
 	value []byte
 }
@@ -161,21 +176,22 @@ type realmkvtuple struct {
 type BatchedMutations struct {
 	sync.Mutex
 	instance *bbolt.DB
-	sets     []realmkvtuple
-	deletes  []realmkvtuple
+	bucket   []byte
+	sets     []kvtuple
+	deletes  []kvtuple
 }
 
-func (b *BatchedMutations) Set(realm []byte, key []byte, value []byte) error {
+func (b *BatchedMutations) Set(key []byte, value []byte) error {
 	b.Lock()
 	defer b.Unlock()
-	b.sets = append(b.sets, realmkvtuple{realm, key, value})
+	b.sets = append(b.sets, kvtuple{key, value})
 	return nil
 }
 
-func (b *BatchedMutations) Delete(realm []byte, key []byte) error {
+func (b *BatchedMutations) Delete(key []byte) error {
 	b.Lock()
 	defer b.Unlock()
-	b.deletes = append(b.deletes, realmkvtuple{realm, key, nil})
+	b.deletes = append(b.deletes, kvtuple{key, nil})
 	return nil
 }
 
@@ -186,7 +202,7 @@ func (b *BatchedMutations) Cancel() {
 func (b *BatchedMutations) Commit() error {
 	return b.instance.Update(func(tx *bbolt.Tx) error {
 		for i := 0; i < len(b.sets); i++ {
-			bucket, err := tx.CreateBucketIfNotExists(b.sets[i].realm)
+			bucket, err := tx.CreateBucketIfNotExists(b.bucket)
 			if err != nil {
 				return err
 			}
@@ -195,7 +211,7 @@ func (b *BatchedMutations) Commit() error {
 			}
 		}
 		for i := 0; i < len(b.deletes); i++ {
-			bucket := tx.Bucket(b.sets[i].realm)
+			bucket := tx.Bucket(b.bucket)
 			if bucket == nil {
 				continue
 			}

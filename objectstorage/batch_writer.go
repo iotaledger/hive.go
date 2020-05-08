@@ -92,7 +92,7 @@ func (bw *BatchedWriter) writeObject(batchedMuts BatchedMutations, cachedObject 
 			if storableObject.IsDeleted() {
 				storableObject.SetModified(false)
 
-				if err := batchedMuts.Delete(objectStorage.storageId, cachedObject.key); err != nil {
+				if err := batchedMuts.Delete(cachedObject.key); err != nil {
 					panic(err)
 				}
 			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
@@ -103,12 +103,12 @@ func (bw *BatchedWriter) writeObject(batchedMuts BatchedMutations, cachedObject 
 					marshaledValue = storableObject.ObjectStorageValue()
 				}
 
-				if err := batchedMuts.Set(objectStorage.storageId, cachedObject.key, marshaledValue); err != nil {
+				if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
 					panic(err)
 				}
 			}
 		} else if cachedObject.blindDelete.IsSet() {
-			if err := batchedMuts.Delete(objectStorage.storageId, cachedObject.key); err != nil {
+			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
 		}

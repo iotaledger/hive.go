@@ -20,9 +20,9 @@ type IteratorKeyConsumerFunc func(key []byte) bool
 // BatchedMutations represents batched mutations to the storage.
 type BatchedMutations interface {
 	// Set sets the given key and value.
-	Set(realm []byte, key []byte, value []byte) error
+	Set(key []byte, value []byte) error
 	// Delete deletes the entry for the given key.
-	Delete(realm []byte, key []byte) error
+	Delete(key []byte) error
 	// Cancel cancels the batched mutations.
 	Cancel()
 	// Commit commits/flushes the mutations.
@@ -30,22 +30,26 @@ type BatchedMutations interface {
 }
 
 // Storage persists, deletes and retrieves data.
-// Realm keys specify namespaces for entities.
 type Storage interface {
+
+	// Factory method to use same underlying storage with a different realm
+	WithRealm(realm []byte) Storage
+	//Get the configured realm
+	Realm() []byte
 	// Iterate iterates over all keys or keys with the provided prefix.
-	Iterate(realm []byte, prefixes [][]byte, preFetchValues bool, kvConsumerFunc IteratorKeyValueConsumerFunc) error
+	Iterate(prefixes [][]byte, preFetchValues bool, kvConsumerFunc IteratorKeyValueConsumerFunc) error
 	// Iterate iterates over all keys with the provided prefix.
-	IterateKeys(realm []byte, prefixes [][]byte, consumerFunc IteratorKeyConsumerFunc) error
-	// Clear clears the given realm.
-	Clear(realm []byte) error
+	IterateKeys(prefixes [][]byte, consumerFunc IteratorKeyConsumerFunc) error
+	// Clear clears the realm.
+	Clear() error
 	// Get gets the given key or nil if it doesn't exist or an error if an error occurred.
-	Get(realm []byte, key []byte) (value []byte, err error)
+	Get(key []byte) (value []byte, err error)
 	// Set sets the given key and value.
-	Set(realm []byte, key []byte, value []byte) error
+	Set(key []byte, value []byte) error
 	// Has checks whether the given key exists.
-	Has(realm []byte, key []byte) (bool, error)
+	Has(key []byte) (bool, error)
 	// Delete deletes the entry for the given key.
-	Delete(realm []byte, key []byte) error
+	Delete(key []byte) error
 	// Batched returns a BatchedMutations interface to execute batched mutations.
 	Batched() BatchedMutations
 }

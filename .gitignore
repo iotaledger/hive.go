@@ -17,4 +17,8 @@ objectsdb/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# Goland
 .idea
+
+# macOS metadata
+.DS_Store

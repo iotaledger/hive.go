@@ -14,7 +14,6 @@ import (
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
 	storage            Storage
-	storageId          []byte
 	objectFactory      StorableObjectFromKey
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
@@ -30,10 +29,9 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(storage Storage, storageId []byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
+func New(storage Storage, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
 		storage:           storage,
-		storageId:         storageId,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
@@ -329,8 +327,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	_ = objectStorage.storage.Iterate(
-		objectStorage.storageId, optionalPrefix,
+	_ = objectStorage.storage.Iterate(optionalPrefix,
 		!objectStorage.options.keysOnly,
 		func(key []byte, value []byte) bool {
 
@@ -370,64 +367,6 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			return true
 		},
 	)
-
-	/*
-		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-			iteratorOptions := badger.DefaultIteratorOptions
-			iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
-			iteratorOptions.PrefetchValues = !objectStorage.options.keysOnly
-
-			it := txn.NewIterator(iteratorOptions)
-			for it.Rewind(); it.Valid(); it.Next() {
-				item := it.Item()
-				key := item.Key()[len(objectStorage.storageId):]
-
-				if _, elementSeen := seenElements[string(key)]; elementSeen {
-					continue
-				}
-
-				cachedObject, cacheHit := objectStorage.accessCache(key, true)
-				if !cacheHit {
-					var storableObject StorableObject
-
-					if objectStorage.options.keysOnly {
-						if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
-							return
-						}
-					} else {
-						if err := item.Value(func(val []byte) error {
-							marshaledData := make([]byte, len(val))
-							copy(marshaledData, val)
-
-							storableObject = objectStorage.unmarshalObject(key, marshaledData)
-
-							return nil
-						}); err != nil {
-							panic(err)
-						}
-					}
-
-					if !typeutils.IsInterfaceNil(storableObject) {
-						storableObject.Persist()
-					}
-
-					cachedObject.publishResult(storableObject)
-				}
-
-				cachedObject.waitForInitialResult()
-
-				if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
-					// Iteration was aborted
-					break
-				}
-			}
-			it.Close()
-
-			return nil
-		}); err != nil {
-			panic(err)
-		}
-	*/
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
@@ -463,8 +402,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		}
 	}
 
-	_ = objectStorage.storage.IterateKeys(
-		objectStorage.storageId, optionalPrefix,
+	_ = objectStorage.storage.IterateKeys(optionalPrefix,
 		func(key []byte) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
@@ -474,34 +412,6 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 			return consumer(key)
 		},
 	)
-
-	/*
-		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-			iteratorOptions := badger.DefaultIteratorOptions
-			iteratorOptions.Prefix = objectStorage.generatePrefix(optionalPrefix)
-			iteratorOptions.PrefetchValues = false
-
-			it := txn.NewIterator(iteratorOptions)
-			for it.Rewind(); it.Valid(); it.Next() {
-				item := it.Item()
-				key := item.Key()[len(objectStorage.storageId):]
-
-				if _, elementSeen := seenElements[string(key)]; elementSeen {
-					continue
-				}
-
-				if !consumer(key) {
-					// Iteration was aborted
-					break
-				}
-			}
-			it.Close()
-
-			return nil
-		}); err != nil {
-			panic(err)
-		}
-	*/
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
@@ -512,19 +422,12 @@ func (objectStorage *ObjectStorage) Prune() error {
 	objectStorage.flushMutex.Lock()
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.storage.Clear(objectStorage.storageId); err != nil {
+	if err := objectStorage.storage.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
 		return err
 	}
-	/*
-		if err := objectStorage.badgerInstance.DropPrefix(objectStorage.storageId); err != nil {
-			objectStorage.cacheMutex.Unlock()
-			objectStorage.flushMutex.Unlock()
 
-			return err
-		}
-	*/
 	objectStorage.cachedObjects = make(map[string]interface{})
 	objectStorage.cacheMutex.Unlock()
 
@@ -822,7 +725,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObj
 	}
 
 	var marshaledData []byte
-	value, err := objectStorage.storage.Get(objectStorage.storageId, key)
+	value, err := objectStorage.storage.Get(key)
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
 			return nil
@@ -842,41 +745,6 @@ func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObj
 	copy(marshaledData, value)
 
 	return objectStorage.unmarshalObject(key, marshaledData)
-
-	/*
-		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) error {
-			if item, err := txn.Get(objectStorage.generatePrefix([][]byte{key})); err != nil {
-				return err
-			} else {
-				if objectStorage.options.keysOnly {
-					return nil
-				}
-
-				return item.Value(func(val []byte) error {
-					marshaledData = make([]byte, len(val))
-					copy(marshaledData, val)
-
-					return nil
-				})
-			}
-		}); err != nil {
-			if err == badger.ErrKeyNotFound {
-				return nil
-			} else {
-				panic(err)
-			}
-		} else {
-			if objectStorage.options.keysOnly {
-				if object, _, err := objectStorage.objectFactory(key); err != nil {
-					panic(err)
-				} else {
-					return object
-				}
-			}
-
-			return objectStorage.unmarshalObject(key, marshaledData)
-		}
-	*/
 }
 
 // DeleteEntryFromBadger deletes an entry from the persistance layer.
@@ -885,22 +753,12 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 		return
 	}
 
-	if err := objectStorage.storage.Delete(objectStorage.storageId, key); err != nil {
+	if err := objectStorage.storage.Delete(key); err != nil {
 		if !errors.Is(err, ErrKeyNotFound) {
 			panic(err)
 		}
 	}
 	return
-
-	/*
-		if err := objectStorage.badgerInstance.Update(func(txn *badger.Txn) error {
-			return txn.Delete(objectStorage.generatePrefix([][]byte{key}))
-		}); err != nil {
-			if err != badger.ErrKeyNotFound {
-				panic(err)
-			}
-		}
-	*/
 }
 
 // DeleteEntriesFromBadger deletes entries from the persistance layer.
@@ -911,7 +769,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
 
 	batchedMuts := objectStorage.storage.Batched()
 	for i := 0; i < len(keys); i++ {
-		if err := batchedMuts.Delete(objectStorage.storageId, keys[i]); err != nil {
+		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
 			panic(err)
 		}
@@ -920,20 +778,6 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
 	if err := batchedMuts.Commit(); err != nil {
 		panic(err)
 	}
-	/*
-		wb := objectStorage.badgerInstance.NewWriteBatch()
-		for _, key := range keys {
-			if err := wb.Delete(objectStorage.generatePrefix([][]byte{key})); err != nil {
-				if err != badger.ErrKeyNotFound {
-					panic(err)
-				}
-			}
-		}
-
-		if err := wb.Flush(); err != nil {
-			panic(err)
-		}
-	*/
 }
 
 func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
@@ -941,29 +785,13 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 		return false
 	}
 
-	has, err := objectStorage.storage.Has(objectStorage.storageId, key)
+	has, err := objectStorage.storage.Has(key)
 	if err != nil {
 		if !errors.Is(err, ErrKeyNotFound) {
 			panic(err)
 		}
 	}
 	return has
-
-	/*
-		if err := objectStorage.badgerInstance.View(func(txn *badger.Txn) (err error) {
-			_, err = txn.Get(append(objectStorage.storageId, key...))
-
-			return
-		}); err != nil {
-			if err == badger.ErrKeyNotFound {
-				return false
-			} else {
-				panic(err)
-			}
-		} else {
-			return true
-		}
-	*/
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
@@ -977,15 +805,6 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 	}
 
 	return object
-}
-
-func (objectStorage *ObjectStorage) generatePrefix(optionalPrefixes [][]byte) (prefix []byte) {
-	prefix = objectStorage.storageId
-	for _, optionalPrefix := range optionalPrefixes {
-		prefix = append(prefix, optionalPrefix...)
-	}
-
-	return
 }
 
 func (objectStorage *ObjectStorage) flush() {
