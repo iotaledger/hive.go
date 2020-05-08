@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/database"
+	"github.com/iotaledger/hive.go/database/badgerdb"
 )
 
 // MapDB is a simple implementation of DB using a map.
@@ -18,7 +19,6 @@ type MapDB struct {
 
 type mapEntry struct {
 	value []byte
-	meta  byte
 }
 
 // NewMapDB creates a database.Database implementation purely based on a go map.
@@ -43,26 +43,11 @@ func (db *MapDB) Get(key database.Key) (entry database.Entry, err error) {
 
 	ent, contains := db.m[string(key)]
 	if !contains {
-		err = database.ErrKeyNotFound
+		err = badgerdb.ErrKeyNotFound
 		return
 	}
 	entry.Key = key
 	entry.Value = append([]byte{}, ent.value...)
-	entry.Meta = ent.meta
-	return
-}
-
-func (db *MapDB) GetKeyOnly(key database.Key) (entry database.KeyOnlyEntry, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	ent, contains := db.m[string(key)]
-	if !contains {
-		err = database.ErrKeyNotFound
-		return
-	}
-	entry.Key = key
-	entry.Meta = ent.meta
 	return
 }
 
@@ -72,7 +57,6 @@ func (db *MapDB) Set(entry database.Entry) error {
 
 	db.m[string(entry.Key)] = mapEntry{
 		value: append([]byte{}, entry.Value...),
-		meta:  entry.Meta,
 	}
 	return nil
 }
@@ -106,7 +90,6 @@ func (db *MapDB) ForEach(consume func(entry database.Entry) bool) error {
 		entry := database.Entry{
 			Key:   []byte(key),
 			Value: append([]byte{}, ent.value...),
-			Meta:  ent.meta,
 		}
 		if consume(entry) {
 			break
@@ -115,16 +98,12 @@ func (db *MapDB) ForEach(consume func(entry database.Entry) bool) error {
 	return nil
 }
 
-func (db *MapDB) ForEachKeyOnly(consume func(entry database.KeyOnlyEntry) bool) error {
+func (db *MapDB) ForEachKeyOnly(consume func(key database.Key) bool) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	for key, ent := range db.m {
-		entry := database.KeyOnlyEntry{
-			Key:  []byte(key),
-			Meta: ent.meta,
-		}
-		if consume(entry) {
+	for key, _ := range db.m {
+		if consume([]byte(key)) {
 			break
 		}
 	}
@@ -141,7 +120,6 @@ func (db *MapDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry 
 			entry := database.Entry{
 				Key:   []byte(strings.TrimPrefix(key, prefix)),
 				Value: append([]byte{}, ent.value...),
-				Meta:  ent.meta,
 			}
 			if consume(entry) {
 				break
@@ -151,18 +129,14 @@ func (db *MapDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry 
 	return nil
 }
 
-func (db *MapDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func(entry database.KeyOnlyEntry) (stop bool)) error {
+func (db *MapDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func(key database.Key) (stop bool)) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	prefix := string(keyPrefix)
-	for key, ent := range db.m {
+	for key, _ := range db.m {
 		if strings.HasPrefix(key, prefix) {
-			entry := database.KeyOnlyEntry{
-				Key:  []byte(strings.TrimPrefix(key, prefix)),
-				Meta: ent.meta,
-			}
-			if consume(entry) {
+			if consume([]byte(strings.TrimPrefix(key, prefix))) {
 				break
 			}
 		}
@@ -178,14 +152,6 @@ func (db *MapDB) StreamForEach(consume func(entry database.Entry) error) (err er
 	return
 }
 
-func (db *MapDB) StreamForEachKeyOnly(consume func(entry database.KeyOnlyEntry) error) (err error) {
-	_ = db.ForEachKeyOnly(func(entry database.KeyOnlyEntry) bool {
-		err = consume(entry)
-		return err != nil
-	})
-	return
-}
-
 func (db *MapDB) StreamForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry database.Entry) error) (err error) {
 	_ = db.ForEachPrefix(keyPrefix, func(entry database.Entry) bool {
 		err = consume(entry)
@@ -194,9 +160,9 @@ func (db *MapDB) StreamForEachPrefix(keyPrefix database.KeyPrefix, consume func(
 	return
 }
 
-func (db *MapDB) StreamForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func(database.KeyOnlyEntry) error) (err error) {
-	_ = db.ForEachPrefixKeyOnly(keyPrefix, func(entry database.KeyOnlyEntry) bool {
-		err = consume(entry)
+func (db *MapDB) StreamForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func(database.Key) error) (err error) {
+	_ = db.ForEachPrefixKeyOnly(keyPrefix, func(key database.Key) bool {
+		err = consume(key)
 		return err != nil
 	})
 	return
@@ -209,7 +175,6 @@ func (db *MapDB) Apply(set []database.Entry, del []database.Key) error {
 	for _, entry := range set {
 		db.m[string(entry.Key)] = mapEntry{
 			value: append([]byte{}, entry.Value...),
-			meta:  entry.Meta,
 		}
 	}
 	for _, key := range del {

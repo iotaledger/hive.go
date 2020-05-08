@@ -1,13 +1,12 @@
-package database
+package badgerdb
 
 import (
 	"context"
-	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
 
-	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/database"
 )
 
 const (
@@ -16,61 +15,37 @@ const (
 
 var (
 	ErrKeyNotFound = badger.ErrKeyNotFound
-
-	dbMap = make(map[string]*prefixDb)
-	mu    syncutils.Mutex
 )
 
-type prefixDb struct {
+type prefixedBadgerDB struct {
 	db     *badger.DB
 	prefix []byte
 }
 
-func Get(dbPrefix byte, optionalBadger ...*badger.DB) (Database, error) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if db, exists := dbMap[string(dbPrefix)]; exists {
-		return db, nil
+func NewDatabaseWithPrefix(prefix []byte, badgerInstance *badger.DB) database.Database {
+	return &prefixedBadgerDB{
+		db:     badgerInstance,
+		prefix: prefix,
 	}
-
-	var badgerInst *badger.DB
-	if len(optionalBadger) > 0 {
-		badgerInst = optionalBadger[0]
-	} else {
-		badgerInst = GetBadgerInstance()
-	}
-
-	db := &prefixDb{
-		db:     badgerInst,
-		prefix: []byte{dbPrefix},
-	}
-
-	dbMap[string(dbPrefix)] = db
-
-	return db, nil
 }
 
-func (pdb *prefixDb) keyWithPrefix(key Key) Key {
+func (pdb *prefixedBadgerDB) keyWithPrefix(key database.Key) database.Key {
 	return append(pdb.prefix, key...)
 }
 
-func (pdb *prefixDb) keyWithoutPrefix(key Key) Key {
+func (pdb *prefixedBadgerDB) keyWithoutPrefix(key database.Key) database.Key {
 	return key[1:]
 }
 
-func (k Key) keyWithoutKeyPrefix(prefix KeyPrefix) Key {
-	return k[len(prefix):]
+func keyWithoutKeyPrefix(key database.Key, prefix database.KeyPrefix) database.Key {
+	return key[len(prefix):]
 }
 
-func (pdb *prefixDb) Set(entry Entry) error {
+func (pdb *prefixedBadgerDB) Set(entry database.Entry) error {
 	wb := pdb.db.NewWriteBatch()
 	defer wb.Cancel()
 
-	e := badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta)
-	if entry.TTL != 0 {
-		e.WithTTL(entry.TTL)
-	}
+	e := badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value)
 	err := wb.SetEntry(e)
 	if err != nil {
 		return err
@@ -78,18 +53,7 @@ func (pdb *prefixDb) Set(entry Entry) error {
 	return wb.Flush()
 }
 
-func (pdb *prefixDb) SetWithTTL(entry Entry, ttl time.Duration) error {
-	wb := pdb.db.NewWriteBatch()
-	defer wb.Cancel()
-
-	err := wb.SetEntry(badger.NewEntry(pdb.keyWithPrefix(entry.Key), entry.Value).WithMeta(entry.Meta).WithTTL(ttl))
-	if err != nil {
-		return err
-	}
-	return wb.Flush()
-}
-
-func (pdb *prefixDb) Apply(set []Entry, delete []Key) error {
+func (pdb *prefixedBadgerDB) Apply(set []database.Entry, delete []database.Key) error {
 
 	wb := pdb.db.NewWriteBatch()
 	defer wb.Cancel()
@@ -102,7 +66,7 @@ func (pdb *prefixDb) Apply(set []Entry, delete []Key) error {
 		valueCopy := make([]byte, len(entry.Value))
 		copy(valueCopy, entry.Value)
 
-		err := wb.SetEntry(badger.NewEntry(keyCopy, valueCopy).WithMeta(entry.Meta))
+		err := wb.SetEntry(badger.NewEntry(keyCopy, valueCopy))
 		if err != nil {
 			return err
 		}
@@ -120,7 +84,7 @@ func (pdb *prefixDb) Apply(set []Entry, delete []Key) error {
 	return wb.Flush()
 }
 
-func (pdb *prefixDb) Contains(key Key) (bool, error) {
+func (pdb *prefixedBadgerDB) Contains(key database.Key) (bool, error) {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(pdb.keyWithPrefix(key))
 		return err
@@ -133,8 +97,8 @@ func (pdb *prefixDb) Contains(key Key) (bool, error) {
 	}
 }
 
-func (pdb *prefixDb) Get(key Key) (Entry, error) {
-	var result Entry
+func (pdb *prefixedBadgerDB) Get(key database.Key) (database.Entry, error) {
+	var result database.Entry
 
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(pdb.keyWithPrefix(key))
@@ -142,7 +106,6 @@ func (pdb *prefixDb) Get(key Key) (Entry, error) {
 			return err
 		}
 		result.Key = key
-		result.Meta = item.UserMeta()
 
 		result.Value, err = item.ValueCopy(nil)
 		return err
@@ -151,24 +114,7 @@ func (pdb *prefixDb) Get(key Key) (Entry, error) {
 	return result, err
 }
 
-func (pdb *prefixDb) GetKeyOnly(key Key) (KeyOnlyEntry, error) {
-	var result KeyOnlyEntry
-
-	err := pdb.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(pdb.keyWithPrefix(key))
-		if err != nil {
-			return err
-		}
-		result.Key = key
-		result.Meta = item.UserMeta()
-
-		return nil
-	})
-
-	return result, err
-}
-
-func (pdb *prefixDb) Delete(key Key) error {
+func (pdb *prefixedBadgerDB) Delete(key database.Key) error {
 	wb := pdb.db.NewWriteBatch()
 	defer wb.Cancel()
 
@@ -179,14 +125,14 @@ func (pdb *prefixDb) Delete(key Key) error {
 	return wb.Flush()
 }
 
-func (pdb *prefixDb) DeletePrefix(keyPrefix KeyPrefix) error {
+func (pdb *prefixedBadgerDB) DeletePrefix(keyPrefix database.KeyPrefix) error {
 	prefixToDelete := append(pdb.prefix, keyPrefix...)
 	return pdb.db.DropPrefix(prefixToDelete)
 }
 
 // ForEach runs consumer for each valid DB Entry.
 // Entry.Key is only valid as long as Entry is valid. If you need to modify it or use it outside, it must be copied.
-func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
+func (pdb *prefixedBadgerDB) ForEach(consumer func(database.Entry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		it := txn.NewIterator(iteratorOptions)
@@ -195,17 +141,15 @@ func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
-			meta := item.UserMeta()
 
 			value, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
 
-			if consumer(Entry{
+			if consumer(database.Entry{
 				Key:   pdb.keyWithoutPrefix(item.Key()),
 				Value: value,
-				Meta:  meta,
 			}) {
 				break
 			}
@@ -217,7 +161,7 @@ func (pdb *prefixDb) ForEach(consumer func(Entry) bool) error {
 
 // ForEachPrefix runs consumer for each valid DB entry matching keyPrefix.
 // Entry.Key is only valid as long as Entry is valid. If you need to modify it or use it outside, it must be copied.
-func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) bool) error {
+func (pdb *prefixedBadgerDB) ForEachPrefix(keyPrefix database.KeyPrefix, consumer func(database.Entry) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		it := txn.NewIterator(iteratorOptions)
@@ -226,17 +170,15 @@ func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) boo
 
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
-			meta := item.UserMeta()
 
 			value, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
 
-			if consumer(Entry{
-				Key:   pdb.keyWithoutPrefix(item.Key()).keyWithoutKeyPrefix(keyPrefix),
+			if consumer(database.Entry{
+				Key:   keyWithoutKeyPrefix(pdb.keyWithoutPrefix(item.Key()), keyPrefix),
 				Value: value,
-				Meta:  meta,
 			}) {
 				break
 			}
@@ -248,7 +190,7 @@ func (pdb *prefixDb) ForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) boo
 
 // ForEachPrefixKeyOnly runs consumer for each valid DB entry matching keyPrefix.
 // KeyOnlyEntry.Key is only valid as long as KeyOnlyEntry is valid. If you need to modify it or use it outside, it must be copied.
-func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(KeyOnlyEntry) bool) error {
+func (pdb *prefixedBadgerDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consumer func(database.Key) bool) error {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.PrefetchValues = false
@@ -258,12 +200,8 @@ func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(Key
 
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
-			meta := item.UserMeta()
 
-			if consumer(KeyOnlyEntry{
-				Key:  pdb.keyWithoutPrefix(item.Key()).keyWithoutKeyPrefix(keyPrefix),
-				Meta: meta,
-			}) {
+			if consumer(keyWithoutKeyPrefix(pdb.keyWithoutPrefix(item.Key()), keyPrefix)) {
 				break
 			}
 		}
@@ -272,7 +210,7 @@ func (pdb *prefixDb) ForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(Key
 	return err
 }
 
-func (pdb *prefixDb) StreamForEach(consumer func(Entry) error) error {
+func (pdb *prefixedBadgerDB) StreamForEach(consumer func(database.Entry) error) error {
 	stream := pdb.db.NewStream()
 
 	stream.NumGo = StreamNumGoRoutines
@@ -283,15 +221,9 @@ func (pdb *prefixDb) StreamForEach(consumer func(Entry) error) error {
 	// Send is called serially, while Stream.Orchestrate is running.
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
-			var meta byte
-			tmpMeta := kv.GetUserMeta()
-			if len(tmpMeta) > 0 {
-				meta = tmpMeta[0]
-			}
-			err := consumer(Entry{
+			err := consumer(database.Entry{
 				Key:   pdb.keyWithoutPrefix(kv.GetKey()),
 				Value: kv.GetValue(),
-				Meta:  meta,
 			})
 			if err != nil {
 				return err
@@ -304,7 +236,7 @@ func (pdb *prefixDb) StreamForEach(consumer func(Entry) error) error {
 	return stream.Orchestrate(context.Background())
 }
 
-func (pdb *prefixDb) StreamForEachKeyOnly(consumer func(KeyOnlyEntry) error) error {
+func (pdb *prefixedBadgerDB) StreamForEachKeyOnly(consumer func(database.Key) error) error {
 	stream := pdb.db.NewStream()
 
 	stream.NumGo = StreamNumGoRoutines
@@ -315,15 +247,7 @@ func (pdb *prefixDb) StreamForEachKeyOnly(consumer func(KeyOnlyEntry) error) err
 	// Send is called serially, while Stream.Orchestrate is running.
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
-			var meta byte
-			tmpMeta := kv.GetUserMeta()
-			if len(tmpMeta) > 0 {
-				meta = tmpMeta[0]
-			}
-			err := consumer(KeyOnlyEntry{
-				Key:  pdb.keyWithoutPrefix(kv.GetKey()),
-				Meta: meta,
-			})
+			err := consumer(pdb.keyWithoutPrefix(kv.GetKey()))
 			if err != nil {
 				return err
 			}
@@ -335,7 +259,7 @@ func (pdb *prefixDb) StreamForEachKeyOnly(consumer func(KeyOnlyEntry) error) err
 	return stream.Orchestrate(context.Background())
 }
 
-func (pdb *prefixDb) StreamForEachPrefix(keyPrefix KeyPrefix, consumer func(Entry) error) error {
+func (pdb *prefixedBadgerDB) StreamForEachPrefix(keyPrefix database.KeyPrefix, consumer func(database.Entry) error) error {
 	stream := pdb.db.NewStream()
 
 	stream.NumGo = StreamNumGoRoutines
@@ -346,15 +270,9 @@ func (pdb *prefixDb) StreamForEachPrefix(keyPrefix KeyPrefix, consumer func(Entr
 	// Send is called serially, while Stream.Orchestrate is running.
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
-			var meta byte
-			tmpMeta := kv.GetUserMeta()
-			if len(tmpMeta) > 0 {
-				meta = tmpMeta[0]
-			}
-			err := consumer(Entry{
-				Key:   pdb.keyWithoutPrefix(kv.GetKey()).keyWithoutKeyPrefix(keyPrefix),
+			err := consumer(database.Entry{
+				Key:   keyWithoutKeyPrefix(pdb.keyWithoutPrefix(kv.GetKey()), keyPrefix),
 				Value: kv.GetValue(),
-				Meta:  meta,
 			})
 			if err != nil {
 				return err
@@ -367,7 +285,7 @@ func (pdb *prefixDb) StreamForEachPrefix(keyPrefix KeyPrefix, consumer func(Entr
 	return stream.Orchestrate(context.Background())
 }
 
-func (pdb *prefixDb) StreamForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer func(KeyOnlyEntry) error) error {
+func (pdb *prefixedBadgerDB) StreamForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consumer func(database.Key) error) error {
 	stream := pdb.db.NewStream()
 
 	stream.NumGo = StreamNumGoRoutines
@@ -378,15 +296,7 @@ func (pdb *prefixDb) StreamForEachPrefixKeyOnly(keyPrefix KeyPrefix, consumer fu
 	// Send is called serially, while Stream.Orchestrate is running.
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
-			var meta byte
-			tmpMeta := kv.GetUserMeta()
-			if len(tmpMeta) > 0 {
-				meta = tmpMeta[0]
-			}
-			err := consumer(KeyOnlyEntry{
-				Key:  pdb.keyWithoutPrefix(kv.GetKey()).keyWithoutKeyPrefix(keyPrefix),
-				Meta: meta,
-			})
+			err := consumer(keyWithoutKeyPrefix(pdb.keyWithoutPrefix(kv.GetKey()), keyPrefix))
 			if err != nil {
 				return err
 			}

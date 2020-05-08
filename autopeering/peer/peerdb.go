@@ -9,6 +9,7 @@ import (
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/database"
+	"github.com/iotaledger/hive.go/database/badgerdb"
 	"github.com/iotaledger/hive.go/identity"
 )
 
@@ -111,14 +112,14 @@ func (db *DB) getInt64(key []byte) int64 {
 func (db *DB) setInt64(key []byte, n int64) error {
 	blob := make([]byte, binary.MaxVarintLen64)
 	blob = blob[:binary.PutVarint(blob, n)]
-	return db.db.Set(database.Entry{Key: key, Value: blob, TTL: peerExpiration})
+	return db.db.Set(database.Entry{Key: key, Value: blob}) //FIXME: handle TTL with peerExpiration
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
 func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	var entry database.Entry
 	entry, err = db.db.Get(localFieldKey(dbLocalKey))
-	if err == database.ErrKeyNotFound {
+	if err == badgerdb.ErrKeyNotFound {
 		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
@@ -163,7 +164,7 @@ func (db *DB) setPeerWithTTL(p *Peer, ttl time.Duration) error {
 	if err != nil {
 		return err
 	}
-	return db.db.Set(database.Entry{Key: nodeKey(p.ID()), Value: data, TTL: ttl})
+	return db.db.Set(database.Entry{Key: nodeKey(p.ID()), Value: data}) //FIXME: handle TTL with ttl
 }
 
 // UpdatePeer updates a peer in the database.

@@ -1,18 +1,12 @@
-package database
+package badgerdb
 
 import (
 	"os"
 	"runtime"
-	"sync"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/pkg/errors"
-)
-
-var (
-	defaultBadger     *badger.DB
-	defaultBadgerInit sync.Once
 )
 
 // Returns whether the given file or directory exists.
@@ -85,22 +79,4 @@ func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, 
 	}
 
 	return db, nil
-}
-
-func GetBadgerInstance(optionalDirectory ...string) *badger.DB {
-	defaultBadgerInit.Do(func() {
-
-		directory := "mainnetdb"
-		if len(optionalDirectory) > 0 {
-			directory = optionalDirectory[0]
-		}
-
-		db, err := CreateDB(directory)
-		if err != nil {
-			// errors should cause a panic to avoid singleton deadlocks
-			panic(err)
-		}
-		defaultBadger = db
-	})
-	return defaultBadger
 }
