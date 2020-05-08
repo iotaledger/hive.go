@@ -211,7 +211,7 @@ func (b *BatchedMutations) Commit() error {
 			}
 		}
 		for i := 0; i < len(b.deletes); i++ {
-			if err := bucket.Delete(b.sets[i].key); err != nil {
+			if err := bucket.Delete(b.deletes[i].key); err != nil {
 				return err
 			}
 		}
