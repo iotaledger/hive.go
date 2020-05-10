@@ -62,7 +62,8 @@ func (db *BoltDB) DeletePrefix(keyPrefix database.KeyPrefix) error {
 func (db *BoltDB) ForEach(consume func(entry database.Entry) (stop bool)) error {
 
 	return db.bolt.Iterate([][]byte{}, true, func(key []byte, value []byte) bool {
-		return consume(database.Entry{
+		// Invert return value due to the difference in interfaces
+		return !consume(database.Entry{
 			Key:   key,
 			Value: value,
 		})
@@ -72,7 +73,8 @@ func (db *BoltDB) ForEach(consume func(entry database.Entry) (stop bool)) error 
 func (db *BoltDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry database.Entry) (stop bool)) error {
 
 	return db.bolt.Iterate([][]byte{keyPrefix}, true, func(key []byte, value []byte) bool {
-		return consume(database.Entry{
+		// Invert return value due to the difference in interfaces
+		return !consume(database.Entry{
 			Key:   key,
 			Value: value,
 		})
@@ -82,7 +84,8 @@ func (db *BoltDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry
 
 func (db *BoltDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func(entry database.Key) (stop bool)) error {
 	return db.bolt.IterateKeys([][]byte{keyPrefix}, func(key []byte) bool {
-		return consume(key)
+		// Invert return value due to the difference in interfaces
+		return !consume(key)
 	})
 }
 
@@ -94,7 +97,8 @@ func (db *BoltDB) StreamForEach(consume func(entry database.Entry) error) error 
 
 func (db *BoltDB) StreamForEachKeyOnly(consume func(key database.Key) error) error {
 	return db.bolt.IterateKeys([][]byte{}, func(key []byte) bool {
-		return consume(key) != nil
+		// Invert return value due to the difference in interfaces
+		return consume(key) == nil
 	})
 }
 
