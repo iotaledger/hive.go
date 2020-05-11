@@ -57,11 +57,11 @@ func (s Storage) iterate(prefixes [][]byte, copyValues bool, kvConsumerFunc obje
 		if len(prefixes) > 0 {
 			prefix := buildPrefixedKey(prefixes)
 			for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
-				val := v
+				value := v
 				if copyValues {
-					val = copyBytes(v)
+					value = copyBytes(v)
 				}
-				if !kvConsumerFunc(copyBytes(k), val) {
+				if !kvConsumerFunc(copyBytes(k), value) {
 					break
 				}
 			}
@@ -69,11 +69,11 @@ func (s Storage) iterate(prefixes [][]byte, copyValues bool, kvConsumerFunc obje
 		}
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			val := v
+			value := v
 			if copyValues {
-				val = copyBytes(v)
+				value = copyBytes(v)
 			}
-			if !kvConsumerFunc(copyBytes(k), val) {
+			if !kvConsumerFunc(copyBytes(k), value) {
 				break
 			}
 		}
@@ -102,21 +102,24 @@ func (s *Storage) Clear() error {
 }
 
 func (s *Storage) Get(key []byte) ([]byte, error) {
-	var val []byte
+	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
 			return nil
 		}
-		val = b.Get(key)
+		v := b.Get(key)
+		if v != nil {
+			value = copyBytes(v)
+		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	if val == nil {
+	if value == nil {
 		return nil, objectstorage.ErrKeyNotFound
 	}
-	return val, nil
+	return value, nil
 }
 
 func (s *Storage) Set(key []byte, value []byte) error {
