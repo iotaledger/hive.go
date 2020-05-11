@@ -87,7 +87,7 @@ func (pdb *prefixedBadgerDB) Contains(key database.Key) (bool, error) {
 		return err
 	})
 
-	if err == badger.ErrKeyNotFound {
+	if errors.Is(err, badger.ErrKeyNotFound) {
 		return false, nil
 	} else {
 		return err == nil, err
@@ -100,7 +100,7 @@ func (pdb *prefixedBadgerDB) Get(key database.Key) (database.Entry, error) {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(pdb.keyWithPrefix(key))
 		if err != nil {
-			if err == badger.ErrKeyNotFound {
+			if errors.Is(err, badger.ErrKeyNotFound) {
 				return database.ErrKeyNotFound
 			}
 			return err

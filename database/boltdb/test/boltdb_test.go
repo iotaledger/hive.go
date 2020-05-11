@@ -382,3 +382,35 @@ func TestApplyWithSetAndDelete(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func TestApplyWithDuplicateKeysInBatch(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	db := testDatabase(t, prefix)
+
+	var set []database.Entry
+	var delete []database.Key
+
+	set = append(set, database.Entry{
+		Key:   []byte("testKey1"),
+		Value: []byte{84},
+	})
+
+	set = append(set, database.Entry{
+		Key:   []byte("testKey1"),
+		Value: []byte{69},
+	})
+
+	err := db.Apply(set, delete)
+	require.NoError(t, err)
+
+	err = db.StreamForEachPrefix([]byte("testKey"), func(entry database.Entry) error {
+		if string(entry.Key) == "testKey1" {
+			require.True(t, bytes.Equal(entry.Value, []byte{69}))
+		} else {
+			t.Fail()
+		}
+		return nil
+	})
+	require.NoError(t, err)
+}
