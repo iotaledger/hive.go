@@ -247,3 +247,131 @@ func TestDeletePrefix(t *testing.T) {
 
 	require.Equal(t, 0, len(insertedValues))
 }
+
+func TestDeletePrefixEmpty(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	db := testDatabase(t, prefix)
+	count := 1000
+
+	for i := 0; i < count; i++ {
+		str := strconv.FormatInt(int64(i), 10)
+		testKey := "testKey" + str
+		testValue := "testValue" + str
+		err := db.Set(database.Entry{
+			Key:   []byte(testKey),
+			Value: []byte(testValue),
+		})
+		require.NoError(t, err)
+	}
+
+	err := db.DeletePrefix([]byte{})
+	require.NoError(t, err)
+
+	// Verify, that the database does not contain any items since we deleted using the prefix
+	db.ForEach(func(entry database.Entry) (stop bool) {
+		t.Fail()
+		return false
+	})
+}
+
+func TestSetAndOverwrite(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	db := testDatabase(t, prefix)
+	count := 1000
+
+	for i := 0; i < count; i++ {
+		str := strconv.FormatInt(int64(i), 10)
+		testKey := "testKey" + str
+		err := db.Set(database.Entry{
+			Key:   []byte(testKey),
+			Value: []byte{0},
+		})
+		require.NoError(t, err)
+	}
+
+	verifyCount := 0
+	// Verify that all entries are 0
+	db.ForEach(func(entry database.Entry) (stop bool) {
+		require.True(t, bytes.Equal([]byte{0}, entry.Value))
+		verifyCount = verifyCount + 1
+		return false
+	})
+
+	// Check that we checked the correct amount of entries
+	require.Equal(t, count, verifyCount)
+
+	// Batch edit all to value 1
+	var set []database.Entry
+	for i := 0; i < count; i++ {
+		str := strconv.FormatInt(int64(i), 10)
+		testKey := "testKey" + str
+		set = append(set, database.Entry{
+			Key:   []byte(testKey),
+			Value: []byte{1},
+		})
+	}
+
+	err := db.Apply(set, []database.Key{})
+	require.NoError(t, err)
+
+	verifyCount = 0
+	// Verify, that all entries were changed
+	db.ForEach(func(entry database.Entry) (stop bool) {
+		require.True(t, bytes.Equal([]byte{1}, entry.Value))
+		verifyCount++
+		return false
+	})
+
+	// Check that we checked the correct amount of entries
+	require.Equal(t, count, verifyCount)
+}
+
+func TestApplyWithSetAndDelete(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	db := testDatabase(t, prefix)
+
+	err := db.Set(database.Entry{
+		Key:   []byte("testKey1"),
+		Value: []byte{42},
+	})
+	require.NoError(t, err)
+
+	err = db.Set(database.Entry{
+		Key:   []byte("testKey2"),
+		Value: []byte{13},
+	})
+	require.NoError(t, err)
+
+	var set []database.Entry
+	var delete []database.Key
+
+	set = append(set, database.Entry{
+		Key:   []byte("testKey1"),
+		Value: []byte{84},
+	})
+
+	set = append(set, database.Entry{
+		Key:   []byte("testKey3"),
+		Value: []byte{69},
+	})
+
+	delete = append(delete, []byte("testKey2"))
+
+	err = db.Apply(set, delete)
+	require.NoError(t, err)
+
+	err = db.StreamForEachPrefix([]byte("testKey"), func(entry database.Entry) error {
+		if string(entry.Key) == "testKey1" {
+			require.True(t, bytes.Equal(entry.Value, []byte{84}))
+		} else if string(entry.Key) == "testKey3" {
+			require.True(t, bytes.Equal(entry.Value, []byte{69}))
+		} else {
+			t.Fail()
+		}
+		return nil
+	})
+	require.NoError(t, err)
+}

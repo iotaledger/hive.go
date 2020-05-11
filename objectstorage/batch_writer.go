@@ -134,10 +134,10 @@ func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
 	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
-        var batchedMuts BatchedMutations
-        if bw.storage != nil {
-            batchedMuts = bw.storage.Batched()
-        }
+		var batchedMuts BatchedMutations
+		if bw.storage != nil {
+			batchedMuts = bw.storage.Batched()
+		}
 
 		writtenValues := make([]*CachedObjectImpl, BatchWriterBatchSize)
 		writtenValuesCounter := 0
@@ -160,11 +160,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 			if err := batchedMuts.Commit(); err != nil {
 				panic(err)
 			}
-			/*
-				if err := batchedMuts.Commit(); err != nil && err != badger.ErrBlockedWrites {
-					panic(err)
-				}
-			*/
 		}
 
 		// release written values
