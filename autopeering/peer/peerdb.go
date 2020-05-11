@@ -9,7 +9,6 @@ import (
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/database"
-	"github.com/iotaledger/hive.go/database/badgerdb"
 	"github.com/iotaledger/hive.go/identity"
 )
 
@@ -119,7 +118,7 @@ func (db *DB) setInt64(key []byte, n int64) error {
 func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	var entry database.Entry
 	entry, err = db.db.Get(localFieldKey(dbLocalKey))
-	if err == badgerdb.ErrKeyNotFound {
+	if err == database.ErrKeyNotFound {
 		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)

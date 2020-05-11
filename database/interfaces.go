@@ -1,5 +1,7 @@
 package database
 
+import "errors"
+
 type KeyPrefix []byte
 type Key []byte
 type Value []byte
@@ -8,6 +10,10 @@ type Entry struct {
 	Key   Key
 	Value Value
 }
+
+var (
+	ErrKeyNotFound = errors.New("database key not found")
+)
 
 type Database interface {
 	// Read

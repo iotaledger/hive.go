@@ -1,15 +1,12 @@
 package boltdb
 
 import (
+	"errors"
 	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/database"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/boltdb"
-)
-
-var (
-	ErrKeyNotFound = objectstorage.ErrKeyNotFound
 )
 
 type BoltDB struct {
@@ -32,6 +29,9 @@ func (db *BoltDB) Get(key database.Key) (database.Entry, error) {
 	var entry database.Entry
 	value, err := db.bolt.Get(key)
 	if err != nil {
+		if errors.Is(err, objectstorage.ErrKeyNotFound) {
+			return entry, database.ErrKeyNotFound
+		}
 		return entry, err
 	}
 	entry.Key = key
@@ -45,7 +45,14 @@ func (db *BoltDB) Set(entry database.Entry) error {
 }
 
 func (db *BoltDB) Delete(key database.Key) error {
-	return db.bolt.Delete(key)
+	err := db.bolt.Delete(key)
+	if err != nil {
+		if errors.Is(err, objectstorage.ErrKeyNotFound) {
+			return database.ErrKeyNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (db *BoltDB) DeletePrefix(keyPrefix database.KeyPrefix) error {

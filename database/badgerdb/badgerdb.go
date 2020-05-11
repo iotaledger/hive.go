@@ -2,6 +2,7 @@ package badgerdb
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
@@ -11,10 +12,6 @@ import (
 
 const (
 	StreamNumGoRoutines = 16
-)
-
-var (
-	ErrKeyNotFound = badger.ErrKeyNotFound
 )
 
 type prefixedBadgerDB struct {
@@ -90,7 +87,7 @@ func (pdb *prefixedBadgerDB) Contains(key database.Key) (bool, error) {
 		return err
 	})
 
-	if err == ErrKeyNotFound {
+	if err == badger.ErrKeyNotFound {
 		return false, nil
 	} else {
 		return err == nil, err
@@ -103,6 +100,9 @@ func (pdb *prefixedBadgerDB) Get(key database.Key) (database.Entry, error) {
 	err := pdb.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(pdb.keyWithPrefix(key))
 		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				return database.ErrKeyNotFound
+			}
 			return err
 		}
 		result.Key = key
@@ -120,6 +120,9 @@ func (pdb *prefixedBadgerDB) Delete(key database.Key) error {
 
 	err := wb.Delete(pdb.keyWithPrefix(key))
 	if err != nil {
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return database.ErrKeyNotFound
+		}
 		return err
 	}
 	return wb.Flush()
