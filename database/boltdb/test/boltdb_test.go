@@ -84,7 +84,7 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = db.Get(key)
-	require.Error(t, boltdb.ErrKeyNotFound)
+	require.Error(t, database.ErrKeyNotFound)
 }
 
 func TestForEach(t *testing.T) {
@@ -107,7 +107,7 @@ func TestForEach(t *testing.T) {
 		insertedValues[testKey] = testValue
 	}
 
-	db.ForEach(func(entry database.Entry) (stop bool) {
+	err := db.ForEach(func(entry database.Entry) (stop bool) {
 
 		value, found := insertedValues[string(entry.Key)]
 		require.True(t, found)
@@ -115,6 +115,7 @@ func TestForEach(t *testing.T) {
 		delete(insertedValues, string(entry.Key))
 		return false
 	})
+	require.NoError(t, err)
 
 	require.Equal(t, 0, len(insertedValues))
 }
@@ -149,7 +150,7 @@ func TestForEachPrefix(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	db.ForEachPrefix([]byte("testKey"), func(entry database.Entry) (stop bool) {
+	err := db.ForEachPrefix([]byte("testKey"), func(entry database.Entry) (stop bool) {
 
 		value, found := insertedValues[string(entry.Key)]
 		require.True(t, found)
@@ -157,6 +158,7 @@ func TestForEachPrefix(t *testing.T) {
 		delete(insertedValues, string(entry.Key))
 		return false
 	})
+	require.NoError(t, err)
 
 	require.Equal(t, 0, len(insertedValues))
 }
@@ -191,13 +193,14 @@ func TestForEachPrefixKeyOnly(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	db.ForEachPrefixKeyOnly([]byte("testKey"), func(key database.Key) (stop bool) {
+	err := db.ForEachPrefixKeyOnly([]byte("testKey"), func(key database.Key) (stop bool) {
 
 		_, found := insertedValues[string(key)]
 		require.True(t, found)
 		delete(insertedValues, string(key))
 		return false
 	})
+	require.NoError(t, err)
 
 	require.Equal(t, 0, len(insertedValues))
 }
@@ -236,7 +239,7 @@ func TestDeletePrefix(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify, that the database only contains the elements without the delete prefix
-	db.ForEach(func(entry database.Entry) (stop bool) {
+	err = db.ForEach(func(entry database.Entry) (stop bool) {
 
 		value, found := insertedValues[string(entry.Key)]
 		require.True(t, found)
@@ -244,6 +247,7 @@ func TestDeletePrefix(t *testing.T) {
 		delete(insertedValues, string(entry.Key))
 		return false
 	})
+	require.NoError(t, err)
 
 	require.Equal(t, 0, len(insertedValues))
 }
@@ -269,10 +273,11 @@ func TestDeletePrefixEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify, that the database does not contain any items since we deleted using the prefix
-	db.ForEach(func(entry database.Entry) (stop bool) {
+	err = db.ForEach(func(entry database.Entry) (stop bool) {
 		t.Fail()
 		return false
 	})
+	require.NoError(t, err)
 }
 
 func TestSetAndOverwrite(t *testing.T) {
@@ -293,11 +298,12 @@ func TestSetAndOverwrite(t *testing.T) {
 
 	verifyCount := 0
 	// Verify that all entries are 0
-	db.ForEach(func(entry database.Entry) (stop bool) {
+	err := db.ForEach(func(entry database.Entry) (stop bool) {
 		require.True(t, bytes.Equal([]byte{0}, entry.Value))
 		verifyCount = verifyCount + 1
 		return false
 	})
+	require.NoError(t, err)
 
 	// Check that we checked the correct amount of entries
 	require.Equal(t, count, verifyCount)
@@ -313,16 +319,17 @@ func TestSetAndOverwrite(t *testing.T) {
 		})
 	}
 
-	err := db.Apply(set, []database.Key{})
+	err = db.Apply(set, []database.Key{})
 	require.NoError(t, err)
 
 	verifyCount = 0
 	// Verify, that all entries were changed
-	db.ForEach(func(entry database.Entry) (stop bool) {
+	err = db.ForEach(func(entry database.Entry) (stop bool) {
 		require.True(t, bytes.Equal([]byte{1}, entry.Value))
 		verifyCount++
 		return false
 	})
+	require.NoError(t, err)
 
 	// Check that we checked the correct amount of entries
 	require.Equal(t, count, verifyCount)

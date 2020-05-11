@@ -758,7 +758,6 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 			panic(err)
 		}
 	}
-	return
 }
 
 // DeleteEntriesFromBadger deletes entries from the persistance layer.

@@ -58,10 +58,13 @@ func (db *BoltDB) Delete(key database.Key) error {
 func (db *BoltDB) DeletePrefix(keyPrefix database.KeyPrefix) error {
 
 	batch := db.bolt.Batched()
-	db.ForEachPrefixKeyOnly(keyPrefix, func(key database.Key) bool {
+	err := db.ForEachPrefixKeyOnly(keyPrefix, func(key database.Key) bool {
 		batch.Delete(key)
 		return false
 	})
+	if err != nil {
+		return err
+	}
 	return batch.Commit()
 }
 
@@ -126,10 +129,16 @@ func (db *BoltDB) Apply(set []database.Entry, delete []database.Key) error {
 
 	batch := db.bolt.Batched()
 	for _, setEntry := range set {
-		batch.Set(setEntry.Key, setEntry.Value)
+		err := batch.Set(setEntry.Key, setEntry.Value)
+		if err != nil {
+			return err
+		}
 	}
 	for _, deleteKey := range delete {
-		batch.Delete(deleteKey)
+		err := batch.Delete(deleteKey)
+		if err != nil {
+			return err
+		}
 	}
 	return batch.Commit()
 }

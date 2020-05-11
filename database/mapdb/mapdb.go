@@ -102,7 +102,7 @@ func (db *MapDB) ForEachKeyOnly(consume func(key database.Key) bool) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	for key, _ := range db.m {
+	for key := range db.m {
 		if consume([]byte(key)) {
 			break
 		}
@@ -134,7 +134,7 @@ func (db *MapDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func
 	defer db.mu.RUnlock()
 
 	prefix := string(keyPrefix)
-	for key, _ := range db.m {
+	for key := range db.m {
 		if strings.HasPrefix(key, prefix) {
 			if consume([]byte(strings.TrimPrefix(key, prefix))) {
 				break
