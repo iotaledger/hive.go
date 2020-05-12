@@ -9,12 +9,6 @@ import (
 	"github.com/iotaledger/hive.go/protocol/message"
 )
 
-func init() {
-	if err := message.RegisterType(MessageTypeHeader, HeaderMessageDefinition); err != nil {
-		panic(err)
-	}
-}
-
 var (
 	// ErrInvalidMessageLength is returned when a packet advertises a message length which
 	// is invalid for the given message type.
@@ -60,10 +54,10 @@ func WriteHeader(buf io.Writer, msgType message.Type, msgBytesLength uint16) err
 }
 
 // ParseHeader parses the given buffer to a Header.
-func ParseHeader(buf []byte) (*Header, error) {
+func ParseHeader(buf []byte, r *message.Registry) (*Header, error) {
 
 	// get message
-	def, err := message.DefinitionForType(message.Type(buf[0]))
+	def, err := r.DefinitionForType(message.Type(buf[0]))
 	if err != nil {
 		return nil, err
 	}

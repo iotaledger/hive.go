@@ -16,44 +16,45 @@ var DummyMessageDefinition = &message.Definition{
 }
 
 func TestMessage_Register(t *testing.T) {
-	err := message.RegisterType(DummyMessageType, DummyMessageDefinition)
+	r := message.NewRegistry()
+	err := r.RegisterType(DummyMessageType, DummyMessageDefinition)
 	assert.NoError(t, err)
 
-	definitions := message.Definitions()
+	definitions := r.Definitions()
 	assert.Equal(t, definitions[0], DummyMessageDefinition)
-	message.ClearDefinitions()
+	r.ClearDefinitions()
 }
 
 func TestMessage_RegisterTypeAlready(t *testing.T) {
-	err := message.RegisterType(DummyMessageType, DummyMessageDefinition)
+	r := message.NewRegistry()
+	err := r.RegisterType(DummyMessageType, DummyMessageDefinition)
 	assert.NoError(t, err)
-	err = message.RegisterType(DummyMessageType, DummyMessageDefinition)
+	err = r.RegisterType(DummyMessageType, DummyMessageDefinition)
 	if assert.Error(t, err) {
 		assert.Equal(t, message.ErrTypeAlreadyDefined, err)
 	}
-	message.ClearDefinitions()
 }
 
 func TestMessage_DefinitionForType(t *testing.T) {
+	r := message.NewRegistry()
 	// registry is empty, len(definitions) = 0
-	_, err := message.DefinitionForType(DummyMessageType)
+	_, err := r.DefinitionForType(DummyMessageType)
 	if assert.Error(t, err) {
 		assert.Equal(t, message.ErrUnknownType, err)
 	}
 
 	// happy path
-	err = message.RegisterType(DummyMessageType, DummyMessageDefinition)
+	err = r.RegisterType(DummyMessageType, DummyMessageDefinition)
 	assert.NoError(t, err)
 
 	var def *message.Definition
-	def, err = message.DefinitionForType(DummyMessageType)
+	def, err = r.DefinitionForType(DummyMessageType)
 	assert.NoError(t, err)
 	assert.Equal(t, DummyMessageDefinition, def)
-	message.ClearDefinitions()
-
 }
 
 func TestMessage_DefinitionForTypeBig(t *testing.T) {
+	r := message.NewRegistry()
 	// register a message with big type number
 	var BigMessageType message.Type = 5
 	var BigMessageDefinition = &message.Definition{
@@ -62,12 +63,11 @@ func TestMessage_DefinitionForTypeBig(t *testing.T) {
 		VariableLength: false,
 	}
 	// grows definitions to size of the message type (5)
-	err := message.RegisterType(BigMessageType, BigMessageDefinition)
+	err := r.RegisterType(BigMessageType, BigMessageDefinition)
 	assert.NoError(t, err)
 	// Dummy was not registered
-	_, err = message.DefinitionForType(DummyMessageType)
+	_, err = r.DefinitionForType(DummyMessageType)
 	if assert.Error(t, err) {
 		assert.Equal(t, message.ErrUnknownType, err)
 	}
-	message.ClearDefinitions()
 }

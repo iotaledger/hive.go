@@ -69,6 +69,7 @@ var (
 		MaxBytesLength: TestMaxBytesLength,
 		VariableLength: false,
 	}
+	msgRegistry = message.NewRegistry()
 )
 
 func NewTestMessage() ([]byte,error) {
@@ -88,7 +89,7 @@ func NewTestMessage() ([]byte,error) {
 }
 
 func init() {
-	if err := message.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
+	if err := msgRegistry.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
 		panic(err)
 	}
 }
@@ -96,7 +97,7 @@ func init() {
 func TestProtocol_Receive(t *testing.T) {
 	conn := newFakeConn()
 	defer conn.Close()
-	p := protocol.New(conn)
+	p := protocol.New(conn, msgRegistry)
 
 	var TestMessageReceived bool
 	var testPacketString string
@@ -120,7 +121,7 @@ func TestProtocol_Receive(t *testing.T) {
 func TestProtocol_Send(t *testing.T) {
 	conn := newFakeConn()
 	defer conn.Close()
-	p := protocol.New(conn)
+	p := protocol.New(conn, msgRegistry)
 
 	var TestMessageSent bool
 	p.Events.Sent[TestMessageDefinition.ID].Attach(events.NewClosure(func() {

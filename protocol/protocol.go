@@ -32,6 +32,8 @@ type Protocol struct {
 	Events Events
 	// the underlying connection
 	conn io.ReadWriteCloser
+	// message registry
+	msgRegistry *message.Registry
 	// the current receiving message
 	receivingMessage *message.Definition
 	// the buffer holding the receiving message data
@@ -43,10 +45,10 @@ type Protocol struct {
 }
 
 // New generates a new protocol instance which is ready to read a first message header.
-func New(conn io.ReadWriteCloser) *Protocol {
+func New(conn io.ReadWriteCloser, r *message.Registry) *Protocol {
 
 	// load message definitions
-	definitions := message.Definitions()
+	definitions := r.Definitions()
 
 	// allocate event handlers for all message types
 	receiveHandlers := make([]*events.Event, len(definitions))
@@ -61,6 +63,7 @@ func New(conn io.ReadWriteCloser) *Protocol {
 
 	protocol := &Protocol{
 		conn: conn,
+		msgRegistry: r,
 		Events: Events{
 			Received:           receiveHandlers,
 			Sent:               sentHandlers,
@@ -106,7 +109,7 @@ func (p *Protocol) Receive(data []byte) {
 		// interpret the next message type if we received a header
 		if p.receivingMessage.ID == tlv.HeaderMessageDefinition.ID {
 
-			header, err := tlv.ParseHeader(p.receiveBuffer)
+			header, err := tlv.ParseHeader(p.receiveBuffer, p.msgRegistry)
 			if err != nil {
 				p.Events.Error.Trigger(err)
 				_ = p.conn.Close()

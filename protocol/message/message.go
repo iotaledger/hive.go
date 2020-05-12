@@ -21,35 +21,41 @@ type Definition struct {
 	VariableLength bool
 }
 
-// TODO: make definitions a struct so that we can have multiple instances
-var definitions = make([]*Definition, 0)
+type Registry struct {
+	definitions []*Definition
+}
+
+// NewRegistry create an empty message registry
+func NewRegistry() *Registry {
+	return &Registry{definitions: make([]*Definition, 0)}
+}
 
 // Definitions returns all registered message definitions.
-func Definitions() []*Definition {
-	return definitions
+func (r *Registry) Definitions() []*Definition {
+	return r.definitions
 }
 
 // RegisterType registers the given message type with its definition.
-func RegisterType(msgType Type, def *Definition) error {
+func (r *Registry) RegisterType(msgType Type, def *Definition) error {
 	// grow definitions slice appropriately
-	if len(definitions)-1 < int(msgType) {
+	if len(r.definitions)-1 < int(msgType) {
 		definitionsCopy := make([]*Definition, int(msgType)+1)
-		copy(definitionsCopy, definitions)
-		definitions = definitionsCopy
+		copy(definitionsCopy, r.definitions)
+		r.definitions = definitionsCopy
 	}
-	if definitions[msgType] != nil {
+	if r.definitions[msgType] != nil {
 		return ErrTypeAlreadyDefined
 	}
-	definitions[msgType] = def
+	r.definitions[msgType] = def
 	return nil
 }
 
 // DefinitionForType returns the definition for the given message type.
-func DefinitionForType(msgType Type) (*Definition, error) {
-	if len(definitions)-1 < int(msgType) {
+func (r *Registry) DefinitionForType(msgType Type) (*Definition, error) {
+	if len(r.definitions)-1 < int(msgType) {
 		return nil, ErrUnknownType
 	}
-	def := definitions[msgType]
+	def := r.definitions[msgType]
 	if def == nil {
 		return nil, ErrUnknownType
 	}
@@ -57,6 +63,6 @@ func DefinitionForType(msgType Type) (*Definition, error) {
 }
 
 // ClearDefinitions clears out the definitions registry
-func ClearDefinitions() {
-	definitions = make([]*Definition, 0)
+func (r *Registry) ClearDefinitions() {
+	r.definitions = make([]*Definition, 0)
 }

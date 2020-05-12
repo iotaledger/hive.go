@@ -10,7 +10,8 @@ import (
 )
 
 func init() {
-	if err := message.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
+	r = message.NewRegistry()
+	if err := r.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
 		panic(err)
 	}
 }
@@ -23,6 +24,7 @@ const(
 )
 
 var (
+	r *message.Registry
 	TestMessageDefinition = &message.Definition{
 		ID:             MessageTypeTest,
 		MaxBytesLength: TestMaxBytesLength,
@@ -38,7 +40,7 @@ func TestTLV(t *testing.T) {
 
 	data := buf.Bytes()
 	var header *tlv.Header
-	header, err = tlv.ParseHeader(data)
+	header, err = tlv.ParseHeader(data, r)
 	assert.NoError(t, err)
 
 	assert.Equal(t, TestMessageDefinition, header.Definition)
@@ -48,12 +50,12 @@ func TestTLV(t *testing.T) {
 func TestTLV_ParseHeader(t *testing.T) {
 	// unknown message type
 	data := []byte{2,0,5}
-	_, err := tlv.ParseHeader(data)
+	_, err := tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 
 	// invalid message length
 	data = []byte{byte(MessageTypeTest),0,6}
-	_, err = tlv.ParseHeader(data)
+	_, err = tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 
 }
