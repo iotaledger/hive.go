@@ -205,11 +205,12 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 	now := time.Now()
 	err := db.db.ForEachPrefix([]byte(dbNodePrefix), func(entry database.Entry) bool {
+		key := entry.Key[len(dbNodePrefix):]
 		var id identity.ID
-		if len(entry.Key) != len(id) {
+		if len(key) != len(id) {
 			return false
 		}
-		copy(id[:], entry.Key)
+		copy(id[:], key)
 
 		p, err := parsePeer(entry.Value)
 		if err != nil || p.ID() != id {

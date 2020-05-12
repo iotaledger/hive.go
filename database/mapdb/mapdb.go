@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/database"
-	"github.com/iotaledger/hive.go/database/badgerdb"
 )
 
 // MapDB is a simple implementation of DB using a map.
@@ -43,7 +42,7 @@ func (db *MapDB) Get(key database.Key) (entry database.Entry, err error) {
 
 	ent, contains := db.m[string(key)]
 	if !contains {
-		err = badgerdb.ErrKeyNotFound
+		err = database.ErrKeyNotFound
 		return
 	}
 	entry.Key = key
@@ -118,7 +117,7 @@ func (db *MapDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume func(entry 
 	for key, ent := range db.m {
 		if strings.HasPrefix(key, prefix) {
 			entry := database.Entry{
-				Key:   []byte(strings.TrimPrefix(key, prefix)),
+				Key:   []byte(key),
 				Value: append([]byte{}, ent.value...),
 			}
 			if consume(entry) {
@@ -136,7 +135,7 @@ func (db *MapDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consume func
 	prefix := string(keyPrefix)
 	for key := range db.m {
 		if strings.HasPrefix(key, prefix) {
-			if consume([]byte(strings.TrimPrefix(key, prefix))) {
+			if consume([]byte(key)) {
 				break
 			}
 		}
