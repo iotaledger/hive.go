@@ -34,10 +34,6 @@ func (pdb *prefixedBadgerDB) keyWithoutPrefix(key database.Key) database.Key {
 	return key[1:]
 }
 
-func keyWithoutKeyPrefix(key database.Key, prefix database.KeyPrefix) database.Key {
-	return key[len(prefix):]
-}
-
 func (pdb *prefixedBadgerDB) Set(entry database.Entry) error {
 	wb := pdb.db.NewWriteBatch()
 	defer wb.Cancel()
@@ -180,7 +176,7 @@ func (pdb *prefixedBadgerDB) ForEachPrefix(keyPrefix database.KeyPrefix, consume
 			}
 
 			if consumer(database.Entry{
-				Key:   keyWithoutKeyPrefix(pdb.keyWithoutPrefix(item.Key()), keyPrefix),
+				Key:   pdb.keyWithoutPrefix(item.Key()),
 				Value: value,
 			}) {
 				break
@@ -204,7 +200,7 @@ func (pdb *prefixedBadgerDB) ForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, 
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 
-			if consumer(keyWithoutKeyPrefix(pdb.keyWithoutPrefix(item.Key()), keyPrefix)) {
+			if consumer(pdb.keyWithoutPrefix(item.Key())) {
 				break
 			}
 		}
@@ -274,7 +270,7 @@ func (pdb *prefixedBadgerDB) StreamForEachPrefix(keyPrefix database.KeyPrefix, c
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
 			err := consumer(database.Entry{
-				Key:   keyWithoutKeyPrefix(pdb.keyWithoutPrefix(kv.GetKey()), keyPrefix),
+				Key:   pdb.keyWithoutPrefix(kv.GetKey()),
 				Value: kv.GetValue(),
 			})
 			if err != nil {
@@ -299,7 +295,7 @@ func (pdb *prefixedBadgerDB) StreamForEachPrefixKeyOnly(keyPrefix database.KeyPr
 	// Send is called serially, while Stream.Orchestrate is running.
 	stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
-			err := consumer(keyWithoutKeyPrefix(pdb.keyWithoutPrefix(kv.GetKey()), keyPrefix))
+			err := consumer(pdb.keyWithoutPrefix(kv.GetKey()))
 			if err != nil {
 				return err
 			}

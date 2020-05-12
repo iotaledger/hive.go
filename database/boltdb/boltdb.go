@@ -3,10 +3,15 @@ package boltdb
 import (
 	"errors"
 	"go.etcd.io/bbolt"
+	"math"
 
 	"github.com/iotaledger/hive.go/database"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/boltdb"
+)
+
+const (
+	BoltDBSubBatchSize = 10000
 )
 
 type BoltDB struct {
@@ -124,21 +129,45 @@ func (db *BoltDB) StreamForEachPrefixKeyOnly(keyPrefix database.KeyPrefix, consu
 	})
 }
 
+func (db *BoltDB) batchOperation(batchOpcount int32, operation func(opIndex int32, batch objectstorage.BatchedMutations)) error {
+	batchAmount := int(math.Ceil(float64(batchOpcount) / float64(BoltDBSubBatchSize)))
+	for i := 0; i < batchAmount; i++ {
+		batch := db.bolt.Batched()
+		batchStart := int32(i * BoltDBSubBatchSize)
+		batchEnd := batchStart + int32(BoltDBSubBatchSize)
+
+		if batchEnd > batchOpcount {
+			batchEnd = batchOpcount
+		}
+
+		for j := batchStart; j < batchEnd; j++ {
+			operation(j, batch)
+		}
+
+		//fmt.Printf("Applied %d/%d insertions\n", batchEnd, batchOpcount)
+		err := batch.Commit()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Transactions
 func (db *BoltDB) Apply(set []database.Entry, delete []database.Key) error {
 
-	batch := db.bolt.Batched()
-	for _, setEntry := range set {
-		err := batch.Set(setEntry.Key, setEntry.Value)
-		if err != nil {
-			return err
-		}
+	setCount := int32(len(set))
+	deleteCount := int32(len(delete))
+
+	err := db.batchOperation(setCount, func(i int32, batch objectstorage.BatchedMutations) {
+		batch.Set(set[i].Key, set[i].Value)
+	})
+	if err != nil {
+		return err
 	}
-	for _, deleteKey := range delete {
-		err := batch.Delete(deleteKey)
-		if err != nil {
-			return err
-		}
-	}
-	return batch.Commit()
+	err = db.batchOperation(deleteCount, func(i int32, batch objectstorage.BatchedMutations) {
+		batch.Delete(delete[i])
+	})
+
+	return err
 }
