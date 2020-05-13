@@ -27,7 +27,7 @@ type Events struct {
 
 // Protocol encapsulates the logic of parsing and sending protocol messages.
 type Protocol struct {
-	// Holds events for sent and received messages, handshake completion and generic errors.
+	// Holds events for sent/received messages and generic errors.
 	Events Events
 	// the underlying connection
 	conn io.ReadWriteCloser

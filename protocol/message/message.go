@@ -7,26 +7,26 @@ import (
 var (
 	// ErrTypeAlreadyDefined is returned when an already defined message type is redefined.
 	ErrTypeAlreadyDefined = errors.New("message type is already defined")
-	// ErrUnknownType is returned when a definition for an unknown message type is is requested.
+	// ErrUnknownType is returned when a definition for an unknown message type is requested.
 	ErrUnknownType = errors.New("message type unknown")
 )
 
 // Type denotes the byte ID of a given message type.
 type Type byte
 
-// Definition describes a message's ID and its max byte length (and whether the length variable).
+// Definition describes a message's ID, its max byte length and whether its size can be variable.
 type Definition struct {
 	ID             Type
 	MaxBytesLength uint16
 	VariableLength bool
 }
 
-// Registry holds message definitions
+// Registry holds message definitions.
 type Registry struct {
 	definitions []*Definition
 }
 
-// NewRegistry create an empty message registry
+// NewRegistry create an empty message registry.
 func NewRegistry() *Registry {
 	return &Registry{definitions: make([]*Definition, 0)}
 }
