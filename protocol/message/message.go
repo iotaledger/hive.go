@@ -62,7 +62,7 @@ func (r *Registry) DefinitionForType(msgType Type) (*Definition, error) {
 	return def, nil
 }
 
-// ClearDefinitions clears out the definitions registry
-func (r *Registry) ClearDefinitions() {
+// Clear clears definitions of the registry
+func (r *Registry) Clear() {
 	r.definitions = make([]*Definition, 0)
 }
