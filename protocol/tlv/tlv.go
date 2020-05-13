@@ -16,7 +16,7 @@ var (
 )
 
 const (
-	// MessageTypeHeader is the unique id of a tlv header
+	// MessageTypeHeader is the unique id of a tlv header.
 	MessageTypeHeader message.Type = 0
 
 	// The amount of bytes dedicated for the message type in the packet header.
