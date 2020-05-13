@@ -16,7 +16,7 @@ func init() {
 	}
 }
 
-const(
+const (
 	MessageTypeTest message.Type = 1
 
 	// length of a test message in bytes
@@ -24,7 +24,7 @@ const(
 )
 
 var (
-	r *message.Registry
+	r                     *message.Registry
 	TestMessageDefinition = &message.Definition{
 		ID:             MessageTypeTest,
 		MaxBytesLength: TestMaxBytesLength,
@@ -35,7 +35,7 @@ var (
 func TestTLV(t *testing.T) {
 	buf := bytes.NewBuffer(make([]byte, 0, tlv.HeaderMessageDefinition.MaxBytesLength))
 
-	err :=tlv.WriteHeader(buf, MessageTypeTest, uint16(TestMaxBytesLength))
+	err := tlv.WriteHeader(buf, MessageTypeTest, uint16(TestMaxBytesLength))
 	assert.NoError(t, err)
 
 	data := buf.Bytes()
@@ -49,12 +49,12 @@ func TestTLV(t *testing.T) {
 
 func TestTLV_ParseHeader(t *testing.T) {
 	// unknown message type
-	data := []byte{2,0,5}
+	data := []byte{2, 0, 5}
 	_, err := tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 
 	// invalid message length
-	data = []byte{byte(MessageTypeTest),0,6}
+	data = []byte{byte(MessageTypeTest), 0, 6}
 	_, err = tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 

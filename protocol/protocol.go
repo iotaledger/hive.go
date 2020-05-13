@@ -6,11 +6,10 @@ import (
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/protocol/message"
 	"github.com/iotaledger/hive.go/protocol/tlv"
+	"github.com/iotaledger/hive.go/syncutils"
 )
-
 
 // Events holds protocol related events.
 type Events struct {
@@ -62,12 +61,12 @@ func New(conn io.ReadWriteCloser, r *message.Registry) *Protocol {
 	}
 
 	protocol := &Protocol{
-		conn: conn,
+		conn:        conn,
 		msgRegistry: r,
 		Events: Events{
-			Received:           receiveHandlers,
-			Sent:               sentHandlers,
-			Error:              events.NewEvent(events.ErrorCaller),
+			Received: receiveHandlers,
+			Sent:     sentHandlers,
+			Error:    events.NewEvent(events.ErrorCaller),
 		},
 		// the first message on the protocol is a TLV header
 		receiveBuffer:    make([]byte, tlv.HeaderMessageDefinition.MaxBytesLength),
@@ -153,6 +152,9 @@ func (p *Protocol) Send(message []byte) error {
 }
 
 // CloseConnection closes the underlying connection
-func (p *Protocol) CloseConnection() {
-	p.conn.Close()
+func (p *Protocol) CloseConnection() error {
+	if err := p.conn.Close(); err != nil {
+		return err
+	}
+	return nil
 }

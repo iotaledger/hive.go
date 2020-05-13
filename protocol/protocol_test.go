@@ -56,7 +56,7 @@ func consume(t *testing.T, p *protocol.Protocol, conn io.Reader, expectedLength 
 	return &wg
 }
 
-const(
+const (
 	MessageTypeTest message.Type = 1
 
 	// length of a test message in bytes
@@ -72,7 +72,7 @@ var (
 	msgRegistry = message.NewRegistry()
 )
 
-func NewTestMessage() ([]byte,error) {
+func NewTestMessage() ([]byte, error) {
 	packet := []byte{'t', 'e', 's', 't', '!'}
 	// create a buffer for tlv header plus the packet
 	buf := bytes.NewBuffer(make([]byte, 0, tlv.HeaderMessageDefinition.MaxBytesLength+uint16(TestMaxBytesLength)))

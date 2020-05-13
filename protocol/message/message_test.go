@@ -1,6 +1,6 @@
 package message_test
 
-import(
+import (
 	"testing"
 
 	"github.com/iotaledger/hive.go/protocol/message"
@@ -8,12 +8,14 @@ import(
 )
 
 // message definition for testing
-var DummyMessageType message.Type = 0
-var DummyMessageDefinition = &message.Definition{
-	ID:             DummyMessageType,
-	MaxBytesLength: 10,
-	VariableLength: false,
-}
+var (
+	DummyMessageType         message.Type = 0
+	DummyMessageDefinition = &message.Definition{
+		ID:             DummyMessageType,
+		MaxBytesLength: 10,
+		VariableLength: false,
+	}
+)
 
 func TestMessage_Register(t *testing.T) {
 	r := message.NewRegistry()
@@ -81,5 +83,5 @@ func TestMessage_Clear(t *testing.T) {
 
 	r.Clear()
 	definitions = r.Definitions()
-	assert.Equal(t, 0 ,len(definitions))
+	assert.Equal(t, 0, len(definitions))
 }
