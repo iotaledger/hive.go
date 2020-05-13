@@ -70,3 +70,16 @@ func TestMessage_DefinitionForTypeBig(t *testing.T) {
 		assert.Equal(t, message.ErrUnknownType, err)
 	}
 }
+
+func TestMessage_Clear(t *testing.T) {
+	r := message.NewRegistry()
+	err := r.RegisterType(DummyMessageType, DummyMessageDefinition)
+	assert.NoError(t, err)
+
+	definitions := r.Definitions()
+	assert.Equal(t, definitions[0], DummyMessageDefinition)
+
+	r.Clear()
+	definitions = r.Definitions()
+	assert.Equal(t, 0 ,len(definitions))
+}
