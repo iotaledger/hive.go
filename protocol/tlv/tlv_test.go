@@ -9,13 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	r = message.NewRegistry()
-	if err := r.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
-		panic(err)
-	}
-}
-
 const (
 	MessageTypeTest message.Type = 1
 
@@ -24,12 +17,15 @@ const (
 )
 
 var (
-	r                     *message.Registry
 	TestMessageDefinition = &message.Definition{
 		ID:             MessageTypeTest,
 		MaxBytesLength: TestMaxBytesLength,
 		VariableLength: false,
 	}
+	r = message.NewRegistry([]*message.Definition{
+		tlv.HeaderMessageDefinition,
+		TestMessageDefinition,
+	})
 )
 
 func TestTLV(t *testing.T) {
@@ -49,12 +45,12 @@ func TestTLV(t *testing.T) {
 
 func TestTLV_ParseHeader(t *testing.T) {
 	// unknown message type
-	data := []byte{2, 0, 5}
+	data := []byte{2, 5, 0}
 	_, err := tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 
 	// invalid message length
-	data = []byte{byte(MessageTypeTest), 0, 6}
+	data = []byte{byte(MessageTypeTest), 6, 0}
 	_, err = tlv.ParseHeader(data, r)
 	assert.Error(t, err)
 

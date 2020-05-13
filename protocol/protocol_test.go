@@ -69,10 +69,13 @@ var (
 		MaxBytesLength: TestMaxBytesLength,
 		VariableLength: false,
 	}
-	msgRegistry = message.NewRegistry()
+	msgRegistry = message.NewRegistry([]*message.Definition{
+		tlv.HeaderMessageDefinition,
+		TestMessageDefinition,
+	})
 )
 
-func NewTestMessage() ([]byte, error) {
+func newTestMessage() ([]byte, error) {
 	packet := []byte{'t', 'e', 's', 't', '!'}
 	// create a buffer for tlv header plus the packet
 	buf := bytes.NewBuffer(make([]byte, 0, tlv.HeaderMessageDefinition.MaxBytesLength+uint16(TestMaxBytesLength)))
@@ -88,12 +91,6 @@ func NewTestMessage() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func init() {
-	if err := msgRegistry.RegisterType(MessageTypeTest, TestMessageDefinition); err != nil {
-		panic(err)
-	}
-}
-
 func TestProtocol_Receive(t *testing.T) {
 	conn := newFakeConn()
 	defer conn.Close()
@@ -106,7 +103,7 @@ func TestProtocol_Receive(t *testing.T) {
 		testPacketString = string(data)
 	}))
 
-	testMsg, err := NewTestMessage()
+	testMsg, err := newTestMessage()
 	assert.NoError(t, err)
 
 	wg := consume(t, p, conn, len(testMsg))
@@ -128,7 +125,7 @@ func TestProtocol_Send(t *testing.T) {
 		TestMessageSent = true
 	}))
 
-	testMsg, err := NewTestMessage()
+	testMsg, err := newTestMessage()
 	assert.NoError(t, err)
 
 	wg := consume(t, p, conn, len(testMsg))

@@ -16,8 +16,12 @@ type Type byte
 
 // Definition describes a message's ID, its max byte length and whether its size can be variable.
 type Definition struct {
-	ID             Type
+	// ID defines the unique identifier of the message.
+	ID Type
+	// MaxBytesLength defines the max byte length of the message type.
+	// when 0, it means a message can be arbitrary size
 	MaxBytesLength uint16
+	// VariableLength defines if the message length is variable.
 	VariableLength bool
 }
 
@@ -26,29 +30,30 @@ type Registry struct {
 	definitions []*Definition
 }
 
-// NewRegistry create an empty message registry.
-func NewRegistry() *Registry {
-	return &Registry{definitions: make([]*Definition, 0)}
+// NewRegistry creates and initializes a new Registry.
+// Once it is done, the Registry is immutable.
+// Message definitions should be strictly monotonically increasing (based on their Message Type (uint16)).
+func NewRegistry(defs []*Definition) *Registry {
+	if len(defs) == 0 {
+		panic("can't initialize registry with empty definitions")
+	}
+	// create a Registry with room for all definitions
+	r := &Registry{definitions: make([]*Definition, len(defs))}
+
+	for i, def := range defs {
+		// check order and monotonicity of definitions
+		if Type(i) != def.ID {
+			panic("message definitions are inconsistent")
+		}
+		// add definition to Registry
+		r.definitions[def.ID] = def
+	}
+	return r
 }
 
 // Definitions returns all registered message definitions.
 func (r *Registry) Definitions() []*Definition {
 	return r.definitions
-}
-
-// RegisterType registers the given message type with its definition.
-func (r *Registry) RegisterType(msgType Type, def *Definition) error {
-	// grow definitions slice appropriately
-	if len(r.definitions)-1 < int(msgType) {
-		definitionsCopy := make([]*Definition, int(msgType)+1)
-		copy(definitionsCopy, r.definitions)
-		r.definitions = definitionsCopy
-	}
-	if r.definitions[msgType] != nil {
-		return ErrTypeAlreadyDefined
-	}
-	r.definitions[msgType] = def
-	return nil
 }
 
 // DefinitionForType returns the definition for the given message type.
@@ -61,9 +66,4 @@ func (r *Registry) DefinitionForType(msgType Type) (*Definition, error) {
 		return nil, ErrUnknownType
 	}
 	return def, nil
-}
-
-// Clear clears definitions of the registry
-func (r *Registry) Clear() {
-	r.definitions = make([]*Definition, 0)
 }
