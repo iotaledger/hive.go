@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	// The message header sent in each message denoting the TLV fields.
+	// HeaderMessageDefinition is the message header sent in each message denoting the TLV fields.
 	HeaderMessageDefinition = &message.Definition{
 		ID:             MessageTypeHeader,
 		MaxBytesLength: HeaderBytesLength,

@@ -22,7 +22,6 @@ func TestMessage_Register(t *testing.T) {
 
 	definitions := r.Definitions()
 	assert.Equal(t, definitions[0], DummyMessageDefinition)
-	r.ClearDefinitions()
 }
 
 func TestMessage_RegisterTypeAlready(t *testing.T) {

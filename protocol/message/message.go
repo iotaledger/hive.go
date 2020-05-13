@@ -21,6 +21,7 @@ type Definition struct {
 	VariableLength bool
 }
 
+// Registry holds message definitions
 type Registry struct {
 	definitions []*Definition
 }
