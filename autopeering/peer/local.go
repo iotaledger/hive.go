@@ -35,7 +35,7 @@ func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, 
 	}
 }
 
-// NewLocal creates a new local peer linked to the provided db.
+// NewLocal creates a new local peer linked to the provided store.
 // If an optional seed is provided, the seed is used to generate the private key. Without a seed,
 // the provided key is loaded from the provided database and generated if not stored there.
 func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {

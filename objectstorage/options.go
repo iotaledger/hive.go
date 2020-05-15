@@ -29,7 +29,7 @@ func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options
 	}
 
 	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = NewBatchedWriter(objectStorage.storage)
+		result.batchedWriterInstance = NewBatchedWriter(objectStorage.store)
 	}
 
 	return result

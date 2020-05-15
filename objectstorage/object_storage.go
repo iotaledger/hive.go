@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
@@ -13,7 +14,7 @@ import (
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
-	storage            Storage
+	store              kvstore.KVStore
 	objectFactory      StorableObjectFromKey
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
@@ -29,9 +30,9 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(storage Storage, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
+func New(store kvstore.KVStore, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
-		storage:           storage,
+		store:             store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
@@ -327,9 +328,9 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	_ = objectStorage.storage.Iterate(optionalPrefix,
+	_ = objectStorage.store.Iterate(optionalPrefix,
 		!objectStorage.options.keysOnly,
-		func(key []byte, value []byte) bool {
+		func(key kvstore.Key, value kvstore.Value) bool {
 
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
@@ -402,8 +403,8 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		}
 	}
 
-	_ = objectStorage.storage.IterateKeys(optionalPrefix,
-		func(key []byte) bool {
+	_ = objectStorage.store.IterateKeys(optionalPrefix,
+		func(key kvstore.Key) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
 			}
@@ -422,7 +423,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	objectStorage.flushMutex.Lock()
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.storage.Clear(); err != nil {
+	if err := objectStorage.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
 		return err
@@ -725,9 +726,9 @@ func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObj
 	}
 
 	var marshaledData []byte
-	value, err := objectStorage.storage.Get(key)
+	value, err := objectStorage.store.Get(key)
 	if err != nil {
-		if errors.Is(err, ErrKeyNotFound) {
+		if errors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil
 		}
 		panic(err)
@@ -753,8 +754,8 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 		return
 	}
 
-	if err := objectStorage.storage.Delete(key); err != nil {
-		if !errors.Is(err, ErrKeyNotFound) {
+	if err := objectStorage.store.Delete(key); err != nil {
+		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
 	}
@@ -766,7 +767,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
 		return
 	}
 
-	batchedMuts := objectStorage.storage.Batched()
+	batchedMuts := objectStorage.store.Batched()
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
@@ -784,9 +785,9 @@ func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
 		return false
 	}
 
-	has, err := objectStorage.storage.Has(key)
+	has, err := objectStorage.store.Has(key)
 	if err != nil {
-		if !errors.Is(err, ErrKeyNotFound) {
+		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
 	}

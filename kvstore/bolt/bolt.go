@@ -1,38 +1,39 @@
-package boltdb
+package bolt
 
 import (
 	"bytes"
 	"sync"
 
-	"github.com/iotaledger/hive.go/objectstorage"
 	"go.etcd.io/bbolt"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
-// Storage implements the ObjectStorage Storage interface around a BoltDB instance.
-type Storage struct {
+// KVStore implements the KVStore interface around a BoltDB instance.
+type boltStore struct {
 	instance *bbolt.DB
 	bucket   []byte
 }
 
-// New creates a new Storage with the underlying BoltDB.
-func New(db *bbolt.DB) objectstorage.Storage {
-	return &Storage{
+// New creates a new KVStore with the underlying BoltDB.
+func New(db *bbolt.DB) kvstore.KVStore {
+	return &boltStore{
 		instance: db,
 	}
 }
 
-func (s *Storage) WithRealm(realm []byte) objectstorage.Storage {
-	return &Storage{
+func (s *boltStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+	return &boltStore{
 		instance: s.instance,
 		bucket:   realm,
 	}
 }
 
-func (s *Storage) Realm() []byte {
+func (s *boltStore) Realm() kvstore.Realm {
 	return s.bucket
 }
 
-func buildPrefixedKey(prefixes [][]byte) []byte {
+func buildPrefixedKey(prefixes []kvstore.KeyPrefix) []byte {
 	var prefix []byte
 	for _, p := range prefixes {
 		prefix = append(prefix, p...)
@@ -46,7 +47,7 @@ func copyBytes(source []byte) []byte {
 	return cpy
 }
 
-func (s Storage) iterate(prefixes [][]byte, copyValues bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
+func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
@@ -81,18 +82,18 @@ func (s Storage) iterate(prefixes [][]byte, copyValues bool, kvConsumerFunc obje
 	})
 }
 
-func (s *Storage) Iterate(prefixes [][]byte, _ bool, kvConsumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
+func (s *boltStore) Iterate(prefixes []kvstore.KeyPrefix, _ bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.iterate(prefixes, true, kvConsumerFunc)
 }
 
-func (s *Storage) IterateKeys(prefixes [][]byte, consumerFunc objectstorage.IteratorKeyConsumerFunc) error {
+func (s *boltStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	// same as with values but we simply don't copy them
-	return s.iterate(prefixes, false, func(key []byte, _ []byte) bool {
+	return s.iterate(prefixes, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
 	})
 }
 
-func (s *Storage) Clear() error {
+func (s *boltStore) Clear() error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		if tx.Bucket(s.bucket) == nil {
 			return nil
@@ -101,7 +102,7 @@ func (s *Storage) Clear() error {
 	})
 }
 
-func (s *Storage) Get(key []byte) ([]byte, error) {
+func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
@@ -117,12 +118,12 @@ func (s *Storage) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 	if value == nil {
-		return nil, objectstorage.ErrKeyNotFound
+		return nil, kvstore.ErrKeyNotFound
 	}
 	return value, nil
 }
 
-func (s *Storage) Set(key []byte, value []byte) error {
+func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(s.bucket)
 		if err != nil {
@@ -132,7 +133,7 @@ func (s *Storage) Set(key []byte, value []byte) error {
 	})
 }
 
-func (s *Storage) Has(key []byte) (bool, error) {
+func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
@@ -145,38 +146,54 @@ func (s *Storage) Has(key []byte) (bool, error) {
 	return has, err
 }
 
-func (s *Storage) Delete(key []byte) error {
+func (s *boltStore) Delete(key kvstore.Key) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
-			return objectstorage.ErrKeyNotFound
+			return kvstore.ErrKeyNotFound
 		}
 		if err := b.Delete(key); err != nil {
-			return objectstorage.ErrKeyNotFound
+			return kvstore.ErrKeyNotFound
 		}
 		return nil
 	})
 }
 
-func (s *Storage) Batched() objectstorage.BatchedMutations {
+func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	return s.instance.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(s.bucket)
+		if b == nil {
+			return kvstore.ErrKeyNotFound
+		}
+		c := b.Cursor()
+		for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
+			if err := b.Delete(k); err != nil {
+				return kvstore.ErrKeyNotFound
+			}
+		}
+		return nil
+	})
+}
+
+func (s *boltStore) Batched() kvstore.BatchedMutations {
 	// we don't use BoltDB's Batch(), because it basically is only
 	// a way to let BoltDB decide how to make a batched update itself,
 	// which is only useful if Batch() is called from multiple goroutines.
 	// instead, if we collect the mutations and then do a single
 	// update, we have the batched mutations we actually want.
-	return &BatchedMutations{
+	return &batchedMutations{
 		instance: s.instance,
 		bucket:   s.bucket,
 	}
 }
 
 type kvtuple struct {
-	key   []byte
-	value []byte
+	key   kvstore.Key
+	value kvstore.Value
 }
 
-// BatchedMutations is a wrapper to do a batched update on a BoltDB.
-type BatchedMutations struct {
+// batchedMutations is a wrapper to do a batched update on a BoltDB.
+type batchedMutations struct {
 	sync.Mutex
 	instance *bbolt.DB
 	bucket   []byte
@@ -184,25 +201,27 @@ type BatchedMutations struct {
 	deletes  []kvtuple
 }
 
-func (b *BatchedMutations) Set(key []byte, value []byte) error {
+func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 	b.Lock()
 	defer b.Unlock()
 	b.sets = append(b.sets, kvtuple{key, value})
 	return nil
 }
 
-func (b *BatchedMutations) Delete(key []byte) error {
+func (b *batchedMutations) Delete(key kvstore.Key) error {
 	b.Lock()
 	defer b.Unlock()
 	b.deletes = append(b.deletes, kvtuple{key, nil})
 	return nil
 }
 
-func (b *BatchedMutations) Cancel() {
+func (b *batchedMutations) Cancel() {
 	// do nothing
 }
 
-func (b *BatchedMutations) Commit() error {
+func (b *batchedMutations) Commit() error {
+	b.Lock()
+	defer b.Unlock()
 	return b.instance.Update(func(tx *bbolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(b.bucket)
 		if err != nil {

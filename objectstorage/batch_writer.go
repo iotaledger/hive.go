@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -17,7 +18,7 @@ const (
 )
 
 type BatchedWriter struct {
-	storage        Storage
+	store          kvstore.KVStore
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
 	autoStartOnce  sync.Once
@@ -26,9 +27,9 @@ type BatchedWriter struct {
 	batchQueue     chan *CachedObjectImpl
 }
 
-func NewBatchedWriter(storage Storage) *BatchedWriter {
+func NewBatchedWriter(store kvstore.KVStore) *BatchedWriter {
 	return &BatchedWriter{
-		storage:        storage,
+		store:          store,
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
 		running:        0,
@@ -77,7 +78,7 @@ func (bw *BatchedWriter) batchWrite(object *CachedObjectImpl) {
 	bw.batchQueue <- object
 }
 
-func (bw *BatchedWriter) writeObject(batchedMuts BatchedMutations, cachedObject *CachedObjectImpl) {
+func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 	if !objectStorage.options.persistenceEnabled {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
@@ -134,9 +135,9 @@ func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
 	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
-		var batchedMuts BatchedMutations
-		if bw.storage != nil {
-			batchedMuts = bw.storage.Batched()
+		var batchedMuts kvstore.BatchedMutations
+		if bw.store != nil {
+			batchedMuts = bw.store.Batched()
 		}
 
 		writtenValues := make([]*CachedObjectImpl, BatchWriterBatchSize)

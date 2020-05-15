@@ -2,35 +2,36 @@ package badger
 
 import (
 	"github.com/dgraph-io/badger/v2"
-	"github.com/iotaledger/hive.go/objectstorage"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
-// Storage implements the ObjectStorage Storage interface around a BadgerDB instance.
-type Storage struct {
+// KVStore implements the KVStore interface around a BadgerDB instance.
+type badgerStore struct {
 	instance *badger.DB
 	dbPrefix []byte
 }
 
-// New creates a new Storage with the underlying BadgerDB.
-func New(db *badger.DB) objectstorage.Storage {
-	return &Storage{
+// New creates a new KVStore with the underlying BadgerDB.
+func New(db *badger.DB) kvstore.KVStore {
+	return &badgerStore{
 		instance: db,
 	}
 }
 
-func (s *Storage) WithRealm(realm []byte) objectstorage.Storage {
-	return &Storage{
+func (s *badgerStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+	return &badgerStore{
 		instance: s.instance,
 		dbPrefix: realm,
 	}
 }
 
-func (s *Storage) Realm() []byte {
+func (s *badgerStore) Realm() []byte {
 	return s.dbPrefix
 }
 
 // builds a key usable for the badger instance using the realm and the given prefixes.
-func (s *Storage) buildPrefixedKey(prefixes [][]byte) []byte {
+func (s *badgerStore) buildKeyPrefix(prefixes []kvstore.KeyPrefix) kvstore.KeyPrefix {
 	prefix := s.dbPrefix
 	for _, optionalPrefix := range prefixes {
 		prefix = append(prefix, optionalPrefix...)
@@ -38,10 +39,10 @@ func (s *Storage) buildPrefixedKey(prefixes [][]byte) []byte {
 	return prefix
 }
 
-func (s *Storage) Iterate(prefixes [][]byte, preFetchValues bool, consumerFunc objectstorage.IteratorKeyValueConsumerFunc) error {
+func (s *badgerStore) Iterate(prefixes []kvstore.KeyPrefix, preFetchValues bool, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildPrefixedKey(prefixes)
+		iteratorOptions.Prefix = s.buildKeyPrefix(prefixes)
 		iteratorOptions.PrefetchValues = preFetchValues
 
 		it := txn.NewIterator(iteratorOptions)
@@ -61,10 +62,10 @@ func (s *Storage) Iterate(prefixes [][]byte, preFetchValues bool, consumerFunc o
 	})
 }
 
-func (s *Storage) IterateKeys(prefixes [][]byte, consumerFunc objectstorage.IteratorKeyConsumerFunc) error {
+func (s *badgerStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildPrefixedKey(prefixes)
+		iteratorOptions.Prefix = s.buildKeyPrefix(prefixes)
 		iteratorOptions.PrefetchValues = false
 
 		it := txn.NewIterator(iteratorOptions)
@@ -79,11 +80,11 @@ func (s *Storage) IterateKeys(prefixes [][]byte, consumerFunc objectstorage.Iter
 	})
 }
 
-func (s *Storage) Clear() error {
+func (s *badgerStore) Clear() error {
 	return s.instance.DropPrefix(s.dbPrefix)
 }
 
-func (s *Storage) Get(key []byte) ([]byte, error) {
+func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	var value []byte
 	err := s.instance.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(append(s.dbPrefix, key...))
@@ -94,18 +95,18 @@ func (s *Storage) Get(key []byte) ([]byte, error) {
 		return err
 	})
 	if err == badger.ErrKeyNotFound {
-		return nil, objectstorage.ErrKeyNotFound
+		return nil, kvstore.ErrKeyNotFound
 	}
 	return value, nil
 }
 
-func (s *Storage) Set(key []byte, value []byte) error {
+func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Set(append(s.dbPrefix, key...), value)
 	})
 }
 
-func (s *Storage) Has(key []byte) (bool, error) {
+func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 	err := s.instance.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(append(s.dbPrefix, key...))
 		return err
@@ -119,41 +120,60 @@ func (s *Storage) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (s *Storage) Delete(key []byte) error {
+func (s *badgerStore) Delete(key kvstore.Key) error {
 	err := s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete(append(s.dbPrefix, key...))
 	})
 	if err != nil && err == badger.ErrKeyNotFound {
-		return objectstorage.ErrKeyNotFound
+		return kvstore.ErrKeyNotFound
 	}
 	return err
 }
 
-func (s *Storage) Batched() objectstorage.BatchedMutations {
-	return &BatchedMutations{
+func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	return s.instance.Update(func(txn *badger.Txn) (err error) {
+		iteratorOptions := badger.DefaultIteratorOptions
+		iteratorOptions.Prefix = s.buildKeyPrefix([]kvstore.KeyPrefix{prefix})
+		iteratorOptions.PrefetchValues = false
+
+		it := txn.NewIterator(iteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			err := txn.Delete(it.Item().Key())
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func (s *badgerStore) Batched() kvstore.BatchedMutations {
+	return &batchedMutations{
 		batched:  s.instance.NewWriteBatch(),
 		dbPrefix: s.dbPrefix,
 	}
 }
 
-// BatchedMutations is a wrapper around a WriteBatch of a BadgerDB.
-type BatchedMutations struct {
+// batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
+type batchedMutations struct {
 	batched  *badger.WriteBatch
 	dbPrefix []byte
 }
 
-func (b *BatchedMutations) Set(key []byte, value []byte) error {
+func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 	return b.batched.Set(append(b.dbPrefix, key...), value)
 }
 
-func (b *BatchedMutations) Delete(key []byte) error {
+func (b *batchedMutations) Delete(key kvstore.Key) error {
 	return b.batched.Delete(append(b.dbPrefix, key...))
 }
 
-func (b *BatchedMutations) Cancel() {
+func (b *batchedMutations) Cancel() {
 	b.batched.Cancel()
 }
 
-func (b *BatchedMutations) Commit() error {
+func (b *batchedMutations) Commit() error {
 	return b.batched.Flush()
 }

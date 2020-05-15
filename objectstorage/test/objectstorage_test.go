@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
-	
-	"github.com/iotaledger/hive.go/database/badgerdb"
+
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/badger"
+	"github.com/iotaledger/hive.go/kvstore/bolt"
 	"github.com/iotaledger/hive.go/objectstorage"
-	badgerstorage "github.com/iotaledger/hive.go/objectstorage/badger"
-	"github.com/iotaledger/hive.go/objectstorage/boltdb"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -25,7 +25,7 @@ const (
 	useBolt = true
 )
 
-func testStorage(t require.TestingT, realm []byte) objectstorage.Storage {
+func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 
 	if useBolt {
 		dir, err := ioutil.TempDir("", "bboltdb")
@@ -33,14 +33,14 @@ func testStorage(t require.TestingT, realm []byte) objectstorage.Storage {
 		dirAndFile := fmt.Sprintf("%s/my.db", dir)
 		db, err := bbolt.Open(dirAndFile, 0666, nil)
 		require.NoError(t, err)
-		return boltdb.New(db).WithRealm(realm)
+		return bolt.New(db).WithRealm(realm)
 	}
 
 	dir, err := ioutil.TempDir("", "objectsdb")
 	require.NoError(t, err)
-	db, err := badgerdb.CreateDB(dir)
+	db, err := badger.CreateDB(dir)
 	require.NoError(t, err)
-	return badgerstorage.New(db)
+	return badger.New(db)
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {

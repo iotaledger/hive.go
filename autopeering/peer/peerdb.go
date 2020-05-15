@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
-	"github.com/iotaledger/hive.go/database"
 	"github.com/iotaledger/hive.go/identity"
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 const (
@@ -24,16 +24,9 @@ const (
 	seedExpiration = 5 * 24 * time.Hour
 )
 
-// Database defines the database functionality required by DB.
-type Database interface {
-	Get(database.Key) (database.Entry, error)
-	Set(database.Entry) error
-	ForEachPrefix(database.KeyPrefix, func(database.Entry) bool) error
-}
-
 // DB is the peer database, storing previously seen peers and any collected properties of them.
 type DB struct {
-	db Database
+	store kvstore.KVStore
 }
 
 // Keys in the node database.
@@ -50,9 +43,9 @@ const (
 )
 
 // NewDB creates a new peer database.
-func NewDB(db Database) (*DB, error) {
+func NewDB(store kvstore.KVStore) (*DB, error) {
 	pDB := &DB{
-		db: db,
+		store: store,
 	}
 	err := pDB.init()
 	if err != nil {
@@ -100,25 +93,24 @@ func parseInt64(blob []byte) int64 {
 
 // getInt64 retrieves an integer associated with a particular key.
 func (db *DB) getInt64(key []byte) int64 {
-	entry, err := db.db.Get(key)
+	value, err := db.store.Get(key)
 	if err != nil {
 		return 0
 	}
-	return parseInt64(entry.Value)
+	return parseInt64(value)
 }
 
 // setInt64 stores an integer in the given key.
 func (db *DB) setInt64(key []byte, n int64) error {
 	blob := make([]byte, binary.MaxVarintLen64)
 	blob = blob[:binary.PutVarint(blob, n)]
-	return db.db.Set(database.Entry{Key: key, Value: blob}) //FIXME: handle TTL with peerExpiration
+	return db.store.Set(key, blob) //FIXME: handle TTL with peerExpiration
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
 func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
-	var entry database.Entry
-	entry, err = db.db.Get(localFieldKey(dbLocalKey))
-	if err == database.ErrKeyNotFound {
+	value, err := db.store.Get(localFieldKey(dbLocalKey))
+	if err == kvstore.ErrKeyNotFound {
 		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
@@ -129,13 +121,13 @@ func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 		return
 	}
 
-	copy(privateKey[:], entry.Value)
+	copy(privateKey[:], value)
 	return
 }
 
 // UpdateLocalPrivateKey stores the provided key in the database.
 func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
-	return db.db.Set(database.Entry{Key: localFieldKey(dbLocalKey), Value: key.Bytes()})
+	return db.store.Set(localFieldKey(dbLocalKey), key.Bytes())
 }
 
 // LastPing returns that property for the given peer ID and address.
@@ -163,7 +155,7 @@ func (db *DB) setPeerWithTTL(p *Peer, ttl time.Duration) error {
 	if err != nil {
 		return err
 	}
-	return db.db.Set(database.Entry{Key: nodeKey(p.ID()), Value: data}) //FIXME: handle TTL with ttl
+	return db.store.Set(nodeKey(p.ID()), data) //FIXME: handle TTL with ttl
 }
 
 // UpdatePeer updates a peer in the database.
@@ -181,11 +173,11 @@ func parsePeer(data []byte) (*Peer, error) {
 
 // Peer retrieves a peer from the database.
 func (db *DB) Peer(id identity.ID) (*Peer, error) {
-	data, err := db.db.Get(nodeKey(id))
+	data, err := db.store.Get(nodeKey(id))
 	if err != nil {
 		return nil, err
 	}
-	return parsePeer(data.Value)
+	return parsePeer(data)
 }
 
 func randomSubset(peers []*Peer, m int) []*Peer {
@@ -204,25 +196,27 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 
 func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 	now := time.Now()
-	err := db.db.ForEachPrefix([]byte(dbNodePrefix), func(entry database.Entry) bool {
-		key := entry.Key[len(dbNodePrefix):]
-		var id identity.ID
-		if len(key) != len(id) {
-			return false
-		}
-		copy(id[:], key)
 
-		p, err := parsePeer(entry.Value)
+	err := db.store.Iterate([]kvstore.KeyPrefix{[]byte(dbNodePrefix)}, true, func(key kvstore.Key, value kvstore.Value) bool {
+		keyWithoutPrefix := key[len(dbNodePrefix):]
+		var id identity.ID
+		if len(keyWithoutPrefix) != len(id) {
+			return true
+		}
+		copy(id[:], keyWithoutPrefix)
+
+		p, err := parsePeer(value)
 		if err != nil || p.ID() != id {
-			return false
+			return true
 		}
 		if maxAge > 0 && now.Sub(db.LastPong(p.ID(), p.IP())) > maxAge {
-			return false
+			return true
 		}
 
 		peers = append(peers, p)
-		return false
+		return true
 	})
+
 	if err != nil {
 		return nil
 	}
