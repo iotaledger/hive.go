@@ -82,7 +82,7 @@ func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvCons
 	})
 }
 
-func (s *boltStore) Iterate(prefixes []kvstore.KeyPrefix, _ bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *boltStore) Iterate(prefixes []kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.iterate(prefixes, true, kvConsumerFunc)
 }
 

@@ -39,11 +39,11 @@ func (s *badgerStore) buildKeyPrefix(prefixes []kvstore.KeyPrefix) kvstore.KeyPr
 	return prefix
 }
 
-func (s *badgerStore) Iterate(prefixes []kvstore.KeyPrefix, preFetchValues bool, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *badgerStore) Iterate(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefixes)
-		iteratorOptions.PrefetchValues = preFetchValues
+		iteratorOptions.PrefetchValues = true
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()

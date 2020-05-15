@@ -100,7 +100,7 @@ func (db *MapDB) buildKeyPrefix(prefixes []kvstore.KeyPrefix) string {
 	return string(prefix)
 }
 
-func (db *MapDB) Iterate(prefixes []kvstore.KeyPrefix, preFetchValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (db *MapDB) Iterate(prefixes []kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 

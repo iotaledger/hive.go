@@ -328,46 +328,52 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		}
 	}
 
-	_ = objectStorage.store.Iterate(optionalPrefix,
-		!objectStorage.options.keysOnly,
-		func(key kvstore.Key, value kvstore.Value) bool {
+	consumeFunc := func(key kvstore.Key, value kvstore.Value) bool {
 
-			if _, elementSeen := seenElements[string(key)]; elementSeen {
-				return true
-			}
-
-			cachedObject, cacheHit := objectStorage.accessCache(key, true)
-			if !cacheHit {
-				var storableObject StorableObject
-
-				if objectStorage.options.keysOnly {
-					var err error
-					if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
-						return true
-					}
-				} else {
-					marshaledData := make([]byte, len(value))
-					copy(marshaledData, value)
-					storableObject = objectStorage.unmarshalObject(key, marshaledData)
-				}
-
-				if !typeutils.IsInterfaceNil(storableObject) {
-					storableObject.Persist()
-				}
-
-				cachedObject.publishResult(storableObject)
-			}
-
-			cachedObject.waitForInitialResult()
-
-			if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
-				// abort iteration
-				return false
-			}
-
+		if _, elementSeen := seenElements[string(key)]; elementSeen {
 			return true
-		},
-	)
+		}
+
+		cachedObject, cacheHit := objectStorage.accessCache(key, true)
+		if !cacheHit {
+			var storableObject StorableObject
+
+			if objectStorage.options.keysOnly {
+				var err error
+				if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
+					return true
+				}
+			} else {
+				marshaledData := make([]byte, len(value))
+				copy(marshaledData, value)
+				storableObject = objectStorage.unmarshalObject(key, marshaledData)
+			}
+
+			if !typeutils.IsInterfaceNil(storableObject) {
+				storableObject.Persist()
+			}
+
+			cachedObject.publishResult(storableObject)
+		}
+
+		cachedObject.waitForInitialResult()
+
+		if cachedObject.Exists() && !consumer(key, wrapCachedObject(cachedObject, 0)) {
+			// abort iteration
+			return false
+		}
+
+		return true
+	}
+
+	if objectStorage.options.keysOnly {
+		_ = objectStorage.store.IterateKeys(optionalPrefix, func(key kvstore.Key) bool {
+			return consumeFunc(key, []byte{})
+		})
+		return
+	}
+
+	_ = objectStorage.store.Iterate(optionalPrefix, consumeFunc)
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.

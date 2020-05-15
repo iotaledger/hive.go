@@ -48,7 +48,7 @@ type KVStore interface {
 	Realm() Realm
 
 	// Iterate iterates over all keys or keys with the provided prefix.
-	Iterate(prefixes []KeyPrefix, preFetchValues bool, kvConsumerFunc IteratorKeyValueConsumerFunc) error
+	Iterate(prefixes []KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error
 
 	// Iterate iterates over all keys with the provided prefix.
 	IterateKeys(prefixes []KeyPrefix, consumerFunc IteratorKeyConsumerFunc) error
