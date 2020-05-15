@@ -96,7 +96,7 @@ func TestIterate(t *testing.T) {
 		insertedValues[testKey] = testValue
 	}
 
-	err := store.Iterate([]kvstore.KeyPrefix{}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err := store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
 		expectedValue, found := insertedValues[string(key)]
 		require.True(t, found)
 		require.Equal(t, expectedValue, string(value))
@@ -132,7 +132,7 @@ func TestIteratePrefix(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	err := store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err := store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, func(key kvstore.Key, value kvstore.Value) bool {
 		expectedValue, found := insertedValues[string(key)]
 		require.True(t, found)
 		require.Equal(t, expectedValue, string(value))
@@ -208,7 +208,7 @@ func TestDeletePrefix(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify, that the database only contains the elements without the delete prefix
-	err = store.Iterate([]kvstore.KeyPrefix{}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err = store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
 
 		expectedValue, found := insertedValues[string(key)]
 		require.True(t, found)
@@ -239,7 +239,7 @@ func TestDeletePrefixIsEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify, that the database does not contain any items since we deleted using the prefix
-	err = store.Iterate([]kvstore.KeyPrefix{}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err = store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
 		t.Fail()
 		return true
 	})
@@ -261,7 +261,7 @@ func TestSetAndOverwrite(t *testing.T) {
 
 	verifyCount := 0
 	// Verify that all entries are 0
-	err := store.Iterate([]kvstore.KeyPrefix{}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err := store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
 		require.True(t, bytes.Equal([]byte{0}, value))
 		verifyCount = verifyCount + 1
 		return true
@@ -285,7 +285,7 @@ func TestSetAndOverwrite(t *testing.T) {
 
 	verifyCount = 0
 	// Verify, that all entries were changed
-	err = store.Iterate([]kvstore.KeyPrefix{}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err = store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
 		require.True(t, bytes.Equal([]byte{1}, value))
 		verifyCount++
 		return true
@@ -318,7 +318,7 @@ func TestBatchedWithSetAndDelete(t *testing.T) {
 	err = batch.Commit()
 	require.NoError(t, err)
 
-	err = store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err = store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, func(key kvstore.Key, value kvstore.Value) bool {
 		if string(key) == "testKey1" {
 			require.True(t, bytes.Equal(value, []byte{84}))
 		} else if string(key) == "testKey3" {
@@ -344,7 +344,7 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 	err := batch.Commit()
 	require.NoError(t, err)
 
-	err = store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, true, func(key kvstore.Key, value kvstore.Value) bool {
+	err = store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, func(key kvstore.Key, value kvstore.Value) bool {
 		if string(key) == "testKey1" {
 			require.True(t, bytes.Equal(value, []byte{69}))
 		} else {
