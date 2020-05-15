@@ -27,6 +27,7 @@ const (
 // DB is the peer database, storing previously seen peers and any collected properties of them.
 type DB struct {
 	store kvstore.KVStore
+	quit  chan struct{} // Channel to signal the expiring thread to stop
 }
 
 // Keys in the node database.
@@ -46,27 +47,15 @@ const (
 func NewDB(store kvstore.KVStore) (*DB, error) {
 	pDB := &DB{
 		store: store,
+		quit:  make(chan struct{}),
 	}
-	err := pDB.init()
-	if err != nil {
-		return nil, err
-	}
+	go pDB.expirer()
 	return pDB, nil
 }
 
-func (db *DB) init() error {
-	// get all peers in the DB
-	peers := db.getPeers(0)
-
-	for _, p := range peers {
-		// if they dont have an associated pong, give them a grace period
-		if db.LastPong(p.ID(), p.IP()).Unix() == 0 {
-			if err := db.setPeerWithTTL(p, cleanupInterval); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+// Close closes the peer database.
+func (db *DB) Close() {
+	close(db.quit)
 }
 
 // nodeKey returns the database key for a node record.
@@ -104,7 +93,72 @@ func (db *DB) getInt64(key []byte) int64 {
 func (db *DB) setInt64(key []byte, n int64) error {
 	blob := make([]byte, binary.MaxVarintLen64)
 	blob = blob[:binary.PutVarint(blob, n)]
-	return db.store.Set(key, blob) //FIXME: handle TTL with peerExpiration
+	return db.store.Set(key, blob)
+}
+
+// expirer should be started in a go routine, and is responsible for looping ad
+// infinitum and dropping stale data from the database.
+func (db *DB) expirer() {
+	tick := time.NewTicker(cleanupInterval)
+	defer tick.Stop()
+	for {
+		select {
+		case <-tick.C:
+			db.expireNodes()
+		case <-db.quit:
+			return
+		}
+	}
+}
+
+// expireNodes iterates over the database and deletes all nodes that have not
+// been seen (i.e. received a pong from) for some time.
+func (db *DB) expireNodes() error {
+	var (
+		threshold   = time.Now().Add(-peerExpiration).Unix()
+		latestPong  = make(map[identity.ID]int64)
+		batchedMuts = db.store.Batched()
+	)
+	err := db.store.Iterate([]kvstore.KeyPrefix{[]byte(dbNodePrefix)}, func(key kvstore.Key, value kvstore.Value) bool {
+		var id identity.ID
+		copy(id[:], key[len(dbNodePrefix):])
+
+		switch {
+		case bytes.HasSuffix(key, []byte(dbNodePong)):
+			t := parseInt64(value)
+			if t > latestPong[id] {
+				latestPong[id] = t
+			}
+			if t < threshold {
+				// copy the key to be sure
+				batchedMuts.Delete(append([]byte{}, key...))
+			}
+		case bytes.HasSuffix(key, []byte(dbNodePing)):
+			t := parseInt64(value)
+			if t < threshold {
+				// copy the key to be sure
+				batchedMuts.Delete(append([]byte{}, key...))
+			}
+		}
+		return true
+	})
+	if err != nil {
+		return err
+	}
+	err = batchedMuts.Commit()
+	if err != nil {
+		return err
+	}
+
+	// delete expired peers completely
+	for id, pong := range latestPong {
+		if pong < threshold {
+			if err := db.store.DeletePrefix(nodeKey(id)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
@@ -150,17 +204,13 @@ func (db *DB) UpdateLastPong(id identity.ID, ip net.IP, t time.Time) error {
 	return db.setInt64(nodeFieldKey(id, ip, dbNodePong), t.Unix())
 }
 
-func (db *DB) setPeerWithTTL(p *Peer, ttl time.Duration) error {
+// UpdatePeer updates a peer in the database.
+func (db *DB) UpdatePeer(p *Peer) error {
 	data, err := p.Marshal()
 	if err != nil {
 		return err
 	}
-	return db.store.Set(nodeKey(p.ID()), data) //FIXME: handle TTL with ttl
-}
-
-// UpdatePeer updates a peer in the database.
-func (db *DB) UpdatePeer(p *Peer) error {
-	return db.setPeerWithTTL(p, peerExpiration)
+	return db.store.Set(nodeKey(p.ID()), data)
 }
 
 func parsePeer(data []byte) (*Peer, error) {
@@ -225,23 +275,7 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 
 // SeedPeers retrieves random nodes to be used as potential bootstrap peers.
 func (db *DB) SeedPeers() []*Peer {
-	// get all stored peers and select subset
-	peers := db.getPeers(0)
-
+	// get not expired stored peers and select subset
+	peers := db.getPeers(seedExpiration)
 	return randomSubset(peers, seedCount)
-}
-
-// PersistSeeds assures that potential bootstrap peers are not garbage collected.
-// It returns the number of peers that have been persisted.
-func (db *DB) PersistSeeds() int {
-	// randomly select potential bootstrap peers
-	peers := randomSubset(db.getPeers(peerExpiration), seedCount)
-
-	for i, p := range peers {
-		err := db.setPeerWithTTL(p, seedExpiration)
-		if err != nil {
-			return i
-		}
-	}
-	return len(peers)
 }
