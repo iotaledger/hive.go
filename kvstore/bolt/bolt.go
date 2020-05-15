@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	MaxBoltBatchSize = 100_000
+	MaxBoltBatchSize = 50_000
 )
 
 // KVStore implements the KVStore interface around a BoltDB instance.

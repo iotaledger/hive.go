@@ -3,13 +3,16 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/kvstore/bolt"
-	"github.com/stretchr/testify/require"
-	"go.etcd.io/bbolt"
 	"io/ioutil"
+	"math/rand"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
+
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/bolt"
 )
 
 func testStore(t require.TestingT, prefix []byte) kvstore.KVStore {
@@ -353,4 +356,35 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 		return true
 	})
 	require.NoError(t, err)
+}
+
+func TestBatchedWithLotsOfKeys(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	store := testStore(t, prefix)
+	count := 500_000
+
+	batch := store.Batched()
+
+	for i := 0; i < count; i++ {
+		testKey := make([]byte, 49)
+		testValue := make([]byte, 156)
+		rand.Read(testKey)
+		rand.Read(testValue)
+		batch.Set(testKey, testValue)
+	}
+
+	err := batch.Commit()
+	require.NoError(t, err)
+
+	verifyCount := 0
+	// Verify, that all entries were changed
+	err = store.Iterate([]kvstore.KeyPrefix{}, func(key kvstore.Key, value kvstore.Value) bool {
+		verifyCount++
+		return true
+	})
+	require.NoError(t, err)
+
+	// Check that we checked the correct amount of entries
+	require.Equal(t, count, verifyCount)
 }
