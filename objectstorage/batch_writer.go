@@ -13,7 +13,7 @@ import (
 
 const (
 	BatchWriterQueueSize    = BatchWriterBatchSize
-	BatchWriterBatchSize    = 10240
+	BatchWriterBatchSize    = 10000
 	BatchWriterBatchTimeout = 500 * time.Millisecond
 )
 
@@ -136,9 +136,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 
 	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
 		var batchedMuts kvstore.BatchedMutations
-		if bw.store != nil {
-			batchedMuts = bw.store.Batched()
-		}
 
 		writtenValues := make([]*CachedObjectImpl, BatchWriterBatchSize)
 		writtenValuesCounter := 0
@@ -146,6 +143,11 @@ func (bw *BatchedWriter) runBatchWriter() {
 		for writtenValuesCounter < BatchWriterBatchSize {
 			select {
 			case objectToPersist := <-bw.batchQueue:
+
+				if batchedMuts == nil && bw.store != nil {
+					batchedMuts = bw.store.Batched()
+				}
+
 				atomic.StoreInt32(&(objectToPersist.batchWriteScheduled), 0)
 				atomic.AddInt32(&bw.scheduledCount, -1)
 
