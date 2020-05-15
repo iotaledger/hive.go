@@ -2,11 +2,16 @@ package bolt
 
 import (
 	"bytes"
+	"math"
 	"sync"
 
 	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/kvstore"
+)
+
+const (
+	MaxBoltBatchSize = 100_000
 )
 
 // KVStore implements the KVStore interface around a BoltDB instance.
@@ -219,24 +224,57 @@ func (b *batchedMutations) Cancel() {
 	// do nothing
 }
 
-func (b *batchedMutations) Commit() error {
-	b.Lock()
-	defer b.Unlock()
-	return b.instance.Update(func(tx *bbolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists(b.bucket)
+func (b *batchedMutations) subBatchOperation(batchOpcount int32, operation func(opIndex int32, bucket *bbolt.Bucket) error) error {
+	batchAmount := int(math.Ceil(float64(batchOpcount) / float64(MaxBoltBatchSize)))
+	for i := 0; i < batchAmount; i++ {
+
+		batchStart := int32(i * MaxBoltBatchSize)
+		batchEnd := batchStart + int32(MaxBoltBatchSize)
+
+		if batchEnd > batchOpcount {
+			batchEnd = batchOpcount
+		}
+
+		err := b.instance.Update(func(tx *bbolt.Tx) error {
+			bucket, err := tx.CreateBucketIfNotExists(b.bucket)
+			if err != nil {
+				return err
+			}
+			for j := batchStart; j < batchEnd; j++ {
+				if err := operation(j, bucket); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		for i := 0; i < len(b.sets); i++ {
-			if err := bucket.Put(b.sets[i].key, b.sets[i].value); err != nil {
-				return err
-			}
-		}
-		for i := 0; i < len(b.deletes); i++ {
-			if err := bucket.Delete(b.deletes[i].key); err != nil {
-				return err
-			}
+	}
+	return nil
+}
+
+func (b *batchedMutations) Commit() error {
+	b.Lock()
+	defer b.Unlock()
+
+	setCount := int32(len(b.sets))
+	deleteCount := int32(len(b.deletes))
+
+	err := b.subBatchOperation(setCount, func(opIndex int32, bucket *bbolt.Bucket) error {
+		if err := bucket.Put(b.sets[opIndex].key, b.sets[opIndex].value); err != nil {
+			return err
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	err = b.subBatchOperation(deleteCount, func(opIndex int32, bucket *bbolt.Bucket) error {
+		if err := bucket.Delete(b.deletes[opIndex].key); err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
