@@ -14,6 +14,7 @@ import (
 func TestPeerDB(t *testing.T) {
 	db, err := NewDB(mapdb.NewMapDB())
 	require.NoError(t, err)
+	defer db.Close()
 	p := newTestPeer("test")
 
 	t.Run("LocalPrivateKey", func(t *testing.T) {
@@ -79,14 +80,20 @@ func TestPeerDB(t *testing.T) {
 		assert.EqualValues(t, seedCount, len(peers))
 	})
 
-	t.Run("PersistSeeds", func(t *testing.T) {
-		for i := 0; i < seedCount+1; i++ {
-			p := newTestPeer(fmt.Sprintf("PersistSeeds%0d", i))
-			assert.NoError(t, db.UpdatePeer(p))
-			assert.NoError(t, db.UpdateLastPong(p.ID(), p.IP(), time.Now()))
-		}
+	t.Run("expireNodes", func(t *testing.T) {
+		newPeer := newTestPeer("new")
+		assert.NoError(t, db.UpdatePeer(newPeer))
+		assert.NoError(t, db.UpdateLastPong(newPeer.ID(), newPeer.IP(), time.Now()))
+		assert.Contains(t, db.getPeers(0), newPeer)
 
-		count := db.PersistSeeds()
-		assert.EqualValues(t, seedCount, count)
+		expPeer := newTestPeer("expired")
+		assert.NoError(t, db.UpdatePeer(expPeer))
+		assert.NoError(t, db.UpdateLastPing(expPeer.ID(), expPeer.IP(), time.Now()))
+		assert.NoError(t, db.UpdateLastPong(expPeer.ID(), expPeer.IP(), time.Now().Add(-peerExpiration).Add(-time.Second)))
+		assert.Contains(t, db.getPeers(0), expPeer)
+
+		require.NoError(t, db.expireNodes())
+		assert.Contains(t, db.getPeers(0), newPeer)
+		assert.NotContains(t, db.getPeers(0), expPeer)
 	})
 }
