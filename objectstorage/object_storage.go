@@ -110,7 +110,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 
 	cachedObject, cacheHit := objectStorage.accessCache(key, true)
 	if !cacheHit {
-		loadedObject := objectStorage.LoadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 		}
@@ -131,7 +131,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 
 		cachedObject.Release()
 	} else {
-		result = objectStorage.objectExistsInBadger(key)
+		result = objectStorage.objectExistsInStore(key)
 	}
 
 	return
@@ -150,7 +150,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			return remappingFunction(key)
 		})
 	} else {
-		loadedObject := objectStorage.LoadObjectFromBadger(key)
+		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
 			loadedObject.Persist()
 
@@ -199,7 +199,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	cachedObject.publishResult(nil)
 	cachedObject.Release(true)
 
-	if objectStorage.objectExistsInBadger(key) {
+	if objectStorage.objectExistsInStore(key) {
 		cachedObject.blindDelete.Set()
 
 		return true
@@ -271,7 +271,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 			existingCachedObject.Release()
 		}
 	} else {
-		if objectExists := objectStorage.objectExistsInBadger(key); !objectExists {
+		if objectExists := objectStorage.objectExistsInStore(key); !objectExists {
 			object.Persist()
 			object.SetModified()
 
@@ -725,8 +725,8 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *Cac
 	return cachedObject
 }
 
-// LoadObjectFromBadger loads a storable object from the persistence layer.
-func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObject {
+// LoadObjectFromStore loads a storable object from the persistence layer.
+func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObject {
 	if !objectStorage.options.persistenceEnabled {
 		return nil
 	}
@@ -754,8 +754,8 @@ func (objectStorage *ObjectStorage) LoadObjectFromBadger(key []byte) StorableObj
 	return objectStorage.unmarshalObject(key, marshaledData)
 }
 
-// DeleteEntryFromBadger deletes an entry from the persistance layer.
-func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
+// DeleteEntryFromStore deletes an entry from the persistence layer.
+func (objectStorage *ObjectStorage) DeleteEntryFromStore(key []byte) {
 	if !objectStorage.options.persistenceEnabled {
 		return
 	}
@@ -767,8 +767,8 @@ func (objectStorage *ObjectStorage) DeleteEntryFromBadger(key []byte) {
 	}
 }
 
-// DeleteEntriesFromBadger deletes entries from the persistance layer.
-func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
+// DeleteEntriesFromStore deletes entries from the persistence layer.
+func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
 	if !objectStorage.options.persistenceEnabled {
 		return
 	}
@@ -786,7 +786,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromBadger(keys [][]byte) {
 	}
 }
 
-func (objectStorage *ObjectStorage) objectExistsInBadger(key []byte) bool {
+func (objectStorage *ObjectStorage) objectExistsInStore(key []byte) bool {
 	if !objectStorage.options.persistenceEnabled {
 		return false
 	}
