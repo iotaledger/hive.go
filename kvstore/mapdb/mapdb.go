@@ -91,22 +91,13 @@ func (db *MapDB) DeletePrefix(keyPrefix kvstore.KeyPrefix) error {
 	return nil
 }
 
-func (db *MapDB) buildKeyPrefix(prefixes []kvstore.KeyPrefix) string {
-	var prefix []byte
-	for _, optionalPrefix := range prefixes {
-		prefix = append(prefix, optionalPrefix...)
-	}
-	return string(prefix)
-}
-
-func (db *MapDB) Iterate(prefixes []kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (db *MapDB) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	if len(prefixes) > 0 {
-		prefix := db.buildKeyPrefix(prefixes)
+	if len(prefix) > 0 {
 		for key, ent := range db.m {
-			if strings.HasPrefix(key, prefix) {
+			if strings.HasPrefix(key, string(prefix)) {
 				if !kvConsumerFunc([]byte(key), append([]byte{}, ent.value...)) {
 					break
 				}
@@ -124,14 +115,13 @@ func (db *MapDB) Iterate(prefixes []kvstore.KeyPrefix, kvConsumerFunc kvstore.It
 	return nil
 }
 
-func (db *MapDB) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (db *MapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	if len(prefixes) > 0 {
-		prefix := db.buildKeyPrefix(prefixes)
+	if len(prefix) > 0 {
 		for key := range db.m {
-			if strings.HasPrefix(key, prefix) {
+			if strings.HasPrefix(key, string(prefix)) {
 				if !consumerFunc([]byte(key)) {
 					break
 				}
