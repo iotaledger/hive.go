@@ -139,9 +139,9 @@ func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 
 func (s *boltStore) Delete(key kvstore.Key) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(s.bucket)
-		if err != nil {
-			return err
+		b := tx.Bucket(s.bucket)
+		if b == nil {
+			return nil
 		}
 		if err := b.Delete(key); err != nil {
 			return kvstore.ErrKeyNotFound
@@ -152,9 +152,9 @@ func (s *boltStore) Delete(key kvstore.Key) error {
 
 func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(s.bucket)
-		if err != nil {
-			return err
+		b := tx.Bucket(s.bucket)
+		if b == nil {
+			return nil
 		}
 		c := b.Cursor()
 		for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
