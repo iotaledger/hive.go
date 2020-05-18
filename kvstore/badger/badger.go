@@ -81,7 +81,7 @@ func (s *badgerStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvs
 }
 
 func (s *badgerStore) Clear() error {
-	return s.instance.DropPrefix(s.dbPrefix)
+	return s.DeletePrefix([]byte{})
 }
 
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {

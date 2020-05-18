@@ -38,20 +38,6 @@ func (s *boltStore) Realm() kvstore.Realm {
 	return s.bucket
 }
 
-func buildPrefixedKey(prefixes []kvstore.KeyPrefix) []byte {
-	var prefix []byte
-	for _, p := range prefixes {
-		prefix = append(prefix, p...)
-	}
-	return prefix
-}
-
-func copyBytes(source []byte) []byte {
-	cpy := make([]byte, len(source))
-	copy(cpy, source)
-	return cpy
-}
-
 func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)

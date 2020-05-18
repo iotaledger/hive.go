@@ -40,7 +40,7 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 	require.NoError(t, err)
 	db, err := badger.CreateDB(dir)
 	require.NoError(t, err)
-	return badger.New(db)
+	return badger.New(db).WithRealm(realm)
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {

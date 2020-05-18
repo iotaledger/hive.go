@@ -41,16 +41,16 @@ type BatchedMutations interface {
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
 
-	// Factory method to use same underlying storage with a different realm
+	// WithRealm is a factory method for using the same underlying storage with a different realm.
 	WithRealm(realm Realm) KVStore
 
-	//Get the configured realm
+	// Realm returns the configured realm.
 	Realm() Realm
 
-	// Iterate iterates over all keys or keys with the provided prefix.
+	// Iterate iterates over all keys and values with the provided prefix.
 	Iterate(prefixes []KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error
 
-	// Iterate iterates over all keys with the provided prefix.
+	// IterateKeys iterates over all keys with the provided prefix.
 	IterateKeys(prefixes []KeyPrefix, consumerFunc IteratorKeyConsumerFunc) error
 
 	// Clear clears the realm.

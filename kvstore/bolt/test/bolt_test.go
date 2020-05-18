@@ -280,7 +280,8 @@ func TestSetAndOverwrite(t *testing.T) {
 	for i := 0; i < count; i++ {
 		str := strconv.FormatInt(int64(i), 10)
 		testKey := "testKey" + str
-		batch.Set([]byte(testKey), []byte{1})
+		err := batch.Set([]byte(testKey), []byte{1})
+		require.NoError(t, err)
 	}
 
 	err = batch.Commit()
@@ -312,11 +313,14 @@ func TestBatchedWithSetAndDelete(t *testing.T) {
 
 	batch := store.Batched()
 
-	batch.Set([]byte("testKey1"), []byte{84})
+	err = batch.Set([]byte("testKey1"), []byte{84})
+	require.NoError(t, err)
 
-	batch.Set([]byte("testKey3"), []byte{69})
+	err = batch.Set([]byte("testKey3"), []byte{69})
+	require.NoError(t, err)
 
-	batch.Delete([]byte("testKey2"))
+	err = batch.Delete([]byte("testKey2"))
+	require.NoError(t, err)
 
 	err = batch.Commit()
 	require.NoError(t, err)
@@ -341,10 +345,13 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 
 	batch := store.Batched()
 
-	batch.Set([]byte("testKey1"), []byte{84})
-	batch.Set([]byte("testKey1"), []byte{69})
+	err := batch.Set([]byte("testKey1"), []byte{84})
+	require.NoError(t, err)
 
-	err := batch.Commit()
+	err = batch.Set([]byte("testKey1"), []byte{69})
+	require.NoError(t, err)
+
+	err = batch.Commit()
 	require.NoError(t, err)
 
 	err = store.Iterate([]kvstore.KeyPrefix{[]byte("testKey")}, func(key kvstore.Key, value kvstore.Value) bool {
@@ -371,7 +378,8 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 		testValue := make([]byte, 156)
 		rand.Read(testKey)
 		rand.Read(testValue)
-		batch.Set(testKey, testValue)
+		err := batch.Set(testKey, testValue)
+		require.NoError(t, err)
 	}
 
 	err := batch.Commit()

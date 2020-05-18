@@ -1,37 +1,12 @@
 package badger
 
 import (
-	"os"
 	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/pkg/errors"
 )
-
-// Returns whether the given file or directory exists.
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-func checkDir(dir string) error {
-	exists, err := exists(dir)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return os.Mkdir(dir, 0700)
-	}
-	return nil
-}
 
 func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {
 	if err := checkDir(directory); err != nil {

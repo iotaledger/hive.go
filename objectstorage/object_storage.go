@@ -731,6 +731,25 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 		return nil
 	}
 
+	if objectStorage.options.keysOnly {
+
+		contains, err := objectStorage.store.Has(key)
+		if err != nil {
+			// No need to check for kvstore.ErrKeyNotFound here
+			panic(err)
+		}
+
+		if !contains {
+			return nil
+		}
+
+		object, _, err := objectStorage.objectFactory(key)
+		if err != nil {
+			panic(err)
+		}
+		return object
+	}
+
 	var marshaledData []byte
 	value, err := objectStorage.store.Get(key)
 	if err != nil {
@@ -738,14 +757,6 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 			return nil
 		}
 		panic(err)
-	}
-
-	if objectStorage.options.keysOnly {
-		object, _, err := objectStorage.objectFactory(key)
-		if err != nil {
-			panic(err)
-		}
-		return object
 	}
 
 	marshaledData = make([]byte, len(value))

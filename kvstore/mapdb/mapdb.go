@@ -21,8 +21,7 @@ type mapEntry struct {
 	value []byte
 }
 
-// NewMapDB creates a database.Database implementation purely based on a go map.
-// MapDB does not support TTL.
+// NewMapDB creates a kvstore.KVStore implementation purely based on a go map.
 func NewMapDB() *MapDB {
 	return &MapDB{
 		m: make(map[string]mapEntry),
@@ -166,7 +165,7 @@ type kvtuple struct {
 	value kvstore.Value
 }
 
-// BatchedMutations is a wrapper to do a batched update on a BoltDB.
+// BatchedMutations is a wrapper to do a batched update on a MapDB.
 type BatchedMutations struct {
 	sync.Mutex
 	db      *MapDB
@@ -197,10 +196,14 @@ func (b *BatchedMutations) Commit() error {
 	defer b.Unlock()
 
 	for i := 0; i < len(b.sets); i++ {
-		b.db.Set(b.sets[i].key, b.sets[i].value)
+		if err := b.db.Set(b.sets[i].key, b.sets[i].value); err != nil {
+			return err
+		}
 	}
 	for i := 0; i < len(b.deletes); i++ {
-		b.db.Delete(b.deletes[i].key)
+		if err := b.db.Delete(b.deletes[i].key); err != nil {
+			return err
+		}
 	}
 	return nil
 }
