@@ -2,8 +2,6 @@ package bolt
 
 import (
 	"os"
-	
-	"github.com/iotaledger/hive.go/kvstore"
 )
 
 // Returns whether the given file or directory exists.
@@ -28,14 +26,6 @@ func checkDir(dir string) error {
 		return os.Mkdir(dir, 0700)
 	}
 	return nil
-}
-
-func buildPrefixedKey(prefixes []kvstore.KeyPrefix) []byte {
-	var prefix []byte
-	for _, p := range prefixes {
-		prefix = append(prefix, p...)
-	}
-	return prefix
 }
 
 func copyBytes(source []byte) []byte {

@@ -310,6 +310,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	var seenElements map[string]types.Empty
+	var keyPrefix = kvstore.EmptyPrefix
 	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
 		// iterate over all cached elements
 		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
@@ -319,10 +320,11 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			return
 		}
 	} else {
+		keyPrefix = optionalPrefix[0]
 		// iterate over cached elements via their key partition
 		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 			return consumer(key, wrapCachedObject(cachedObject, 0))
-		}, optionalPrefix[0]); seenElements == nil {
+		}, keyPrefix); seenElements == nil {
 			// Iteration was aborted
 			return
 		}
@@ -367,13 +369,13 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	if objectStorage.options.keysOnly {
-		_ = objectStorage.store.IterateKeys(optionalPrefix, func(key kvstore.Key) bool {
+		_ = objectStorage.store.IterateKeys(keyPrefix, func(key kvstore.Key) bool {
 			return consumeFunc(key, []byte{})
 		})
 		return
 	}
 
-	_ = objectStorage.store.Iterate(optionalPrefix, consumeFunc)
+	_ = objectStorage.store.Iterate(keyPrefix, consumeFunc)
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
@@ -387,6 +389,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 	}
 
 	var seenElements map[string]types.Empty
+	var keyPrefix = kvstore.EmptyPrefix
 	if !skipCache {
 		if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
 			// iterate over all cached elements
@@ -398,18 +401,19 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 				return
 			}
 		} else {
+			keyPrefix = optionalPrefix[0]
 			// iterate over cached elements via their key partition
 			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 				cachedObject.Release(true)
 				return consumer(key)
-			}, optionalPrefix[0]); seenElements == nil {
+			}, keyPrefix); seenElements == nil {
 				// Iteration was aborted
 				return
 			}
 		}
 	}
 
-	_ = objectStorage.store.IterateKeys(optionalPrefix,
+	_ = objectStorage.store.IterateKeys(keyPrefix,
 		func(key kvstore.Key) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true

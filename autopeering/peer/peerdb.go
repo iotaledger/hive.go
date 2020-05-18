@@ -119,7 +119,7 @@ func (db *DB) expireNodes() error {
 		latestPong  = make(map[identity.ID]int64)
 		batchedMuts = db.store.Batched()
 	)
-	err := db.store.Iterate([]kvstore.KeyPrefix{[]byte(dbNodePrefix)}, func(key kvstore.Key, value kvstore.Value) bool {
+	err := db.store.Iterate(kvstore.KeyPrefix(dbNodePrefix), func(key kvstore.Key, value kvstore.Value) bool {
 		var id identity.ID
 		copy(id[:], key[len(dbNodePrefix):])
 
@@ -247,7 +247,7 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 	now := time.Now()
 
-	err := db.store.Iterate([]kvstore.KeyPrefix{[]byte(dbNodePrefix)}, func(key kvstore.Key, value kvstore.Value) bool {
+	err := db.store.Iterate(kvstore.KeyPrefix(dbNodePrefix), func(key kvstore.Key, value kvstore.Value) bool {
 		keyWithoutPrefix := key[len(dbNodePrefix):]
 		var id identity.ID
 		if len(keyWithoutPrefix) != len(id) {

@@ -5,6 +5,8 @@ import "errors"
 var (
 	// ErrKeyNotFound is returned when an op. doesn't find the given key.
 	ErrKeyNotFound = errors.New("key not found")
+
+	EmptyPrefix = KeyPrefix{}
 )
 
 type Realm = []byte
@@ -47,11 +49,11 @@ type KVStore interface {
 	// Realm returns the configured realm.
 	Realm() Realm
 
-	// Iterate iterates over all keys and values with the provided prefix.
-	Iterate(prefixes []KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error
+	// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+	Iterate(prefix KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error
 
-	// IterateKeys iterates over all keys with the provided prefix.
-	IterateKeys(prefixes []KeyPrefix, consumerFunc IteratorKeyConsumerFunc) error
+	// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+	IterateKeys(prefix KeyPrefix, consumerFunc IteratorKeyConsumerFunc) error
 
 	// Clear clears the realm.
 	Clear() error

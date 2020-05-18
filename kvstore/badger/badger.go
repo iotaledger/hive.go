@@ -30,19 +30,16 @@ func (s *badgerStore) Realm() []byte {
 	return s.dbPrefix
 }
 
-// builds a key usable for the badger instance using the realm and the given prefixes.
-func (s *badgerStore) buildKeyPrefix(prefixes []kvstore.KeyPrefix) kvstore.KeyPrefix {
-	prefix := s.dbPrefix
-	for _, optionalPrefix := range prefixes {
-		prefix = append(prefix, optionalPrefix...)
-	}
-	return prefix
+// builds a key usable for the badger instance using the realm and the given prefix.
+func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
+	value := s.dbPrefix
+	return append(value, prefix...)
 }
 
-func (s *badgerStore) Iterate(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefixes)
+		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
 		iteratorOptions.PrefetchValues = true
 
 		it := txn.NewIterator(iteratorOptions)
@@ -62,10 +59,10 @@ func (s *badgerStore) Iterate(prefixes []kvstore.KeyPrefix, consumerFunc kvstore
 	})
 }
 
-func (s *badgerStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefixes)
+		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
 		iteratorOptions.PrefetchValues = false
 
 		it := txn.NewIterator(iteratorOptions)
@@ -81,7 +78,7 @@ func (s *badgerStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvs
 }
 
 func (s *badgerStore) Clear() error {
-	return s.DeletePrefix([]byte{})
+	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
@@ -133,7 +130,7 @@ func (s *badgerStore) Delete(key kvstore.Key) error {
 func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return s.instance.Update(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix([]kvstore.KeyPrefix{prefix})
+		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
 		iteratorOptions.PrefetchValues = false
 
 		it := txn.NewIterator(iteratorOptions)

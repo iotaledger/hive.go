@@ -38,7 +38,7 @@ func (s *boltStore) Realm() kvstore.Realm {
 	return s.bucket
 }
 
-func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
@@ -46,8 +46,7 @@ func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvCons
 		}
 		c := b.Cursor()
 
-		if len(prefixes) > 0 {
-			prefix := buildPrefixedKey(prefixes)
+		if len(prefix) > 0 {
 			for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
 				value := v
 				if copyValues {
@@ -73,13 +72,13 @@ func (s boltStore) iterate(prefixes []kvstore.KeyPrefix, copyValues bool, kvCons
 	})
 }
 
-func (s *boltStore) Iterate(prefixes []kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	return s.iterate(prefixes, true, kvConsumerFunc)
+func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+	return s.iterate(prefix, true, kvConsumerFunc)
 }
 
-func (s *boltStore) IterateKeys(prefixes []kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	// same as with values but we simply don't copy them
-	return s.iterate(prefixes, false, func(key kvstore.Key, _ kvstore.Value) bool {
+	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
 	})
 }
