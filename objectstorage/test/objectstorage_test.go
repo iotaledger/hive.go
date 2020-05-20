@@ -416,3 +416,133 @@ func TestDeleteAndCreate(t *testing.T) {
 
 	objects.Shutdown()
 }
+
+func TestForEachWithPrefix(t *testing.T) {
+
+	storage := testStorage(t, []byte("TestForEachWithPrefix"))
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1.Release()
+
+	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2.Release()
+
+	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3.Release()
+
+	// Store all to disk
+	objects.Shutdown()
+
+	// Setup the storage again with the same database
+	objects = objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+
+	expectedKeys := make(map[string]types.Empty)
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+
+	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+		cachedObject.Release()
+		return true
+	}, []byte("1"))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	objects.Shutdown()
+}
+
+func TestForEachKeyOnlyWithPrefix(t *testing.T) {
+
+	storage := testStorage(t, []byte("TestForEachKeyOnlyWithPrefix"))
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1.Release()
+
+	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2.Release()
+
+	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3.Release()
+
+	// Store all to disk
+	objects.Shutdown()
+
+	// Setup the storage again with the same database
+	objects = objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+
+	expectedKeys := make(map[string]types.Empty)
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+		return true
+	}, false, []byte("1"))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	objects.Shutdown()
+}
+
+func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
+
+	storage := testStorage(t, []byte("TestPrefixIterationWithPrefixSkippingCache"))
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1.Release()
+
+	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2.Release()
+
+	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3.Release()
+
+	// Store all to disk
+	objects.Shutdown()
+
+	// Setup the storage again with the same database
+	objects = objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+
+	expectedKeys := make(map[string]types.Empty)
+
+	expectedKeys["12"] = types.Void
+	expectedKeys["13"] = types.Void
+
+	objects.ForEachKeyOnly(func(key []byte) bool {
+		if _, elementExists := expectedKeys[string(key)]; !elementExists {
+			t.Error("found an unexpected key")
+		}
+
+		delete(expectedKeys, string(key))
+		return true
+	}, true, []byte("1"))
+
+	assert.Equal(t, 0, len(expectedKeys))
+
+	objects.Shutdown()
+}

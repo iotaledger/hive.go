@@ -413,6 +413,10 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		}
 	}
 
+	if len(optionalPrefix) > 0 {
+		keyPrefix = optionalPrefix[0]
+	}
+	
 	_ = objectStorage.store.IterateKeys(keyPrefix,
 		func(key kvstore.Key) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
