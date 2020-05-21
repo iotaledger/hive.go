@@ -234,7 +234,6 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 	instancesByKey[wrappedCachedObject.GetInternalId()] = wrappedCachedObject
 
 	if len(instancesByKey) > options.MaxConsumersPerObject {
-
 		var oldestEntry LeakDetectionWrapper = nil
 		var oldestTime = time.Now()
 		for _, wrappedCachedObject := range instancesByKey {
@@ -244,11 +243,14 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 			}
 		}
 
-		messageChan <- "[objectstorage::leakkdetection] possible leak detected - more than " + strconv.Itoa(options.MaxConsumersPerObject) + " (" + strconv.Itoa(len(instancesByKey)) + ") CachedObjects in cache (showing oldest):" + platform.LineBreak +
-			"\tretained: " + oldestEntry.GetRetainCallStack().ExternalEntryPoint() + platform.LineBreak +
+		messageChan <- "[objectstorage::leakkdetection] possible leak detected - more than " + strconv.Itoa(options.MaxConsumersPerObject) + " (" + strconv.Itoa(len(instancesByKey)) + ") CachedObjects in cache:" + platform.LineBreak +
+			"\tretained (oldest): " + oldestEntry.GetRetainCallStack().ExternalEntryPoint() + platform.LineBreak +
+			"\tretain call stack (oldest full):" + platform.LineBreak +
+			oldestEntry.GetRetainCallStack().String() + platform.LineBreak +
 			platform.LineBreak +
-			"\tretain call stack (full):" + platform.LineBreak +
-			oldestEntry.GetRetainCallStack().String()
+			"\tretained (current): " + wrappedCachedObject.GetRetainCallStack().ExternalEntryPoint() + platform.LineBreak +
+			"\tretain call stack (current full):" + platform.LineBreak +
+			wrappedCachedObject.GetRetainCallStack().String()
 	}
 
 	instanceRegisterMutex.Unlock()
