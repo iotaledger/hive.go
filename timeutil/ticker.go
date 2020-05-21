@@ -4,13 +4,16 @@ import (
 	"time"
 )
 
-func Ticker(handler func(), interval time.Duration, shutdownSignal <-chan struct{}) {
+// Ticker calls the handler with a period specified by the duration argument.
+// It returns when the done channel is closed.
+func Ticker(handler func(), interval time.Duration, done <-chan struct{}) {
 	ticker := time.NewTicker(interval)
-ticker:
+	defer ticker.Stop() // prevent the ticker from leaking
+
 	for {
 		select {
-		case <-shutdownSignal:
-			break ticker
+		case <-done:
+			return
 		case <-ticker.C:
 			handler()
 		}
