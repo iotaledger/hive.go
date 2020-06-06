@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 
+	"github.com/mr-tron/base58"
 	"github.com/oasislabs/ed25519"
 	"golang.org/x/crypto/blake2b"
 
@@ -69,4 +70,9 @@ func (seed *Seed) subSeed(n uint64) (subSeed []byte) {
 	byteutils.XORBytes(subSeed, seed.seedBytes, hashOfIndexBytes[:])
 
 	return
+}
+
+// String returns a human readable version of the Seed (base58 encoded).
+func (seed *Seed) String() string {
+	return base58.Encode(seed.seedBytes)
 }

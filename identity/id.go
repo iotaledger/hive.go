@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/mr-tron/base58"
 )
 
 // ID is a unique identifier for each peer.
@@ -24,7 +25,7 @@ func (id ID) Bytes() []byte {
 
 // String returns a shortened version of the ID as a hex encoded string.
 func (id ID) String() string {
-	return hex.EncodeToString(id[:8])
+	return base58.Encode(id[:8])
 }
 
 // ParseID parses a hex encoded ID.
