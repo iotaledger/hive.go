@@ -23,7 +23,7 @@ func (id ID) Bytes() []byte {
 	return id[:]
 }
 
-// String returns a shortened version of the ID as a hex encoded string.
+// String returns a shortened version of the ID as a base58 encoded string.
 func (id ID) String() string {
 	return base58.Encode(id[:8])
 }
