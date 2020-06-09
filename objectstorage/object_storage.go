@@ -416,7 +416,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 	if len(optionalPrefix) > 0 {
 		keyPrefix = optionalPrefix[0]
 	}
-	
+
 	_ = objectStorage.store.IterateKeys(keyPrefix,
 		func(key kvstore.Key) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
@@ -897,6 +897,7 @@ func (objectStorage *ObjectStorage) deepIterateThroughCachedElements(sourceMap m
 
 		// Call consumer with the cached object and check if we should abort the iteration.
 		cachedObject := foundObjects[i]
+		cachedObject.waitForInitialResult()
 		if !consumer(cachedObject.key, cachedObject) {
 			aborted = true
 		}
@@ -981,6 +982,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 		objectStorage.cacheMutex.RLock()
 		cachedObject := currentPartition[string(partitionKey)].(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
+		cachedObject.waitForInitialResult()
 		seenElements[string(cachedObject.key)] = types.Void
 
 		// the given prefix references a partition
