@@ -51,3 +51,12 @@ func (privateKey PrivateKey) Bytes() []byte {
 func (privateKey PrivateKey) String() string {
 	return base58.Encode(privateKey[:])
 }
+
+// Seed returns the private key seed corresponding to privateKey. It is provided for
+// interoperability with RFC 8032. RFC 8032's private keys correspond to seeds
+// in this package.
+func (privateKey PrivateKey) Seed() *Seed {
+	bytes := ed25519.PrivateKey(privateKey[:]).Seed()
+	seed := NewSeed(bytes)
+	return seed
+}
