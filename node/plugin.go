@@ -35,7 +35,7 @@ func NewPlugin(name string, status int, callbacks ...Callback) *Plugin {
 		},
 	}
 
-	AddPlugin(name, status, plugin)
+	AddPlugin(plugin)
 
 	switch len(callbacks) {
 	case 0:

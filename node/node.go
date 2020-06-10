@@ -124,7 +124,10 @@ func (node *Node) Run() {
 	node.Logger.Info("Shutdown complete!")
 }
 
-func AddPlugin(name string, status int, plugin *Plugin) {
+func AddPlugin(plugin *Plugin) {
+	name := plugin.Name
+	status := plugin.Status
+
 	if _, exists := plugins[name]; exists {
 		panic("duplicate plugin - \"" + name + "\" was defined already")
 	}
