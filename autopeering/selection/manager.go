@@ -366,7 +366,11 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		m.events.OutgoingPeering.Trigger(&PeeringEvent{Peer: p, Status: status})
+		m.events.OutgoingPeering.Trigger(&PeeringEvent{
+			Peer:     p,
+			Status:   status,
+			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes(), p).Distance,
+		})
 	} else {
 		m.log.Debugw("peering requested",
 			"direction", "in",
@@ -375,6 +379,10 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		m.events.IncomingPeering.Trigger(&PeeringEvent{Peer: p, Status: status})
+		m.events.IncomingPeering.Trigger(&PeeringEvent{
+			Peer:     p,
+			Status:   status,
+			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
+		})
 	}
 }
