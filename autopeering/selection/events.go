@@ -26,8 +26,9 @@ type SaltUpdatedEvent struct {
 
 // PeeringEvent bundles the information sent in the OutgoingPeering and IncomingPeering event.
 type PeeringEvent struct {
-	Peer   *peer.Peer // peering partner
-	Status bool       // true, when the peering partner has accepted the request
+	Peer     *peer.Peer // peering partner
+	Status   bool       // true, when the peering partner has accepted the request
+	Distance uint32     // the distance between the peers
 }
 
 // DroppedEvent bundles the information sent in Dropped events.
