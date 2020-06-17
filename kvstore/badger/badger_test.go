@@ -46,8 +46,11 @@ func TestBadgerStore_Iterate(t *testing.T) {
 
 	i := 0
 	err := store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
-		assert.Equal(t, testEntries[i].Key, key)
-		assert.Equal(t, testEntries[i].Value, value)
+		entry := &struct {
+			kvstore.Key
+			kvstore.Value
+		}{key, value}
+		assert.Contains(t, testEntries, entry)
 		i++
 		return true
 	})
