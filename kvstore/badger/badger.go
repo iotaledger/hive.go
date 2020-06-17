@@ -135,13 +135,13 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
-			err := txn.Delete(it.Item().Key())
-			if err != nil {
+			key := it.Item().KeyCopy(nil)
+			if err := txn.Delete(key); err != nil {
 				panic(err)
 			}
 		}
-
 		return nil
 	})
 }
