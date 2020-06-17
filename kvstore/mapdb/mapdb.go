@@ -4,7 +4,6 @@
 package mapdb
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/iotaledger/hive.go/kvstore"
@@ -12,135 +11,68 @@ import (
 
 // MapDB is a simple implementation of KVStore using a map.
 type MapDB struct {
-	mu    sync.RWMutex
-	m     map[string]mapEntry
+	m     *syncedKVMap
 	realm []byte
-}
-
-type mapEntry struct {
-	value []byte
 }
 
 // NewMapDB creates a kvstore.KVStore implementation purely based on a go map.
 func NewMapDB() *MapDB {
 	return &MapDB{
-		m: make(map[string]mapEntry),
+		m: &syncedKVMap{m: make(map[string][]byte)},
 	}
 }
 
 func (db *MapDB) WithRealm(realm kvstore.Realm) kvstore.KVStore {
 	return &MapDB{
-		m:     make(map[string]mapEntry),
+		m:     db.m, // use the same underlying map
 		realm: realm,
 	}
 }
 
 func (db *MapDB) Realm() kvstore.Realm {
-	return db.realm
+	return append([]byte{}, db.realm...)
 }
 
-func (db *MapDB) Has(key kvstore.Key) (contains bool, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	_, contains = db.m[string(key)]
-	return
+func (db *MapDB) Has(key kvstore.Key) (bool, error) {
+	contains := db.m.has(append(db.realm, key...))
+	return contains, nil
 }
 
-func (db *MapDB) Get(key kvstore.Key) (value kvstore.Value, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	ent, contains := db.m[string(key)]
+func (db *MapDB) Get(key kvstore.Key) (kvstore.Value, error) {
+	value, contains := db.m.get(append(db.realm, key...))
 	if !contains {
-		err = kvstore.ErrKeyNotFound
-		return
+		return nil, kvstore.ErrKeyNotFound
 	}
-	value = append([]byte{}, ent.value...)
-	return
+	return value, nil
 }
 
 func (db *MapDB) Set(key kvstore.Key, value kvstore.Value) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	db.m[string(key)] = mapEntry{
-		value: append([]byte{}, value...),
-	}
+	db.m.set(append(db.realm, key...), value)
 	return nil
 }
 
 func (db *MapDB) Delete(key kvstore.Key) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	delete(db.m, string(key))
+	db.m.delete(append(db.realm, key...))
 	return nil
 }
 
 func (db *MapDB) DeletePrefix(keyPrefix kvstore.KeyPrefix) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	prefix := string(keyPrefix)
-	for key := range db.m {
-		if strings.HasPrefix(key, prefix) {
-			delete(db.m, key)
-		}
-	}
+	db.m.deletePrefix(append(db.realm, keyPrefix...))
 	return nil
 }
 
-func (db *MapDB) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	if len(prefix) > 0 {
-		for key, ent := range db.m {
-			if strings.HasPrefix(key, string(prefix)) {
-				if !kvConsumerFunc([]byte(key), append([]byte{}, ent.value...)) {
-					break
-				}
-			}
-		}
-		return nil
-	}
-
-	for key, ent := range db.m {
-		if !kvConsumerFunc([]byte(key), append([]byte{}, ent.value...)) {
-			break
-		}
-	}
-
+func (db *MapDB) Iterate(keyPrefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+	db.m.iterate(append(db.realm, keyPrefix...), consumerFunc)
 	return nil
 }
 
-func (db *MapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	if len(prefix) > 0 {
-		for key := range db.m {
-			if strings.HasPrefix(key, string(prefix)) {
-				if !consumerFunc([]byte(key)) {
-					break
-				}
-			}
-		}
-		return nil
-	}
-
-	for key := range db.m {
-		if !consumerFunc([]byte(key)) {
-			break
-		}
-	}
-
+func (db *MapDB) IterateKeys(keyPrefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+	db.m.iterateKeys(append(db.realm, keyPrefix...), consumerFunc)
 	return nil
 }
 
 func (db *MapDB) Clear() error {
-	db.m = make(map[string]mapEntry)
+	db.m.deletePrefix(db.realm)
 	return nil
 }
 
