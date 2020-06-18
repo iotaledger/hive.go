@@ -1,8 +1,6 @@
 package protocol
 
 import (
-	"errors"
-
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/protocol/message"
@@ -79,6 +77,7 @@ func (p *Protocol) Read(data []byte) (int, error) {
 		// advance consumed offset of received data
 		offset += bytesRead
 
+		// we din't receive the full message yet
 		if p.receiveBufferOffset != len(p.receiveBuffer) {
 			return offset, nil
 		}
@@ -92,7 +91,7 @@ func (p *Protocol) Read(data []byte) (int, error) {
 			header, err := tlv.ParseHeader(p.receiveBuffer, p.msgRegistry)
 			if err != nil {
 				p.Events.Error.Trigger(err)
-				return offset, errors.New("")
+				return offset, err
 			}
 
 			// advance to handle the message type the header says we are receiving
