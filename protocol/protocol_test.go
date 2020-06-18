@@ -47,11 +47,14 @@ func consume(t *testing.T, p *protocol.Protocol, conn io.Reader, expectedLength 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		data := make([]byte, expectedLength)
-		read, err := conn.Read(data)
+		data := make([]byte, expectedLength+1)
+		connRead, err := conn.Read(data)
+		assert.Equal(t, expectedLength, connRead)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedLength, read)
-		p.Read(data[:read])
+
+		pRead, err := p.Read(data[:connRead])
+		assert.Equal(t, expectedLength, pRead)
+		assert.NoError(t, err)
 	}()
 	return &wg
 }
