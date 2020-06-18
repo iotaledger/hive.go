@@ -63,7 +63,7 @@ func New(r *message.Registry) *Protocol {
 	return protocol
 }
 
-// Receive acts as an event handler for received data.
+// Read acts as an event handler for received data.
 func (p *Protocol) Read(data []byte) (int, error) {
 	offset := 0
 	length := len(data)
