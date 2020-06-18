@@ -7,7 +7,6 @@ import (
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/protocol/message"
 	"github.com/iotaledger/hive.go/protocol/tlv"
-	"github.com/iotaledger/hive.go/syncutils"
 )
 
 // Events holds protocol related events.
@@ -16,8 +15,6 @@ type Events struct {
 	// Use a message's ID to get the corresponding event.
 	Received []*events.Event
 	// Fired for generic protocol errors.
-	// It is suggested to close the underlying ReadWriteCloser of the Protocol instance
-	// if any error occurs.
 	Error *events.Event
 }
 
@@ -33,8 +30,6 @@ type Protocol struct {
 	receiveBuffer []byte
 	// the current offset within the receiving buffer
 	receiveBufferOffset int
-	// mutex to synchronize multiple sends
-	sendMutex syncutils.Mutex
 }
 
 // New generates a new protocol instance which is ready to read a first message header.
