@@ -51,7 +51,7 @@ func consume(t *testing.T, p *protocol.Protocol, conn io.Reader, expectedLength 
 		read, err := conn.Read(data)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedLength, read)
-		p.Receive(data[:read])
+		p.Read(data[:read])
 	}()
 	return &wg
 }
@@ -91,10 +91,10 @@ func newTestMessage() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func TestProtocol_Receive(t *testing.T) {
+func TestMessageReceive(t *testing.T) {
 	conn := newFakeConn()
 	defer conn.Close()
-	p := protocol.New(conn, msgRegistry)
+	p := protocol.New(msgRegistry)
 
 	var TestMessageReceived bool
 	var testPacketString string
@@ -113,24 +113,4 @@ func TestProtocol_Receive(t *testing.T) {
 	wg.Wait()
 	assert.True(t, TestMessageReceived)
 	assert.Equal(t, "test!", testPacketString)
-}
-
-func TestProtocol_Send(t *testing.T) {
-	conn := newFakeConn()
-	defer conn.Close()
-	p := protocol.New(conn, msgRegistry)
-
-	var TestMessageSent bool
-	p.Events.Sent[TestMessageDefinition.ID].Attach(events.NewClosure(func() {
-		TestMessageSent = true
-	}))
-
-	testMsg, err := newTestMessage()
-	assert.NoError(t, err)
-
-	wg := consume(t, p, conn, len(testMsg))
-	assert.NoError(t, p.Send(testMsg))
-
-	wg.Wait()
-	assert.True(t, TestMessageSent)
 }
