@@ -1,8 +1,7 @@
 package protocol
 
 import (
-	"fmt"
-	"io"
+	"errors"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/events"
@@ -16,9 +15,6 @@ type Events struct {
 	// Holds event instances to attach to for received messages.
 	// Use a message's ID to get the corresponding event.
 	Received []*events.Event
-	// Holds event instances to attach to for sent messages.
-	// Use a message's ID to get the corresponding event.
-	Sent []*events.Event
 	// Fired for generic protocol errors.
 	// It is suggested to close the underlying ReadWriteCloser of the Protocol instance
 	// if any error occurs.
@@ -29,8 +25,6 @@ type Events struct {
 type Protocol struct {
 	// Holds events for sent/received messages and generic errors.
 	Events Events
-	// the underlying connection
-	conn io.ReadWriteCloser
 	// message registry
 	msgRegistry *message.Registry
 	// the current receiving message
@@ -44,7 +38,7 @@ type Protocol struct {
 }
 
 // New generates a new protocol instance which is ready to read a first message header.
-func New(conn io.ReadWriteCloser, r *message.Registry) *Protocol {
+func New(r *message.Registry) *Protocol {
 
 	// load message definitions
 	definitions := r.Definitions()
@@ -61,11 +55,9 @@ func New(conn io.ReadWriteCloser, r *message.Registry) *Protocol {
 	}
 
 	protocol := &Protocol{
-		conn:        conn,
 		msgRegistry: r,
 		Events: Events{
 			Received: receiveHandlers,
-			Sent:     sentHandlers,
 			Error:    events.NewEvent(events.ErrorCaller),
 		},
 		// the first message on the protocol is a TLV header
@@ -76,14 +68,8 @@ func New(conn io.ReadWriteCloser, r *message.Registry) *Protocol {
 	return protocol
 }
 
-// Start kicks off the protocol by starting to read from the connection.
-func (p *Protocol) Start() {
-	// start reading from the connection
-	_, _ = p.conn.Read(make([]byte, 2048))
-}
-
 // Receive acts as an event handler for received data.
-func (p *Protocol) Receive(data []byte) {
+func (p *Protocol) Read(data []byte) (int, error) {
 	offset := 0
 	length := len(data)
 
@@ -99,7 +85,7 @@ func (p *Protocol) Receive(data []byte) {
 		offset += bytesRead
 
 		if p.receiveBufferOffset != len(p.receiveBuffer) {
-			return
+			return offset, nil
 		}
 
 		// message fully received
@@ -111,8 +97,7 @@ func (p *Protocol) Receive(data []byte) {
 			header, err := tlv.ParseHeader(p.receiveBuffer, p.msgRegistry)
 			if err != nil {
 				p.Events.Error.Trigger(err)
-				_ = p.conn.Close()
-				return
+				return offset, errors.New("")
 			}
 
 			// advance to handle the message type the header says we are receiving
@@ -132,29 +117,6 @@ func (p *Protocol) Receive(data []byte) {
 		p.receivingMessage = tlv.HeaderMessageDefinition
 		p.receiveBuffer = make([]byte, tlv.HeaderMessageDefinition.MaxBytesLength)
 	}
-}
 
-// Send sends the given message (including the message header) to the underlying writer.
-// It fires the corresponding send event for the specific message type.
-func (p *Protocol) Send(message []byte) error {
-	p.sendMutex.Lock()
-	defer p.sendMutex.Unlock()
-
-	// write message
-	if _, err := p.conn.Write(message); err != nil {
-		return fmt.Errorf("failed to send message: %w", err)
-	}
-
-	// fire event handler for sent message
-	p.Events.Sent[message[0]].Trigger()
-
-	return nil
-}
-
-// CloseConnection closes the underlying connection
-func (p *Protocol) CloseConnection() error {
-	if err := p.conn.Close(); err != nil {
-		return err
-	}
-	return nil
+	return offset, nil
 }
