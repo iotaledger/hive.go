@@ -3,8 +3,7 @@ package protocol_test
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
-	"sync"
+	"math"
 	"testing"
 
 	"github.com/iotaledger/hive.go/events"
@@ -14,106 +13,98 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type fakeconn struct {
-	writer io.WriteCloser
-	reader io.ReadCloser
-}
-
-func (f fakeconn) Read(p []byte) (n int, err error) {
-	return f.reader.Read(p)
-}
-
-func (f fakeconn) Write(p []byte) (n int, err error) {
-	return f.writer.Write(p)
-}
-
-func (f fakeconn) Close() error {
-	if err := f.writer.Close(); err != nil {
-		return err
-	}
-	if err := f.reader.Close(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func newFakeConn() *fakeconn {
-	r, w := io.Pipe()
-	return &fakeconn{writer: w, reader: r}
-}
-
-func consume(t *testing.T, p *protocol.Protocol, conn io.Reader, expectedLength int) *sync.WaitGroup {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		data := make([]byte, expectedLength+1)
-		connRead, err := conn.Read(data)
-		assert.Equal(t, expectedLength, connRead)
-		assert.NoError(t, err)
-
-		pRead, err := p.Read(data[:connRead])
-		assert.Equal(t, expectedLength, pRead)
-		assert.NoError(t, err)
-	}()
-	return &wg
-}
-
 const (
-	MessageTypeTest message.Type = 1
-
-	// length of a test message in bytes
-	TestMaxBytesLength = 5
+	testMessageType message.Type = 1
 )
 
 var (
-	TestMessageDefinition = &message.Definition{
-		ID:             MessageTypeTest,
-		MaxBytesLength: TestMaxBytesLength,
-		VariableLength: false,
+	testMessageDefinition = &message.Definition{
+		ID:             testMessageType,
+		MaxBytesLength: math.MaxUint16,
+		VariableLength: true,
 	}
 	msgRegistry = message.NewRegistry([]*message.Definition{
 		tlv.HeaderMessageDefinition,
-		TestMessageDefinition,
+		testMessageDefinition,
 	})
+
+	testMessage = []byte("test!")
 )
 
-func newTestMessage() ([]byte, error) {
-	packet := []byte{'t', 'e', 's', 't', '!'}
-	// create a buffer for tlv header plus the packet
-	buf := bytes.NewBuffer(make([]byte, 0, tlv.HeaderMessageDefinition.MaxBytesLength+uint16(TestMaxBytesLength)))
+func newTestPacket() ([]byte, error) {
+	buf := new(bytes.Buffer)
 	// write tlv header into buffer
-	if err := tlv.WriteHeader(buf, MessageTypeTest, uint16(TestMaxBytesLength)); err != nil {
+	if err := tlv.WriteHeader(buf, testMessageType, uint16(len(testMessage))); err != nil {
 		return nil, err
 	}
 	// write serialized packet bytes into the buffer
-	if err := binary.Write(buf, binary.BigEndian, packet); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, testMessage); err != nil {
 		return nil, err
 	}
-
 	return buf.Bytes(), nil
 }
 
-func TestMessageReceive(t *testing.T) {
-	conn := newFakeConn()
-	defer conn.Close()
+func TestProtocol_Read(t *testing.T) {
 	p := protocol.New(msgRegistry)
 
-	var TestMessageReceived bool
-	var testPacketString string
-	p.Events.Received[TestMessageDefinition.ID].Attach(events.NewClosure(func(data []byte) {
-		TestMessageReceived = true
-		testPacketString = string(data)
+	var receivedMessages [][]byte
+	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+		receivedMessages = append(receivedMessages, message)
 	}))
 
-	testMsg, err := newTestMessage()
+	pkt, err := newTestPacket()
 	assert.NoError(t, err)
 
-	wg := consume(t, p, conn, len(testMsg))
-	_, err = conn.Write(testMsg)
+	n, err := p.Read(pkt)
+	assert.Equal(t, len(pkt), n)
 	assert.NoError(t, err)
 
-	wg.Wait()
-	assert.True(t, TestMessageReceived)
-	assert.Equal(t, "test!", testPacketString)
+	// check the event
+	assert.ElementsMatch(t, [][]byte{testMessage}, receivedMessages)
+}
+
+func TestProtocol_ReadTwice(t *testing.T) {
+	p := protocol.New(msgRegistry)
+
+	var receivedMessages [][]byte
+	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+		receivedMessages = append(receivedMessages, message)
+	}))
+
+	var buf bytes.Buffer
+
+	pkt, err := newTestPacket()
+	assert.NoError(t, err)
+	buf.Write(pkt)
+	pkt, err = newTestPacket()
+	assert.NoError(t, err)
+	buf.Write(pkt)
+
+	n, err := p.Read(buf.Bytes())
+	assert.Equal(t, buf.Len(), n)
+	assert.NoError(t, err)
+
+	// check the event
+	assert.ElementsMatch(t, [][]byte{testMessage, testMessage}, receivedMessages)
+}
+
+func TestProtocol_ReadSplit(t *testing.T) {
+	p := protocol.New(msgRegistry)
+
+	var receivedMessages [][]byte
+	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+		receivedMessages = append(receivedMessages, message)
+	}))
+
+	pkt, err := newTestPacket()
+	assert.NoError(t, err)
+
+	for _, b := range pkt {
+		n, err := p.Read([]byte{b})
+		assert.Equal(t, 1, n)
+		assert.NoError(t, err)
+	}
+
+	// check the event
+	assert.ElementsMatch(t, [][]byte{testMessage}, receivedMessages)
 }
