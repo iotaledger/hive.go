@@ -134,7 +134,7 @@ func (list *DoublyLinkedList) RemoveEntry(entry *DoublyLinkedListEntry) error {
 	}
 
 	if list.head == nil {
-		return fmt.Errorf("%w: the entry is not part of the list", ErrInvalidArgument)
+		return fmt.Errorf("%w: the entry is not part of the list", ErrNoSuchElement)
 	}
 
 	prevEntry := entry.GetPrev()
