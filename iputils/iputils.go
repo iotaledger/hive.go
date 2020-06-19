@@ -1,12 +1,11 @@
 package iputils
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func IsIPv6(ip net.IP) bool {
