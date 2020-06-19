@@ -1,9 +1,7 @@
 package network
 
 import (
-	"fmt"
 	"net"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -47,13 +45,6 @@ func (mc *ManagedConnection) BytesWritten() uint64 {
 }
 
 func (mc *ManagedConnection) Read(p []byte) (int, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("panic while reading from socket", r, string(debug.Stack()))
-		}
-		mc.Close()
-	}()
-
 	read := 0
 	for {
 		if err := mc.setReadTimeoutBasedDeadline(); err != nil {
@@ -77,12 +68,6 @@ func (mc *ManagedConnection) Read(p []byte) (int, error) {
 }
 
 func (mc *ManagedConnection) Write(p []byte) (int, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("panic while writing to socket", r)
-			mc.Close()
-		}
-	}()
 	if err := mc.setWriteTimeoutBasedDeadline(); err != nil {
 		return 0, err
 	}
