@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/events"
 )
 
-type BufferedConnectionEvents struct {
+type ManagedConnectionEvents struct {
 	ReceiveData *events.Event
 	Close       *events.Event
 	Error       *events.Event
