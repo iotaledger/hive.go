@@ -12,7 +12,8 @@ import (
 )
 
 type ManagedConnection struct {
-	Conn         net.Conn
+	net.Conn
+
 	Events       BufferedConnectionEvents
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -102,26 +103,6 @@ func (mc *ManagedConnection) Close() error {
 	})
 
 	return err
-}
-
-func (mc *ManagedConnection) LocalAddr() net.Addr {
-	return mc.Conn.LocalAddr()
-}
-
-func (mc *ManagedConnection) RemoteAddr() net.Addr {
-	return mc.Conn.RemoteAddr()
-}
-
-func (mc *ManagedConnection) SetDeadline(t time.Time) error {
-	return mc.Conn.SetDeadline(t)
-}
-
-func (mc *ManagedConnection) SetReadDeadline(t time.Time) error {
-	return mc.Conn.SetReadDeadline(t)
-}
-
-func (mc *ManagedConnection) SetWriteDeadline(t time.Time) error {
-	return mc.Conn.SetWriteDeadline(t)
 }
 
 func (mc *ManagedConnection) SetTimeout(d time.Duration) error {
