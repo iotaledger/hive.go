@@ -1,12 +1,13 @@
 package daemon
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
-	"github.com/pkg/errors"
 )
 
 // Errors for the daemon package
@@ -134,7 +135,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	exWorker, has := d.workers[name]
 	if has {
 		if exWorker.running.IsSet() {
-			return errors.Wrapf(ErrExistingBackgroundWorkerStillRunning, "%s is still running", name)
+			return fmt.Errorf("%w: %s is still running", ErrExistingBackgroundWorkerStillRunning, name)
 		}
 
 		// remove the existing worker from the shutdown order

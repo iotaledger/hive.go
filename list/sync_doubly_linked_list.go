@@ -2,7 +2,6 @@ package list
 
 import (
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/pkg/errors"
 )
 
 func NewSyncDoublyLinkedList() *SyncDoublyLinkedList {
@@ -129,7 +128,7 @@ func (list *SyncDoublyLinkedList) Remove(value interface{}) error {
 	}
 	list.mutex.RUnlock()
 
-	return errors.Wrap(ErrNoSuchElement, "the entry is not part of the list")
+	return ErrNoSuchElement
 }
 
 func (list *SyncDoublyLinkedList) Clear() {

@@ -1,16 +1,16 @@
 package badger
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
-	"github.com/pkg/errors"
 )
 
 func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {
 	if err := checkDir(directory); err != nil {
-		return nil, errors.Wrap(err, "Could not check directory")
+		return nil, fmt.Errorf("could not check directory: %w", err)
 	}
 
 	var opts badger.Options
@@ -50,7 +50,7 @@ func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, 
 
 	db, err := badger.Open(opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not open new DB")
+		return nil, fmt.Errorf("could not open new DB: %w", err)
 	}
 
 	return db, nil

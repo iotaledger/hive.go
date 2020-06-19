@@ -1,7 +1,8 @@
 package list
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 var (
@@ -99,14 +100,14 @@ func (list *DoublyLinkedList) AddFirstEntry(entry *DoublyLinkedListEntry) {
 
 func (list *DoublyLinkedList) GetFirstEntry() (*DoublyLinkedListEntry, error) {
 	if list.head == nil {
-		return nil, errors.Wrap(ErrNoSuchElement, "the list is empty")
+		return nil, ErrNoSuchElement
 	}
 	return list.head, nil
 }
 
 func (list *DoublyLinkedList) GetLastEntry() (*DoublyLinkedListEntry, error) {
 	if list.tail == nil {
-		return nil, errors.Wrap(ErrNoSuchElement, "the list is empty")
+		return nil, ErrNoSuchElement
 	}
 	return list.tail, nil
 }
@@ -129,11 +130,11 @@ func (list *DoublyLinkedList) RemoveLastEntry() (*DoublyLinkedListEntry, error) 
 
 func (list *DoublyLinkedList) RemoveEntry(entry *DoublyLinkedListEntry) error {
 	if entry == nil {
-		return errors.Wrap(ErrInvalidArgument, "the entry must not be nil")
+		return fmt.Errorf("%w: the entry must not be nil", ErrInvalidArgument)
 	}
 
 	if list.head == nil {
-		return errors.Wrap(ErrNoSuchElement, "the entry is not part of the list")
+		return fmt.Errorf("%w: the entry is not part of the list", ErrNoSuchElement)
 	}
 
 	prevEntry := entry.GetPrev()
