@@ -9,10 +9,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+// ManagedConnection provides a wrapper for a net.Conn to be used together with events.
 type ManagedConnection struct {
 	net.Conn
+	Events ManagedConnectionEvents
 
-	Events       BufferedConnectionEvents
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	closeOnce    sync.Once
@@ -22,16 +23,14 @@ type ManagedConnection struct {
 }
 
 func NewManagedConnection(conn net.Conn) *ManagedConnection {
-	bufferedConnection := &ManagedConnection{
+	return &ManagedConnection{
 		Conn: conn,
-		Events: BufferedConnectionEvents{
+		Events: ManagedConnectionEvents{
 			ReceiveData: events.NewEvent(events.ByteSliceCaller),
 			Close:       events.NewEvent(events.CallbackCaller),
 			Error:       events.NewEvent(events.ErrorCaller),
 		},
 	}
-
-	return bufferedConnection
 }
 
 // BytesRead returns the total number of bytes read.
@@ -77,6 +76,8 @@ func (mc *ManagedConnection) Write(p []byte) (int, error) {
 	return n, err
 }
 
+// Close closes the connection.
+// Any blocked Read or Write operations will be unblocked and return errors.
 func (mc *ManagedConnection) Close() (err error) {
 	mc.closeOnce.Do(func() {
 		// do not trigger the error event to prevent deadlocks
