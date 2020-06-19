@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/events"
+	"go.uber.org/atomic"
 )
 
 type ManagedConnection struct {
@@ -16,8 +17,9 @@ type ManagedConnection struct {
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	closeOnce    sync.Once
-	BytesRead    int
-	BytesWritten int
+
+	bytesRead    atomic.Uint64
+	bytesWritten atomic.Uint64
 }
 
 func NewManagedConnection(conn net.Conn) *ManagedConnection {
@@ -33,7 +35,17 @@ func NewManagedConnection(conn net.Conn) *ManagedConnection {
 	return bufferedConnection
 }
 
-func (mc *ManagedConnection) Read(receiveBuffer []byte) (n int, err error) {
+// BytesRead returns the total number of bytes read.
+func (mc *ManagedConnection) BytesRead() uint64 {
+	return mc.bytesRead.Load()
+}
+
+// BytesWritten returns the total number of bytes written.
+func (mc *ManagedConnection) BytesWritten() uint64 {
+	return mc.bytesWritten.Load()
+}
+
+func (mc *ManagedConnection) Read(p []byte) (int, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("panic while reading from socket", r, string(debug.Stack()))
@@ -41,28 +53,29 @@ func (mc *ManagedConnection) Read(receiveBuffer []byte) (n int, err error) {
 		mc.Close()
 	}()
 
+	read := 0
 	for {
 		if err := mc.setReadTimeoutBasedDeadline(); err != nil {
-			return mc.BytesRead, err
+			return read, err
 		}
 
-		byteCount, err := mc.Conn.Read(receiveBuffer)
+		n, err := mc.Conn.Read(p)
+		read += n
+		mc.bytesRead.Add(uint64(n))
 		if err != nil {
 			mc.Events.Error.Trigger(err)
-			return mc.BytesRead, err
+			return read, err
 		}
-		if byteCount > 0 {
-			mc.BytesRead += byteCount
-
-			receivedData := make([]byte, byteCount)
-			copy(receivedData, receiveBuffer)
-
+		if n > 0 {
+			// copy the data before triggering
+			receivedData := make([]byte, n)
+			copy(receivedData, p)
 			mc.Events.ReceiveData.Trigger(receivedData)
 		}
 	}
 }
 
-func (mc *ManagedConnection) Write(data []byte) (n int, err error) {
+func (mc *ManagedConnection) Write(p []byte) (int, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("panic while writing to socket", r)
@@ -73,9 +86,9 @@ func (mc *ManagedConnection) Write(data []byte) (n int, err error) {
 		return 0, err
 	}
 
-	wrote, err := mc.Conn.Write(data)
-	mc.BytesWritten += wrote
-	return wrote, err
+	n, err := mc.Conn.Write(p)
+	mc.bytesWritten.Add(uint64(n))
+	return n, err
 }
 
 func (mc *ManagedConnection) Close() error {
