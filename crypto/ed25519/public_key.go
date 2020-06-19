@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/oasislabs/ed25519"
-
-	"github.com/mr-tron/base58"
-
 	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/mr-tron/base58"
+	"github.com/oasisprotocol/ed25519"
 )
 
 // PublicKey is the type of Ed25519 public keys.
