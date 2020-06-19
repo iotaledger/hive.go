@@ -92,16 +92,13 @@ func (mc *ManagedConnection) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (mc *ManagedConnection) Close() error {
-	err := mc.Conn.Close()
-	if err != nil {
-		mc.Events.Error.Trigger(err)
-	}
-
+func (mc *ManagedConnection) Close() (err error) {
 	mc.closeOnce.Do(func() {
+		// do not trigger the error event to prevent deadlocks
+		err = mc.Conn.Close()
+		// trigger Close event in separate go routine to prevent deadlocks
 		go mc.Events.Close.Trigger()
 	})
-
 	return err
 }
 
