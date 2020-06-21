@@ -19,13 +19,13 @@ const (
 	// MessageTypeHeader is the unique id of a tlv header.
 	MessageTypeHeader message.Type = 0
 
-	// The amount of bytes dedicated for the message type in the packet header.
+	// HeaderTypeBytesLength defines the amount of bytes dedicated for the message type in the packet header.
 	HeaderTypeBytesLength = 1
 
-	// The amount of bytes dedicated for the message length denotation in the packet header.
+	// HeaderLengthByteLength defines the amount of bytes dedicated for the message length denotation in the packet header.
 	HeaderLengthByteLength = 2
 
-	// The amount of bytes making up the protocol TLV packet header.
+	// HeaderBytesLength defines the amount of bytes making up the protocol TLV packet header.
 	HeaderBytesLength = HeaderLengthByteLength + HeaderTypeBytesLength
 )
 
