@@ -15,7 +15,6 @@ import (
 // Errors in the peer package.
 var (
 	ErrNeedsPeeringService = errors.New("needs peering service")
-	ErrInvalidSignature    = errors.New("invalid signature")
 )
 
 // PublicKey is the type of Ed25519 public keys used for peers.

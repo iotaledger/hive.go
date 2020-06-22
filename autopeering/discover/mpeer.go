@@ -5,19 +5,27 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/identity"
+	"go.uber.org/atomic"
 )
 
 // mpeer represents a discovered peer with additional data.
 // The fields of Peer may not be modified.
 type mpeer struct {
-	peer.Peer
+	*peer.Peer
 
-	verifiedCount uint // how often that peer has been reverified
-	lastNewPeers  uint // number of returned new peers when queried the last time
+	verifiedCount atomic.Uint32 // how often that peer has been re-verified
+	lastNewPeers  atomic.Uint32 // number of returned new peers when queried the last time
+}
+
+func newMPeer(p *peer.Peer, verifiedCount uint32, lastNewPeers uint32) *mpeer {
+	m := &mpeer{Peer: p}
+	m.verifiedCount.Store(verifiedCount)
+	m.lastNewPeers.Store(lastNewPeers)
+	return m
 }
 
 func wrapPeer(p *peer.Peer) *mpeer {
-	return &mpeer{Peer: *p}
+	return newMPeer(p, 0, 0)
 }
 
 func wrapPeers(ps []*peer.Peer) []*mpeer {
@@ -29,7 +37,7 @@ func wrapPeers(ps []*peer.Peer) []*mpeer {
 }
 
 func unwrapPeer(p *mpeer) *peer.Peer {
-	return &p.Peer
+	return p.Peer
 }
 
 func unwrapPeers(ps []*mpeer) []*peer.Peer {

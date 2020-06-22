@@ -150,7 +150,7 @@ func (m *manager) doReverify(done chan<- struct{}) {
 
 		// do not remove master peers
 		if containsPeer(m.masters, p.ID()) {
-			p.verifiedCount = 0
+			p.verifiedCount.Store(0)
 			// move the master peer to the front of the peer list
 			copy(m.active[1:], m.active[:len(m.active)-1])
 			m.active[0] = p
@@ -161,7 +161,7 @@ func (m *manager) doReverify(done chan<- struct{}) {
 		m.log.Debugw("remove dead",
 			"peer", p,
 		)
-		if p.verifiedCount > 0 {
+		if p.verifiedCount.Load() > 0 {
 			m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
 		}
 
@@ -200,12 +200,9 @@ func (m *manager) updatePeer(update *peer.Peer) uint {
 				copy(m.active[1:], m.active[:i])
 			}
 			// replace first mpeer with a wrap of the updated peer
-			m.active[0] = &mpeer{
-				Peer:          *update,
-				verifiedCount: p.verifiedCount + 1,
-				lastNewPeers:  p.lastNewPeers,
-			}
-			return p.verifiedCount + 1
+			updated := newMPeer(update, p.verifiedCount.Load()+1, p.lastNewPeers.Load())
+			m.active[0] = updated
+			return uint(updated.verifiedCount.Load())
 		}
 	}
 	return 0
@@ -251,7 +248,7 @@ func (m *manager) addDiscoveredPeer(p *peer.Peer) bool {
 		"peer", p,
 	)
 
-	mp := wrapPeer(p)
+	mp := newMPeer(p, 0, 0)
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
 	}
@@ -285,8 +282,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 		return false
 	}
 
-	mp := wrapPeer(p)
-	mp.verifiedCount = 1
+	mp := newMPeer(p, 1, 0)
 
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
@@ -320,7 +316,7 @@ func (m *manager) randomPeers(n int, minVerified uint) []*mpeer {
 		}
 
 		p := m.active[i]
-		if p.verifiedCount < minVerified {
+		if uint(p.verifiedCount.Load()) < minVerified {
 			continue
 		}
 		peers = append(peers, p)
@@ -336,7 +332,7 @@ func (m *manager) verifiedPeers() []*mpeer {
 
 	peers := make([]*mpeer, 0, len(m.active))
 	for _, mp := range m.active {
-		if mp.verifiedCount == 0 {
+		if mp.verifiedCount.Load() == 0 {
 			continue
 		}
 		peers = append(peers, mp)

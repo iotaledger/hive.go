@@ -36,7 +36,7 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 
 	peers, err := m.net.DiscoveryRequest(unwrapPeer(p))
 	if err != nil || len(peers) == 0 {
-		p.lastNewPeers = 0
+		p.lastNewPeers.Store(0)
 
 		m.log.Debugw("query failed",
 			"id", p.ID(),
@@ -46,13 +46,13 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 		return
 	}
 
-	var added uint
+	var added uint32
 	for _, rp := range peers {
 		if m.addDiscoveredPeer(rp) {
 			added++
 		}
 	}
-	p.lastNewPeers = added
+	p.lastNewPeers.Store(added)
 
 	m.log.Debugw("queried",
 		"id", p.ID(),
@@ -81,7 +81,7 @@ func (m *manager) peersToQuery() []*mpeer {
 		}
 		if r.Value == nil {
 			r.Value = p
-		} else if p.lastNewPeers >= r.Value.(*mpeer).lastNewPeers {
+		} else if p.lastNewPeers.Load() >= r.Value.(*mpeer).lastNewPeers.Load() {
 			r = r.Next()
 			r.Value = p
 		}

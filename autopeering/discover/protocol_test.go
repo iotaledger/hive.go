@@ -56,8 +56,8 @@ func TestProtVerifyMaster(t *testing.T) {
 	closeB()              // close srvB to avoid race conditions, when asserting
 
 	if assert.EqualValues(t, 1, len(protB.mgr.active)) {
-		assert.EqualValues(t, peerA, &protB.mgr.active[0].Peer)
-		assert.EqualValues(t, 1, protB.mgr.active[0].verifiedCount)
+		assert.EqualValues(t, peerA, protB.mgr.active[0].Peer)
+		assert.EqualValues(t, 1, protB.mgr.active[0].verifiedCount.Load())
 	}
 }
 
