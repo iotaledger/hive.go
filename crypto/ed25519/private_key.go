@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mr-tron/base58"
-	"github.com/oasislabs/ed25519"
+	"github.com/oasisprotocol/ed25519"
 )
 
 // PrivateKey is the type of Ed25519 private keys.
