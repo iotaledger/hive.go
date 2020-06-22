@@ -4,11 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 
-	"github.com/mr-tron/base58"
-	"github.com/oasislabs/ed25519"
-	"golang.org/x/crypto/blake2b"
-
 	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/mr-tron/base58"
+	"github.com/oasisprotocol/ed25519"
+	"golang.org/x/crypto/blake2b"
 )
 
 // Seed is a generator for a deterministic sequence of KeyPairs.

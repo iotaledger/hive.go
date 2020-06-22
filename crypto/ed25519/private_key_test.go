@@ -3,8 +3,7 @@ package ed25519
 import (
 	"testing"
 
-	"github.com/oasislabs/ed25519"
-
+	"github.com/oasisprotocol/ed25519"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
