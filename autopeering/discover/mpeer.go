@@ -110,7 +110,7 @@ func deletePeerByID(list []*mpeer, id identity.ID) ([]*mpeer, *mpeer) {
 			return deletePeer(list, i)
 		}
 	}
-	panic("mpeer: id not contained in list")
+	return list, nil
 }
 
 // pushPeer adds the given peer to the pack of the list.

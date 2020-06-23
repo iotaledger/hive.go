@@ -143,40 +143,50 @@ func (m *manager) doReverify(done chan<- struct{}) {
 	)
 
 	// could not verify the peer
-	if m.net.Ping(unwrapPeer(p)) != nil {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-
-		// do not remove master peers
-		if containsPeer(m.masters, p.ID()) {
-			// move the master peer to the front but reset verifiedCount
-			m.updatePeer(p.Peer())
-			p.verifiedCount.Store(0)
-			return
-		}
-
-		m.active, _ = deletePeerByID(m.active, p.ID())
-		m.log.Debugw("remove dead",
-			"peer", p,
-		)
-		if p.verifiedCount.Load() > 0 {
-			m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
-		}
-
-		// add a random replacement, if available
-		if len(m.replacements) > 0 {
-			var r *mpeer
-			m.replacements, r = deletePeer(m.replacements, rand.Intn(len(m.replacements)))
-			m.active = pushPeer(m.active, r, maxManaged)
-		}
+	if m.net.Ping(p) != nil {
+		m.deletePeer(p.ID())
 		return
 	}
 
 	// no need to do anything here, as the peer is bumped when handling the pong
 }
 
+// deletePeer deletes the peer with the given ID from the list of managed peers.
+func (m *manager) deletePeer(id identity.ID) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	var mp *mpeer
+	m.active, mp = deletePeerByID(m.active, id)
+	if mp == nil {
+		return // peer no longer exists
+	}
+
+	// master peers are never removed
+	if containsPeer(m.masters, id) {
+		// reset verifiedCount and re-add them to the front of the active peers
+		mp.verifiedCount.Store(0)
+		m.active = unshiftPeer(m.active, mp, maxManaged)
+		return
+	}
+
+	m.log.Debugw("deleted",
+		"peer", mp,
+	)
+	if mp.verifiedCount.Load() > 0 {
+		m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(mp)})
+	}
+
+	// add a random replacement, if available
+	if len(m.replacements) > 0 {
+		var r *mpeer
+		m.replacements, r = deletePeer(m.replacements, rand.Intn(len(m.replacements)))
+		m.active = pushPeer(m.active, r, maxManaged)
+	}
+}
+
 // peerToReverify returns the oldest peer, or nil if empty.
-func (m *manager) peerToReverify() *mpeer {
+func (m *manager) peerToReverify() *peer.Peer {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -184,7 +194,7 @@ func (m *manager) peerToReverify() *mpeer {
 		return nil
 	}
 	// the last peer is the oldest
-	return m.active[len(m.active)-1]
+	return unwrapPeer(m.active[len(m.active)-1])
 }
 
 // updatePeer moves the peer with the given ID to the front of the list of managed peers.

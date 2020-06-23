@@ -31,17 +31,17 @@ func (m *manager) doQuery(next chan<- time.Duration) {
 	wg.Wait()
 }
 
-func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
+func (m *manager) requestWorker(mp *mpeer, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	peers, err := m.net.DiscoveryRequest(unwrapPeer(p))
-	if err != nil || len(peers) == 0 {
-		p.lastNewPeers.Store(0)
-
+	p := unwrapPeer(mp)
+	peers, err := m.net.DiscoveryRequest(p)
+	if err != nil {
 		m.log.Debugw("query failed",
-			"peer", p,
+			"peer", mp,
 			"err", err,
 		)
+		m.deletePeer(p.ID())
 		return
 	}
 
@@ -51,10 +51,10 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 			added++
 		}
 	}
-	p.lastNewPeers.Store(added)
+	mp.lastNewPeers.Store(added)
 
 	m.log.Debugw("queried",
-		"peer", p,
+		"peer", mp,
 		"#added", added,
 	)
 }
