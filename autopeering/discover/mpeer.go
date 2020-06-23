@@ -11,21 +11,38 @@ import (
 // mpeer represents a discovered peer with additional data.
 // The fields of Peer may not be modified.
 type mpeer struct {
-	*peer.Peer
-
+	peer          atomic.Value
 	verifiedCount atomic.Uint32 // how often that peer has been re-verified
 	lastNewPeers  atomic.Uint32 // number of returned new peers when queried the last time
 }
 
-func newMPeer(p *peer.Peer, verifiedCount uint32, lastNewPeers uint32) *mpeer {
-	m := &mpeer{Peer: p}
-	m.verifiedCount.Store(verifiedCount)
-	m.lastNewPeers.Store(lastNewPeers)
+// Peer returns the wrapped peer.Peer.
+func (m *mpeer) Peer() *peer.Peer {
+	return m.peer.Load().(*peer.Peer)
+}
+
+// ID returns the ID of the wrapped peer.Peer.
+func (m *mpeer) ID() identity.ID {
+	return m.Peer().ID()
+}
+
+// String returns a string representation of the peer.
+func (m *mpeer) String() string {
+	return fmt.Sprintf("{%s, verifiedCount:%d, lastNewPeers:%d}", m.Peer(), m.verifiedCount.Load(), m.lastNewPeers.Load())
+}
+
+func (m *mpeer) setPeer(p *peer.Peer) {
+	m.peer.Store(p)
+}
+
+func newMPeer(p *peer.Peer) *mpeer {
+	m := new(mpeer)
+	m.setPeer(p)
 	return m
 }
 
 func wrapPeer(p *peer.Peer) *mpeer {
-	return newMPeer(p, 0, 0)
+	return newMPeer(p)
 }
 
 func wrapPeers(ps []*peer.Peer) []*mpeer {
@@ -37,7 +54,7 @@ func wrapPeers(ps []*peer.Peer) []*mpeer {
 }
 
 func unwrapPeer(p *mpeer) *peer.Peer {
-	return p.Peer
+	return p.Peer()
 }
 
 func unwrapPeers(ps []*mpeer) []*peer.Peer {

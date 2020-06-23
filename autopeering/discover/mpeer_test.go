@@ -14,7 +14,7 @@ func TestWrapPeers(t *testing.T) {
 	p := make([]*peer.Peer, 5)
 	for i := range m {
 		p[i] = peertest.NewPeer(testNetwork, testIP, i)
-		m[i] = newMPeer(p[i], 0, 0)
+		m[i] = newMPeer(p[i])
 	}
 
 	wrapP := wrapPeers(p)
@@ -26,7 +26,7 @@ func TestUnwrapPeers(t *testing.T) {
 	p := make([]*peer.Peer, 5)
 	for i := range m {
 		p[i] = peertest.NewPeer(testNetwork, testIP, i)
-		m[i] = newMPeer(p[i], 0, 0)
+		m[i] = newMPeer(p[i])
 	}
 
 	unwrapP := unwrapPeers(m)
@@ -39,7 +39,7 @@ func TestContainsPeer(t *testing.T) {
 	k := peertest.NewPeer(testNetwork, testIP, 999)
 	for i := range m {
 		p[i] = peertest.NewPeer(testNetwork, testIP, i)
-		m[i] = newMPeer(p[i], 0, 0)
+		m[i] = newMPeer(p[i])
 	}
 
 	for i := range m {
@@ -51,7 +51,7 @@ func TestContainsPeer(t *testing.T) {
 func TestUnshiftPeer(t *testing.T) {
 	m := make([]*mpeer, 5)
 	for i := range m {
-		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i), 0, 0)
+		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i))
 	}
 
 	type testCase struct {
@@ -92,7 +92,7 @@ func TestUnshiftPeer(t *testing.T) {
 func TestDeletePeer(t *testing.T) {
 	m := make([]*mpeer, 5)
 	for i := range m {
-		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i), 0, 0)
+		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i))
 	}
 
 	type testCase struct {
@@ -130,7 +130,7 @@ func TestDeletePeerByID(t *testing.T) {
 	p := make([]*peer.Peer, 5)
 	for i := range m {
 		p[i] = peertest.NewPeer(testNetwork, testIP, i)
-		m[i] = newMPeer(p[i], 0, 0)
+		m[i] = newMPeer(p[i])
 	}
 
 	type testCase struct {
@@ -167,7 +167,7 @@ func TestPushPeer(t *testing.T) {
 	m := make([]*mpeer, 5)
 	max := len(m) - 1
 	for i := range m {
-		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i), 0, 0)
+		m[i] = newMPeer(peertest.NewPeer(testNetwork, testIP, i))
 	}
 
 	type testCase struct {

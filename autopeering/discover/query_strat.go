@@ -39,8 +39,7 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 		p.lastNewPeers.Store(0)
 
 		m.log.Debugw("query failed",
-			"id", p.ID(),
-			"addr", p.Address(),
+			"peer", p,
 			"err", err,
 		)
 		return
@@ -55,8 +54,7 @@ func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
 	p.lastNewPeers.Store(added)
 
 	m.log.Debugw("queried",
-		"id", p.ID(),
-		"addr", p.Address(),
+		"peer", p,
 		"#added", added,
 	)
 }

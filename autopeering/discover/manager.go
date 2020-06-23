@@ -139,8 +139,7 @@ func (m *manager) doReverify(done chan<- struct{}) {
 		return // nothing can be reverified
 	}
 	m.log.Debugw("reverifying",
-		"id", p.ID(),
-		"addr", p.Address(),
+		"peer", p,
 	)
 
 	// could not verify the peer
@@ -150,10 +149,9 @@ func (m *manager) doReverify(done chan<- struct{}) {
 
 		// do not remove master peers
 		if containsPeer(m.masters, p.ID()) {
+			// move the master peer to the front but reset verifiedCount
+			m.updatePeer(p.Peer())
 			p.verifiedCount.Store(0)
-			// move the master peer to the front of the peer list
-			copy(m.active[1:], m.active[:len(m.active)-1])
-			m.active[0] = p
 			return
 		}
 
@@ -198,11 +196,11 @@ func (m *manager) updatePeer(update *peer.Peer) uint {
 			if i > 0 {
 				//  move i-th peer to the front
 				copy(m.active[1:], m.active[:i])
+				m.active[0] = p
 			}
-			// replace first mpeer with a wrap of the updated peer
-			updated := newMPeer(update, p.verifiedCount.Load()+1, p.lastNewPeers.Load())
-			m.active[0] = updated
-			return uint(updated.verifiedCount.Load())
+			// update the wrapped peer and verifiedCount
+			p.setPeer(update)
+			return uint(p.verifiedCount.Inc())
 		}
 	}
 	return 0
@@ -248,7 +246,7 @@ func (m *manager) addDiscoveredPeer(p *peer.Peer) bool {
 		"peer", p,
 	)
 
-	mp := newMPeer(p, 0, 0)
+	mp := newMPeer(p)
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
 	}
@@ -282,7 +280,8 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 		return false
 	}
 
-	mp := newMPeer(p, 1, 0)
+	mp := newMPeer(p)
+	mp.verifiedCount.Inc()
 
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
