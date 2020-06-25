@@ -38,7 +38,7 @@ func BenchmarkWorkerPool_goroutine(b *testing.B) {
 func BenchmarkWorkerPool_Submit(b *testing.B) {
 	b.ReportAllocs()
 
-	var wp = *(&WorkerPool{}).Tune(runtime.NumCPU())
+	var wp = *(&WorkerPool{}).Tune(runtime.GOMAXPROCS(0))
 
 	b.ResetTimer()
 
