@@ -152,7 +152,7 @@ func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool 
 
 func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
-	if typeutils.IsInterfaceNil(cachedObject.value) {
+	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
 		cachedObject.value = object
 		cachedObject.blindDelete.UnSet()
 	} else {
