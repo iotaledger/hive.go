@@ -284,6 +284,15 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 					newCachedObject.Release()
 				}
 			} else {
+				// abort if the object exists in the database already - an object might have been written and evicted
+				// since our last check so even though the object was not found in the cache, it still exists already
+				if loadedObject := objectStorage.LoadObjectFromStore(key); !typeutils.IsInterfaceNil(loadedObject) {
+					newCachedObject.publishResult(loadedObject)
+					newCachedObject.Release()
+
+					return
+				}
+
 				newCachedObject.publishResult(object)
 
 				stored = true
