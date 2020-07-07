@@ -284,8 +284,11 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 	}
 
-	// abort if the object exists in the database already - an object might have been written and evicted
-	// since our last check so even though the object was not found in the cache, it might exists now anyway
+	// Abort if the object exists in the database already - an object might have been written and evicted
+	// since our last check so even though the object was not found in the cache, it might exists now anyway.
+	//
+	// Note: We need to fill our registered CachedObject with the actual value from the database instead of just
+	//       returning without doing anything.
 	if loadedObject := objectStorage.LoadObjectFromStore(key); !typeutils.IsInterfaceNil(loadedObject) {
 		existingCachedObject.publishResult(loadedObject)
 		existingCachedObject.Release()
@@ -293,7 +296,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 		return
 	}
 
-	// publish object into the prepared cached object
+	// put object into the prepared cached object
 	object.Persist()
 	object.SetModified()
 	existingCachedObject.publishResult(object)
