@@ -265,7 +265,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	key := object.ObjectStorageKey()
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
 
-	// try to update the existing cache entry if it was empty
+	// try to update an existing cache entry if it is empty
 	if cacheHit {
 		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 	}
@@ -279,7 +279,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	// retrieve object from the cache (with registering a cached object)
 	existingCachedObject, cacheHit = objectStorage.accessCache(key, true)
 
-	// try to update the existing cache entry if it was empty
+	// try to update an existing cache entry if it is empty
 	if cacheHit {
 		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 	}
