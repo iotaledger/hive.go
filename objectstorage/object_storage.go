@@ -251,59 +251,51 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
 func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result CachedObject, stored bool) {
+	// prevent usage of shutdown storage
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	var cachedObject *CachedObjectImpl
+	// retrieve object from the cache (without registering a cached object)
 	key := object.ObjectStorageKey()
-
 	existingCachedObject, cacheHit := objectStorage.accessCache(key, false)
+
+	// try to update the existing cache entry if it was empty
 	if cacheHit {
-		existingCachedObject.wg.Wait()
-
-		object.Persist()
-		object.SetModified()
-
-		if stored = existingCachedObject.updateEmptyResult(object); stored {
-			cachedObject = existingCachedObject
-		} else {
-			existingCachedObject.Release()
-		}
-	} else {
-		if objectExists := objectStorage.objectExistsInStore(key); !objectExists {
-			object.Persist()
-			object.SetModified()
-
-			if newCachedObject, cacheHit := objectStorage.accessCache(key, true); cacheHit {
-				newCachedObject.wg.Wait()
-
-				if stored = newCachedObject.updateEmptyResult(object); stored {
-					cachedObject = newCachedObject
-				} else {
-					newCachedObject.Release()
-				}
-			} else {
-				// abort if the object exists in the database already - an object might have been written and evicted
-				// since our last check so even though the object was not found in the cache, it still exists already
-				if loadedObject := objectStorage.LoadObjectFromStore(key); !typeutils.IsInterfaceNil(loadedObject) {
-					newCachedObject.publishResult(loadedObject)
-					newCachedObject.Release()
-
-					return
-				}
-
-				newCachedObject.publishResult(object)
-
-				stored = true
-				cachedObject = newCachedObject
-			}
-		}
+		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 	}
 
-	if cachedObject != nil {
-		result = wrapCachedObject(cachedObject.waitForInitialResult(), 0)
+	// abort if the object already exists in our database
+	objectExists := objectStorage.objectExistsInStore(key)
+	if objectExists {
+		return
 	}
+
+	// retrieve object from the cache (with registering a cached object)
+	existingCachedObject, cacheHit = objectStorage.accessCache(key, true)
+
+	// try to update the existing cache entry if it was empty
+	if cacheHit {
+		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
+	}
+
+	// abort if the object exists in the database already - an object might have been written and evicted
+	// since our last check so even though the object was not found in the cache, it might exists now anyway
+	if loadedObject := objectStorage.LoadObjectFromStore(key); !typeutils.IsInterfaceNil(loadedObject) {
+		existingCachedObject.publishResult(loadedObject)
+		existingCachedObject.Release()
+
+		return
+	}
+
+	// publish object into the prepared cached object
+	object.Persist()
+	object.SetModified()
+	existingCachedObject.publishResult(object)
+
+	// construct result
+	stored = true
+	result = wrapCachedObject(existingCachedObject, 0)
 
 	return
 }
@@ -644,6 +636,31 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	// ... and store it
 	currentPartition[partitionKey] = cachedObject
 	objectStorage.size++
+
+	return
+}
+
+// updateEmptyCachedObject updates the value of the given CachedObject with the given object if and only if the
+// CachedObject was empty before. It returns the CachedObject (or nil if it wasn't updated) and a boolean flag indicating
+// if the object was updated.
+func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *CachedObjectImpl, object StorableObject) (result CachedObject, updated bool) {
+	// wait for the cached object to be available
+	cachedObject.waitForInitialResult()
+
+	// prepare object to be stored
+	object.Persist()
+	object.SetModified()
+
+	// try to update the object if it is empty or abort otherwise
+	updated = cachedObject.updateEmptyResult(object)
+	if !updated {
+		cachedObject.Release()
+
+		return
+	}
+
+	// construct result
+	result = wrapCachedObject(cachedObject, 0)
 
 	return
 }
