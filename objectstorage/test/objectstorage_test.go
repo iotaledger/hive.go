@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -319,6 +320,50 @@ func TestConcurrency(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestStoreIfAbsentTriggersOnce(t *testing.T) {
+	// define test parameters
+	objectCount := 10000
+	workerCount := 50
+
+	// initialize object storage
+	objectsStorage := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true), objectstorage.LeakDetectionEnabled(true, objectstorage.LeakDetectionOptions{
+		MaxConsumersPerObject: 100,
+		MaxConsumerHoldTime:   5 * time.Second,
+	}))
+
+	// prepare objects to store
+	objects := make([]*TestObject, objectCount)
+	for i := 0; i < objectCount; i++ {
+		objects[i] = NewTestObject(fmt.Sprintf("%v", i), 0)
+	}
+
+	// store the same object multiple times in multiple goroutines
+	var wg sync.WaitGroup
+	var storedObjectsCount int32
+	for i := 0; i < objectCount; i++ {
+		for j := 0; j < workerCount; j++ {
+			wg.Add(1)
+			go func(i int) {
+				storedObject, stored := objectsStorage.StoreIfAbsent(objects[i])
+				if stored {
+					atomic.AddInt32(&storedObjectsCount, 1)
+
+					storedObject.Release()
+				}
+
+				wg.Done()
+			}(i)
+		}
+	}
+
+	// wait till storing the objects is done
+	wg.Wait()
+	objectsStorage.Shutdown()
+
+	// evaluate results
+	assert.Equal(t, objectCount, int(storedObjectsCount), "StoreIfAbsent should only return true for a single concurrent caller")
 }
 
 func TestEvictionBug(t *testing.T) {
