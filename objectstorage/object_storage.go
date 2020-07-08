@@ -52,7 +52,7 @@ func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
 		panic("trying to access shutdown object storage")
 	}
 
-	return wrapCachedObject(objectStorage.putObjectInCache(object), 0)
+	return objectStorage.putObjectInCache(object)
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
@@ -67,7 +67,7 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
 	object.Persist()
 	object.SetModified()
 
-	return wrapCachedObject(objectStorage.putObjectInCache(object), 0)
+	return objectStorage.putObjectInCache(object)
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
@@ -758,13 +758,26 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 	return
 }
 
-func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) *CachedObjectImpl {
-	cachedObject, _ := objectStorage.accessCache(object.ObjectStorageKey(), true)
-	if !cachedObject.publishResult(object) {
+func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) CachedObject {
+	// retrieve the cache entry
+	cachedObject, cacheHit := objectStorage.accessCache(object.ObjectStorageKey(), true)
+
+	// update and return the object if we have a cache hit
+	if cacheHit {
+		// try to replace the object if its is empty
+		result, updated := objectStorage.updateEmptyCachedObject(cachedObject, object)
+		if updated {
+			return result
+		}
+
+		// otherwise update and return
 		cachedObject.updateResult(object)
+		return wrapCachedObject(cachedObject, 0)
 	}
 
-	return cachedObject
+	// publish the result to the cached object and return
+	cachedObject.publishResult(object)
+	return wrapCachedObject(cachedObject, 0)
 }
 
 // LoadObjectFromStore loads a storable object from the persistence layer.
