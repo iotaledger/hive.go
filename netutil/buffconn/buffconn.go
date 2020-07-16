@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	// MaxMessageSize is the maximum message size in bytes.
 	// IOTimeout specifies the timeout for sending and receiving multi packet messages.
 	IOTimeout = 4 * time.Second
 
