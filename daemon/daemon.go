@@ -78,7 +78,7 @@ func New() *OrderedDaemon {
 type OrderedDaemon struct {
 	running                *typeutils.AtomicBool
 	stopped                *typeutils.AtomicBool
-	stopOnce               syncutils.Once
+	stopOnce               sync.Once
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
