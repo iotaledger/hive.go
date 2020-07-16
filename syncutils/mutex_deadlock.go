@@ -3,8 +3,9 @@
 package syncutils
 
 import (
-	deadlock "github.com/sasha-s/go-deadlock"
 	"time"
+
+	deadlock "github.com/sasha-s/go-deadlock"
 )
 
 type Mutex = deadlock.Mutex
