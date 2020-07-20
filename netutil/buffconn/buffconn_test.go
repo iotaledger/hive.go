@@ -14,15 +14,16 @@ import (
 )
 
 const graceTime = 10 * time.Millisecond
+const maxMessageSize = 65 * 1024
 
 var testMsg = []byte("test")
 
 func TestBufferedConnection(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		conn1, conn2 := net.Pipe()
-		buffConn1 := NewBufferedConnection(conn1)
+		buffConn1 := NewBufferedConnection(conn1, maxMessageSize)
 		defer buffConn1.Close()
-		buffConn2 := NewBufferedConnection(conn2)
+		buffConn2 := NewBufferedConnection(conn2, maxMessageSize)
 		defer buffConn2.Close()
 
 		var wg sync.WaitGroup
@@ -42,9 +43,9 @@ func TestBufferedConnection(t *testing.T) {
 
 	t.Run("Write", func(t *testing.T) {
 		conn1, conn2 := net.Pipe()
-		buffConn1 := NewBufferedConnection(conn1)
+		buffConn1 := NewBufferedConnection(conn1, maxMessageSize)
 		defer buffConn1.Close()
-		buffConn2 := NewBufferedConnection(conn2)
+		buffConn2 := NewBufferedConnection(conn2, maxMessageSize)
 		defer buffConn2.Close()
 
 		go func() {
@@ -58,9 +59,9 @@ func TestBufferedConnection(t *testing.T) {
 
 	t.Run("ReceiveMessage", func(t *testing.T) {
 		conn1, conn2 := net.Pipe()
-		buffConn1 := NewBufferedConnection(conn1)
+		buffConn1 := NewBufferedConnection(conn1, maxMessageSize)
 		defer buffConn1.Close()
-		buffConn2 := NewBufferedConnection(conn2)
+		buffConn2 := NewBufferedConnection(conn2, maxMessageSize)
 		defer buffConn2.Close()
 
 		var wg sync.WaitGroup
@@ -88,9 +89,9 @@ func TestBufferedConnection(t *testing.T) {
 
 	t.Run("ReceiveMany", func(t *testing.T) {
 		conn1, conn2 := net.Pipe()
-		buffConn1 := NewBufferedConnection(conn1)
+		buffConn1 := NewBufferedConnection(conn1, maxMessageSize)
 		defer buffConn1.Close()
-		buffConn2 := NewBufferedConnection(conn2)
+		buffConn2 := NewBufferedConnection(conn2, maxMessageSize)
 		defer buffConn2.Close()
 
 		const numWrites = 3
@@ -117,7 +118,7 @@ func TestBufferedConnection(t *testing.T) {
 
 	t.Run("InvalidHeader", func(t *testing.T) {
 		conn1, conn2 := net.Pipe()
-		buffConn1 := NewBufferedConnection(conn1)
+		buffConn1 := NewBufferedConnection(conn1, maxMessageSize)
 		defer buffConn1.Close()
 		defer conn2.Close()
 
