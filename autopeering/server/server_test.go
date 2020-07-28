@@ -116,11 +116,11 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	ping := new(Ping)
 	packet := s.encode(ping.Marshal())
 
-	data, identity, err := decode(packet)
+	data, id, err := decode(packet)
 	require.NoError(t, err)
 
 	msg, _ := unmarshal(data)
-	assert.Equal(t, local.LocalIdentity().Identity, identity)
+	assert.Equal(t, local.LocalIdentity().Identity, id)
 	assert.Equal(t, msg, ping)
 }
 

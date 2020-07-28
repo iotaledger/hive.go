@@ -25,11 +25,11 @@ type Message interface {
 	Type() MType
 }
 
-func (m *PeeringRequest) Name() string { return "PEERING_REQUEST" }
-func (m *PeeringRequest) Type() MType  { return MPeeringRequest }
+func (x *PeeringRequest) Name() string { return "PEERING_REQUEST" }
+func (x *PeeringRequest) Type() MType  { return MPeeringRequest }
 
-func (m *PeeringResponse) Name() string { return "PEERING_RESPONSE" }
-func (m *PeeringResponse) Type() MType  { return MPeeringResponse }
+func (x *PeeringResponse) Name() string { return "PEERING_RESPONSE" }
+func (x *PeeringResponse) Type() MType  { return MPeeringResponse }
 
-func (m *PeeringDrop) Name() string { return "PEERING_DROP" }
-func (m *PeeringDrop) Type() MType  { return MPeeringDrop }
+func (x *PeeringDrop) Name() string { return "PEERING_DROP" }
+func (x *PeeringDrop) Type() MType  { return MPeeringDrop }
