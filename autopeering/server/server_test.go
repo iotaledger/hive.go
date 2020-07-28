@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const graceTime = 5 * time.Millisecond
@@ -31,18 +32,12 @@ type testMessage interface {
 	Marshal() []byte
 }
 
-type Ping struct{}
-type Pong struct{}
+type Ping struct{ emptypb.Empty }
+type Pong struct{ emptypb.Empty }
 
-func (m *Ping) Reset()        { *m = Ping{} }
-func (*Ping) String() string  { return "" }
-func (*Ping) ProtoMessage()   {}
 func (*Ping) Type() MType     { return MPing }
 func (*Ping) Marshal() []byte { return append([]byte{}, byte(MPing)) }
 
-func (m *Pong) Reset()        { *m = Pong{} }
-func (*Pong) String() string  { return "" }
-func (*Pong) ProtoMessage()   {}
 func (*Pong) Type() MType     { return MPong }
 func (*Pong) Marshal() []byte { return append([]byte{}, byte(MPong)) }
 

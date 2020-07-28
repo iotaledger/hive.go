@@ -1,8 +1,8 @@
 package proto
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
+	"google.golang.org/protobuf/proto"
 )
 
 // MType is the type of message type enum.
