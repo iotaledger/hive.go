@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
+	"google.golang.org/protobuf/proto"
 )
 
 // Errors in the peer package.

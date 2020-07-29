@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/discover/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	peerpb "github.com/iotaledger/hive.go/autopeering/peer/proto"
@@ -19,6 +18,7 @@ import (
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil"
 	"github.com/iotaledger/hive.go/typeutils"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

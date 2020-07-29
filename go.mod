@@ -20,7 +20,8 @@ require (
 	go.etcd.io/bbolt v1.3.5
 	go.uber.org/atomic v1.6.0
 	go.uber.org/zap v1.15.0
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
+	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/tools v0.0.0-20200103221440-774c71fcf114 // indirect
+	google.golang.org/protobuf v1.25.0
 )

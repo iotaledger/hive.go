@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/service/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Record defines the mapping between a service ID and its tuple TypePort
