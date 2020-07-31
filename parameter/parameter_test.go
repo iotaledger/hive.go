@@ -42,7 +42,7 @@ func TestFetchJSONConfig(t *testing.T) {
 	config := viper.New()
 	config.SetFs(memFS)
 
-	err := parameter.LoadConfigFile(config, confDir, configName, true, true, false)
+	err := parameter.LoadConfigFile(config, confDir, configName, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestFetchJSONConfigFlagConfigName(t *testing.T) {
 	config := viper.New()
 	config.SetFs(memFS)
 
-	err = parameter.LoadConfigFile(config, confDir, configName, false, false, false)
+	err = parameter.LoadConfigFile(config, confDir, configName, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestFetchYAMLConfig(t *testing.T) {
 	config := viper.New()
 	config.SetFs(memFS)
 
-	err = parameter.LoadConfigFile(config, confDir, configName, false, false, false)
+	err = parameter.LoadConfigFile(config, confDir, configName, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
