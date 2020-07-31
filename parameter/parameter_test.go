@@ -42,7 +42,6 @@ func TestFetchJSONConfig(t *testing.T) {
 	config := viper.New()
 	config.SetFs(memFS)
 
-	//
 	err := parameter.LoadConfigFile(config, confDir, configName, true, true)
 	if err != nil {
 		t.Fatal(err)
