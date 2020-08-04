@@ -37,8 +37,10 @@ func PrintConfig(config *viper.Viper, ignoreSettingsAtPrint ...[]string) {
 //
 // It automatically reads in a single config with name defined in "configName"
 // and ending with: .json, .toml, .yaml or .yml (in this sequence).
-func LoadConfigFile(config *viper.Viper, configDir string, configName string, bindFlags bool, loadDefault bool) error {
-	flag.Parse()
+func LoadConfigFile(config *viper.Viper, configDir string, configName string, bindFlags bool, loadDefault bool, dontParseFlags ...bool) error {
+	if len(dontParseFlags) == 0 || !dontParseFlags[0] {
+		flag.Parse()
+	}
 	if bindFlags {
 		err := config.BindPFlags(flag.CommandLine)
 		if err != nil {
