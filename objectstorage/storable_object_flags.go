@@ -50,6 +50,6 @@ func (testObject *StorableObjectFlags) Persist(persist ...bool) {
 	}
 }
 
-func (testObject *StorableObjectFlags) PersistenceEnabled() bool {
+func (testObject *StorableObjectFlags) ShouldPersist() bool {
 	return testObject.persist.IsSet()
 }

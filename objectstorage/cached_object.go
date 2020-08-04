@@ -157,7 +157,7 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 		cachedObject.blindDelete.UnSet()
 	} else {
 		cachedObject.value.SetModified(object.IsModified())
-		cachedObject.value.Persist(object.PersistenceEnabled())
+		cachedObject.value.Persist(object.ShouldPersist())
 		cachedObject.value.Delete(object.IsDeleted())
 		cachedObject.value.Update(object)
 		cachedObject.blindDelete.UnSet()

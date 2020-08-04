@@ -96,7 +96,7 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 				if err := batchedMuts.Delete(cachedObject.key); err != nil {
 					panic(err)
 				}
-			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
+			} else if storableObject.ShouldPersist() && storableObject.IsModified() {
 				storableObject.SetModified(false)
 
 				var marshaledValue []byte

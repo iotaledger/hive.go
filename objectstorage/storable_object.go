@@ -21,7 +21,7 @@ type StorableObject interface {
 	Persist(enabled ...bool)
 
 	// Returns "true" if this object is going to be persisted.
-	PersistenceEnabled() bool
+	ShouldPersist() bool
 
 	// Updates the object with the values of another object "in place" (so it should use a pointer receiver)
 	Update(other StorableObject)

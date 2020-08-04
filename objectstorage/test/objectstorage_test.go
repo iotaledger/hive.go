@@ -177,13 +177,13 @@ func TestStorableObjectFlags(t *testing.T) {
 	testObject.Delete(true)
 	assert.Equal(t, true, testObject.IsDeleted())
 
-	assert.Equal(t, false, testObject.PersistenceEnabled())
+	assert.Equal(t, false, testObject.ShouldPersist())
 	testObject.Persist()
-	assert.Equal(t, true, testObject.PersistenceEnabled())
+	assert.Equal(t, true, testObject.ShouldPersist())
 	testObject.Persist(false)
-	assert.Equal(t, false, testObject.PersistenceEnabled())
+	assert.Equal(t, false, testObject.ShouldPersist())
 	testObject.Persist(true)
-	assert.Equal(t, true, testObject.PersistenceEnabled())
+	assert.Equal(t, true, testObject.ShouldPersist())
 }
 
 func BenchmarkStore(b *testing.B) {
