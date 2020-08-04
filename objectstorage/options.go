@@ -62,6 +62,7 @@ func KeysOnly(keysOnly bool) Option {
 	}
 }
 
+// StoreOnCreation writes an object directly to the persistence layer on creation.
 func StoreOnCreation(store bool) Option {
 	return func(args *Options) {
 		args.storeOnCreation = store

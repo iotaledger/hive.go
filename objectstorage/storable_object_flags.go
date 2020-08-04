@@ -50,6 +50,7 @@ func (testObject *StorableObjectFlags) Persist(persist ...bool) {
 	}
 }
 
+// ShouldPersist returns "true" if this object is going to be persisted.
 func (testObject *StorableObjectFlags) ShouldPersist() bool {
 	return testObject.persist.IsSet()
 }
