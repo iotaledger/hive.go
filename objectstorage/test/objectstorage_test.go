@@ -262,6 +262,64 @@ func TestStoreIfAbsent(t *testing.T) {
 	objects.Shutdown()
 }
 
+func TestStoreOnCreation(t *testing.T) {
+	//
+	// without StoreOnCreation
+	//
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(false), objectstorage.CacheTime(2*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	loadedObject := objects.Load([]byte("Hans"))
+	loadedObject.Release()
+
+	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	assert.Equal(t, true, stored1)
+
+	if typeutils.IsInterfaceNil(storedObject1) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	// give the batchWriter some time to persist it
+	time.Sleep(time.Second)
+
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); !typeutils.IsInterfaceNil(loadedObject) {
+		t.Error("the object should NOT be stored in the database yet stored")
+	}
+
+	storedObject1.Release(true)
+
+	//
+	// with StoreOnCreation
+	//
+	objects = objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(true), objectstorage.CacheTime(2*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	loadedObject = objects.Load([]byte("Hans"))
+	loadedObject.Release()
+
+	storedObject1, stored1 = objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	assert.Equal(t, true, stored1)
+
+	if typeutils.IsInterfaceNil(storedObject1) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	// give the batchWriter some time to persist it
+	time.Sleep(time.Second)
+
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); typeutils.IsInterfaceNil(loadedObject) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	storedObject1.Release(true)
+
+	objects.Shutdown()
+}
+
 func TestDelete(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()

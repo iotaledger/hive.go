@@ -157,6 +157,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			cachedObject.publishResult(loadedObject)
 		} else {
 			cachedObject.publishResult(remappingFunction(key))
+			cachedObject.storeOnCreation()
 		}
 	}
 
@@ -300,6 +301,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	object.Persist()
 	object.SetModified()
 	existingCachedObject.publishResult(object)
+	existingCachedObject.storeOnCreation()
 
 	// construct result
 	stored = true
@@ -777,6 +779,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 
 	// publish the result to the cached object and return
 	cachedObject.publishResult(object)
+	cachedObject.storeOnCreation()
 	return wrapCachedObject(cachedObject, 0)
 }
 
