@@ -398,7 +398,7 @@ func TestConcurrency(t *testing.T) {
 func TestStoreIfAbsentTriggersOnce(t *testing.T) {
 	for k := 0; k < 10; k++ {
 		// define test parameters
-		objectCount := 1000
+		objectCount := 200
 		workerCount := 50
 
 		// initialize object storage
