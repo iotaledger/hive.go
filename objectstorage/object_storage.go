@@ -210,6 +210,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 }
 
 // Performs a "blind delete", where we do not check the objects existence.
+// blindDelete is used to delete without accessing the value log.
 func (objectStorage *ObjectStorage) Delete(key []byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
