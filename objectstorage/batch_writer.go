@@ -96,7 +96,11 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 	storableObject := cachedObject.Get()
 
 	if typeutils.IsInterfaceNil(storableObject) {
-		// delete even if there are consumers
+		if consumers != 0 {
+			// only blind delete if there are no consumers
+			return
+		}
+
 		if cachedObject.blindDelete.IsSet() {
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
@@ -106,7 +110,11 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 	}
 
 	if storableObject.IsDeleted() {
-		// delete even if there are consumers
+		if consumers != 0 {
+			// only delete if there are no consumers
+			return
+		}
+
 		storableObject.SetModified(false)
 
 		if err := batchedMuts.Delete(cachedObject.key); err != nil {
