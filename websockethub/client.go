@@ -64,6 +64,10 @@ type Client struct {
 	// buffered channel of outbound messages.
 	sendChan chan interface{}
 
+	// a channel which is closed when the writePump of the client exited.
+	// this is used signal the hub to not send messages to sendChan anymore.
+	sendChanClosed chan struct{}
+
 	// channel of inbound messages.
 	// this will be created by the user if receiving messages is needed.
 	ReceiveChan chan *WebsocketMsg
@@ -82,8 +86,18 @@ type Client struct {
 func (c *Client) checkPong() {
 
 	defer func() {
-		// send a unregister message to the hub
-		c.hub.unregister <- c
+		select {
+		case <-c.hub.shutdownSignal:
+			return
+
+		case <-c.ExitSignal:
+			// the Hub closed the channel.
+			return
+
+		default:
+			// send a unregister message to the hub
+			c.hub.unregister <- c
+		}
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -124,11 +138,20 @@ func (c *Client) writePump() {
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {
+		// signal the hub to not send messages to sendChan anymore
+		close(c.sendChanClosed)
+
 		// stop the ping ticker
 		pingTicker.Stop()
 
-		// send a unregister message to the hub
-		c.hub.unregister <- c
+		select {
+		case <-c.hub.shutdownSignal:
+		case <-c.ExitSignal:
+			// the Hub closed the channel.
+		default:
+			// send a unregister message to the hub
+			c.hub.unregister <- c
+		}
 
 		// close the websocket connection
 		c.conn.Close()
@@ -173,6 +196,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 		select {
 		case <-c.hub.shutdownSignal:
 		case <-c.ExitSignal:
+		case <-c.sendChanClosed:
 		case c.sendChan <- msg:
 		}
 		return
@@ -181,6 +205,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	select {
 	case <-c.hub.shutdownSignal:
 	case <-c.ExitSignal:
+	case <-c.sendChanClosed:
 	case c.sendChan <- msg:
 	default:
 	}

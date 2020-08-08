@@ -85,6 +85,9 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case <-shutdownSignal:
 			for client := range h.clients {
 				delete(h.clients, client)
+				if client.ReceiveChan != nil {
+					close(client.ReceiveChan)
+				}
 				close(client.ExitSignal)
 				close(client.sendChan)
 			}
@@ -104,6 +107,9 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
+				if client.ReceiveChan != nil {
+					close(client.ReceiveChan)
+				}
 				close(client.ExitSignal)
 				close(client.sendChan)
 				h.logger.Infof("Removed websocket client")
@@ -122,6 +128,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 					select {
 					case <-shutdownSignal:
 					case <-client.ExitSignal:
+					case <-client.sendChanClosed:
 					case client.sendChan <- message.data:
 					}
 				}
@@ -138,6 +145,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 				select {
 				case <-shutdownSignal:
 				case <-client.ExitSignal:
+				case <-client.sendChanClosed:
 				case client.sendChan <- message.data:
 				default:
 				}
@@ -164,11 +172,12 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 	conn.EnableWriteCompression(true)
 
 	client := &Client{
-		hub:        h,
-		conn:       conn,
-		ExitSignal: make(chan struct{}),
-		sendChan:   make(chan interface{}, h.clientSendChannelSize),
-		onConnect:  onConnect,
+		hub:            h,
+		conn:           conn,
+		ExitSignal:     make(chan struct{}),
+		sendChan:       make(chan interface{}, h.clientSendChannelSize),
+		sendChanClosed: make(chan struct{}),
+		onConnect:      onConnect,
 	}
 
 	if onCreate != nil {
