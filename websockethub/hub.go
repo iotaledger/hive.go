@@ -112,6 +112,13 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case message := <-h.broadcast:
 			if message.dontDrop {
 				for client := range h.clients {
+					if client.FilterCallback != nil {
+						if !client.FilterCallback(client, message.data) {
+							// do not broadcast the message to this client
+							continue
+						}
+					}
+
 					select {
 					case <-shutdownSignal:
 					case <-client.ExitSignal:
@@ -121,6 +128,13 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 				continue
 			}
 			for client := range h.clients {
+				if client.FilterCallback != nil {
+					if !client.FilterCallback(client, message.data) {
+						// do not broadcast the message to this client
+						continue
+					}
+				}
+
 				select {
 				case <-shutdownSignal:
 				case <-client.ExitSignal:

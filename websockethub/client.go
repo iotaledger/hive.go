@@ -35,6 +35,9 @@ type Client struct {
 
 	// onConnect gets called when the client was registered
 	onConnect func(*Client)
+
+	// FilterCallback is used to filter messages to clients on BroadcastMsg
+	FilterCallback func(c *Client, data interface{}) bool
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
