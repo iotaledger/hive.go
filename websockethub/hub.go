@@ -85,7 +85,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case <-shutdownSignal:
 			for client := range h.clients {
 				delete(h.clients, client)
-				close(client.exitSignal)
+				close(client.ExitSignal)
 				close(client.sendChan)
 			}
 			return
@@ -94,10 +94,17 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 			// register client
 			h.clients[client] = struct{}{}
 
+			go client.checkPong()
+			go client.writePump()
+
+			if client.onConnect != nil {
+				client.onConnect(client)
+			}
+
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.exitSignal)
+				close(client.ExitSignal)
 				close(client.sendChan)
 				h.logger.Infof("Removed websocket client")
 			}
@@ -107,7 +114,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 				for client := range h.clients {
 					select {
 					case <-shutdownSignal:
-					case <-client.exitSignal:
+					case <-client.ExitSignal:
 					case client.sendChan <- message.data:
 					}
 				}
@@ -116,7 +123,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 			for client := range h.clients {
 				select {
 				case <-shutdownSignal:
-				case <-client.exitSignal:
+				case <-client.ExitSignal:
 				case client.sendChan <- message.data:
 				default:
 				}
@@ -126,7 +133,9 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 }
 
 // ServeWebsocket handles websocket requests from the peer.
-func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onConnect ...func(client *Client)) {
+// onCreate gets called when the client is created.
+// onConnect gets called when the client was registered.
+func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
 	defer func() {
 		if r := recover(); r != nil {
 			h.logger.Errorf("recovered from ServeWebsocket func: %s", r)
@@ -143,15 +152,14 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onConnect .
 	client := &Client{
 		hub:        h,
 		conn:       conn,
-		exitSignal: make(chan struct{}),
+		ExitSignal: make(chan struct{}),
 		sendChan:   make(chan interface{}, h.clientSendChannelSize),
+		onConnect:  onConnect,
 	}
+
+	if onCreate != nil {
+		onCreate(client)
+	}
+
 	h.register <- client
-
-	go client.checkPong()
-	go client.writePump()
-
-	if len(onConnect) > 0 {
-		onConnect[0](client)
-	}
 }

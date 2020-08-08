@@ -28,10 +28,13 @@ type Client struct {
 	conn *websocket.Conn
 
 	// a channel which is closed when the websocket client is disconnected.
-	exitSignal chan struct{}
+	ExitSignal chan struct{}
 
 	// buffered channel of outbound messages.
 	sendChan chan interface{}
+
+	// onConnect gets called when the client was registered
+	onConnect func(*Client)
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
@@ -84,7 +87,7 @@ func (c *Client) writePump() {
 		case <-c.hub.shutdownSignal:
 			return
 
-		case <-c.exitSignal:
+		case <-c.ExitSignal:
 			// the Hub closed the channel.
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
@@ -116,7 +119,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	if len(dontDrop) > 0 && dontDrop[0] {
 		select {
 		case <-c.hub.shutdownSignal:
-		case <-c.exitSignal:
+		case <-c.ExitSignal:
 		case c.sendChan <- msg:
 		}
 		return
@@ -124,7 +127,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 
 	select {
 	case <-c.hub.shutdownSignal:
-	case <-c.exitSignal:
+	case <-c.ExitSignal:
 	case c.sendChan <- msg:
 	default:
 	}
