@@ -20,6 +20,37 @@ const (
 	maxMessageSize = 125 // 125 is the maximum payload size for ping pongs
 )
 
+// The message types are defined in RFC 6455, section 11.8.
+const (
+	// TextMessage denotes a text data message. The text message payload is
+	// interpreted as UTF-8 encoded text data.
+	TextMessage = 1
+
+	// BinaryMessage denotes a binary data message.
+	BinaryMessage = 2
+
+	// CloseMessage denotes a close control message. The optional message
+	// payload contains a numeric code and text. Use the FormatCloseMessage
+	// function to format a close message payload.
+	CloseMessage = 8
+
+	// PingMessage denotes a ping control message. The optional message payload
+	// is UTF-8 encoded text.
+	PingMessage = 9
+
+	// PongMessage denotes a pong control message. The optional message payload
+	// is UTF-8 encoded text.
+	PongMessage = 10
+)
+
+// WebsocketMsg is a message received via websocket.
+type WebsocketMsg struct {
+	// MsgType is the type of the message based on RFC 6455.
+	MsgType int
+	// Data is the received data of the message.
+	Data []byte
+}
+
 // Client is a middleman between the node and the websocket connection.
 type Client struct {
 	hub *Hub
@@ -32,6 +63,10 @@ type Client struct {
 
 	// buffered channel of outbound messages.
 	sendChan chan interface{}
+
+	// channel of inbound messages.
+	// this will be created by the user if receiving messages needed.
+	ReceiveChan chan *WebsocketMsg
 
 	// onConnect gets called when the client was registered
 	onConnect func(*Client)
@@ -56,12 +91,27 @@ func (c *Client) checkPong() {
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	for {
-		_, _, err := c.conn.ReadMessage()
+		msgType, data, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				c.hub.logger.Warnf("Websocket error: %v", err)
 			}
 			return
+		}
+
+		if c.ReceiveChan != nil {
+			select {
+
+			case <-c.hub.shutdownSignal:
+				return
+
+			case <-c.ExitSignal:
+				// the Hub closed the channel.
+				return
+
+			case c.ReceiveChan <- &WebsocketMsg{MsgType: msgType, Data: data}:
+				// send the received message to the user.
+			}
 		}
 	}
 }
