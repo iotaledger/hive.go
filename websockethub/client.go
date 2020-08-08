@@ -65,7 +65,7 @@ type Client struct {
 	sendChan chan interface{}
 
 	// channel of inbound messages.
-	// this will be created by the user if receiving messages needed.
+	// this will be created by the user if receiving messages is needed.
 	ReceiveChan chan *WebsocketMsg
 
 	// onConnect gets called when the client was registered
