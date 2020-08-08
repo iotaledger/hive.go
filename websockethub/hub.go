@@ -48,8 +48,8 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		clientSendChannelSize: clientSendChannelSize,
 		clients:               make(map[*Client]struct{}),
 		broadcast:             make(chan *message, broadcastQueueSize),
-		register:              make(chan *Client),
-		unregister:            make(chan *Client),
+		register:              make(chan *Client, 1),
+		unregister:            make(chan *Client, 1),
 	}
 }
 
