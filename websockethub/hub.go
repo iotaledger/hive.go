@@ -48,8 +48,8 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		clientSendChannelSize: clientSendChannelSize,
 		clients:               make(map[*Client]struct{}),
 		broadcast:             make(chan *message, broadcastQueueSize),
-		register:              make(chan *Client),
-		unregister:            make(chan *Client),
+		register:              make(chan *Client, 1),
+		unregister:            make(chan *Client, 1),
 	}
 }
 
@@ -85,7 +85,10 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case <-shutdownSignal:
 			for client := range h.clients {
 				delete(h.clients, client)
-				close(client.exitSignal)
+				if client.ReceiveChan != nil {
+					close(client.ReceiveChan)
+				}
+				close(client.ExitSignal)
 				close(client.sendChan)
 			}
 			return
@@ -94,10 +97,20 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 			// register client
 			h.clients[client] = struct{}{}
 
+			go client.checkPong()
+			go client.writePump()
+
+			if client.onConnect != nil {
+				client.onConnect(client)
+			}
+
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.exitSignal)
+				if client.ReceiveChan != nil {
+					close(client.ReceiveChan)
+				}
+				close(client.ExitSignal)
 				close(client.sendChan)
 				h.logger.Infof("Removed websocket client")
 			}
@@ -105,18 +118,34 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case message := <-h.broadcast:
 			if message.dontDrop {
 				for client := range h.clients {
+					if client.FilterCallback != nil {
+						if !client.FilterCallback(client, message.data) {
+							// do not broadcast the message to this client
+							continue
+						}
+					}
+
 					select {
 					case <-shutdownSignal:
-					case <-client.exitSignal:
+					case <-client.ExitSignal:
+					case <-client.sendChanClosed:
 					case client.sendChan <- message.data:
 					}
 				}
 				continue
 			}
 			for client := range h.clients {
+				if client.FilterCallback != nil {
+					if !client.FilterCallback(client, message.data) {
+						// do not broadcast the message to this client
+						continue
+					}
+				}
+
 				select {
 				case <-shutdownSignal:
-				case <-client.exitSignal:
+				case <-client.ExitSignal:
+				case <-client.sendChanClosed:
 				case client.sendChan <- message.data:
 				default:
 				}
@@ -126,7 +155,9 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 }
 
 // ServeWebsocket handles websocket requests from the peer.
-func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onConnect ...func(client *Client)) {
+// onCreate gets called when the client is created.
+// onConnect gets called when the client was registered.
+func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
 	defer func() {
 		if r := recover(); r != nil {
 			h.logger.Errorf("recovered from ServeWebsocket func: %s", r)
@@ -141,17 +172,17 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onConnect .
 	conn.EnableWriteCompression(true)
 
 	client := &Client{
-		hub:        h,
-		conn:       conn,
-		exitSignal: make(chan struct{}),
-		sendChan:   make(chan interface{}, h.clientSendChannelSize),
+		hub:            h,
+		conn:           conn,
+		ExitSignal:     make(chan struct{}),
+		sendChan:       make(chan interface{}, h.clientSendChannelSize),
+		sendChanClosed: make(chan struct{}),
+		onConnect:      onConnect,
 	}
+
+	if onCreate != nil {
+		onCreate(client)
+	}
+
 	h.register <- client
-
-	go client.checkPong()
-	go client.writePump()
-
-	if len(onConnect) > 0 {
-		onConnect[0](client)
-	}
 }
