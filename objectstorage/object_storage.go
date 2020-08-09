@@ -131,7 +131,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 
 		cachedObject.Release()
 	} else {
-		result = objectStorage.objectExistsInStore(key)
+		result = objectStorage.ObjectExistsInStore(key)
 	}
 
 	return
@@ -200,7 +200,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	cachedObject.publishResult(nil)
 	cachedObject.Release(true)
 
-	if objectStorage.objectExistsInStore(key) {
+	if objectStorage.ObjectExistsInStore(key) {
 		cachedObject.blindDelete.Set()
 
 		return true
@@ -273,7 +273,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	}
 
 	// abort if the object already exists in our database
-	objectExists := objectStorage.objectExistsInStore(key)
+	objectExists := objectStorage.ObjectExistsInStore(key)
 	if objectExists {
 		return
 	}
@@ -856,7 +856,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
 	}
 }
 
-func (objectStorage *ObjectStorage) objectExistsInStore(key []byte) bool {
+func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 	if !objectStorage.options.persistenceEnabled {
 		return false
 	}
