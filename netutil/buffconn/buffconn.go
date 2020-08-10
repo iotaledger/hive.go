@@ -40,8 +40,8 @@ type BufferedConnection struct {
 	closeOnce            sync.Once
 	maxMessageSize       int
 
-	bytesRead    *atomic.Uint32
-	bytesWritten *atomic.Uint32
+	bytesRead    *atomic.Uint64
+	bytesWritten *atomic.Uint64
 }
 
 // NewBufferedConnection creates a new BufferedConnection from a net.Conn.
@@ -54,8 +54,8 @@ func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnectio
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
 		maxMessageSize:       maxMessageSize,
-		bytesRead:            atomic.NewUint32(0),
-		bytesWritten:         atomic.NewUint32(0),
+		bytesRead:            atomic.NewUint64(0),
+		bytesWritten:         atomic.NewUint64(0),
 	}
 }
 
@@ -81,12 +81,12 @@ func (c *BufferedConnection) RemoteAddr() net.Addr {
 }
 
 // BytesRead returns the total number of bytes read.
-func (c *BufferedConnection) BytesRead() uint32 {
+func (c *BufferedConnection) BytesRead() uint64 {
 	return c.bytesRead.Load()
 }
 
 // BytesWritten returns the total number of bytes written.
-func (c *BufferedConnection) BytesWritten() uint32 {
+func (c *BufferedConnection) BytesWritten() uint64 {
 	return c.bytesWritten.Load()
 }
 
@@ -127,7 +127,7 @@ func (c *BufferedConnection) Write(msg []byte) (int, error) {
 	for bytesWritten := 0; bytesWritten < toWrite; {
 		n, err := c.conn.Write(buffer[bytesWritten:])
 		bytesWritten += n
-		c.bytesWritten.Add(uint32(n))
+		c.bytesWritten.Add(uint64(n))
 		if err != nil {
 			return bytesWritten, err
 		}
@@ -140,7 +140,7 @@ func (c *BufferedConnection) read(buffer []byte) (int, error) {
 	for bytesRead := 0; bytesRead < toRead; {
 		n, err := c.conn.Read(buffer[bytesRead:])
 		bytesRead += n
-		c.bytesRead.Add(uint32(n))
+		c.bytesRead.Add(uint64(n))
 		if err != nil {
 			return bytesRead, err
 		}
