@@ -131,7 +131,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
 
 		cachedObject.Release()
 	} else {
-		result = objectStorage.objectExistsInStore(key)
+		result = objectStorage.ObjectExistsInStore(key)
 	}
 
 	return
@@ -146,9 +146,11 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 	if cacheHit {
 		cachedObject.wg.Wait()
 
-		cachedObject.updateEmptyResult(func() StorableObject {
+		if cachedObject.updateEmptyResult(func() StorableObject {
 			return remappingFunction(key)
-		})
+		}) {
+			cachedObject.storeOnCreation()
+		}
 	} else {
 		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
@@ -157,6 +159,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 			cachedObject.publishResult(loadedObject)
 		} else {
 			cachedObject.publishResult(remappingFunction(key))
+			cachedObject.storeOnCreation()
 		}
 	}
 
@@ -199,7 +202,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	cachedObject.publishResult(nil)
 	cachedObject.Release(true)
 
-	if objectStorage.objectExistsInStore(key) {
+	if objectStorage.ObjectExistsInStore(key) {
 		cachedObject.blindDelete.Set()
 
 		return true
@@ -209,6 +212,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 }
 
 // Performs a "blind delete", where we do not check the objects existence.
+// blindDelete is used to delete without accessing the value log.
 func (objectStorage *ObjectStorage) Delete(key []byte) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
@@ -271,7 +275,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	}
 
 	// abort if the object already exists in our database
-	objectExists := objectStorage.objectExistsInStore(key)
+	objectExists := objectStorage.ObjectExistsInStore(key)
 	if objectExists {
 		return
 	}
@@ -300,6 +304,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	object.Persist()
 	object.SetModified()
 	existingCachedObject.publishResult(object)
+	existingCachedObject.storeOnCreation()
 
 	// construct result
 	stored = true
@@ -667,6 +672,8 @@ func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *Cached
 		return
 	}
 
+	cachedObject.storeOnCreation()
+
 	// construct result
 	result = wrapCachedObject(cachedObject, 0)
 
@@ -777,6 +784,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 
 	// publish the result to the cached object and return
 	cachedObject.publishResult(object)
+	cachedObject.storeOnCreation()
 	return wrapCachedObject(cachedObject, 0)
 }
 
@@ -852,7 +860,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
 	}
 }
 
-func (objectStorage *ObjectStorage) objectExistsInStore(key []byte) bool {
+func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 	if !objectStorage.options.persistenceEnabled {
 		return false
 	}

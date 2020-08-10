@@ -139,6 +139,13 @@ func (cachedObject *CachedObjectImpl) Exists() bool {
 	return !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted()
 }
 
+func (cachedObject *CachedObjectImpl) storeOnCreation() {
+	if cachedObject.objectStorage.options.persistenceEnabled && cachedObject.objectStorage.options.storeOnCreation && !typeutils.IsInterfaceNil(cachedObject.value) && cachedObject.value.IsModified() && cachedObject.value.ShouldPersist() {
+		// store the object immediately
+		cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+	}
+}
+
 func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
 	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
 		cachedObject.value = result
@@ -157,7 +164,7 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 		cachedObject.blindDelete.UnSet()
 	} else {
 		cachedObject.value.SetModified(object.IsModified())
-		cachedObject.value.Persist(object.PersistenceEnabled())
+		cachedObject.value.Persist(object.ShouldPersist())
 		cachedObject.value.Delete(object.IsDeleted())
 		cachedObject.value.Update(object)
 		cachedObject.blindDelete.UnSet()

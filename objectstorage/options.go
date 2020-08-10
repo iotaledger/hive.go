@@ -10,6 +10,7 @@ type Options struct {
 	keyPartitions         []int
 	persistenceEnabled    bool
 	keysOnly              bool
+	storeOnCreation       bool
 	leakDetectionOptions  *LeakDetectionOptions
 	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
 }
@@ -58,6 +59,13 @@ func PersistenceEnabled(persistenceEnabled bool) Option {
 func KeysOnly(keysOnly bool) Option {
 	return func(args *Options) {
 		args.keysOnly = keysOnly
+	}
+}
+
+// StoreOnCreation writes an object directly to the persistence layer on creation.
+func StoreOnCreation(store bool) Option {
+	return func(args *Options) {
+		args.storeOnCreation = store
 	}
 }
 
