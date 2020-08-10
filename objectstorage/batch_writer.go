@@ -96,46 +96,44 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 	storableObject := cachedObject.Get()
 
 	if typeutils.IsInterfaceNil(storableObject) {
-		if consumers != 0 {
+		if consumers == 0 && cachedObject.blindDelete.IsSet() {
 			// only blind delete if there are no consumers
-			return
-		}
-
-		if cachedObject.blindDelete.IsSet() {
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
 		}
+
 		return
 	}
 
 	if storableObject.IsDeleted() {
-		if consumers != 0 {
+		if consumers == 0 {
 			// only delete if there are no consumers
-			return
+			storableObject.SetModified(false)
+
+			if err := batchedMuts.Delete(cachedObject.key); err != nil {
+				panic(err)
+			}
 		}
 
-		storableObject.SetModified(false)
-
-		if err := batchedMuts.Delete(cachedObject.key); err != nil {
-			panic(err)
-		}
 		return
 	}
 
-	if consumers == 0 || cachedObject.objectStorage.options.storeOnCreation {
+	if consumers != 0 && !cachedObject.objectStorage.options.storeOnCreation {
 		// only store if there are no consumers anymore or the object should be stored on creation
-		if storableObject.ShouldPersist() && storableObject.IsModified() {
-			storableObject.SetModified(false)
+		return
+	}
 
-			var marshaledValue []byte
-			if !objectStorage.options.keysOnly {
-				marshaledValue = storableObject.ObjectStorageValue()
-			}
+	if storableObject.ShouldPersist() && storableObject.IsModified() {
+		storableObject.SetModified(false)
 
-			if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
-				panic(err)
-			}
+		var marshaledValue []byte
+		if !objectStorage.options.keysOnly {
+			marshaledValue = storableObject.ObjectStorageValue()
+		}
+
+		if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
+			panic(err)
 		}
 	}
 }
