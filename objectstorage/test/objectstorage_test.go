@@ -13,6 +13,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
@@ -22,25 +23,39 @@ import (
 )
 
 const (
-	useBolt = true
+	DB_BADGER = iota
+	DB_BOLT
+	DB_MAPDB
+)
+
+const (
+	usedDatabase = DB_MAPDB
 )
 
 func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 
-	if useBolt {
+	switch usedDatabase {
+
+	case DB_BADGER:
+		dir, err := ioutil.TempDir("", "objectsdb")
+		require.NoError(t, err)
+		db, err := badger.CreateDB(dir)
+		require.NoError(t, err)
+		return badger.New(db).WithRealm(realm)
+
+	case DB_BOLT:
 		dir, err := ioutil.TempDir("", "bboltdb")
 		require.NoError(t, err)
 		dirAndFile := fmt.Sprintf("%s/my.db", dir)
 		db, err := bbolt.Open(dirAndFile, 0666, nil)
 		require.NoError(t, err)
 		return bolt.New(db).WithRealm(realm)
+
+	case DB_MAPDB:
+		return mapdb.NewMapDB().WithRealm(realm)
 	}
 
-	dir, err := ioutil.TempDir("", "objectsdb")
-	require.NoError(t, err)
-	db, err := badger.CreateDB(dir)
-	require.NoError(t, err)
-	return badger.New(db).WithRealm(realm)
+	panic("unknown database")
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
@@ -177,13 +192,13 @@ func TestStorableObjectFlags(t *testing.T) {
 	testObject.Delete(true)
 	assert.Equal(t, true, testObject.IsDeleted())
 
-	assert.Equal(t, false, testObject.PersistenceEnabled())
+	assert.Equal(t, false, testObject.ShouldPersist())
 	testObject.Persist()
-	assert.Equal(t, true, testObject.PersistenceEnabled())
+	assert.Equal(t, true, testObject.ShouldPersist())
 	testObject.Persist(false)
-	assert.Equal(t, false, testObject.PersistenceEnabled())
+	assert.Equal(t, false, testObject.ShouldPersist())
 	testObject.Persist(true)
-	assert.Equal(t, true, testObject.PersistenceEnabled())
+	assert.Equal(t, true, testObject.ShouldPersist())
 }
 
 func BenchmarkStore(b *testing.B) {
@@ -262,6 +277,64 @@ func TestStoreIfAbsent(t *testing.T) {
 	objects.Shutdown()
 }
 
+func TestStoreOnCreation(t *testing.T) {
+	//
+	// without StoreOnCreation
+	//
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(false), objectstorage.CacheTime(2*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	loadedObject := objects.Load([]byte("Hans"))
+	loadedObject.Release()
+
+	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	assert.Equal(t, true, stored1)
+
+	if typeutils.IsInterfaceNil(storedObject1) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	// give the batchWriter some time to persist it
+	time.Sleep(time.Second)
+
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); !typeutils.IsInterfaceNil(loadedObject) {
+		t.Error("the object should NOT be stored in the database yet stored")
+	}
+
+	storedObject1.Release(true)
+
+	//
+	// with StoreOnCreation
+	//
+	objects = objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(true), objectstorage.CacheTime(2*time.Second))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	loadedObject = objects.Load([]byte("Hans"))
+	loadedObject.Release()
+
+	storedObject1, stored1 = objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	assert.Equal(t, true, stored1)
+
+	if typeutils.IsInterfaceNil(storedObject1) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	// give the batchWriter some time to persist it
+	time.Sleep(time.Second)
+
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); typeutils.IsInterfaceNil(loadedObject) {
+		t.Error("the object should NOT be nil if it was stored")
+	}
+
+	storedObject1.Release(true)
+
+	objects.Shutdown()
+}
+
 func TestDelete(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
 	objects.Store(NewTestObject("Hans", 33)).Release()
@@ -325,7 +398,7 @@ func TestConcurrency(t *testing.T) {
 func TestStoreIfAbsentTriggersOnce(t *testing.T) {
 	for k := 0; k < 10; k++ {
 		// define test parameters
-		objectCount := 1000
+		objectCount := 200
 		workerCount := 50
 
 		// initialize object storage
@@ -494,7 +567,7 @@ func TestForEachWithPrefix(t *testing.T) {
 
 	objects.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
-			t.Error("found an unexpected key")
+			t.Errorf("found an unexpected key: '%v'", string(key))
 		}
 
 		delete(expectedKeys, string(key))
@@ -538,7 +611,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
 	objects.ForEachKeyOnly(func(key []byte) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
-			t.Error("found an unexpected key")
+			t.Errorf("found an unexpected key: '%v'", string(key))
 		}
 
 		delete(expectedKeys, string(key))
@@ -581,7 +654,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 
 	objects.ForEachKeyOnly(func(key []byte) bool {
 		if _, elementExists := expectedKeys[string(key)]; !elementExists {
-			t.Error("found an unexpected key")
+			t.Errorf("found an unexpected key: '%v'", string(key))
 		}
 
 		delete(expectedKeys, string(key))

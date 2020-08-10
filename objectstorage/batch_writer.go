@@ -88,47 +88,71 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 		return
 	}
 
-	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
-			if storableObject.IsDeleted() {
-				storableObject.SetModified(false)
+	consumers := atomic.LoadInt32(&(cachedObject.consumers))
+	if consumers < 0 {
+		panic("too many unregistered consumers of cached object")
+	}
 
-				if err := batchedMuts.Delete(cachedObject.key); err != nil {
-					panic(err)
-				}
-			} else if storableObject.PersistenceEnabled() && storableObject.IsModified() {
-				storableObject.SetModified(false)
+	storableObject := cachedObject.Get()
 
-				var marshaledValue []byte
-				if !objectStorage.options.keysOnly {
-					marshaledValue = storableObject.ObjectStorageValue()
-				}
-
-				if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
-					panic(err)
-				}
-			}
-		} else if cachedObject.blindDelete.IsSet() {
+	if typeutils.IsInterfaceNil(storableObject) {
+		// only blind delete if there are no consumers
+		if consumers == 0 && cachedObject.blindDelete.IsSet() {
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
 		}
-	} else if consumers < 0 {
-		panic("too many unregistered consumers of cached object")
+
+		return
+	}
+
+	if storableObject.IsDeleted() {
+		// only delete if there are no consumers
+		if consumers == 0 {
+			storableObject.SetModified(false)
+
+			if err := batchedMuts.Delete(cachedObject.key); err != nil {
+				panic(err)
+			}
+		}
+
+		return
+	}
+
+	// only store if there are no consumers anymore or the object should be stored on creation
+	if consumers != 0 && !cachedObject.objectStorage.options.storeOnCreation {
+		return
+	}
+
+	if storableObject.ShouldPersist() && storableObject.IsModified() {
+		storableObject.SetModified(false)
+
+		var marshaledValue []byte
+		if !objectStorage.options.keysOnly {
+			marshaledValue = storableObject.ObjectStorageValue()
+		}
+
+		if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
+			panic(err)
+		}
 	}
 }
 
 func (bw *BatchedWriter) releaseObject(cachedObject *CachedObjectImpl) {
 	objectStorage := cachedObject.objectStorage
 
+	objectStorage.flushMutex.RLock()
+	defer objectStorage.flushMutex.RUnlock()
+
 	objectStorage.cacheMutex.Lock()
+	defer objectStorage.cacheMutex.Unlock()
+
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 		// only delete if the object is still empty, or was not modified since the write (and was not evicted yet)
 		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && atomic.AddInt32(&cachedObject.evicted, 1) == 1 && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
 			objectStorage.cachedObjectsEmpty.Done()
 		}
 	}
-	objectStorage.cacheMutex.Unlock()
 }
 
 func (bw *BatchedWriter) runBatchWriter() {

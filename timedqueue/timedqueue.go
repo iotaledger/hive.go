@@ -1,4 +1,4 @@
-package datastructure
+package timedqueue
 
 import (
 	"container/heap"
@@ -35,7 +35,7 @@ func New() (queue *TimedQueue) {
 }
 
 // Add inserts a new element into the queue that can be retrieved via Poll() at the specified time.
-func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedElement *TimedQueueElement) {
+func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedElement *QueueElement) {
 	// sanitize parameters
 	if value == nil {
 		panic("<nil> must not be added to the queue")
@@ -60,12 +60,12 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 	}
 
 	// add new element
-	addedElement = &TimedQueueElement{
-		timedQueue: t,
-		value:      value,
-		time:       scheduledTime,
-		cancel:     make(chan byte),
-		index:      0,
+	addedElement = &QueueElement{
+		timedQueue:    t,
+		Value:         value,
+		ScheduledTime: scheduledTime,
+		cancel:        make(chan byte),
+		index:         0,
 	}
 	heap.Push(&t.heap, addedElement)
 
@@ -171,7 +171,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 	}
 
 	// retrieve first element
-	polledElement := heap.Remove(&t.heap, 0).(*TimedQueueElement)
+	polledElement := heap.Remove(&t.heap, 0).(*QueueElement)
 
 	// update waiting for new elements wait group if necessary
 	t.markEmptyQueueAsWaitingForElements()
@@ -190,7 +190,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 
 		// immediately return the value if the pending timeouts are supposed to be ignored
 		if t.shutdownFlags.HasFlag(ignorePendingTimeouts) {
-			return polledElement.value
+			return polledElement.Value
 		}
 
 		// wait for the return value to become due
@@ -200,8 +200,8 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 			return t.Poll(waitIfEmpty)
 
 		// return the result after the time is reached
-		case <-time.After(time.Until(polledElement.time)):
-			return polledElement.value
+		case <-time.After(time.Until(polledElement.ScheduledTime)):
+			return polledElement.Value
 		}
 
 	// abort waiting for this element and return the next one instead if it was canceled
@@ -209,13 +209,13 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 		return t.Poll(waitIfEmpty)
 
 	// return the result after the time is reached
-	case <-time.After(time.Until(polledElement.time)):
-		return polledElement.value
+	case <-time.After(time.Until(polledElement.ScheduledTime)):
+		return polledElement.Value
 	}
 }
 
 // removeElement is an internal utility function that removes the given element from the queue.
-func (t *TimedQueue) removeElement(element *TimedQueueElement) {
+func (t *TimedQueue) removeElement(element *QueueElement) {
 	// abort if the element was removed already
 	if element.index == -1 {
 		return
@@ -242,19 +242,23 @@ func (t *TimedQueue) markEmptyQueueAsWaitingForElements() {
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region TimedQueueElement ////////////////////////////////////////////////////////////////////////////////////////////
+// region QueueElement ////////////////////////////////////////////////////////////////////////////////////////////
 
-// TimedQueueElement is an element in the TimedQueue. It
-type TimedQueueElement struct {
+// QueueElement is an element in the TimedQueue. It
+type QueueElement struct {
+	// Value represents the value of the queued element.
+	Value interface{}
+
+	// ScheduledTime represents the time at which the element is due.
+	ScheduledTime time.Time
+
 	timedQueue *TimedQueue
-	value      interface{}
 	cancel     chan byte
-	time       time.Time
 	index      int
 }
 
 // Cancel removed the given element from the queue and cancels its execution.
-func (timedQueueElement *TimedQueueElement) Cancel() {
+func (timedQueueElement *QueueElement) Cancel() {
 	// acquire locks
 	timedQueueElement.timedQueue.heapMutex.Lock()
 	defer timedQueueElement.timedQueue.heapMutex.Unlock()
@@ -273,7 +277,6 @@ func (timedQueueElement *TimedQueueElement) Cancel() {
 // ShutdownFlag defines the type of the optional shutdown flags.
 type ShutdownFlag = bitmask.BitMask
 
-// define the optional shutdown flags
 const (
 	// CancelPendingElements defines a shutdown flag, that causes the queue to be emptied on shutdown.
 	CancelPendingElements ShutdownFlag = 1 << cancelPendingElements
@@ -296,7 +299,7 @@ const (
 // region timedHeap ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // timedHeap defines a heap based on times.
-type timedHeap []*TimedQueueElement
+type timedHeap []*QueueElement
 
 // Len is the number of elements in the collection.
 func (h timedHeap) Len() int {
@@ -305,7 +308,7 @@ func (h timedHeap) Len() int {
 
 // Less reports whether the element with index i should sort before the element with index j.
 func (h timedHeap) Less(i, j int) bool {
-	return h[i].time.Before(h[j].time)
+	return h[i].ScheduledTime.Before(h[j].ScheduledTime)
 }
 
 // Swap swaps the elements with indexes i and j.
@@ -316,7 +319,7 @@ func (h timedHeap) Swap(i, j int) {
 
 // Push adds x as the last element to the heap.
 func (h *timedHeap) Push(x interface{}) {
-	data := x.(*TimedQueueElement)
+	data := x.(*QueueElement)
 	*h = append(*h, data)
 	data.index = len(*h) - 1
 }

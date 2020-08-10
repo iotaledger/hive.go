@@ -62,12 +62,12 @@ func (db *MapDB) DeletePrefix(keyPrefix kvstore.KeyPrefix) error {
 }
 
 func (db *MapDB) Iterate(keyPrefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	db.m.iterate(append(db.realm, keyPrefix...), consumerFunc)
+	db.m.iterate(db.realm, keyPrefix, consumerFunc)
 	return nil
 }
 
 func (db *MapDB) IterateKeys(keyPrefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
-	db.m.iterateKeys(append(db.realm, keyPrefix...), consumerFunc)
+	db.m.iterateKeys(db.realm, keyPrefix, consumerFunc)
 	return nil
 }
 

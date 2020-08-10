@@ -52,26 +52,26 @@ func (s *syncedKVMap) deletePrefix(keyPrefix []byte) {
 	}
 }
 
-func (s *syncedKVMap) iterate(keyPrefix []byte, consume func(key, value []byte) bool) {
+func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, value []byte) bool) {
 	s.RLock()
 	defer s.RUnlock()
-	prefix := string(keyPrefix)
+	prefix := string(append(realm, keyPrefix...))
 	for key, value := range s.m {
 		if strings.HasPrefix(key, prefix) {
-			if !consume([]byte(key), append([]byte{}, value...)) {
+			if !consume([]byte(key)[len(realm):], append([]byte{}, value...)) {
 				break
 			}
 		}
 	}
 }
 
-func (s *syncedKVMap) iterateKeys(keyPrefix []byte, consume func(key []byte) bool) {
+func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool) {
 	s.RLock()
 	defer s.RUnlock()
-	prefix := string(keyPrefix)
+	prefix := string(append(realm, keyPrefix...))
 	for key := range s.m {
 		if strings.HasPrefix(key, prefix) {
-			if !consume([]byte(key)) {
+			if !consume([]byte(key)[len(realm):]) {
 				break
 			}
 		}
