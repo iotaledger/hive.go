@@ -187,8 +187,6 @@ func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (upd
 				cachedObject.blindDelete.UnSet()
 			}
 
-			cachedObject.storeOnCreation()
-
 			updated = true
 		}
 		cachedObject.valueMutex.Unlock()

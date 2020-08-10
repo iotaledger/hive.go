@@ -146,9 +146,11 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 	if cacheHit {
 		cachedObject.wg.Wait()
 
-		cachedObject.updateEmptyResult(func() StorableObject {
+		if cachedObject.updateEmptyResult(func() StorableObject {
 			return remappingFunction(key)
-		})
+		}) {
+			cachedObject.storeOnCreation()
+		}
 	} else {
 		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
@@ -669,6 +671,8 @@ func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *Cached
 
 		return
 	}
+
+	cachedObject.storeOnCreation()
 
 	// construct result
 	result = wrapCachedObject(cachedObject, 0)
