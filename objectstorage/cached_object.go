@@ -127,6 +127,8 @@ func (cachedObject *CachedObjectImpl) Retain() CachedObject {
 	return cachedObject
 }
 
+// Exists returns true if the StorableObject in this container does exist (could be found in the database and was not
+// marked as deleted).
 func (cachedObject *CachedObjectImpl) Exists() bool {
 	storableObject := cachedObject.Get()
 
@@ -153,7 +155,7 @@ func (cachedObject *CachedObjectImpl) Transaction(callback func(object StorableO
 	return cachedObject
 }
 
-// Transaction is a synchronization primitive that executes the callback together with other RTransactions but never
+// RTransaction is a synchronization primitive that executes the callback together with other RTransactions but never
 // together with a normal Transaction.
 //
 // The identifiers allow to define the scope of the RTransaction. RTransactions with different scopes can run at the

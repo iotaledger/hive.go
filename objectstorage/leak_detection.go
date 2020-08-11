@@ -60,7 +60,7 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) Transaction(callback func(o
 	return wrappedCachedObject
 }
 
-// Transaction is a synchronization primitive that executes the callback together with other RTransactions but never
+// RTransaction is a synchronization primitive that executes the callback together with other RTransactions but never
 // together with a normal Transaction.
 //
 // The identifiers allow to define the scope of the RTransaction. RTransactions with different scopes can run at the
