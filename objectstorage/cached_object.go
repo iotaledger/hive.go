@@ -18,6 +18,8 @@ type CachedObject interface {
 	Retain() CachedObject
 	retain() CachedObject
 	Release(force ...bool)
+	Transaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject
+	RTransaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject
 }
 
 type CachedObjectImpl struct {
@@ -32,6 +34,7 @@ type CachedObjectImpl struct {
 	valueMutex          syncutils.RWMutex
 	releaseTimer        unsafe.Pointer
 	blindDelete         typeutils.AtomicBool
+	transactionMutex    syncutils.RWMultiMutex
 }
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
@@ -124,6 +127,52 @@ func (cachedObject *CachedObjectImpl) Retain() CachedObject {
 	return cachedObject
 }
 
+func (cachedObject *CachedObjectImpl) Exists() bool {
+	storableObject := cachedObject.Get()
+
+	return !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted()
+}
+
+// Transaction is a synchronization primitive that executes the callback atomically which means that if multiple
+// Transactions are being started from different goroutines, then only one of them can run at the same time.
+//
+// The identifiers allow to define the scope of the Transaction. Transactions with different scopes can run at the same
+// time and act as if they are secured by different mutexes.
+//
+// It is also possible to provide multiple identifiers and the callback waits until all of them can be acquired at the
+// same time. In contrast to normal mutexes where acquiring multiple locks can lead to deadlocks, this method is
+// deadlock safe.
+//
+// Note: It is the equivalent of a mutex.Lock/Unlock.
+func (cachedObject *CachedObjectImpl) Transaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	cachedObject.transactionMutex.Lock(identifiers...)
+	defer cachedObject.transactionMutex.Unlock(identifiers...)
+
+	callback(cachedObject.Get())
+
+	return cachedObject
+}
+
+// Transaction is a synchronization primitive that executes the callback together with other RTransactions but never
+// together with a normal Transaction.
+//
+// The identifiers allow to define the scope of the RTransaction. RTransactions with different scopes can run at the
+// same time independently of other RTransactions and act as if they are secured by different mutexes.
+//
+// It is also possible to provide multiple identifiers and the callback waits until all of them can be acquired at the
+// same time. In contrast to normal mutexes where acquiring multiple locks can lead to deadlocks, this method is
+// deadlock safe.
+//
+// Note: It is the equivalent of a mutex.RLock/RUnlock.
+func (cachedObject *CachedObjectImpl) RTransaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	cachedObject.transactionMutex.RLock(identifiers...)
+	defer cachedObject.transactionMutex.RUnlock(identifiers...)
+
+	callback(cachedObject.Get())
+
+	return cachedObject
+}
+
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) retain() CachedObject {
 	atomic.AddInt32(&(cachedObject.consumers), 1)
@@ -131,12 +180,6 @@ func (cachedObject *CachedObjectImpl) retain() CachedObject {
 	cachedObject.cancelScheduledRelease()
 
 	return cachedObject
-}
-
-func (cachedObject *CachedObjectImpl) Exists() bool {
-	storableObject := cachedObject.Get()
-
-	return !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted()
 }
 
 func (cachedObject *CachedObjectImpl) storeOnCreation() {

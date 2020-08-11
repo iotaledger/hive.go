@@ -43,6 +43,40 @@ type LeakDetectionWrapperImpl struct {
 	releaseCallStack *reflect.CallStack
 }
 
+// Transaction is a synchronization primitive that executes the callback atomically which means that if multiple
+// Transactions are being started from different goroutines, then only one of them can run at the same time.
+//
+// The identifiers allow to define the scope of the Transaction. Transactions with different scopes can run at the same
+// time and act as if they are secured by different mutexes.
+//
+// It is also possible to provide multiple identifiers and the callback waits until all of them can be acquired at the
+// same time. In contrast to normal mutexes where acquiring multiple locks can lead to deadlocks, this method is
+// deadlock safe.
+//
+// Note: It is the equivalent of a mutex.Lock/Unlock.
+func (wrappedCachedObject *LeakDetectionWrapperImpl) Transaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	wrappedCachedObject.CachedObjectImpl.Transaction(callback, identifiers...)
+
+	return wrappedCachedObject
+}
+
+// Transaction is a synchronization primitive that executes the callback together with other RTransactions but never
+// together with a normal Transaction.
+//
+// The identifiers allow to define the scope of the RTransaction. RTransactions with different scopes can run at the
+// same time independently of other RTransactions and act as if they are secured by different mutexes.
+//
+// It is also possible to provide multiple identifiers and the callback waits until all of them can be acquired at the
+// same time. In contrast to normal mutexes where acquiring multiple locks can lead to deadlocks, this method is
+// deadlock safe.
+//
+// Note: It is the equivalent of a mutex.RLock/RUnlock.
+func (wrappedCachedObject *LeakDetectionWrapperImpl) RTransaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	wrappedCachedObject.CachedObjectImpl.RTransaction(callback, identifiers...)
+
+	return wrappedCachedObject
+}
+
 var internalIdCounter int64
 
 func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
@@ -221,7 +255,6 @@ func monitorCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, optio
 
 func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
 	stringKey := string(wrappedCachedObject.Base().key)
-	wrappedCachedObject.GetInternalId()
 
 	instanceRegisterMutex.Lock()
 
@@ -258,7 +291,6 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 
 func registerCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, options *LeakDetectionOptions) {
 	stringKey := string(wrappedCachedObject.Base().key)
-	wrappedCachedObject.GetInternalId()
 
 	instanceRegisterMutex.Lock()
 
