@@ -147,6 +147,10 @@ func (cachedObject *CachedObjectImpl) Exists() bool {
 //
 // Note: It is the equivalent of a mutex.Lock/Unlock.
 func (cachedObject *CachedObjectImpl) Transaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	if len(identifiers) == 0 {
+		panic("Transaction requires at least one identifier for the scope")
+	}
+
 	cachedObject.transactionMutex.Lock(identifiers...)
 	defer cachedObject.transactionMutex.Unlock(identifiers...)
 
@@ -167,6 +171,10 @@ func (cachedObject *CachedObjectImpl) Transaction(callback func(object StorableO
 //
 // Note: It is the equivalent of a mutex.RLock/RUnlock.
 func (cachedObject *CachedObjectImpl) RTransaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject {
+	if len(identifiers) == 0 {
+		panic("RTransaction requires at least one identifier for the scope")
+	}
+
 	cachedObject.transactionMutex.RLock(identifiers...)
 	defer cachedObject.transactionMutex.RUnlock(identifiers...)
 
