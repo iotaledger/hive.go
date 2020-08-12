@@ -70,7 +70,7 @@ func TestComputeIfAbsentReturningNil(t *testing.T) {
 	testCount := 50
 
 	// initialize ObjectStorage
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory, objectstorage.LeakDetectionEnabled(true))
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
