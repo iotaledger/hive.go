@@ -62,6 +62,145 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 	return &TestObject{id: key}, len(key), nil
 }
 
+// TestTransaction tests if Transactions with the same identifier can not run in parallel and that Transactions and
+// RTransactions wait for each other.
+func TestTransaction(t *testing.T) {
+	// initialize ObjectStorage
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	// retrieve a CachedObject
+	cachedObject := objects.Load([]byte("someObject"))
+
+	// initialize variables to keep track of the execution order
+	firstTransactionFinished := false
+	rTransactionFinished := false
+
+	// initialize WaitGroup to wait for goroutines to finish
+	var wg sync.WaitGroup
+
+	// execute first Transaction with identifier 1
+	wg.Add(1)
+	go func() {
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+
+			time.Sleep(200 * time.Millisecond)
+
+			firstTransactionFinished = true
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// make sure the second Transaction with identifier 1 executes after the first one
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// make sure the third Transaction with identifier 1 and 2 also waits for 1
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1, 2)
+
+		wg.Done()
+	}()
+
+	// make sure the fourth Transaction with identifier 2 runs in parallel to number 1
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, false)
+		}, 2)
+
+		wg.Done()
+	}()
+
+	// make sure that RTransactions wait for Transactions to finish
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// run RTransaction with a new identifier and keep track of its execution order
+	wg.Add(1)
+	go func() {
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+
+			time.Sleep(200 * time.Millisecond)
+
+			rTransactionFinished = true
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// make sure that RTransactions can run simultaneously
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, rTransactionFinished, false)
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// make sure that Transactions wait for RTransactions to finish
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, rTransactionFinished, true)
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// wait for goroutines to finish
+	wg.Wait()
+
+	// release object and shutdown ObjectStorage
+	cachedObject.Release()
+	objects.Shutdown()
+}
+
 // TestComputeIfAbsentReturningNil tests if ComputeIfAbsent can return nil to simply execute some code if something is
 // missing without interfering with consecutive StoreIfAbsent calls and without intersecting parallel ComputeIfAbsent
 // calls.
