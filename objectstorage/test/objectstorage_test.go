@@ -62,6 +62,112 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 	return &TestObject{id: key}, len(key), nil
 }
 
+// TestComputeIfAbsentReturningNil tests if ComputeIfAbsent can return nil to simply execute some code if something is
+// missing without interfering with consecutive StoreIfAbsent calls and without intersecting parallel ComputeIfAbsent
+// calls.
+func TestComputeIfAbsentReturningNil(t *testing.T) {
+	// define test iterations
+	testCount := 50
+
+	// initialize ObjectStorage
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory, objectstorage.LeakDetectionEnabled(true))
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	// repeat test the defined times
+	for i := 0; i < testCount; i++ {
+		objectStringKey := "missingEntry" + strconv.Itoa(i)
+
+		// define variables to track the execution flow
+		firstComputeIfAbsentExecutedOrder := -1
+		firstComputeIfAbsentFinished := false
+		secondComputeIfAbsentExecutedOrder := -1
+		secondComputeIfAbsentFinished := false
+		storeExecutedOrder := -1
+		orderCounter := 0
+
+		// initialize WaitGroup to wait for the finished goroutines
+		var wg sync.WaitGroup
+
+		// start the first ComputeIfAbsent call
+		wg.Add(1)
+		go func() {
+			objects.ComputeIfAbsent([]byte(objectStringKey), func(key []byte) objectstorage.StorableObject {
+				firstComputeIfAbsentExecutedOrder = orderCounter
+				orderCounter++
+
+				if secondComputeIfAbsentExecutedOrder != -1 {
+					assert.Equal(t, secondComputeIfAbsentFinished, true)
+				}
+
+				time.Sleep(100 * time.Millisecond)
+
+				firstComputeIfAbsentFinished = true
+
+				return nil
+			}).Release()
+
+			wg.Done()
+		}()
+
+		// start the second ComputeIfAbsent call
+		wg.Add(1)
+		go func() {
+			objects.ComputeIfAbsent([]byte(objectStringKey), func(key []byte) objectstorage.StorableObject {
+				secondComputeIfAbsentExecutedOrder = orderCounter
+				orderCounter++
+
+				if firstComputeIfAbsentExecutedOrder != -1 {
+					assert.Equal(t, firstComputeIfAbsentFinished, true)
+				}
+
+				time.Sleep(100 * time.Millisecond)
+
+				secondComputeIfAbsentFinished = true
+
+				return nil
+			}).Release()
+
+			wg.Done()
+		}()
+
+		// start the StoreIfAbsent call
+		wg.Add(1)
+		go func() {
+			cachedObject, stored := objects.StoreIfAbsent(NewTestObject(objectStringKey, 33))
+			cachedObject.Release()
+
+			if assert.Equal(t, true, stored) {
+				storeExecutedOrder = orderCounter
+				orderCounter++
+			}
+
+			wg.Done()
+		}()
+
+		// wait for goroutines to finish
+		wg.Wait()
+
+		// make sure the result are as expected
+		switch storeExecutedOrder {
+		case 0:
+			assert.Equal(t, firstComputeIfAbsentExecutedOrder, -1)
+			assert.Equal(t, secondComputeIfAbsentExecutedOrder, -1)
+			assert.True(t, !firstComputeIfAbsentFinished && !secondComputeIfAbsentFinished)
+		case 1:
+			assert.True(t, (firstComputeIfAbsentExecutedOrder == 0 && secondComputeIfAbsentExecutedOrder == -1) || (firstComputeIfAbsentExecutedOrder == -1 && secondComputeIfAbsentExecutedOrder == 0))
+			assert.True(t, (firstComputeIfAbsentFinished && !secondComputeIfAbsentFinished) || (!firstComputeIfAbsentFinished && secondComputeIfAbsentFinished))
+		case 2:
+			assert.True(t, (firstComputeIfAbsentExecutedOrder == 0 && secondComputeIfAbsentExecutedOrder == 1) || (firstComputeIfAbsentExecutedOrder == 1 && secondComputeIfAbsentExecutedOrder == 0))
+			assert.True(t, firstComputeIfAbsentFinished && secondComputeIfAbsentFinished)
+		}
+	}
+
+	// shutdown the ObjectStorage
+	objects.Shutdown()
+}
+
 func TestPrefixIteration(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
