@@ -233,17 +233,29 @@ func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID identity.ID) <-chan error 
 	hash := server.PacketHash(data)
 	callback := func(msg server.Message) bool {
 		pong := msg.(*pb.Pong)
+
+		// the hash must be correct
+		if !bytes.Equal(pong.GetReqHash(), hash) {
+			return false
+		}
+
 		// the peering port must match the destination port
 		serviceMap := pong.Services.GetMap()
 		if serviceMap == nil {
+			p.log.Debug("serviceMap is nil")
 			return false
 		}
+
 		peering := serviceMap[string(service.PeeringKey)]
 		if peering == nil || int(peering.GetPort()) != toAddr.Port {
+			p.log.Debugw("peering failed:",
+				"peering", peering == nil,
+				"peering port", int(peering.GetPort()),
+				"service port", toAddr.Port,
+			)
 			return false
 		}
-		// the hash must be correct
-		return bytes.Equal(pong.GetReqHash(), hash)
+		return true
 	}
 
 	p.logSend(toAddr, ping)
