@@ -32,7 +32,11 @@ type Hub struct {
 	// unregister requests from clients.
 	unregister chan *Client
 
-	shutdownSignal <-chan struct{}
+	// signal shutdown of the websocket hub
+	shutdownSignal chan struct{}
+
+	// indicates that the websocket hub was shut down
+	shutdownFlag bool
 }
 
 // message is a message that is sent to the broadcast channel.
@@ -50,11 +54,17 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		broadcast:             make(chan *message, broadcastQueueSize),
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
+		shutdownSignal:        make(chan struct{}),
 	}
 }
 
 // BroadcastMsg sends a message to all clients.
 func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
+	if h.shutdownFlag {
+		// hub was already shut down
+		return
+	}
+
 	notDrop := false
 	if len(dontDrop) > 0 {
 		notDrop = dontDrop[0]
@@ -83,12 +93,19 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 	for {
 		select {
 		case <-shutdownSignal:
+			h.shutdownFlag = true
+			close(h.shutdownSignal)
+
 			for client := range h.clients {
 				delete(h.clients, client)
+				close(client.ExitSignal)
+
+				// wait until writePump and checkPong finished
+				client.shutdownWaitGroup.Wait()
+
 				if client.ReceiveChan != nil {
 					close(client.ReceiveChan)
 				}
-				close(client.ExitSignal)
 				close(client.sendChan)
 			}
 			return
@@ -97,8 +114,17 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 			// register client
 			h.clients[client] = struct{}{}
 
-			go client.checkPong()
+			client.shutdownWaitGroup.Add(2)
+
+			// first start the write pump to answer requests from checkPong
+			client.startWaitGroup.Add(1)
 			go client.writePump()
+			client.startWaitGroup.Wait()
+
+			// wait until checkPong started, before calling onConnect
+			client.startWaitGroup.Add(1)
+			go client.checkPong()
+			client.startWaitGroup.Wait()
 
 			if client.onConnect != nil {
 				client.onConnect(client)
@@ -107,10 +133,14 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
+				close(client.ExitSignal)
+
+				// wait until writePump and checkPong finished
+				client.shutdownWaitGroup.Wait()
+
 				if client.ReceiveChan != nil {
 					close(client.ReceiveChan)
 				}
-				close(client.ExitSignal)
 				close(client.sendChan)
 				h.logger.Infof("Removed websocket client")
 			}
@@ -158,6 +188,11 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
 func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
+	if h.shutdownFlag {
+		// hub was already shut down
+		return
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			h.logger.Errorf("recovered from ServeWebsocket func: %s", r)
@@ -184,5 +219,8 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 		onCreate(client)
 	}
 
-	h.register <- client
+	select {
+	case <-h.shutdownSignal:
+	case h.register <- client:
+	}
 }
