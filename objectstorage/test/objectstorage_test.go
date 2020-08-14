@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iotaledger/hive.go/async"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/stretchr/testify/assert"
@@ -60,6 +62,90 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 	return &TestObject{id: key}, len(key), nil
+}
+
+func TestConcurrentCreateDelete(t *testing.T) {
+	// test parameters
+	objectCount := 100000
+
+	// create badger DB
+	badgerDB, err := testutil.BadgerDB(t)
+	require.NoError(t, err)
+
+	// create ObjectStorage instances
+	missingMessageStorage := objectstorage.New(badgerDB, testObjectFactory)
+	metadataStorage := objectstorage.New(badgerDB, testObjectFactory)
+
+	// create sync and async utils
+	var wp async.WorkerPool
+	var wg sync.WaitGroup
+	wp.Tune(1024)
+
+	// result counters
+	var eventsCounter int32
+
+	// spam calls with the defined amount of objects
+	for i := 0; i < objectCount; i++ {
+		// create a copy of the iteration variable (for the closures)
+		x := i
+
+		// launch the background worker that removes the missing message entry
+		wg.Add(1)
+		wp.Submit(func() {
+			messageIDString := strconv.Itoa(x)
+			messageIDBytes := []byte(messageIDString)
+
+			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
+				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(NewTestObject(messageIDString, uint32(x)))
+				if stored {
+					cachedMissingMessage.Release()
+
+					atomic.AddInt32(&eventsCounter, 1)
+				}
+
+				return nil
+			}).Release()
+
+			wg.Done()
+		})
+
+		// launch the background worker that creates the missing message entry
+		wg.Add(1)
+		wp.Submit(func() {
+			messageIDString := strconv.Itoa(x)
+			messageIDBytes := []byte(messageIDString)
+
+			metadataStorage.Store(NewTestObject(messageIDString, uint32(x))).Release()
+
+			if missingMessageStorage.DeleteIfPresent(messageIDBytes) {
+				atomic.AddInt32(&eventsCounter, -1)
+			}
+
+			wg.Done()
+		})
+	}
+
+	// wait for a workers to finish
+	wg.Wait()
+
+	// count messages still in the store
+	messagesInStore := 0
+	missingMessageStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
+		defer cachedObject.Release()
+
+		messagesInStore++
+
+		return true
+	})
+
+	// check test results
+	assert.Equal(t, int32(0), eventsCounter, "we should have seen and equal amount of create and delete events")
+	assert.Equal(t, 0, messagesInStore, "the store should be empty")
+
+	// shutdown test
+	missingMessageStorage.Shutdown()
+	metadataStorage.Shutdown()
+	wp.Shutdown()
 }
 
 func TestPrefixIteration(t *testing.T) {
