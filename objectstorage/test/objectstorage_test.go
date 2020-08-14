@@ -16,7 +16,6 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/bolt"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/objectstorage"
-	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/stretchr/testify/assert"
@@ -69,8 +68,10 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	objectCount := 100000
 
 	// create badger DB
-	badgerDB, err := testutil.BadgerDB(t)
-	require.NoError(t, err)
+	//badgerDB, err := testutil.BadgerDB(t)
+	//require.NoError(t, err)
+
+	badgerDB := testStorage(t, []byte("sth"))
 
 	// create ObjectStorage instances
 	missingMessageStorage := objectstorage.New(badgerDB, testObjectFactory)
@@ -128,12 +129,16 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	// wait for a workers to finish
 	wg.Wait()
 
+	fmt.Println("DONE")
+
 	// count messages still in the store
 	messagesInStore := 0
 	missingMessageStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
-		defer cachedObject.Release()
-
 		messagesInStore++
+
+		cachedObject.Release()
+
+		fmt.Println("ITERATE", messagesInStore)
 
 		return true
 	})
