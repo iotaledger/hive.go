@@ -53,14 +53,21 @@ func (s *syncedKVMap) deletePrefix(keyPrefix []byte) {
 }
 
 func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, value []byte) bool) {
+	// take a snapshot of the current elements
 	s.RLock()
-	defer s.RUnlock()
+	copiedElements := make(map[string][]byte)
 	prefix := string(append(realm, keyPrefix...))
 	for key, value := range s.m {
 		if strings.HasPrefix(key, prefix) {
-			if !consume([]byte(key)[len(realm):], append([]byte{}, value...)) {
-				break
-			}
+			copiedElements[key] = append([]byte{}, value...)
+		}
+	}
+	s.RUnlock()
+
+	// iterate through found elements
+	for key, value := range copiedElements {
+		if !consume([]byte(key)[len(realm):], value) {
+			break
 		}
 	}
 }
