@@ -24,27 +24,27 @@ import (
 )
 
 const (
-	DB_BADGER = iota
-	DB_BOLT
-	DB_MAPDB
+	dbBadger = iota
+	dbBolt
+	dbMapDB
 )
 
 const (
-	usedDatabase = DB_MAPDB
+	usedDatabase = dbMapDB
 )
 
 func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 
 	switch usedDatabase {
 
-	case DB_BADGER:
+	case dbBadger:
 		dir, err := ioutil.TempDir("", "objectsdb")
 		require.NoError(t, err)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
 		return badger.New(db).WithRealm(realm)
 
-	case DB_BOLT:
+	case dbBolt:
 		dir, err := ioutil.TempDir("", "bboltdb")
 		require.NoError(t, err)
 		dirAndFile := fmt.Sprintf("%s/my.db", dir)
@@ -52,7 +52,7 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 		require.NoError(t, err)
 		return bolt.New(db).WithRealm(realm)
 
-	case DB_MAPDB:
+	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
 	}
 
@@ -60,7 +60,7 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 }
 
 func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
-	return &TestObject{id: key}, len(key), nil
+	return &testObject{id: key}, len(key), nil
 }
 
 func TestConcurrentCreateDelete(t *testing.T) {
@@ -97,7 +97,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 			messageIDBytes := []byte(messageIDString)
 
 			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
-				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(NewTestObject(messageIDString, uint32(x)))
+				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, uint32(x)))
 				if stored {
 					cachedMissingMessage.Release()
 
@@ -116,7 +116,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 			messageIDString := strconv.Itoa(x)
 			messageIDBytes := []byte(messageIDString)
 
-			metadataStorage.Store(NewTestObject(messageIDString, uint32(x))).Release()
+			metadataStorage.Store(newTestObject(messageIDString, uint32(x))).Release()
 
 			if missingMessageStorage.DeleteIfPresent(messageIDBytes) {
 				atomic.AddInt32(&eventsCounter, -1)
@@ -129,16 +129,12 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	// wait for a workers to finish
 	wg.Wait()
 
-	fmt.Println("DONE")
-
 	// count messages still in the store
 	messagesInStore := 0
 	missingMessageStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
 		messagesInStore++
 
 		cachedObject.Release()
-
-		fmt.Println("ITERATE", messagesInStore)
 
 		return true
 	})
@@ -159,10 +155,10 @@ func TestPrefixIteration(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1, _ := objects.StoreIfAbsent(newTestObject("12", 33))
 	storedObject1.Release()
 
-	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2, _ := objects.StoreIfAbsent(newTestObject("13", 33))
 	storedObject2.Release()
 
 	storedObject3 := objects.Load([]byte("12"))
@@ -249,23 +245,23 @@ func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
 		t.Error(err)
 	}
 
-	cachedObj, _ := objects.StoreIfAbsent(NewThreeLevelObj(65, 66, 67))
+	cachedObj, _ := objects.StoreIfAbsent(newThreeLevelObj(65, 66, 67))
 	cachedObj.Release()
 
 	sizeBeforeFlush := objects.GetSize()
 	if sizeBeforeFlush != 1 {
-		t.Fatalf("expected object storage size to be 1 but was %d", sizeBeforeFlush)
+		t.Fatalf("expected testObject storage size to be 1 but was %d", sizeBeforeFlush)
 	}
 
 	objects.Flush()
 	sizeAfterFlush := objects.GetSize()
 	if sizeAfterFlush != 0 {
-		t.Fatalf("expected object storage size to be zero but was %d", sizeAfterFlush)
+		t.Fatalf("expected testObject storage size to be zero but was %d", sizeAfterFlush)
 	}
 }
 
 func TestStorableObjectFlags(t *testing.T) {
-	testObject := NewTestObject("Batman", 44)
+	testObject := newTestObject("Batman", 44)
 
 	assert.Equal(t, false, testObject.IsModified())
 	testObject.SetModified()
@@ -303,7 +299,7 @@ func BenchmarkStore(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
+		objects.Store(newTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
 
 	objects.Shutdown()
@@ -313,7 +309,7 @@ func BenchmarkLoad(b *testing.B) {
 	objects := objectstorage.New(testStorage(b, []byte("TestObjectStorage")), testObjectFactory)
 
 	for i := 0; i < b.N; i++ {
-		objects.Store(NewTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
+		objects.Store(newTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
 	}
 
 	time.Sleep(2 * time.Second)
@@ -331,7 +327,7 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 	objects := objectstorage.New(testStorage(b, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
 
 	for i := 0; i < b.N; i++ {
-		objects.Store(NewTestObject("Hans"+strconv.Itoa(0), uint32(i)))
+		objects.Store(newTestObject("Hans"+strconv.Itoa(0), uint32(i)))
 	}
 
 	b.ResetTimer()
@@ -352,17 +348,17 @@ func TestStoreIfAbsent(t *testing.T) {
 	loadedObject := objects.Load([]byte("Hans"))
 	loadedObject.Release()
 
-	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	storedObject1, stored1 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 	if typeutils.IsInterfaceNil(storedObject1) {
-		t.Error("the object should NOT be nil if it was stored")
+		t.Error("the testObject should NOT be nil if it was stored")
 	}
 	storedObject1.Release()
 
-	storedObject2, stored2 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	storedObject2, stored2 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, false, stored2)
 	if !typeutils.IsInterfaceNil(storedObject2) {
-		t.Error("the object should be nil if it wasn't stored")
+		t.Error("the testObject should be nil if it wasn't stored")
 	}
 
 	objects.Shutdown()
@@ -380,18 +376,18 @@ func TestStoreOnCreation(t *testing.T) {
 	loadedObject := objects.Load([]byte("Hans"))
 	loadedObject.Release()
 
-	storedObject1, stored1 := objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	storedObject1, stored1 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 
 	if typeutils.IsInterfaceNil(storedObject1) {
-		t.Error("the object should NOT be nil if it was stored")
+		t.Error("the testObject should NOT be nil if it was stored")
 	}
 
 	// give the batchWriter some time to persist it
 	time.Sleep(time.Second)
 
 	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); !typeutils.IsInterfaceNil(loadedObject) {
-		t.Error("the object should NOT be stored in the database yet stored")
+		t.Error("the testObject should NOT be stored in the database yet stored")
 	}
 
 	storedObject1.Release(true)
@@ -407,18 +403,18 @@ func TestStoreOnCreation(t *testing.T) {
 	loadedObject = objects.Load([]byte("Hans"))
 	loadedObject.Release()
 
-	storedObject1, stored1 = objects.StoreIfAbsent(NewTestObject("Hans", 33))
+	storedObject1, stored1 = objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 
 	if typeutils.IsInterfaceNil(storedObject1) {
-		t.Error("the object should NOT be nil if it was stored")
+		t.Error("the testObject should NOT be nil if it was stored")
 	}
 
 	// give the batchWriter some time to persist it
 	time.Sleep(time.Second)
 
 	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); typeutils.IsInterfaceNil(loadedObject) {
-		t.Error("the object should NOT be nil if it was stored")
+		t.Error("the testObject should NOT be nil if it was stored")
 	}
 
 	storedObject1.Release(true)
@@ -428,7 +424,7 @@ func TestStoreOnCreation(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
-	objects.Store(NewTestObject("Hans", 33)).Release()
+	objects.Store(newTestObject("Hans", 33)).Release()
 
 	cachedObject := objects.Load([]byte("Hans"))
 	if !cachedObject.Exists() {
@@ -450,7 +446,7 @@ func TestDelete(t *testing.T) {
 
 func TestConcurrency(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
-	objects.Store(NewTestObject("Hans", 33)).Release()
+	objects.Store(newTestObject("Hans", 33)).Release()
 
 	var wg sync.WaitGroup
 
@@ -460,13 +456,13 @@ func TestConcurrency(t *testing.T) {
 
 		cachedObject := objects.Load([]byte("Hans"))
 
-		// make sure the 2nd goroutine "processes" the object first
+		// make sure the 2nd goroutine "processes" the testObject first
 		time.Sleep(time.Second)
 
 		// check if we "see" the modifications of the 2nd goroutine (using the "consume" method)
 		cachedObject.Consume(func(object objectstorage.StorableObject) {
 			// test if the changes of the 2nd goroutine are visible
-			if object.(*TestObject).get() != 3 {
+			if object.(*testObject).get() != 3 {
 				t.Error(errors.New("the modifications of the 2nd goroutine should be visible"))
 			}
 		})
@@ -478,8 +474,8 @@ func TestConcurrency(t *testing.T) {
 
 		cachedObject := objects.Load([]byte("Hans"))
 
-		// retrieve, modify and release the object manually (without consume)
-		cachedObject.Get().(*TestObject).set(3)
+		// retrieve, modify and release the testObject manually (without consume)
+		cachedObject.Get().(*testObject).set(3)
 		cachedObject.Release()
 	}()
 
@@ -492,19 +488,19 @@ func TestStoreIfAbsentTriggersOnce(t *testing.T) {
 		objectCount := 200
 		workerCount := 50
 
-		// initialize object storage
+		// initialize testObject storage
 		objectsStorage := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true), objectstorage.LeakDetectionEnabled(true, objectstorage.LeakDetectionOptions{
 			MaxConsumersPerObject: 100,
 			MaxConsumerHoldTime:   5 * time.Second,
 		}))
 
 		// prepare objects to store
-		objects := make([]*TestObject, objectCount)
+		objects := make([]*testObject, objectCount)
 		for i := 0; i < objectCount; i++ {
-			objects[i] = NewTestObject(fmt.Sprintf("%v", i), 0)
+			objects[i] = newTestObject(fmt.Sprintf("%v", i), 0)
 		}
 
-		// store the same object multiple times in multiple goroutines
+		// store the same testObject multiple times in multiple goroutines
 		var wg sync.WaitGroup
 		var storedObjectsCount int32
 		for i := 0; i < objectCount; i++ {
@@ -542,7 +538,7 @@ func TestEvictionBug(t *testing.T) {
 	wait.Add(testCount)
 	for i := 0; i < testCount; i++ {
 		go func(i int) {
-			objects.Store(NewTestObject(fmt.Sprintf("%v", i), 0)).Release()
+			objects.Store(newTestObject(fmt.Sprintf("%v", i), 0)).Release()
 			wait.Done()
 		}(i)
 	}
@@ -555,9 +551,9 @@ func TestEvictionBug(t *testing.T) {
 		for j := 0; j < int(count); j++ {
 			go func(i, j int) {
 				cachedObject1 := objects.Load([]byte(fmt.Sprintf("%v", i)))
-				cachedTestObject1 := cachedObject1.Get().(*TestObject)
+				cachedTestObject1 := cachedObject1.Get().(*testObject)
 				cachedTestObject1.Lock()
-				cachedObject1.Get().(*TestObject).value++
+				cachedObject1.Get().(*testObject).value++
 				cachedTestObject1.Unlock()
 				cachedTestObject1.SetModified(true)
 				cachedObject1.Release()
@@ -565,9 +561,9 @@ func TestEvictionBug(t *testing.T) {
 				time.Sleep(time.Duration(1) * time.Millisecond)
 
 				cachedObject2 := objects.Load([]byte(fmt.Sprintf("%v", i)))
-				cachedTestObject2 := cachedObject2.Get().(*TestObject)
+				cachedTestObject2 := cachedObject2.Get().(*testObject)
 				cachedTestObject2.Lock()
-				cachedObject2.Get().(*TestObject).value++
+				cachedObject2.Get().(*testObject).value++
 				cachedTestObject2.Unlock()
 				cachedTestObject2.SetModified(true)
 				cachedObject2.Release()
@@ -580,8 +576,8 @@ func TestEvictionBug(t *testing.T) {
 	for i := testCount - 1; i >= 0; i-- {
 		//time.Sleep(time.Duration(10) * time.Microsecond)
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
-		if cachedObject.Get().(*TestObject).value != count*2 {
-			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*TestObject).value, count))
+		if cachedObject.Get().(*testObject).value != count*2 {
+			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count))
 
 			return
 		}
@@ -593,7 +589,7 @@ func TestDeleteAndCreate(t *testing.T) {
 	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
 
 	for i := 0; i < 5000; i++ {
-		objects.Store(NewTestObject("Hans", 33)).Release()
+		objects.Store(newTestObject("Hans", 33)).Release()
 
 		cachedObject := objects.Load([]byte("Hans"))
 		if !cachedObject.Exists() {
@@ -614,7 +610,7 @@ func TestDeleteAndCreate(t *testing.T) {
 		newlyAdded := false
 		cachedObject = objects.ComputeIfAbsent([]byte("Hans"), func(key []byte) objectstorage.StorableObject {
 			newlyAdded = true
-			return NewTestObject("Hans", 33)
+			return newTestObject("Hans", 33)
 		})
 		cachedObject.Release()
 
@@ -636,13 +632,13 @@ func TestForEachWithPrefix(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1, _ := objects.StoreIfAbsent(newTestObject("12", 33))
 	storedObject1.Release()
 
-	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2, _ := objects.StoreIfAbsent(newTestObject("13", 33))
 	storedObject2.Release()
 
-	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3, _ := objects.StoreIfAbsent(newTestObject("23", 33))
 	storedObject3.Release()
 
 	// Store all to disk
@@ -680,13 +676,13 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1, _ := objects.StoreIfAbsent(newTestObject("12", 33))
 	storedObject1.Release()
 
-	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2, _ := objects.StoreIfAbsent(newTestObject("13", 33))
 	storedObject2.Release()
 
-	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3, _ := objects.StoreIfAbsent(newTestObject("23", 33))
 	storedObject3.Release()
 
 	// Store all to disk
@@ -723,13 +719,13 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 		t.Error(err)
 	}
 
-	storedObject1, _ := objects.StoreIfAbsent(NewTestObject("12", 33))
+	storedObject1, _ := objects.StoreIfAbsent(newTestObject("12", 33))
 	storedObject1.Release()
 
-	storedObject2, _ := objects.StoreIfAbsent(NewTestObject("13", 33))
+	storedObject2, _ := objects.StoreIfAbsent(newTestObject("13", 33))
 	storedObject2.Release()
 
-	storedObject3, _ := objects.StoreIfAbsent(NewTestObject("23", 33))
+	storedObject3, _ := objects.StoreIfAbsent(newTestObject("23", 33))
 	storedObject3.Release()
 
 	// Store all to disk
