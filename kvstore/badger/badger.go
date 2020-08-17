@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 
@@ -36,8 +37,7 @@ func (s *badgerStore) Realm() []byte {
 
 // builds a key usable for the badger instance using the realm and the given prefix.
 func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
-	value := s.dbPrefix
-	return append(value, prefix...)
+	return byteutils.Concat(s.dbPrefix, prefix)
 }
 
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
@@ -88,7 +88,7 @@ func (s *badgerStore) Clear() error {
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	var value []byte
 	err := s.instance.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(append(s.dbPrefix, key...))
+		item, err := txn.Get(byteutils.Concat(s.dbPrefix, key))
 		if err != nil {
 			return err
 		}
@@ -104,13 +104,13 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 
 func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Set(append(s.dbPrefix, key...), value)
+		return txn.Set(byteutils.Concat(s.dbPrefix, key), value)
 	})
 }
 
 func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 	err := s.instance.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(append(s.dbPrefix, key...))
+		_, err := txn.Get(byteutils.Concat(s.dbPrefix, key))
 		return err
 	})
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 
 func (s *badgerStore) Delete(key kvstore.Key) error {
 	err := s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Delete(append(s.dbPrefix, key...))
+		return txn.Delete(byteutils.Concat(s.dbPrefix, key))
 	})
 	if err != nil && err == badger.ErrKeyNotFound {
 		return kvstore.ErrKeyNotFound
@@ -170,7 +170,7 @@ type batchedMutations struct {
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
-	stringKey := b.stringKey(key)
+	stringKey := typeutils.BytesToString(byteutils.Concat(b.dbPrefix, key))
 
 	b.operationsMutex.Lock()
 	defer b.operationsMutex.Unlock()
@@ -182,7 +182,7 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
-	stringKey := b.stringKey(key)
+	stringKey := typeutils.BytesToString(byteutils.Concat(b.dbPrefix, key))
 
 	b.operationsMutex.Lock()
 	defer b.operationsMutex.Unlock()
@@ -222,15 +222,4 @@ func (b *batchedMutations) Commit() error {
 	}
 
 	return writeBatch.Flush()
-}
-
-func (b *batchedMutations) stringKey(key kvstore.Key) string {
-	dbPrefixLen := len(b.dbPrefix)
-	keyLen := len(key)
-
-	keyBytes := make([]byte, dbPrefixLen+keyLen)
-	copy(keyBytes, b.dbPrefix)
-	copy(keyBytes[dbPrefixLen:], key)
-
-	return typeutils.BytesToString(keyBytes)
 }

@@ -15,3 +15,18 @@ func ReadAvailableBytesToBuffer(target []byte, targetOffset int, source []byte, 
 
 	return bytesToRead
 }
+
+// Concat concatenates the byte slices into a new byte slice.
+func Concat(byteSlices ...[]byte) (result []byte) {
+	// sanitize parameters
+	if len(byteSlices) == 0 {
+		panic("calls to Concat require at least one argument")
+	}
+
+	// concat byte slices
+	for _, byteSlice := range byteSlices {
+		result = append(result, byteSlice...)
+	}
+
+	return
+}
