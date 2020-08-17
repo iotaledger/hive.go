@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type syncedKVMap struct {
@@ -78,7 +77,7 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool) {
 	s.RLock()
 	defer s.RUnlock()
-	prefix := typeutils.BytesToString(byteutils.Concat(realm, keyPrefix))
+	prefix := string(byteutils.Concat(realm, keyPrefix))
 	for key := range s.m {
 		if strings.HasPrefix(key, prefix) {
 			if !consume([]byte(key)[len(realm):]) {
