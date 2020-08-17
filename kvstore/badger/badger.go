@@ -7,7 +7,6 @@ import (
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/types"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // KVStore implements the KVStore interface around a BadgerDB instance.
@@ -207,14 +206,14 @@ func (b *batchedMutations) Commit() error {
 	defer b.operationsMutex.Unlock()
 
 	for key, value := range b.setOperations {
-		err := writeBatch.Set(typeutils.StringToBytes(key), value)
+		err := writeBatch.Set([]byte(key), value)
 		if err != nil {
 			return err
 		}
 	}
 
 	for key := range b.deleteOperations {
-		err := writeBatch.Delete(typeutils.StringToBytes(key))
+		err := writeBatch.Delete([]byte(key))
 		if err != nil {
 			return err
 		}
