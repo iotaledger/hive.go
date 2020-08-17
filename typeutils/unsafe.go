@@ -21,7 +21,7 @@ func BytesToString(b []byte) string {
 // NOTE: This is an unsafe operation and may lead to problems if the bytes are changed.
 func StringToBytes(s string) []byte {
 	// ensure the underlying string doesn't get GC'ed before the assignment happens
-	runtime.KeepAlive(&s)
+	defer runtime.KeepAlive(&s)
 
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	b := *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
