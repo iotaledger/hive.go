@@ -779,9 +779,6 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 
 	// update and return the object if we have a cache hit
 	if cacheHit {
-		// wait for the previous consumer to publish his result
-		cachedObject.waitForInitialResult()
-
 		// try to replace the object if its is empty
 		result, updated := objectStorage.updateEmptyCachedObject(cachedObject, object)
 		if updated {

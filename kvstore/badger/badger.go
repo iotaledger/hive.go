@@ -213,7 +213,7 @@ func (b *batchedMutations) Commit() error {
 		}
 	}
 
-	for key, _ := range b.deleteOperations {
+	for key := range b.deleteOperations {
 		err := writeBatch.Delete(typeutils.StringToBytes(key))
 		if err != nil {
 			return err
