@@ -66,8 +66,8 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 // ObjectStorage.
 func TestConcurrentCreateDelete(t *testing.T) {
 	// test parameters
-	objectCount := 500
-	testCount := 1
+	objectCount := 50000
+	testCount := 10
 
 	for i := 0; i < testCount; i++ {
 		// create badger DB

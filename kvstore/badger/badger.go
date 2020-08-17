@@ -1,9 +1,6 @@
 package badger
 
 import (
-	"encoding/binary"
-	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
@@ -100,10 +97,6 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	})
 	if err == badger.ErrKeyNotFound {
 		return nil, kvstore.ErrKeyNotFound
-	}
-
-	if string(append(s.dbPrefix, key...)) != (string(s.dbPrefix) + strconv.Itoa(int(binary.LittleEndian.Uint32(value)))) {
-		fmt.Println("WRONG READ", string(key), strconv.Itoa(int(binary.LittleEndian.Uint32(value))))
 	}
 
 	return value, nil
@@ -215,10 +208,6 @@ func (b *batchedMutations) Commit() error {
 	defer b.operationsMutex.Unlock()
 
 	for key, value := range b.setOperations {
-		if key != (string(b.dbPrefix) + strconv.Itoa(int(binary.LittleEndian.Uint32(value)))) {
-			fmt.Println("WRONG WRITTEN2", key, strconv.Itoa(int(binary.LittleEndian.Uint32(value))))
-		}
-
 		err := writeBatch.Set(typeutils.StringToBytes(key), value)
 		if err != nil {
 			return err

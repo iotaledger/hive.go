@@ -178,13 +178,13 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
-				cachedObject.Release()
+				cachedObject.Release(true)
 
 				return true
 			}
 
 		}
-		cachedObject.Release()
+		cachedObject.Release(true)
 
 		return false
 	}

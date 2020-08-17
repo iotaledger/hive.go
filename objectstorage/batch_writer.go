@@ -131,9 +131,6 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 			marshaledValue = storableObject.ObjectStorageValue()
 		}
 
-		copiedKey := make([]byte, len(cachedObject.key))
-		copy(copiedKey, cachedObject.key)
-
 		if err := batchedMuts.Set(copiedKey, marshaledValue); err != nil {
 			panic(err)
 		}
