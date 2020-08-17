@@ -538,7 +538,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 	}
 
 	// create a new cached object to hold the object
-	newlyCachedObject := newCachedObject(objectStorage, []byte(objectKey))
+	newlyCachedObject := newCachedObject(objectStorage, key)
 	newlyCachedObject.retain()
 
 	if objectStorage.size == 0 {
