@@ -44,7 +44,7 @@ func (*Pong) Marshal() []byte { return append([]byte{}, byte(MPong)) }
 func sendPong(args mock.Arguments) {
 	srv := args.Get(0).(*Server)
 	addr := args.Get(1).(*net.UDPAddr)
-	srv.Send(addr, new(Pong).Marshal())
+	srv.Send(addr, new(Pong).Marshal(), MPong)
 }
 
 var (
@@ -64,13 +64,13 @@ func setupTest() func(t *testing.T) {
 	}
 }
 
-func handle(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
-	msg, err := unmarshal(data)
+func handle(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte, mType uint32) (bool, error) {
+	msg, err := unmarshal(data, MType(mType))
 	if err != nil {
 		return false, err
 	}
 
-	switch msg.Type() {
+	switch MType(mType) {
 	case MPing:
 		pingMock.Called(s, fromAddr, from, data)
 
@@ -86,12 +86,12 @@ func handle(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []by
 	return true, nil
 }
 
-func unmarshal(data []byte) (testMessage, error) {
+func unmarshal(data []byte, mType MType) (testMessage, error) {
 	if len(data) != 1 {
 		return nil, ErrInvalidMessage
 	}
 
-	switch MType(data[0]) {
+	switch mType {
 	case MPing:
 		return new(Ping), nil
 	case MPong:
@@ -114,12 +114,13 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	s := &Server{local: local}
 
 	ping := new(Ping)
-	packet := s.encode(ping.Marshal())
+	packet := s.encode(ping.Marshal(), MPing)
 
 	data, id, err := decode(packet)
 	require.NoError(t, err)
 
-	msg, _ := unmarshal(data)
+
+	msg, _ := unmarshal(data, MType(packet.Type))
 	assert.Equal(t, local.LocalIdentity().Identity, id)
 	assert.Equal(t, msg, ping)
 }
@@ -149,7 +150,7 @@ func sendPing(s *Server, p *peer.Peer) error {
 		return ok
 	}
 
-	errc := s.SendExpectingReply(p.Address(), p.ID(), ping.Marshal(), MPong, isPong)
+	errc := s.SendExpectingReply(p.Address(), p.ID(), ping.Marshal(), ping.Type(), MPong, isPong)
 	return <-errc
 }
 
@@ -224,5 +225,5 @@ func TestUnexpectedPong(t *testing.T) {
 	// there should never be a Ping.Handle
 	// there should never be a Pong.Handle
 
-	srvA.Send(srvB.LocalAddr(), new(Pong).Marshal())
+	srvA.Send(srvB.LocalAddr(), new(Pong).Marshal(), MPong)
 }

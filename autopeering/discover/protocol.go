@@ -141,16 +141,16 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 }
 
 // HandleMessage responds to incoming peer discovery messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte, msgType uint32) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
 
-	switch pb.MType(data[0]) {
+	switch pb.MType(msgType) {
 	// Ping
 	case pb.MPing:
 		m := new(pb.Ping)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePing(fromAddr, m) {
@@ -160,7 +160,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	// Pong
 	case pb.MPong:
 		m := new(pb.Pong)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePong(s, fromAddr, from.ID(), m) {
@@ -170,7 +170,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	// DiscoveryRequest
 	case pb.MDiscoveryRequest:
 		m := new(pb.DiscoveryRequest)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validateDiscoveryRequest(fromAddr, from.ID(), m) {
@@ -180,7 +180,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	// DiscoveryResponse
 	case pb.MDiscoveryResponse:
 		m := new(pb.DiscoveryResponse)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		p.validateDiscoveryResponse(s, fromAddr, from.ID(), m)
@@ -259,7 +259,7 @@ func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID identity.ID) <-chan error 
 	}
 
 	p.logSend(toAddr, ping)
-	return p.Protocol.SendExpectingReply(toAddr, toID, data, pb.MPong, callback)
+	return p.Protocol.SendExpectingReply(toAddr, toID, data, ping.Type(), pb.MPong, callback)
 }
 
 // DiscoveryRequest request known peers from the given target. This method blocks
@@ -293,7 +293,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 
 	err := backoff.Retry(retryPolicy, func() error {
 		p.logSend(to.Address(), req)
-		err := <-p.Protocol.SendExpectingReply(to.Address(), to.ID(), data, pb.MDiscoveryResponse, callback)
+		err := <-p.Protocol.SendExpectingReply(to.Address(), to.ID(), data, req.Type(), pb.MDiscoveryResponse, callback)
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
@@ -316,8 +316,7 @@ func (p *Protocol) logSend(toAddr *net.UDPAddr, msg pb.Message) {
 }
 
 func marshal(msg pb.Message) []byte {
-	mType := msg.Type()
-	if mType > 0xFF {
+	if msg.Type() > 0xFF {
 		panic("invalid message")
 	}
 
@@ -325,7 +324,8 @@ func marshal(msg pb.Message) []byte {
 	if err != nil {
 		panic("invalid message")
 	}
-	return append([]byte{byte(mType)}, data...)
+
+	return append([]byte{}, data...)
 }
 
 // newPeer creates a new peer that only has a peering service at the given address.
@@ -438,8 +438,9 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, from *ide
 		IP:   fromAddr.IP,
 		Port: int(m.SrcPort),
 	}
+
 	p.logSend(dstAddr, pong)
-	s.Send(dstAddr, marshal(pong))
+	s.Send(dstAddr, marshal(pong), pong.Type())
 
 	// if the peer is unknown or expired, send a Ping to verify
 	if !p.IsVerified(from.ID(), dstAddr.IP) {
@@ -454,9 +455,9 @@ func (p *Protocol) handlePing(s *server.Server, fromAddr *net.UDPAddr, from *ide
 func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, m *pb.Pong) bool {
 	// there must be a Ping waiting for this pong as a reply
 	if !s.IsExpectedReply(fromAddr.IP, fromID, m) {
-		p.log.Debugw("invalid message",
+		p.log.Debugw("invalid reply message",
 			"type", m.Name(),
-			"unexpected", fromAddr,
+			"address:", fromAddr,
 		)
 		return false
 	}
@@ -530,7 +531,7 @@ func (p *Protocol) handleDiscoveryRequest(s *server.Server, fromID identity.ID, 
 	from := p.GetVerifiedPeer(fromID)
 
 	p.logSend(from.Address(), res)
-	s.Send(from.Address(), marshal(res))
+	s.Send(from.Address(), marshal(res), res.Type())
 }
 
 func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, m *pb.DiscoveryResponse) bool {

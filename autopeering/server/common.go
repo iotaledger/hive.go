@@ -27,24 +27,24 @@ type Message interface {
 
 // The Sender interface specifies common method required to send requests.
 type Sender interface {
-	Send(toAddr *net.UDPAddr, data []byte)
-	SendExpectingReply(toAddr *net.UDPAddr, toID identity.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error
+	Send(toAddr *net.UDPAddr, data []byte, mType MType)
+	SendExpectingReply(toAddr *net.UDPAddr, toID identity.ID, data []byte, mType MType, replyType MType, callback func(Message) bool) <-chan error
 }
 
 // A Handler reacts to an incoming message.
 type Handler interface {
 	// HandleMessage is called for each incoming message.
 	// It returns true, if that particular message type can be processed by the current Handler.
-	HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error)
+	HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte, msgType uint32) (bool, error)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions as Server handlers.
 // If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(*Server, *net.UDPAddr, *identity.Identity, []byte) (bool, error)
+type HandlerFunc func(*Server, *net.UDPAddr, *identity.Identity, []byte, uint32) (bool, error)
 
 // HandleMessage returns f(s, from, data).
-func (f HandlerFunc) HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
-	return f(s, fromAddr, from, data)
+func (f HandlerFunc) HandleMessage(s *Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte, msgType uint32) (bool, error) {
+	return f(s, fromAddr, from, data, msgType)
 }
 
 // PacketHash returns the hash of a packet

@@ -118,16 +118,16 @@ func (p *Protocol) RemoveNeighbor(id identity.ID) {
 }
 
 // HandleMessage responds to incoming neighbor selection messages.
-func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
+func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte, msgType uint32) (bool, error) {
 	if !p.running.IsSet() {
 		return false, nil
 	}
 
-	switch pb.MType(data[0]) {
+	switch pb.MType(msgType) {
 	// PeeringRequest
 	case pb.MPeeringRequest:
 		m := new(pb.PeeringRequest)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringRequest(fromAddr, from.ID(), m) {
@@ -137,7 +137,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	// PeeringResponse
 	case pb.MPeeringResponse:
 		m := new(pb.PeeringResponse)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		p.validatePeeringResponse(s, fromAddr, from.ID(), m)
@@ -146,7 +146,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	// PeeringDrop
 	case pb.MPeeringDrop:
 		m := new(pb.PeeringDrop)
-		if err := proto.Unmarshal(data[1:], m); err != nil {
+		if err := proto.Unmarshal(data, m); err != nil {
 			return true, fmt.Errorf("invalid message: %w", err)
 		}
 		if p.validatePeeringDrop(fromAddr, m) {
@@ -194,7 +194,7 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 
 	err := backoff.Retry(retryPolicy, func() error {
 		p.logSend(toAddr, req)
-		err := <-p.Protocol.SendExpectingReply(toAddr, to.ID(), data, pb.MPeeringResponse, callback)
+		err := <-p.Protocol.SendExpectingReply(toAddr, to.ID(), data, req.Type(), pb.MPeeringResponse, callback)
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
@@ -208,7 +208,7 @@ func (p *Protocol) PeeringDrop(to *peer.Peer) {
 	drop := newPeeringDrop()
 
 	p.logSend(to.Address(), drop)
-	p.Protocol.Send(to, marshal(drop))
+	p.Protocol.Send(to, marshal(drop), drop.Type())
 }
 
 // ------ helper functions ------
@@ -220,8 +220,7 @@ func (p *Protocol) logSend(toAddr *net.UDPAddr, msg pb.Message) {
 }
 
 func marshal(msg pb.Message) []byte {
-	mType := msg.Type()
-	if mType > 0xFF {
+	if msg.Type() > 0xFF {
 		panic("invalid message")
 	}
 
@@ -229,7 +228,7 @@ func marshal(msg pb.Message) []byte {
 	if err != nil {
 		panic("invalid message")
 	}
-	return append([]byte{byte(mType)}, data...)
+	return append([]byte{}, data...)
 }
 
 // ------ Message Constructors ------
@@ -311,7 +310,7 @@ func (p *Protocol) handlePeeringRequest(s *server.Server, fromID identity.ID, ra
 	res := newPeeringResponse(rawData, status)
 
 	p.logSend(from.Address(), res)
-	s.Send(from.Address(), marshal(res))
+	s.Send(from.Address(), marshal(res), res.Type())
 }
 
 func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAddr, fromID identity.ID, m *pb.PeeringResponse) bool {

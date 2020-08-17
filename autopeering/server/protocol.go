@@ -18,14 +18,14 @@ type Protocol struct {
 }
 
 // Send sends the data to the given peer.
-func (p *Protocol) Send(to *peer.Peer, data []byte) {
-	p.Sender.Send(to.Address(), data)
+func (p *Protocol) Send(to *peer.Peer, data []byte, mType MType) {
+	p.Sender.Send(to.Address(), data, mType)
 }
 
 // SendExpectingReply sends request data to a peer and expects a response of the given type.
 // On an incoming matching request the callback is executed to perform additional verification steps.
-func (p *Protocol) SendExpectingReply(dstAddr *net.UDPAddr, toID identity.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error {
-	return p.Sender.SendExpectingReply(dstAddr, toID, data, replyType, callback)
+func (p *Protocol) SendExpectingReply(dstAddr *net.UDPAddr, toID identity.ID, data []byte, mType MType, replyType MType, callback func(Message) bool) <-chan error {
+	return p.Sender.SendExpectingReply(dstAddr, toID, data, mType, replyType, callback)
 }
 
 // IsExpired checks whether the given UNIX time stamp is too far in the past.

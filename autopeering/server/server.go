@@ -126,17 +126,17 @@ func (s *Server) LocalAddr() *net.UDPAddr {
 }
 
 // Send sends a message to the given address
-func (s *Server) Send(toAddr *net.UDPAddr, data []byte) {
-	pkt := s.encode(data)
+func (s *Server) Send(toAddr *net.UDPAddr, data []byte, mType MType) {
+	pkt := s.encode(data, mType)
 	s.write(pkt, toAddr)
 }
 
 // SendExpectingReply sends a message to the given address and tells the Server
 // to expect a reply message with the given specifications.
 // If eventually nil is returned, a matching message was received.
-func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID identity.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error {
+func (s *Server) SendExpectingReply(toAddr *net.UDPAddr, toID identity.ID, data []byte, mType MType, replyType MType, callback func(Message) bool) <-chan error {
 	errc := s.expectReply(toAddr.IP, toID, replyType, callback)
-	s.Send(toAddr, data)
+	s.Send(toAddr, data, mType)
 
 	return errc
 }
@@ -254,7 +254,7 @@ func (s *Server) write(pkt *pb.Packet, toAddr *net.UDPAddr) {
 }
 
 // encodes a message as a data packet that can be written.
-func (s *Server) encode(data []byte) *pb.Packet {
+func (s *Server) encode(data []byte, mType MType) *pb.Packet {
 	if len(data) == 0 {
 		panic("server: no data")
 	}
@@ -263,6 +263,7 @@ func (s *Server) encode(data []byte) *pb.Packet {
 		PublicKey: s.local.PublicKey().Bytes(),
 		Signature: s.local.Sign(data).Bytes(),
 		Data:      append([]byte(nil), data...),
+		Type: uint32(mType),
 	}
 }
 
@@ -306,7 +307,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr *net.UDPAddr) error {
 	}
 
 	for _, handler := range s.handlers {
-		ok, err := handler.HandleMessage(s, fromAddr, from, data)
+		ok, err := handler.HandleMessage(s, fromAddr, from, data, pkt.GetType())
 		if ok {
 			return err
 		}
