@@ -31,16 +31,16 @@ func (db *MapDB) WithRealm(realm kvstore.Realm) kvstore.KVStore {
 }
 
 func (db *MapDB) Realm() kvstore.Realm {
-	return byteutils.Concat(db.realm)
+	return byteutils.ConcatBytes(db.realm)
 }
 
 func (db *MapDB) Has(key kvstore.Key) (bool, error) {
-	contains := db.m.has(byteutils.Concat(db.realm, key))
+	contains := db.m.has(byteutils.ConcatBytes(db.realm, key))
 	return contains, nil
 }
 
 func (db *MapDB) Get(key kvstore.Key) (kvstore.Value, error) {
-	value, contains := db.m.get(byteutils.Concat(db.realm, key))
+	value, contains := db.m.get(byteutils.ConcatBytes(db.realm, key))
 	if !contains {
 		return nil, kvstore.ErrKeyNotFound
 	}
@@ -48,17 +48,17 @@ func (db *MapDB) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (db *MapDB) Set(key kvstore.Key, value kvstore.Value) error {
-	db.m.set(byteutils.Concat(db.realm, key), value)
+	db.m.set(byteutils.ConcatBytes(db.realm, key), value)
 	return nil
 }
 
 func (db *MapDB) Delete(key kvstore.Key) error {
-	db.m.delete(byteutils.Concat(db.realm, key))
+	db.m.delete(byteutils.ConcatBytes(db.realm, key))
 	return nil
 }
 
 func (db *MapDB) DeletePrefix(keyPrefix kvstore.KeyPrefix) error {
-	db.m.deletePrefix(byteutils.Concat(db.realm, keyPrefix))
+	db.m.deletePrefix(byteutils.ConcatBytes(db.realm, keyPrefix))
 	return nil
 }
 
