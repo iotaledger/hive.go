@@ -62,9 +62,11 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 	return &testObject{id: key}, len(key), nil
 }
 
+// TestConcurrentCreateDelete tests if ConsumeIfAbsent and Store can be used in parallel without breaking the
+// ObjectStorage.
 func TestConcurrentCreateDelete(t *testing.T) {
 	// test parameters
-	objectCount := 100000
+	objectCount := 50000
 
 	// create badger DB
 	badgerDBMissingMessageStorage, err := testutil.BadgerDB(t)
