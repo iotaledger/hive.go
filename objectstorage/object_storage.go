@@ -274,6 +274,8 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 		cachedObject, updated := objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 		if !updated {
 			cachedObject.Release()
+
+			return nil, false
 		}
 
 		return cachedObject, updated
@@ -293,6 +295,8 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 		cachedObject, updated := objectStorage.updateEmptyCachedObject(existingCachedObject, object)
 		if !updated {
 			cachedObject.Release()
+
+			return nil, false
 		}
 
 		return cachedObject, updated
@@ -677,7 +681,7 @@ func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *Cached
 	// try to update the object if it is empty or abort otherwise
 	updated = cachedObject.updateEmptyResult(object)
 	if !updated {
-		return
+		return cachedObject, updated
 	}
 
 	cachedObject.storeOnCreation()
