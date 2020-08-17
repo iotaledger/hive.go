@@ -1,11 +1,16 @@
 package testutil
 
 import (
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 )
+
+var databaseCounter = make(map[string]int)
+var databaseCounterMutex sync.Mutex
 
 // BadgerDB creates a temporary BadgerKVStore that automatically gets cleaned up when the test finishes.
 func BadgerDB(t *testing.T) (kvstore.KVStore, error) {
@@ -26,5 +31,10 @@ func BadgerDB(t *testing.T) (kvstore.KVStore, error) {
 		}
 	})
 
-	return badger.New(db).WithRealm([]byte(t.Name())), nil
+	databaseCounterMutex.Lock()
+	databaseCounter[t.Name()]++
+	counter := databaseCounter[t.Name()]
+	databaseCounterMutex.Unlock()
+
+	return badger.New(db).WithRealm([]byte(t.Name() + strconv.Itoa(counter))), nil
 }

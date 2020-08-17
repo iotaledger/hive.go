@@ -1,7 +1,11 @@
 package badger
 
 import (
+	"sync"
+
 	"github.com/dgraph-io/badger/v2"
+	"github.com/iotaledger/hive.go/types"
+	"github.com/iotaledger/hive.go/typeutils"
 
 	"github.com/iotaledger/hive.go/kvstore"
 )
@@ -148,29 +152,73 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 func (s *badgerStore) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
-		batched:  s.instance.NewWriteBatch(),
-		dbPrefix: s.dbPrefix,
+		store:            s.instance,
+		dbPrefix:         s.dbPrefix,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
 	}
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
 type batchedMutations struct {
-	batched  *badger.WriteBatch
-	dbPrefix []byte
+	store            *badger.DB
+	dbPrefix         []byte
+	setOperations    map[string]kvstore.Value
+	deleteOperations map[string]types.Empty
+	operationsMutex  sync.Mutex
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
-	return b.batched.Set(append(b.dbPrefix, key...), value)
+	stringKey := typeutils.BytesToString(append(b.dbPrefix, key...))
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	delete(b.deleteOperations, stringKey)
+	b.setOperations[stringKey] = value
+
+	return nil
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
-	return b.batched.Delete(append(b.dbPrefix, key...))
+	stringKey := typeutils.BytesToString(append(b.dbPrefix, key...))
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	delete(b.setOperations, stringKey)
+	b.deleteOperations[stringKey] = types.Void
+
+	return nil
 }
 
 func (b *batchedMutations) Cancel() {
-	b.batched.Cancel()
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	b.setOperations = make(map[string]kvstore.Value)
+	b.deleteOperations = make(map[string]types.Empty)
 }
 
 func (b *batchedMutations) Commit() error {
-	return b.batched.Flush()
+	writeBatch := b.store.NewWriteBatch()
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	for key, value := range b.setOperations {
+		err := writeBatch.Set(typeutils.StringToBytes(key), value)
+		if err != nil {
+			return err
+		}
+	}
+
+	for key, _ := range b.deleteOperations {
+		err := writeBatch.Delete(typeutils.StringToBytes(key))
+		if err != nil {
+			return err
+		}
+	}
+
+	return writeBatch.Flush()
 }

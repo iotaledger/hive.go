@@ -1,9 +1,7 @@
 package objectstorage
 
 import (
-	"fmt"
 	"sync"
-
 	"sync/atomic"
 	"time"
 
@@ -111,7 +109,6 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 		// only delete if there are no consumers
 		if consumers == 0 {
 			storableObject.SetModified(false)
-			fmt.Println("DELETE", string(cachedObject.key))
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
