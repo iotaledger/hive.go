@@ -3,6 +3,8 @@ package mapdb
 import (
 	"strings"
 	"sync"
+
+	"github.com/iotaledger/hive.go/byteutils"
 )
 
 type syncedKVMap struct {
@@ -25,14 +27,14 @@ func (s *syncedKVMap) get(key []byte) ([]byte, bool) {
 		return nil, false
 	}
 	// always copy the value
-	return append([]byte{}, value...), true
+	return byteutils.ConcatBytes(value), true
 }
 
 func (s *syncedKVMap) set(key, value []byte) {
 	s.Lock()
 	defer s.Unlock()
 	// always copy the value
-	s.m[string(key)] = append([]byte{}, value...)
+	s.m[string(key)] = byteutils.ConcatBytes(value)
 }
 
 func (s *syncedKVMap) delete(key []byte) {
@@ -56,10 +58,10 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 	// take a snapshot of the current elements
 	s.RLock()
 	copiedElements := make(map[string][]byte)
-	prefix := string(append(realm, keyPrefix...))
+	prefix := byteutils.ConcatBytesToString(realm, keyPrefix)
 	for key, value := range s.m {
 		if strings.HasPrefix(key, prefix) {
-			copiedElements[key] = append([]byte{}, value...)
+			copiedElements[key] = byteutils.ConcatBytes(value)
 		}
 	}
 	s.RUnlock()
@@ -75,7 +77,7 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool) {
 	s.RLock()
 	defer s.RUnlock()
-	prefix := string(append(realm, keyPrefix...))
+	prefix := byteutils.ConcatBytesToString(realm, keyPrefix)
 	for key := range s.m {
 		if strings.HasPrefix(key, prefix) {
 			if !consume([]byte(key)[len(realm):]) {

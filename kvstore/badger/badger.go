@@ -1,9 +1,12 @@
 package badger
 
 import (
-	"github.com/dgraph-io/badger/v2"
+	"sync"
 
+	"github.com/dgraph-io/badger/v2"
+	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/types"
 )
 
 // KVStore implements the KVStore interface around a BadgerDB instance.
@@ -32,8 +35,7 @@ func (s *badgerStore) Realm() []byte {
 
 // builds a key usable for the badger instance using the realm and the given prefix.
 func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
-	value := s.dbPrefix
-	return append(value, prefix...)
+	return byteutils.ConcatBytes(s.dbPrefix, prefix)
 }
 
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
@@ -84,7 +86,7 @@ func (s *badgerStore) Clear() error {
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	var value []byte
 	err := s.instance.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(append(s.dbPrefix, key...))
+		item, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 		if err != nil {
 			return err
 		}
@@ -94,18 +96,19 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	if err == badger.ErrKeyNotFound {
 		return nil, kvstore.ErrKeyNotFound
 	}
+
 	return value, nil
 }
 
 func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Set(append(s.dbPrefix, key...), value)
+		return txn.Set(byteutils.ConcatBytes(s.dbPrefix, key), value)
 	})
 }
 
 func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 	err := s.instance.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(append(s.dbPrefix, key...))
+		_, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 		return err
 	})
 	if err != nil {
@@ -119,7 +122,7 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 
 func (s *badgerStore) Delete(key kvstore.Key) error {
 	err := s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Delete(append(s.dbPrefix, key...))
+		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
 	})
 	if err != nil && err == badger.ErrKeyNotFound {
 		return kvstore.ErrKeyNotFound
@@ -148,29 +151,73 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 func (s *badgerStore) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
-		batched:  s.instance.NewWriteBatch(),
-		dbPrefix: s.dbPrefix,
+		store:            s.instance,
+		dbPrefix:         s.dbPrefix,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
 	}
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
 type batchedMutations struct {
-	batched  *badger.WriteBatch
-	dbPrefix []byte
+	store            *badger.DB
+	dbPrefix         []byte
+	setOperations    map[string]kvstore.Value
+	deleteOperations map[string]types.Empty
+	operationsMutex  sync.Mutex
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
-	return b.batched.Set(append(b.dbPrefix, key...), value)
+	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	delete(b.deleteOperations, stringKey)
+	b.setOperations[stringKey] = value
+
+	return nil
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
-	return b.batched.Delete(append(b.dbPrefix, key...))
+	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	delete(b.setOperations, stringKey)
+	b.deleteOperations[stringKey] = types.Void
+
+	return nil
 }
 
 func (b *batchedMutations) Cancel() {
-	b.batched.Cancel()
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	b.setOperations = make(map[string]kvstore.Value)
+	b.deleteOperations = make(map[string]types.Empty)
 }
 
 func (b *batchedMutations) Commit() error {
-	return b.batched.Flush()
+	writeBatch := b.store.NewWriteBatch()
+
+	b.operationsMutex.Lock()
+	defer b.operationsMutex.Unlock()
+
+	for key, value := range b.setOperations {
+		err := writeBatch.Set([]byte(key), value)
+		if err != nil {
+			return err
+		}
+	}
+
+	for key := range b.deleteOperations {
+		err := writeBatch.Delete([]byte(key))
+		if err != nil {
+			return err
+		}
+	}
+
+	return writeBatch.Flush()
 }
