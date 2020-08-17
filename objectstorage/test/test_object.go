@@ -3,10 +3,13 @@ package test
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 type testObject struct {
@@ -54,6 +57,11 @@ func (t *testObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int
 	defer t.Unlock()
 
 	t.value = binary.LittleEndian.Uint32(data)
+
+	if strconv.Itoa(int(t.value)) != typeutils.BytesToString(t.id) {
+		fmt.Println("WHAT?", typeutils.BytesToString(t.id), t.value)
+	}
+
 	return marshalutil.UINT32_SIZE, nil
 }
 

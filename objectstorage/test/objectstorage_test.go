@@ -66,88 +66,94 @@ func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
 // ObjectStorage.
 func TestConcurrentCreateDelete(t *testing.T) {
 	// test parameters
-	objectCount := 50000
+	objectCount := 500
+	testCount := 1
 
-	// create badger DB
-	badgerDBMissingMessageStorage, err := testutil.BadgerDB(t)
-	require.NoError(t, err)
-	badgerDBMetadataStorage, err := testutil.BadgerDB(t)
-	require.NoError(t, err)
+	for i := 0; i < testCount; i++ {
+		// create badger DB
+		badgerDBMissingMessageStorage, err := testutil.BadgerDB(t)
+		require.NoError(t, err)
+		badgerDBMetadataStorage, err := testutil.BadgerDB(t)
+		require.NoError(t, err)
 
-	// create ObjectStorage instances
-	missingMessageStorage := objectstorage.New(badgerDBMissingMessageStorage, testObjectFactory)
-	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
+		// create ObjectStorage instances
+		missingMessageStorage := objectstorage.New(badgerDBMissingMessageStorage, testObjectFactory)
+		metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
-	// create sync and async utils
-	var wp async.WorkerPool
-	var wg sync.WaitGroup
-	wp.Tune(1024)
+		// create sync and async utils
+		var wp async.WorkerPool
+		var wg sync.WaitGroup
+		wp.Tune(1024)
 
-	// result counters
-	var eventsCounter int32
+		// result counters
+		var eventsCounter int32
 
-	// spam calls with the defined amount of objects
-	for i := 0; i < objectCount; i++ {
-		// create a copy of the iteration variable (for the closures)
-		x := i
+		var deletedMap sync.Map
+		var createdMap sync.Map
 
-		// launch the background worker that removes the missing message entry
-		wg.Add(1)
-		wp.Submit(func() {
-			messageIDString := strconv.Itoa(x)
+		// spam calls with the defined amount of objects
+		for i := 0; i < objectCount; i++ {
+			// create a copy of the iteration variable (for the closures)
+			x := uint32(i)
+			messageIDString := strconv.Itoa(i)
 			messageIDBytes := []byte(messageIDString)
 
-			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
-				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, uint32(x)))
-				if stored {
-					cachedMissingMessage.Release()
+			// launch the background worker that removes the missing message entry
+			wg.Add(1)
+			wp.Submit(func() {
+				metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
+					cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, x))
+					if stored {
+						createdMap.Store(typeutils.BytesToString(key), "CREATED")
 
-					atomic.AddInt32(&eventsCounter, 1)
+						cachedMissingMessage.Release()
+
+						atomic.AddInt32(&eventsCounter, 1)
+					}
+
+					return nil
+				}).Release()
+
+				wg.Done()
+			})
+
+			// launch the background worker that creates the missing message entry
+			wg.Add(1)
+			wp.Submit(func() {
+				metadataStorage.Store(newTestObject(messageIDString, x)).Release()
+
+				if missingMessageStorage.DeleteIfPresent(messageIDBytes) {
+					atomic.AddInt32(&eventsCounter, -1)
+
+					deletedMap.Store(messageIDString, true)
 				}
 
-				return nil
-			}).Release()
+				wg.Done()
+			})
+		}
 
-			wg.Done()
+		// wait for a workers to finish
+		wg.Wait()
+
+		// count messages still in the store
+		messagesInStore := 0
+		missingMessageStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
+			messagesInStore++
+
+			cachedObject.Release()
+
+			return true
 		})
 
-		// launch the background worker that creates the missing message entry
-		wg.Add(1)
-		wp.Submit(func() {
-			messageIDString := strconv.Itoa(x)
-			messageIDBytes := []byte(messageIDString)
+		// check test results
+		assert.Equal(t, int32(0), eventsCounter, "we should have seen and equal amount of create and delete events")
+		assert.Equal(t, 0, messagesInStore, "the store should be empty")
 
-			metadataStorage.Store(newTestObject(messageIDString, uint32(x))).Release()
-
-			if missingMessageStorage.DeleteIfPresent(messageIDBytes) {
-				atomic.AddInt32(&eventsCounter, -1)
-			}
-
-			wg.Done()
-		})
+		// shutdown test
+		missingMessageStorage.Shutdown()
+		metadataStorage.Shutdown()
+		wp.Shutdown()
 	}
-
-	// wait for a workers to finish
-	wg.Wait()
-
-	// count messages still in the store
-	messagesInStore := 0
-	missingMessageStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
-		messagesInStore++
-
-		cachedObject.Release()
-
-		return true
-	})
-
-	// check test results
-	assert.Equal(t, int32(0), eventsCounter, "we should have seen and equal amount of create and delete events")
-	assert.Equal(t, 0, messagesInStore, "the store should be empty")
-
-	// shutdown test
-	missingMessageStorage.Shutdown()
-	metadataStorage.Shutdown()
-	wp.Shutdown()
 }
 
 func TestPrefixIteration(t *testing.T) {

@@ -178,13 +178,13 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
 				storableObject.Delete()
-				cachedObject.Release(true)
+				cachedObject.Release()
 
 				return true
 			}
 
 		}
-		cachedObject.Release(true)
+		cachedObject.Release()
 
 		return false
 	}
@@ -538,7 +538,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 	}
 
 	// create a new cached object to hold the object
-	newlyCachedObject := newCachedObject(objectStorage, key)
+	newlyCachedObject := newCachedObject(objectStorage, []byte(objectKey))
 	newlyCachedObject.retain()
 
 	if objectStorage.size == 0 {
