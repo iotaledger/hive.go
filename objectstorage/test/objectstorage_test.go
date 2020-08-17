@@ -72,9 +72,6 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	badgerDBMetadataStorage, err := testutil.BadgerDB(t)
 	require.NoError(t, err)
 
-	badgerDBMissingMessageStorage = testStorage(t, []byte("missingMessageStorage"))
-	badgerDBMetadataStorage = testStorage(t, []byte("missingMessageStorage"))
-
 	// create ObjectStorage instances
 	missingMessageStorage := objectstorage.New(badgerDBMissingMessageStorage, testObjectFactory)
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)

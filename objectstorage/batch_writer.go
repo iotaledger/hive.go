@@ -109,6 +109,7 @@ func (bw *BatchedWriter) writeObject(batchedMuts kvstore.BatchedMutations, cache
 		// only delete if there are no consumers
 		if consumers == 0 {
 			storableObject.SetModified(false)
+
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
