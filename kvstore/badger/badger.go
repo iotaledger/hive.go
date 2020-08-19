@@ -11,8 +11,11 @@ import (
 
 // KVStore implements the KVStore interface around a BadgerDB instance.
 type badgerStore struct {
-	instance *badger.DB
-	dbPrefix []byte
+	instance          *badger.DB
+	dbPrefix          []byte
+	accessLogEnabled  bool
+	accessLogCallback kvstore.AccessLogCallback
+	accessLogFlag     kvstore.AccessLogFlag
 }
 
 // New creates a new KVStore with the underlying BadgerDB.
@@ -20,6 +23,13 @@ func New(db *badger.DB) kvstore.KVStore {
 	return &badgerStore{
 		instance: db,
 	}
+}
+
+// EnableAccessLog configures the store to log all requests by passing the access parameters to the given callback.
+func (s *badgerStore) EnableAccessLog(callback kvstore.AccessLogCallback, accessLogFlag kvstore.AccessLogFlag) {
+	s.accessLogEnabled = true
+	s.accessLogCallback = callback
+	s.accessLogFlag = accessLogFlag
 }
 
 func (s *badgerStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
@@ -39,6 +49,10 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 }
 
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+	if s.accessLogEnabled && s.accessLogFlag.HasFlag(kvstore.LogIterateCommandPos) {
+		s.accessLogCallback(kvstore.IterateCommand, prefix)
+	}
+
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)

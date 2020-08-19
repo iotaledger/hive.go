@@ -1,6 +1,10 @@
 package kvstore
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/iotaledger/hive.go/bitmask"
+)
 
 var (
 	// ErrKeyNotFound is returned when an op. doesn't find the given key.
@@ -40,8 +44,54 @@ type BatchedMutations interface {
 	Commit() error
 }
 
+type AccessLogCommand byte
+
+type AccessLogFlag = bitmask.BitMask
+
+type AccessLogCallback func(command AccessLogCommand, parameters ...[]byte)
+
+const (
+	// IterateCommand represents a call to the Iterate method of the store.
+	IterateCommand AccessLogCommand = iota
+
+	// IterateKeysCommand represents a call to the IterateKeys method of the store.
+	IterateKeysCommand
+	ClearCommand
+	GetCommand
+	SetCommand
+	HasCommand
+	DeleteCommand
+	DeletePrefixCommand
+)
+
+const (
+	LogIterateCommandPos uint = iota
+	LogIterateKeysCommandPos
+	LogClearCommandPos
+	LogGetCommandPos
+	LogSetCommandPos
+	LogHasCommandPos
+	LogDeleteCommandPos
+	LogDeletePrefixCommandPos
+)
+
+const (
+	LogIterateCommand AccessLogFlag = 1 << iota
+	LogIterateKeysCommand
+	LogClearCommand
+	LogGetCommand
+	LogSetCommand
+	LogHasCommand
+	LogDeleteCommand
+	LogDeletePrefixCommand
+
+	LogAllCommands = LogIterateCommand | LogIterateKeysCommand | LogClearCommand | LogGetCommand | LogSetCommand | LogHasCommand | LogDeleteCommand | LogDeletePrefixCommand
+)
+
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
+	// EnableAccessLog configures the store to log all requests by passing the access parameters to the given callback.
+	EnableAccessLog(callback AccessLogCallback, accessLogFlag AccessLogFlag)
 
 	// WithRealm is a factory method for using the same underlying storage with a different realm.
 	WithRealm(realm Realm) KVStore
