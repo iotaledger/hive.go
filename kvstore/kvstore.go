@@ -65,17 +65,6 @@ const (
 )
 
 const (
-	LogIterateCommandPos uint = iota
-	LogIterateKeysCommandPos
-	LogClearCommandPos
-	LogGetCommandPos
-	LogSetCommandPos
-	LogHasCommandPos
-	LogDeleteCommandPos
-	LogDeletePrefixCommandPos
-)
-
-const (
 	LogIterateCommand AccessLogFlag = 1 << iota
 	LogIterateKeysCommand
 	LogClearCommand

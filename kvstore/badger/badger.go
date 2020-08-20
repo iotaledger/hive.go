@@ -49,7 +49,7 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 }
 
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	if s.accessLogEnabled && s.accessLogFlag.HasFlag(kvstore.LogIterateCommandPos) {
+	if s.accessLogEnabled && s.accessLogFlag.HasBits(kvstore.LogIterateCommand) {
 		s.accessLogCallback(kvstore.IterateCommand, prefix)
 	}
 
