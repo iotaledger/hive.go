@@ -10,8 +10,8 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 )
 
-// MapDB is a simple implementation of KVStore using a map.
-type MapDB struct {
+// mapDB is a simple implementation of KVStore using a map.
+type mapDB struct {
 	m                            *syncedKVMap
 	realm                        []byte
 	accessCallback               kvstore.AccessCallback
@@ -19,15 +19,15 @@ type MapDB struct {
 }
 
 // NewMapDB creates a kvstore.KVStore implementation purely based on a go map.
-func NewMapDB() *MapDB {
-	return &MapDB{
+func NewMapDB() *mapDB {
+	return &mapDB{
 		m: &syncedKVMap{m: make(map[string][]byte)},
 	}
 }
 
 // AccessCallback configures the store to pass all requests to the KVStore to the given callback.
 // This can for example be used for debugging and to examine what the KVStore is doing.
-func (s *MapDB) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
+func (s *mapDB) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
 	var accessCallbackCommandsFilter kvstore.Command
 	if len(commandsFilter) == 0 {
 		accessCallbackCommandsFilter = kvstore.AllCommands
@@ -41,18 +41,18 @@ func (s *MapDB) AccessCallback(callback kvstore.AccessCallback, commandsFilter .
 	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
-func (s *MapDB) WithRealm(realm kvstore.Realm) kvstore.KVStore {
-	return &MapDB{
+func (s *mapDB) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+	return &mapDB{
 		m:     s.m, // use the same underlying map
 		realm: realm,
 	}
 }
 
-func (s *MapDB) Realm() kvstore.Realm {
+func (s *mapDB) Realm() kvstore.Realm {
 	return byteutils.ConcatBytes(s.realm)
 }
 
-func (s *MapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *mapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)
 	}
@@ -61,7 +61,7 @@ func (s *MapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorK
 	return nil
 }
 
-func (s *MapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (s *mapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
 		s.accessCallback(kvstore.IterateKeysCommand, prefix)
 	}
@@ -70,7 +70,7 @@ func (s *MapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.Itera
 	return nil
 }
 
-func (s *MapDB) Clear() error {
+func (s *mapDB) Clear() error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
 		s.accessCallback(kvstore.ClearCommand)
 	}
@@ -79,7 +79,7 @@ func (s *MapDB) Clear() error {
 	return nil
 }
 
-func (s *MapDB) Get(key kvstore.Key) (kvstore.Value, error) {
+func (s *mapDB) Get(key kvstore.Key) (kvstore.Value, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
 		s.accessCallback(kvstore.GetCommand, key)
 	}
@@ -91,7 +91,7 @@ func (s *MapDB) Get(key kvstore.Key) (kvstore.Value, error) {
 	return value, nil
 }
 
-func (s *MapDB) Set(key kvstore.Key, value kvstore.Value) error {
+func (s *mapDB) Set(key kvstore.Key, value kvstore.Value) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
 		s.accessCallback(kvstore.SetCommand, key, value)
 	}
@@ -100,7 +100,7 @@ func (s *MapDB) Set(key kvstore.Key, value kvstore.Value) error {
 	return nil
 }
 
-func (s *MapDB) Has(key kvstore.Key) (bool, error) {
+func (s *mapDB) Has(key kvstore.Key) (bool, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
 		s.accessCallback(kvstore.HasCommand, key)
 	}
@@ -109,7 +109,7 @@ func (s *MapDB) Has(key kvstore.Key) (bool, error) {
 	return contains, nil
 }
 
-func (s *MapDB) Delete(key kvstore.Key) error {
+func (s *mapDB) Delete(key kvstore.Key) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
 		s.accessCallback(kvstore.DeleteCommand, key)
 	}
@@ -118,7 +118,7 @@ func (s *MapDB) Delete(key kvstore.Key) error {
 	return nil
 }
 
-func (s *MapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
+func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
 		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
 	}
@@ -127,7 +127,7 @@ func (s *MapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return nil
 }
 
-func (s *MapDB) Batched() kvstore.BatchedMutations {
+func (s *mapDB) Batched() kvstore.BatchedMutations {
 	return &BatchedMutations{
 		kvStore: s,
 	}
@@ -138,10 +138,10 @@ type kvtuple struct {
 	value kvstore.Value
 }
 
-// BatchedMutations is a wrapper to do a batched update on a MapDB.
+// BatchedMutations is a wrapper to do a batched update on a mapDB.
 type BatchedMutations struct {
 	sync.Mutex
-	kvStore *MapDB
+	kvStore *mapDB
 	sets    []kvtuple
 	deletes []kvtuple
 }
