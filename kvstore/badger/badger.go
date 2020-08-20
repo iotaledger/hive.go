@@ -84,6 +84,10 @@ func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 }
 
 func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
+		s.accessCallback(kvstore.IterateKeysCommand, prefix)
+	}
+
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
@@ -102,10 +106,18 @@ func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 }
 
 func (s *badgerStore) Clear() error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
+		s.accessCallback(kvstore.ClearCommand)
+	}
+
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
+		s.accessCallback(kvstore.GetCommand, key)
+	}
+
 	var value []byte
 	err := s.instance.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
@@ -123,12 +135,20 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
+		s.accessCallback(kvstore.SetCommand, key, value)
+	}
+
 	return s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Set(byteutils.ConcatBytes(s.dbPrefix, key), value)
 	})
 }
 
 func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
+		s.accessCallback(kvstore.HasCommand, key)
+	}
+
 	err := s.instance.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 		return err
@@ -143,6 +163,10 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *badgerStore) Delete(key kvstore.Key) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
+		s.accessCallback(kvstore.DeleteCommand, key)
+	}
+
 	err := s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
 	})
@@ -153,6 +177,10 @@ func (s *badgerStore) Delete(key kvstore.Key) error {
 }
 
 func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
+		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
+	}
+
 	return s.instance.Update(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
@@ -173,6 +201,7 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 func (s *badgerStore) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
+		kvStore:          s,
 		store:            s.instance,
 		dbPrefix:         s.dbPrefix,
 		setOperations:    make(map[string]kvstore.Value),
@@ -182,6 +211,7 @@ func (s *badgerStore) Batched() kvstore.BatchedMutations {
 
 // batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
 type batchedMutations struct {
+	kvStore          *badgerStore
 	store            *badger.DB
 	dbPrefix         []byte
 	setOperations    map[string]kvstore.Value
@@ -190,6 +220,10 @@ type batchedMutations struct {
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
+	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
+		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
+	}
+
 	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
 
 	b.operationsMutex.Lock()
@@ -202,6 +236,10 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
+	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
+		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
+	}
+
 	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
 
 	b.operationsMutex.Lock()

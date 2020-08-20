@@ -27,7 +27,7 @@ func (bitmask BitMask) HasBit(pos uint) bool {
 	return bitmask.HasBits(1 << pos)
 }
 
-// HasBits checks whether the flag at the given position is set.
+// HasBits checks whether the bits in the given bitmask are set.
 func (bitmask BitMask) HasBits(bits BitMask) bool {
 	return bitmask&(bits) > 0
 }
