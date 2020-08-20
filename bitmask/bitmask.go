@@ -28,6 +28,6 @@ func (bitmask BitMask) HasBit(pos uint) bool {
 }
 
 // HasBits checks whether the flag at the given position is set.
-func (bitmask BitMask) HasBits(flag BitMask) bool {
-	return bitmask&(flag) > 0
+func (bitmask BitMask) HasBits(bits BitMask) bool {
+	return bitmask&(bits) > 0
 }
