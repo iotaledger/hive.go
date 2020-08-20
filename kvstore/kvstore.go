@@ -75,7 +75,7 @@ const (
 	// DeletePrefixCommand represents a call to the DeletePrefix method of the store.
 	DeletePrefixCommand
 
-	// LogAllCommands represents the collection of all commands.
+	// AllCommands represents the collection of all commands.
 	AllCommands = IterateCommand | IterateKeysCommand | ClearCommand | GetCommand | SetCommand | HasCommand | DeleteCommand | DeletePrefixCommand
 )
 
