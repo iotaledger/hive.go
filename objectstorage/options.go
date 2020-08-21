@@ -89,7 +89,7 @@ func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 				switch loggedCommand := <-logChannel; loggedCommand.command {
 				case kvstore.ShutdownCommand:
 					// write log entry
-					if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+					if _, err = writer.WriteString(loggedCommand.String() + "\n"); err != nil {
 						panic(err)
 					}
 
