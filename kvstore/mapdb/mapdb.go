@@ -53,6 +53,13 @@ func (s *mapDB) Realm() kvstore.Realm {
 	return byteutils.ConcatBytes(s.realm)
 }
 
+// Shutdown marks the store as shutdown.
+func (s *mapDB) Shutdown() {
+	if s.accessCallback != nil {
+		s.accessCallback(kvstore.ShutdownCommand)
+	}
+}
+
 func (s *mapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)

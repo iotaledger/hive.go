@@ -1,7 +1,13 @@
 package objectstorage
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"time"
+
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/mr-tron/base58"
 )
 
 type Options struct {
@@ -41,6 +47,78 @@ type Option func(*Options)
 func CacheTime(duration time.Duration) Option {
 	return func(args *Options) {
 		args.cacheTime = duration
+	}
+}
+
+// logChannelBufferSize defines the size of the buffer used for the log writer
+const logChannelBufferSize = 10240
+
+// logEntry is a container for the
+type logEntry struct {
+	command    kvstore.Command
+	parameters [][]byte
+}
+
+// String returns a string representation of the log entry
+func (l *logEntry) String() string {
+	result := kvstore.CommandNames[l.command]
+	for _, parameter := range l.parameters {
+		result += " " + base58.Encode(parameter)
+	}
+
+	return result
+}
+
+// LogAccess sets up a logger that logs all calls to the underlying store in the given file. It is possible to filter
+// the logged commands by providing an optional filter flag.
+func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
+	return func(args *Options) {
+		// open log file
+		logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		writer := bufio.NewWriter(logFile)
+		if err != nil {
+			panic(err)
+		}
+
+		// open logger channel
+		logChannel := make(chan logEntry, logChannelBufferSize)
+
+		// start background worker that writes to the log file
+		go func() {
+			for {
+				switch loggedCommand := <-logChannel; loggedCommand.command {
+				case kvstore.ShutdownCommand:
+					// write log entry
+					if _, err = writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+						panic(err)
+					}
+
+					// close channel and log file
+					err = writer.Flush()
+					if err != nil {
+						fmt.Println(err)
+					}
+					close(logChannel)
+					err = logFile.Close()
+					if err != nil {
+						fmt.Println(err)
+					}
+
+					return
+
+				default:
+					// write log entry
+					if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+						panic(err)
+					}
+				}
+			}
+		}()
+
+		// pass through calls to logger channel
+		args.batchedWriterInstance.store.AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
+			logChannel <- logEntry{command, parameters}
+		}, commandsFilter...)
 	}
 }
 

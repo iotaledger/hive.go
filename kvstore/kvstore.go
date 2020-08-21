@@ -77,7 +77,23 @@ const (
 
 	// AllCommands represents the collection of all commands.
 	AllCommands = IterateCommand | IterateKeysCommand | ClearCommand | GetCommand | SetCommand | HasCommand | DeleteCommand | DeletePrefixCommand
+
+	// ShutdownCommand represents a call to the Shutdown method of the store.
+	ShutdownCommand Command = 0
 )
+
+// CommandNames contains a map from the command to its human readable name.
+var CommandNames = map[Command]string{
+	ShutdownCommand:     "Shutdown",
+	IterateCommand:      "Iterate",
+	IterateKeysCommand:  "IterateKeys",
+	ClearCommand:        "Clear",
+	GetCommand:          "Get",
+	SetCommand:          "Set",
+	HasCommand:          "Has",
+	DeleteCommand:       "Delete",
+	DeletePrefixCommand: "DeletePrefix",
+}
 
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
@@ -90,6 +106,9 @@ type KVStore interface {
 
 	// Realm returns the configured realm.
 	Realm() Realm
+
+	// Shutdown marks the store as shutdown.
+	Shutdown()
 
 	// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 	Iterate(prefix KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error
