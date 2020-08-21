@@ -1,6 +1,10 @@
 package kvstore
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/iotaledger/hive.go/bitmask"
+)
 
 var (
 	// ErrKeyNotFound is returned when an op. doesn't find the given key.
@@ -40,8 +44,46 @@ type BatchedMutations interface {
 	Commit() error
 }
 
+// Command is a type that represents a specific method in the KVStore.
+type Command = bitmask.BitMask
+
+// AccessCallback is the type of the callback function that can be used to hook the access to the callback.
+type AccessCallback func(command Command, parameters ...[]byte)
+
+const (
+	// IterateCommand represents a call to the Iterate method of the store.
+	IterateCommand Command = 1 << iota
+
+	// IterateKeysCommand represents a call to the IterateKeys method of the store.
+	IterateKeysCommand
+
+	// ClearCommand represents a call to the Clear method of the store.
+	ClearCommand
+
+	// GetCommand represents a call to the Get method of the store.
+	GetCommand
+
+	// SetCommand represents a call to the Set method of the store.
+	SetCommand
+
+	// HasCommand represents a call to the Has method of the store.
+	HasCommand
+
+	// DeleteCommand represents a call to the Delete method of the store.
+	DeleteCommand
+
+	// DeletePrefixCommand represents a call to the DeletePrefix method of the store.
+	DeletePrefixCommand
+
+	// AllCommands represents the collection of all commands.
+	AllCommands = IterateCommand | IterateKeysCommand | ClearCommand | GetCommand | SetCommand | HasCommand | DeleteCommand | DeletePrefixCommand
+)
+
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
+	// AccessCallback configures the store to pass all requests to the KVStore to the given callback.
+	// This can for example be used for debugging and to examine what the KVStore is doing.
+	AccessCallback(callback AccessCallback, commandsFilter ...Command)
 
 	// WithRealm is a factory method for using the same underlying storage with a different realm.
 	WithRealm(realm Realm) KVStore

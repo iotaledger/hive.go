@@ -2,9 +2,10 @@ package bolt
 
 import (
 	"bytes"
-	"math"
 	"sync"
 
+	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/types"
 	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/kvstore"
@@ -18,6 +19,8 @@ const (
 type boltStore struct {
 	instance *bbolt.DB
 	bucket   []byte
+	accessCallback               kvstore.AccessCallback
+	accessCallbackCommandsFilter kvstore.Command
 }
 
 // New creates a new KVStore with the underlying BoltDB.
@@ -25,6 +28,22 @@ func New(db *bbolt.DB) kvstore.KVStore {
 	return &boltStore{
 		instance: db,
 	}
+}
+
+// AccessCallback configures the store to pass all requests to the KVStore to the given callback.
+// This can for example be used for debugging and to examine what the KVStore is doing.
+func (s *boltStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
+	var accessCallbackCommandsFilter kvstore.Command
+	if len(commandsFilter) == 0 {
+		accessCallbackCommandsFilter = kvstore.AllCommands
+	} else {
+		for _, filterCommand := range commandsFilter {
+			accessCallbackCommandsFilter |= filterCommand
+		}
+	}
+
+	s.accessCallback = callback
+	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
 func (s *boltStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
@@ -73,10 +92,18 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 }
 
 func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
+		s.accessCallback(kvstore.IterateCommand, prefix)
+	}
+
 	return s.iterate(prefix, true, kvConsumerFunc)
 }
 
 func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
+		s.accessCallback(kvstore.IterateKeysCommand, prefix)
+	}
+
 	// same as with values but we simply don't copy them
 	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
@@ -84,6 +111,10 @@ func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.I
 }
 
 func (s *boltStore) Clear() error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
+		s.accessCallback(kvstore.ClearCommand)
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		if tx.Bucket(s.bucket) == nil {
 			return nil
@@ -93,6 +124,10 @@ func (s *boltStore) Clear() error {
 }
 
 func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
+		s.accessCallback(kvstore.GetCommand, key)
+	}
+
 	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
@@ -114,6 +149,10 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
+		s.accessCallback(kvstore.SetCommand, key, value)
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(s.bucket)
 		if err != nil {
@@ -124,6 +163,10 @@ func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (s *boltStore) Has(key kvstore.Key) (bool, error) {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
+		s.accessCallback(kvstore.HasCommand, key)
+	}
+
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
@@ -137,6 +180,10 @@ func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *boltStore) Delete(key kvstore.Key) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
+		s.accessCallback(kvstore.DeleteCommand, key)
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
@@ -150,6 +197,10 @@ func (s *boltStore) Delete(key kvstore.Key) error {
 }
 
 func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
+		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)
 		if b == nil {
@@ -172,94 +223,127 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 	// instead, if we collect the mutations and then do a single
 	// update, we have the batched mutations we actually want.
 	return &batchedMutations{
+		kvStore: s,
 		instance: s.instance,
 		bucket:   s.bucket,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
 	}
-}
-
-type kvtuple struct {
-	key   kvstore.Key
-	value kvstore.Value
 }
 
 // batchedMutations is a wrapper to do a batched update on a BoltDB.
 type batchedMutations struct {
+	kvStore          *boltStore
 	sync.Mutex
 	instance *bbolt.DB
 	bucket   []byte
-	sets     []kvtuple
-	deletes  []kvtuple
+	setOperations     map[string]kvstore.Value
+	deleteOperations  map[string]types.Empty
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
+	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
+		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
+	}
+
+	stringKey := byteutils.ConcatBytesToString(key)
+
 	b.Lock()
 	defer b.Unlock()
-	b.sets = append(b.sets, kvtuple{key, value})
+
+	delete(b.deleteOperations, stringKey)
+	b.setOperations[stringKey] = value
+
 	return nil
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
+	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
+		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
+	}
+
+	stringKey := byteutils.ConcatBytesToString(key)
+
 	b.Lock()
 	defer b.Unlock()
-	b.deletes = append(b.deletes, kvtuple{key, nil})
+
+	delete(b.setOperations, stringKey)
+	b.deleteOperations[stringKey] = types.Void
+
 	return nil
 }
 
 func (b *batchedMutations) Cancel() {
-	// do nothing
+	b.Lock()
+	defer b.Unlock()
+
+	b.setOperations = make(map[string]kvstore.Value)
+	b.deleteOperations = make(map[string]types.Empty)
 }
 
-func (b *batchedMutations) subBatchOperation(batchOpcount int32, operation func(opIndex int32, bucket *bbolt.Bucket) error) error {
-	batchAmount := int(math.Ceil(float64(batchOpcount) / float64(MaxBoltBatchSize)))
-	for i := 0; i < batchAmount; i++ {
+func (b *batchedMutations) Commit() (err error) {
+	b.Lock()
+	defer b.Unlock()
 
-		batchStart := int32(i * MaxBoltBatchSize)
-		batchEnd := batchStart + int32(MaxBoltBatchSize)
-
-		if batchEnd > batchOpcount {
-			batchEnd = batchOpcount
-		}
-
-		err := b.instance.Update(func(tx *bbolt.Tx) error {
+	// while we still have operations to execute ...
+	for len(b.deleteOperations) >= 1 || len(b.setOperations) >= 1 {
+		// ... start transaction ...
+		err = b.instance.Update(func(tx *bbolt.Tx) error {
+			// ... create the bucket if it does not exist ...
 			bucket, err := tx.CreateBucketIfNotExists(b.bucket)
 			if err != nil {
 				return err
 			}
-			for j := batchStart; j < batchEnd; j++ {
-				if err := operation(j, bucket); err != nil {
-					return err
+
+			// ... collect the operations to execute within the current batch ...
+			collectedOperationsCounter := 0
+			collectedSetOperations := make(map[string]kvstore.Value)
+			collectedDeleteOperations := make(map[string]types.Empty)
+			for key, value := range b.setOperations {
+				collectedSetOperations[key] = value
+
+				collectedOperationsCounter++
+
+				if collectedOperationsCounter >= MaxBoltBatchSize {
+					break
 				}
 			}
+			if collectedOperationsCounter < MaxBoltBatchSize {
+				for key := range b.deleteOperations {
+					collectedDeleteOperations[key] = types.Void
+
+					collectedOperationsCounter++
+
+					if collectedOperationsCounter >= MaxBoltBatchSize {
+						break
+					}
+				}
+			}
+
+			// ... execute the collected operations
+			for key, value := range collectedSetOperations {
+				if err := bucket.Put([]byte(key), value); err != nil {
+					return err
+				}
+
+				delete(b.setOperations, key)
+			}
+			for key := range collectedDeleteOperations {
+				if err := bucket.Delete([]byte(key)); err != nil {
+					return err
+				}
+
+				delete(b.deleteOperations, key)
+			}
+
 			return nil
 		})
+
+		// abort if we faced an error
 		if err != nil {
-			return err
+			return
 		}
 	}
-	return nil
-}
 
-func (b *batchedMutations) Commit() error {
-	b.Lock()
-	defer b.Unlock()
-
-	setCount := int32(len(b.sets))
-	deleteCount := int32(len(b.deletes))
-
-	err := b.subBatchOperation(setCount, func(opIndex int32, bucket *bbolt.Bucket) error {
-		if err := bucket.Put(b.sets[opIndex].key, b.sets[opIndex].value); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	err = b.subBatchOperation(deleteCount, func(opIndex int32, bucket *bbolt.Bucket) error {
-		if err := bucket.Delete(b.deletes[opIndex].key); err != nil {
-			return err
-		}
-		return nil
-	})
-	return err
+	return
 }
