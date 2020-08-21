@@ -8,6 +8,7 @@ import (
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/types"
 )
 
 // mapDB is a simple implementation of KVStore using a map.
@@ -129,7 +130,9 @@ func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 func (s *mapDB) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
-		kvStore: s,
+		kvStore:          s,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
 	}
 }
 
@@ -141,7 +144,10 @@ type kvtuple struct {
 // batchedMutations is a wrapper to do a batched update on a mapDB.
 type batchedMutations struct {
 	sync.Mutex
-	kvStore *mapDB
+	kvStore          *mapDB
+	setOperations    map[string]kvstore.Value
+	deleteOperations map[string]types.Empty
+
 	sets    []kvtuple
 	deletes []kvtuple
 }
@@ -151,9 +157,14 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
 	}
 
+	stringKey := byteutils.ConcatBytesToString(key)
+
 	b.Lock()
 	defer b.Unlock()
-	b.sets = append(b.sets, kvtuple{key, value})
+
+	delete(b.deleteOperations, stringKey)
+	b.setOperations[stringKey] = value
+
 	return nil
 }
 
@@ -162,29 +173,42 @@ func (b *batchedMutations) Delete(key kvstore.Key) error {
 		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
 	}
 
+	stringKey := byteutils.ConcatBytesToString(key)
+
 	b.Lock()
 	defer b.Unlock()
-	b.deletes = append(b.deletes, kvtuple{key, nil})
+
+	delete(b.setOperations, stringKey)
+	b.deleteOperations[stringKey] = types.Void
+
 	return nil
 }
 
 func (b *batchedMutations) Cancel() {
-	// do nothing
+	b.Lock()
+	defer b.Unlock()
+
+	b.setOperations = make(map[string]kvstore.Value)
+	b.deleteOperations = make(map[string]types.Empty)
 }
 
 func (b *batchedMutations) Commit() error {
 	b.Lock()
 	defer b.Unlock()
 
-	for i := 0; i < len(b.sets); i++ {
-		if err := b.kvStore.Set(b.sets[i].key, b.sets[i].value); err != nil {
+	for key, value := range b.setOperations {
+		err := b.kvStore.Set([]byte(key), value)
+		if err != nil {
 			return err
 		}
 	}
-	for i := 0; i < len(b.deletes); i++ {
-		if err := b.kvStore.Delete(b.deletes[i].key); err != nil {
+
+	for key := range b.deleteOperations {
+		err := b.kvStore.Delete([]byte(key))
+		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
