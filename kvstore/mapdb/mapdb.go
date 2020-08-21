@@ -19,7 +19,7 @@ type mapDB struct {
 }
 
 // NewMapDB creates a kvstore.KVStore implementation purely based on a go map.
-func NewMapDB() *mapDB {
+func NewMapDB() kvstore.KVStore {
 	return &mapDB{
 		m: &syncedKVMap{m: make(map[string][]byte)},
 	}
@@ -128,7 +128,7 @@ func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 }
 
 func (s *mapDB) Batched() kvstore.BatchedMutations {
-	return &BatchedMutations{
+	return &batchedMutations{
 		kvStore: s,
 	}
 }
@@ -138,15 +138,15 @@ type kvtuple struct {
 	value kvstore.Value
 }
 
-// BatchedMutations is a wrapper to do a batched update on a mapDB.
-type BatchedMutations struct {
+// batchedMutations is a wrapper to do a batched update on a mapDB.
+type batchedMutations struct {
 	sync.Mutex
 	kvStore *mapDB
 	sets    []kvtuple
 	deletes []kvtuple
 }
 
-func (b *BatchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
+func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
 		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
 	}
@@ -157,7 +157,7 @@ func (b *BatchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 	return nil
 }
 
-func (b *BatchedMutations) Delete(key kvstore.Key) error {
+func (b *batchedMutations) Delete(key kvstore.Key) error {
 	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
 		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
 	}
@@ -168,11 +168,11 @@ func (b *BatchedMutations) Delete(key kvstore.Key) error {
 	return nil
 }
 
-func (b *BatchedMutations) Cancel() {
+func (b *batchedMutations) Cancel() {
 	// do nothing
 }
 
-func (b *BatchedMutations) Commit() error {
+func (b *batchedMutations) Commit() error {
 	b.Lock()
 	defer b.Unlock()
 
