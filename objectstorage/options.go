@@ -1,6 +1,8 @@
 package objectstorage
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"time"
 
@@ -73,6 +75,7 @@ func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 	return func(args *Options) {
 		// open log file
 		logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		writer := bufio.NewWriter(logFile)
 		if err != nil {
 			panic(err)
 		}
@@ -83,22 +86,29 @@ func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 		// start background worker that writes to the log file
 		go func() {
 			for {
-				switch logEntry := <-logChannel; logEntry.command {
+				switch loggedCommand := <-logChannel; loggedCommand.command {
 				case kvstore.ShutdownCommand:
 					// write log entry
-					if _, err := logFile.WriteString(logEntry.String() + "\n"); err != nil {
+					if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
 						panic(err)
 					}
 
 					// close channel and log file
+					err = writer.Flush()
+					if err != nil {
+						fmt.Println(err)
+					}
 					close(logChannel)
-					_ = logFile.Close()
+					err = logFile.Close()
+					if err != nil {
+						fmt.Println(err)
+					}
 
 					return
 
 				default:
 					// write log entry
-					if _, err := logFile.WriteString(logEntry.String() + "\n"); err != nil {
+					if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
 						panic(err)
 					}
 				}
