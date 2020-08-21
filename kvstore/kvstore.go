@@ -51,6 +51,9 @@ type Command = bitmask.BitMask
 type AccessCallback func(command Command, parameters ...[]byte)
 
 const (
+	// ShutdownCommand represents a call to the Shutdown method of the store.
+	ShutdownCommand Command = 0
+
 	// IterateCommand represents a call to the Iterate method of the store.
 	IterateCommand Command = 1 << iota
 
@@ -79,6 +82,19 @@ const (
 	AllCommands = IterateCommand | IterateKeysCommand | ClearCommand | GetCommand | SetCommand | HasCommand | DeleteCommand | DeletePrefixCommand
 )
 
+// CommandNames contains a map from the command to its human readable name.
+var CommandNames = map[Command]string{
+	ShutdownCommand:     "Shutdown",
+	IterateCommand:      "Iterate",
+	IterateKeysCommand:  "IterateKeys",
+	ClearCommand:        "Clear",
+	GetCommand:          "Get",
+	SetCommand:          "Set",
+	HasCommand:          "Has",
+	DeleteCommand:       "Delete",
+	DeletePrefixCommand: "DeletePrefix",
+}
+
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
 	// AccessCallback configures the store to pass all requests to the KVStore to the given callback.
@@ -90,6 +106,9 @@ type KVStore interface {
 
 	// Realm returns the configured realm.
 	Realm() Realm
+
+	// Shutdown marks the store as shutdown.
+	Shutdown()
 
 	// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 	Iterate(prefix KeyPrefix, kvConsumerFunc IteratorKeyValueConsumerFunc) error

@@ -57,6 +57,13 @@ func (s *boltStore) Realm() kvstore.Realm {
 	return s.bucket
 }
 
+// Shutdown marks the store as shutdown.
+func (s *boltStore) Shutdown() {
+	if s.accessCallback != nil {
+		s.accessCallback(kvstore.ShutdownCommand)
+	}
+}
+
 func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.bucket)

@@ -56,6 +56,13 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
 }
 
+// Shutdown marks the store as shutdown.
+func (s *badgerStore) Shutdown() {
+	if s.accessCallback != nil {
+		s.accessCallback(kvstore.ShutdownCommand)
+	}
+}
+
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)
