@@ -51,9 +51,6 @@ type Command = bitmask.BitMask
 type AccessCallback func(command Command, parameters ...[]byte)
 
 const (
-	// ShutdownCommand represents a call to the Shutdown method of the store.
-	ShutdownCommand Command = 0
-
 	// IterateCommand represents a call to the Iterate method of the store.
 	IterateCommand Command = 1 << iota
 
@@ -80,6 +77,9 @@ const (
 
 	// AllCommands represents the collection of all commands.
 	AllCommands = IterateCommand | IterateKeysCommand | ClearCommand | GetCommand | SetCommand | HasCommand | DeleteCommand | DeletePrefixCommand
+
+	// ShutdownCommand represents a call to the Shutdown method of the store.
+	ShutdownCommand Command = 0
 )
 
 // CommandNames contains a map from the command to its human readable name.
