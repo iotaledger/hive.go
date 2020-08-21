@@ -274,7 +274,11 @@ func (b *batchedMutations) Delete(key kvstore.Key) error {
 }
 
 func (b *batchedMutations) Cancel() {
-	// do nothing
+	b.Lock()
+	defer b.Unlock()
+
+	b.setOperations = make(map[string]kvstore.Value)
+	b.deleteOperations = make(map[string]types.Empty)
 }
 
 func (b *batchedMutations) Commit() (err error) {
