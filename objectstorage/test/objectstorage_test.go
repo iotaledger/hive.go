@@ -365,7 +365,7 @@ func TestComputeIfAbsentReturningNil(t *testing.T) {
 		// start the StoreIfAbsent call
 		wg.Add(1)
 		go func() {
-			cachedObject, stored := objects.StoreIfAbsent(NewTestObject(objectStringKey, 33))
+			cachedObject, stored := objects.StoreIfAbsent(newTestObject(objectStringKey, 33))
 			cachedObject.Release()
 
 			if assert.Equal(t, true, stored) {
