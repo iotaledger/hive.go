@@ -199,16 +199,15 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 		return deleteExistingEntry(cachedObject)
 	}
 
+	objectExistsInStore := objectStorage.ObjectExistsInStore(key)
+	if objectExistsInStore {
+		cachedObject.blindDelete.Set()
+	}
+
 	cachedObject.publishResult(nil)
 	cachedObject.Release(true)
 
-	if objectStorage.ObjectExistsInStore(key) {
-		cachedObject.blindDelete.Set()
-
-		return true
-	}
-
-	return false
+	return objectExistsInStore
 }
 
 // Performs a "blind delete", where we do not check the objects existence.
