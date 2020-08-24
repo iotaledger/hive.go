@@ -43,7 +43,7 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 
 	// prevent modifications of a shutdown queue
 	if t.IsShutdown() {
-		if t.shutdownFlags.HasFlag(panicOnModificationsAfterShutdown) {
+		if t.shutdownFlags.HasBits(PanicOnModificationsAfterShutdown) {
 			panic("tried to modify a shutdown TimedQueue")
 		}
 
@@ -92,7 +92,7 @@ func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 		defer t.shutdownMutex.Unlock()
 
 		// panic if the corresponding flag was set
-		if t.shutdownFlags.HasFlag(panicOnModificationsAfterShutdown) {
+		if t.shutdownFlags.HasBits(PanicOnModificationsAfterShutdown) {
 			panic("tried to shutdown and already shutdown TimedQueue")
 		}
 
@@ -123,7 +123,7 @@ func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 	// if the queue is not empty ...
 	default:
 		// ... empty it if the corresponding flag was set
-		if t.shutdownFlags.HasFlag(cancelPendingElements) {
+		if t.shutdownFlags.HasBits(CancelPendingElements) {
 			for i := 0; i < queuedElementsCount; i++ {
 				heap.Remove(&t.heap, 0)
 			}
@@ -184,12 +184,12 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 	// react if the queue was shutdown while waiting
 	case <-t.shutdownSignal:
 		// abort if the pending elements are supposed to be canceled
-		if t.shutdownFlags.HasFlag(cancelPendingElements) {
+		if t.shutdownFlags.HasBits(CancelPendingElements) {
 			return nil
 		}
 
 		// immediately return the value if the pending timeouts are supposed to be ignored
-		if t.shutdownFlags.HasFlag(ignorePendingTimeouts) {
+		if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
 			return polledElement.Value
 		}
 
@@ -279,19 +279,14 @@ type ShutdownFlag = bitmask.BitMask
 
 const (
 	// CancelPendingElements defines a shutdown flag, that causes the queue to be emptied on shutdown.
-	CancelPendingElements ShutdownFlag = 1 << cancelPendingElements
+	CancelPendingElements ShutdownFlag = 1 << iota
 
 	// IgnorePendingTimeouts defines a shutdown flag, that makes the queue ignore the timeouts of the remaining queued
 	// elements. Consecutive calls to Poll will immediately return these elements.
-	IgnorePendingTimeouts ShutdownFlag = 1 << ignorePendingTimeouts
+	IgnorePendingTimeouts
 
 	// PanicOnModificationsAfterShutdown makes the queue panic instead of ignoring consecutive writes or modifications.
-	PanicOnModificationsAfterShutdown ShutdownFlag = 1 << panicOnModificationsAfterShutdown
-
-	// define the bit offsets for the corresponding shutdown flags
-	cancelPendingElements = iota
-	ignorePendingTimeouts
-	panicOnModificationsAfterShutdown
+	PanicOnModificationsAfterShutdown
 )
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

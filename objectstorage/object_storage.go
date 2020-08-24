@@ -182,7 +182,6 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 
 				return true
 			}
-
 		}
 		cachedObject.Release(true)
 
@@ -271,7 +270,14 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 
 	// try to update an existing cache entry if it is empty
 	if cacheHit {
-		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
+		cachedObject, updated := objectStorage.updateEmptyCachedObject(existingCachedObject, object)
+		if !updated {
+			cachedObject.Release()
+
+			return nil, false
+		}
+
+		return cachedObject, updated
 	}
 
 	// abort if the object already exists in our database
@@ -285,7 +291,14 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 
 	// try to update an existing cache entry if it is empty
 	if cacheHit {
-		return objectStorage.updateEmptyCachedObject(existingCachedObject, object)
+		cachedObject, updated := objectStorage.updateEmptyCachedObject(existingCachedObject, object)
+		if !updated {
+			cachedObject.Release()
+
+			return nil, false
+		}
+
+		return cachedObject, updated
 	}
 
 	// Abort if the object exists in the database already - an object might have been written and evicted
@@ -478,6 +491,8 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.flush()
 
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
+
+	objectStorage.store.Shutdown()
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
@@ -667,9 +682,7 @@ func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *Cached
 	// try to update the object if it is empty or abort otherwise
 	updated = cachedObject.updateEmptyResult(object)
 	if !updated {
-		cachedObject.Release()
-
-		return
+		return cachedObject, updated
 	}
 
 	cachedObject.storeOnCreation()
@@ -902,14 +915,14 @@ func (objectStorage *ObjectStorage) flush() {
 		return true
 	})
 
+	objectStorage.flushMutex.Unlock()
+
 	// force release the collected objects
 	for j := 0; j < i; j++ {
 		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
 			objectStorage.options.batchedWriterInstance.batchWrite(cachedObjects[j])
 		}
 	}
-
-	objectStorage.flushMutex.Unlock()
 
 	objectStorage.cachedObjectsEmpty.Wait()
 }

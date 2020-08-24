@@ -40,13 +40,13 @@ func (testObject *StorableObjectFlags) Persist(persist ...bool) {
 	if len(persist) >= 1 {
 		if persist[0] {
 			testObject.persist.Set()
-			testObject.delete.UnSet()
+			//testObject.delete.UnSet()
 		} else {
 			testObject.persist.UnSet()
 		}
 	} else {
 		testObject.persist.Set()
-		testObject.delete.UnSet()
+		//testObject.delete.UnSet()
 	}
 }
 

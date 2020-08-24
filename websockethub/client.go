@@ -1,6 +1,7 @@
 package websockethub
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -77,6 +78,12 @@ type Client struct {
 
 	// FilterCallback is used to filter messages to clients on BroadcastMsg
 	FilterCallback func(c *Client, data interface{}) bool
+
+	// startWaitGroup is used to synchronize the start of the writePump and receivePong func
+	startWaitGroup sync.WaitGroup
+
+	// shutdownWaitGroup is used wait until writePump and receivePong func stopped
+	shutdownWaitGroup sync.WaitGroup
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
@@ -88,17 +95,17 @@ func (c *Client) checkPong() {
 	defer func() {
 		select {
 		case <-c.hub.shutdownSignal:
-			return
-
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
-			return
-
 		default:
 			// send a unregister message to the hub
 			c.hub.unregister <- c
 		}
+
+		c.shutdownWaitGroup.Done()
 	}()
+
+	c.startWaitGroup.Done()
 
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -155,7 +162,11 @@ func (c *Client) writePump() {
 
 		// close the websocket connection
 		c.conn.Close()
+
+		c.shutdownWaitGroup.Done()
 	}()
+
+	c.startWaitGroup.Done()
 
 	for {
 		select {

@@ -23,6 +23,7 @@ func StringToBytes(s string) []byte {
 		Len:  sh.Len,
 		Cap:  sh.Len,
 	}))
+
 	// ensure the underlying string doesn't get GC'ed before the assignment happens
 	runtime.KeepAlive(&s)
 
