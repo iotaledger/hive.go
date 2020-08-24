@@ -2,7 +2,6 @@ package objectstorage
 
 import (
 	"sync"
-
 	"sync/atomic"
 	"time"
 
