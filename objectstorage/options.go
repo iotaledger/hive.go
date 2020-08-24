@@ -80,9 +80,15 @@ func (l *logEntry) String() string {
 	return result
 }
 
-// LogAccess sets up a logger that logs all calls to the underlying store in the given file. It is possible to filter
-// the logged commands by providing an optional filter flag.
-func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
+func LogAccess(fileName string) Option {
+	return func(options *Options) {
+		// do sth
+	}
+}
+
+// LogStoreAccess sets up a logger that logs all calls to the underlying store in the given file. It is possible to
+// filter the logged commands by providing an optional filter flag.
+func LogStoreAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 	return func(args *Options) {
 		// execute this function after the remaining options have been initialized and a BatchWriter exists
 		args.delayed(func() {

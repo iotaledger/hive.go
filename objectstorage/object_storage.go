@@ -182,7 +182,6 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 
 				return true
 			}
-
 		}
 		cachedObject.Release(true)
 
