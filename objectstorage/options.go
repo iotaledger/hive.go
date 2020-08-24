@@ -65,13 +65,14 @@ const logChannelBufferSize = 10240
 
 // logEntry is a container for the
 type logEntry struct {
+	time       time.Time
 	command    kvstore.Command
 	parameters [][]byte
 }
 
 // String returns a string representation of the log entry
 func (l *logEntry) String() string {
-	result := kvstore.CommandNames[l.command]
+	result := l.time.Format("15:04:05") + " " + kvstore.CommandNames[l.command]
 	for _, parameter := range l.parameters {
 		result += " " + base58.Encode(parameter)
 	}
@@ -129,7 +130,7 @@ func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 
 			// pass through calls to logger channel
 			args.batchedWriterInstance.store.AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
-				logChannel <- logEntry{command, parameters}
+				logChannel <- logEntry{time.Now(), command, parameters}
 			}, commandsFilter...)
 		})
 	}
