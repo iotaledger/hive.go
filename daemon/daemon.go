@@ -125,12 +125,13 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 // Use order to define in which shutdown order this particular
 // background worker is shut down (higher = earlier).
 func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order ...int) error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
 
 	if d.IsStopped() {
 		return ErrDaemonAlreadyStopped
 	}
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	exWorker, has := d.workers[name]
 	if has {
@@ -186,13 +187,13 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 
 // Start starts the daemon.
 func (d *OrderedDaemon) Start() {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
 	// do not allow restarts
 	if d.IsStopped() {
 		return
 	}
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
 	if !d.IsRunning() {
 		d.running.Set()
