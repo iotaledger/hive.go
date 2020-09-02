@@ -56,7 +56,8 @@ func TestSimpleSet_Size(t *testing.T) {
 
 func initSimpleSet(count int, start int) Set {
 	set := newSimpleSet()
-	for i := start; i < (start + count); i++ {
+	end := start + count
+	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))
 	}
 
