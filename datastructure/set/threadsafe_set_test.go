@@ -23,7 +23,7 @@ func TestThreadSafeSet_Delete(t *testing.T) {
 	assert.Equal(t, 3, set.Size(), "wrong size")
 	assert.True(t, set.Delete("item2"), "the element should exist")
 	assert.Equal(t, 2, set.Size(), "wrong size")
-	assert.False(t, set.Delete("item2"), "the element should exist")
+	assert.False(t, set.Delete("item2"), "the element should not exist")
 	assert.Equal(t, 2, set.Size(), "wrong size")
 }
 
