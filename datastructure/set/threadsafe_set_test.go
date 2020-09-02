@@ -37,6 +37,17 @@ func TestThreadSafeSet_Has(t *testing.T) {
 	assert.False(t, set.Has("item1"), "the element should not exist")
 }
 
+func TestThreadSafeSet_ForEach(t *testing.T) {
+	set := initThreadSafeSet(3, 0)
+
+	expectedElements := initThreadSafeSet(3, 0)
+	assert.Equal(t, 3, expectedElements.Size(), "wrong size")
+	set.ForEach(func(element interface{}) {
+		assert.True(t, expectedElements.Delete(element))
+	})
+	assert.Equal(t, 0, expectedElements.Size(), "wrong size")
+}
+
 func TestThreadSafeSet_Clear(t *testing.T) {
 	set := initThreadSafeSet(3, 0)
 	assert.Equal(t, 3, set.Size(), "wrong size")

@@ -37,6 +37,17 @@ func TestSimpleSet_Has(t *testing.T) {
 	assert.False(t, set.Has("item1"), "the element should not exist")
 }
 
+func TestSimpleSet_ForEach(t *testing.T) {
+	set := initSimpleSet(3, 0)
+
+	expectedElements := initSimpleSet(3, 0)
+	assert.Equal(t, 3, expectedElements.Size(), "wrong size")
+	set.ForEach(func(element interface{}) {
+		assert.True(t, expectedElements.Delete(element))
+	})
+	assert.Equal(t, 0, expectedElements.Size(), "wrong size")
+}
+
 func TestSimpleSet_Clear(t *testing.T) {
 	set := initSimpleSet(3, 0)
 	assert.Equal(t, 3, set.Size(), "wrong size")

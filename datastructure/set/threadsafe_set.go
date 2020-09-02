@@ -6,17 +6,20 @@ import (
 	"github.com/iotaledger/hive.go/types"
 )
 
+// threadSafeSet implements a thread safe Set.
 type threadSafeSet struct {
 	elements      map[interface{}]types.Empty
 	elementsMutex sync.RWMutex
 }
 
+// newThreadSafeSet returns a new thread safe Set.
 func newThreadSafeSet() *threadSafeSet {
 	return &threadSafeSet{
 		elements: make(map[interface{}]types.Empty),
 	}
 }
 
+// Add adds a new element to the Set and returns true if the element was not present in the set before.
 func (set *threadSafeSet) Add(element interface{}) bool {
 	set.elementsMutex.RLock()
 	if _, elementExists := set.elements[element]; elementExists {
@@ -38,6 +41,7 @@ func (set *threadSafeSet) Add(element interface{}) bool {
 	return true
 }
 
+// Delete removes the element from the Set and returns true if it did exist.
 func (set *threadSafeSet) Delete(element interface{}) bool {
 	set.elementsMutex.RLock()
 	if _, exists := set.elements[element]; !exists {
@@ -58,6 +62,7 @@ func (set *threadSafeSet) Delete(element interface{}) bool {
 	return true
 }
 
+// Has returns true if the element exists in the Set.
 func (set *threadSafeSet) Has(element interface{}) bool {
 	set.elementsMutex.RLock()
 	defer set.elementsMutex.RUnlock()
@@ -67,6 +72,7 @@ func (set *threadSafeSet) Has(element interface{}) bool {
 	return exists
 }
 
+// ForEach iterates through the set and calls the callback for every element.
 func (set *threadSafeSet) ForEach(callback func(element interface{})) {
 	set.elementsMutex.RLock()
 	copiedElements := make(map[interface{}]types.Empty)
@@ -80,6 +86,7 @@ func (set *threadSafeSet) ForEach(callback func(element interface{})) {
 	}
 }
 
+// Clear removes all elements from the Set.
 func (set *threadSafeSet) Clear() {
 	set.elementsMutex.Lock()
 	defer set.elementsMutex.Unlock()
@@ -87,6 +94,7 @@ func (set *threadSafeSet) Clear() {
 	set.elements = make(map[interface{}]types.Empty)
 }
 
+// Size returns the size of the Set.
 func (set *threadSafeSet) Size() int {
 	set.elementsMutex.RLock()
 	defer set.elementsMutex.RUnlock()
