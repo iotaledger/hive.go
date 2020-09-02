@@ -203,6 +203,11 @@ func (c *Client) writePump() {
 
 // Send sends a message to the client
 func (c *Client) Send(msg interface{}, dontDrop ...bool) {
+	if c.hub.shutdownFlag {
+		// hub was already shut down
+		return
+	}
+
 	if len(dontDrop) > 0 && dontDrop[0] {
 		select {
 		case <-c.hub.shutdownSignal:
