@@ -1,10 +1,31 @@
 package stack
 
 import (
+	"container/list"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func BenchmarkList(b *testing.B) {
+	stack := list.New()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		stack.PushBack(3)
+	}
+}
+
+func BenchmarkStack(b *testing.B) {
+	stack := New()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		stack.Push(3)
+	}
+}
 
 func TestSimpleStack_Push(t *testing.T) {
 	stack := newSimpleStack()

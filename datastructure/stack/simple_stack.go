@@ -21,6 +21,8 @@ func (s *simpleStack) Pop() interface{} {
 
 	index := len(*s) - 1
 	element := (*s)[index]
+	// erase element to avoid memory leaks for long lasting stacks
+	(*s)[index] = nil
 	*s = (*s)[:index]
 
 	return element

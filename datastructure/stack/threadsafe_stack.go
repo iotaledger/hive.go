@@ -34,6 +34,8 @@ func (s *threadSafeStack) Pop() interface{} {
 
 	index := len(s.elements) - 1
 	element := s.elements[index]
+	// erase element to avoid memory leaks for long lasting stacks
+	s.elements[index] = nil
 	s.elements = s.elements[:index]
 
 	return element
