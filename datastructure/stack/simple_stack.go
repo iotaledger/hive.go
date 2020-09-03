@@ -39,6 +39,11 @@ func (s *simpleStack) Peek() interface{} {
 
 // Clear removes all elements from this Stack.
 func (s *simpleStack) Clear() {
+	// erase elements to avoid memory leaks for long lasting stacks
+	for index := range *s {
+		(*s)[index] = nil
+	}
+
 	*s = (*s)[:0]
 }
 

@@ -58,6 +58,11 @@ func (s *threadSafeStack) Clear() {
 	s.Lock()
 	defer s.Unlock()
 
+	// erase elements to avoid memory leaks for long lasting stacks
+	for index := range s.elements {
+		s.elements[index] = nil
+	}
+
 	s.elements = s.elements[:0]
 }
 
