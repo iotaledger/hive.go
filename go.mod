@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/iotaledger/iota.go v1.0.0-beta.15
 	github.com/kr/text v0.2.0
-	github.com/magiconair/properties v1.8.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20200528083105-55566edd6df0
 	github.com/panjf2000/ants/v2 v2.4.1
