@@ -21,7 +21,7 @@ type Set interface {
 	Size() int
 }
 
-// New returns a new Set, that is thread safe if the optional threadSafe parameter is set to true.
+// New returns a new Set that is thread safe if the optional threadSafe parameter is set to true.
 func New(threadSafe ...bool) Set {
 	if len(threadSafe) >= 1 && threadSafe[0] {
 		return newThreadSafeSet()
