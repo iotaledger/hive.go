@@ -44,6 +44,10 @@ func (s *threadSafeStack) Peek() interface{} {
 	s.RLock()
 	defer s.RUnlock()
 
+	if len(s.elements) == 0 {
+		return nil
+	}
+
 	return s.elements[len(s.elements)-1]
 }
 

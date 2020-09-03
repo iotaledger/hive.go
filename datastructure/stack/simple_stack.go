@@ -28,6 +28,10 @@ func (s *simpleStack) Pop() interface{} {
 
 // Peek returns the top element of this Stack without removing it.
 func (s *simpleStack) Peek() interface{} {
+	if (*s).IsEmpty() {
+		return nil
+	}
+
 	return (*s)[len(*s)-1]
 }
 
