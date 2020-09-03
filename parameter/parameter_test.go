@@ -114,3 +114,34 @@ func TestFetchYAMLConfig(t *testing.T) {
 		t.Fatalf("expected read config value to be %d, but was %d", 321, val)
 	}
 }
+
+func TestFetchJSONConfigWithFileExtension(t *testing.T) {
+	filename := fmt.Sprintf("%s/%s.json", confDir, configName)
+
+	jsonConfFile, err := memFS.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer memFS.Remove(filename)
+
+	if _, err := jsonConfFile.WriteString(`{"b": 321}`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := jsonConfFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	config := viper.New()
+	config.SetFs(memFS)
+
+	err = parameter.LoadConfigFile(config, confDir, configName+".json", false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	val := config.GetInt("b")
+	if val != 321 {
+		t.Fatalf("expected read config value to be %d, but was %d", 321, val)
+	}
+}
