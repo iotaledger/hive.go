@@ -62,11 +62,11 @@ func TestFetchJSONConfigFlagConfigName(t *testing.T) {
 	}
 	defer memFS.Remove(filename)
 
-	if _, err := jsonConfFile.WriteString(`{"b": 321}`); err != nil {
+	if _, err = jsonConfFile.WriteString(`{"b": 321}`); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := jsonConfFile.Close(); err != nil {
+	if err = jsonConfFile.Close(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -124,11 +124,11 @@ func TestFetchJSONConfigWithFileExtension(t *testing.T) {
 	}
 	defer memFS.Remove(filename)
 
-	if _, err := jsonConfFile.WriteString(`{"b": 321}`); err != nil {
+	if _, err = jsonConfFile.WriteString(`{"b": 321}`); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := jsonConfFile.Close(); err != nil {
+	if err = jsonConfFile.Close(); err != nil {
 		t.Fatal(err)
 	}
 

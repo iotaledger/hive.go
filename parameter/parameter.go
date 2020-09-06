@@ -60,7 +60,7 @@ func LoadConfigFile(config *viper.Viper, configDir string, configName string, bi
 		file := filepath.Join(configDir, configName)
 		config.SetConfigFile(file)
 	} else {
-		// No vlaid extension available, set the base config name and viper will try .json, .yaml, etc.
+		// No valid extension available, set the base config name and viper will try .json, .yaml, etc.
 		config.SetConfigName(configName)
 		config.AddConfigPath(configDir)
 	}
