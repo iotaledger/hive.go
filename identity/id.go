@@ -11,11 +11,8 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-// IDLength contains the amount of bytes of the ID
-const IDLength = sha256.Size
-
 // ID is a unique identifier for each peer.
-type ID [IDLength]byte
+type ID [sha256.Size]byte
 
 // NewID computes the ID corresponding to the given public key.
 func NewID(key ed25519.PublicKey) ID {
@@ -49,7 +46,7 @@ func ParseID(s string) (ID, error) {
 // RandomID creates a random id which can for example be used in unit tests.
 func RandomID() (id ID, err error) {
 	// generate a random sequence of bytes
-	idBytes := make([]byte, IDLength)
+	idBytes := make([]byte, sha256.Size)
 	if _, err = rand.Read(idBytes); err != nil {
 		return
 	}
