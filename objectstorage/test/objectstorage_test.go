@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -58,8 +59,8 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 	panic("unknown database")
 }
 
-func testObjectFactory(key []byte, _ []byte) (objectstorage.StorableObject, int, error) {
-	return &testObject{id: key}, len(key), nil
+func testObjectFactory(key []byte, data []byte) (objectstorage.StorableObject, error) {
+	return &testObject{id: key, value: binary.LittleEndian.Uint32(data)}, nil
 }
 
 // TestConcurrentCreateDelete tests if ConsumeIfAbsent and Store can be used in parallel without breaking the
