@@ -58,7 +58,7 @@ func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 	panic("unknown database")
 }
 
-func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
+func testObjectFactory(key []byte, _ []byte) (objectstorage.StorableObject, int, error) {
 	return &testObject{id: key}, len(key), nil
 }
 
