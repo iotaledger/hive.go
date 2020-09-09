@@ -30,6 +30,7 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
+// New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
 		store:             store,
@@ -1088,4 +1089,9 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 	return seenElements
 }
 
+// StorableObjectFactory is used to address the factory method that generically creates StorableObjects. It receives the
+// key and the serialized data of the object and returns an "empty" StorableObject that just has its key set. The object
+// is then fully unmarshalled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
+// is anyway provided in this method already to allow the dynamic creation of different object types depending on the
+// stored data.
 type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, consumedBytes int, err error)
