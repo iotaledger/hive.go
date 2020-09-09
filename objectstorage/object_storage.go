@@ -15,7 +15,7 @@ import (
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
 	store              kvstore.KVStore
-	objectFactory      StorableObjectFromKey
+	objectFactory      StorableObjectFactory
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
 	options            *Options
@@ -30,7 +30,7 @@ type ObjectStorage struct {
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
-func New(store kvstore.KVStore, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
+func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	result := &ObjectStorage{
 		store:             store,
 		objectFactory:     objectFactory,
@@ -369,7 +369,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			if objectStorage.options.keysOnly {
 				var err error
-				if storableObject, _, err = objectStorage.objectFactory(key); err != nil {
+				if storableObject, _, err = objectStorage.objectFactory(key, nil); err != nil {
 					return true
 				}
 			} else {
@@ -808,7 +808,6 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	}
 
 	if objectStorage.options.keysOnly {
-
 		contains, err := objectStorage.store.Has(key)
 		if err != nil {
 			// No need to check for kvstore.ErrKeyNotFound here
@@ -819,10 +818,11 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 			return nil
 		}
 
-		object, _, err := objectStorage.objectFactory(key)
+		object, _, err := objectStorage.objectFactory(key, nil)
 		if err != nil {
 			panic(err)
 		}
+
 		return object
 	}
 
@@ -832,6 +832,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 		if errors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil
 		}
+
 		panic(err)
 	}
 
@@ -888,7 +889,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object, _, err := objectStorage.objectFactory(key)
+	object, _, err := objectStorage.objectFactory(key, data)
 	if err != nil {
 		panic(err)
 	}
@@ -1088,4 +1089,4 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 	return seenElements
 }
 
-type StorableObjectFromKey func(key []byte) (result StorableObject, consumedBytes int, err error)
+type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, consumedBytes int, err error)
