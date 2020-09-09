@@ -20,7 +20,9 @@ func (util *MarshalUtil) WriteBytes(bytes []byte) *MarshalUtil {
 	return util
 }
 
-// ReadBytes unmarshals the given amount of bytes from the internal read buffer and advances the read offset.
+// ReadBytes unmarshals the given amount of bytes from the internal read buffer and advances the read offset. If an
+// optionalReadOffset parameter is provided, then the method does not modify the read offset but instead just returns a
+// copy of the bytes in the provided range.
 func (util *MarshalUtil) ReadBytes(length int, optionalReadOffset ...int) ([]byte, error) {
 	// determine the read offset
 	readOffset := util.readOffset
