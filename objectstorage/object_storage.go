@@ -358,7 +358,6 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	consumeFunc := func(key kvstore.Key, value kvstore.Value) bool {
-
 		if _, elementSeen := seenElements[string(key)]; elementSeen {
 			return true
 		}
