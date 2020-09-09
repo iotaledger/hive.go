@@ -369,7 +369,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			if objectStorage.options.keysOnly {
 				var err error
-				if storableObject, _, err = objectStorage.objectFactory(key, nil); err != nil {
+				if storableObject, err = objectStorage.objectFactory(key, nil); err != nil {
 					return true
 				}
 			} else {
@@ -818,7 +818,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 			return nil
 		}
 
-		object, _, err := objectStorage.objectFactory(key, nil)
+		object, err := objectStorage.objectFactory(key, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -889,12 +889,8 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object, _, err := objectStorage.objectFactory(key, data)
+	object, err := objectStorage.objectFactory(key, data)
 	if err != nil {
-		panic(err)
-	}
-
-	if _, err = object.UnmarshalObjectStorageValue(data); err != nil {
 		panic(err)
 	}
 
@@ -1094,4 +1090,4 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 // is then fully unmarshalled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
 // is anyway provided in this method already to allow the dynamic creation of different object types depending on the
 // stored data.
-type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, consumedBytes int, err error)
+type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)
