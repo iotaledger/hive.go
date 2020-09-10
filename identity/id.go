@@ -1,7 +1,7 @@
 package identity
 
 import (
-	"crypto/rand"
+	"math/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
