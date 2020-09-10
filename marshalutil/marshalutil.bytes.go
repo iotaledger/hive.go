@@ -24,15 +24,15 @@ func (util *MarshalUtil) WriteBytes(bytes []byte) *MarshalUtil {
 // optionalReadOffset parameter is provided, then the method does not modify the read offset but instead just returns a
 // copy of the bytes in the provided range.
 func (util *MarshalUtil) ReadBytes(length int, optionalReadOffset ...int) ([]byte, error) {
-	// determine the read offset
-	readOffset := util.readOffset
-	if len(optionalReadOffset) >= 1 {
-		readOffset = optionalReadOffset[0]
+	// temporarily modify read offset if optional offset is provided
+	if len(optionalReadOffset) != 0 {
+		defer util.ReadSeek(util.readOffset)
+		util.ReadSeek(optionalReadOffset[0])
 	}
 
 	// determine the length
 	if length < 0 {
-		length = len(util.bytes) - readOffset + length
+		length = len(util.bytes) - util.readOffset + length
 	}
 
 	// calculate the end offset
@@ -43,12 +43,12 @@ func (util *MarshalUtil) ReadBytes(length int, optionalReadOffset ...int) ([]byt
 
 	// return a copy of the byte range if a manual offset was provided
 	if len(optionalReadOffset) != 0 {
-		return byteutils.ConcatBytes(util.bytes[readOffset:readEndOffset]), nil
+		return byteutils.ConcatBytes(util.bytes[util.readOffset:readEndOffset]), nil
 	}
 
 	// advance read offset and return read bytes
 	util.ReadSeek(readEndOffset)
-	return util.bytes[readOffset:readEndOffset], nil
+	return util.bytes[util.readOffset:readEndOffset], nil
 }
 
 func (util *MarshalUtil) ReadRemainingBytes() []byte {
