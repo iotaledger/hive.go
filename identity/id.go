@@ -1,10 +1,10 @@
 package identity
 
 import (
-	"math/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
