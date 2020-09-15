@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go
 go 1.13
 
 require (
+	github.com/cockroachdb/pebble v0.0.0-20200915204653-08b545a1f540
 	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.2
@@ -22,6 +23,5 @@ require (
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/tools v0.0.0-20200103221440-774c71fcf114 // indirect
 	google.golang.org/protobuf v1.25.0
 )
