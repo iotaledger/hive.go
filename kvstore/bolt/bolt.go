@@ -15,10 +15,10 @@ const (
 	MaxBoltBatchSize = 50_000
 )
 
-// KVStore implements the KVStore interface around a BoltDB instance.
+// boltStore implements the KVStore interface around a BoltDB instance.
 type boltStore struct {
-	instance *bbolt.DB
-	bucket   []byte
+	instance                     *bbolt.DB
+	bucket                       []byte
 	accessCallback               kvstore.AccessCallback
 	accessCallbackCommandsFilter kvstore.Command
 }
@@ -54,6 +54,9 @@ func (s *boltStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
 }
 
 func (s *boltStore) Realm() kvstore.Realm {
+	if len(s.bucket) == 0 {
+		return []byte("bolt")
+	}
 	return s.bucket
 }
 
@@ -66,7 +69,7 @@ func (s *boltStore) Shutdown() {
 
 func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(s.bucket)
+		b := tx.Bucket(s.Realm())
 		if b == nil {
 			return nil
 		}
@@ -123,10 +126,10 @@ func (s *boltStore) Clear() error {
 	}
 
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		if tx.Bucket(s.bucket) == nil {
+		if tx.Bucket(s.Realm()) == nil {
 			return nil
 		}
-		return tx.DeleteBucket(s.bucket)
+		return tx.DeleteBucket(s.Realm())
 	})
 }
 
@@ -137,7 +140,7 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 
 	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(s.bucket)
+		b := tx.Bucket(s.Realm())
 		if b == nil {
 			return nil
 		}
@@ -161,7 +164,7 @@ func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
 	}
 
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(s.bucket)
+		b, err := tx.CreateBucketIfNotExists(s.Realm())
 		if err != nil {
 			return err
 		}
@@ -176,7 +179,7 @@ func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(s.bucket)
+		b := tx.Bucket(s.Realm())
 		if b == nil {
 			return nil
 		}
@@ -192,7 +195,7 @@ func (s *boltStore) Delete(key kvstore.Key) error {
 	}
 
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(s.bucket)
+		b := tx.Bucket(s.Realm())
 		if b == nil {
 			return nil
 		}
@@ -209,7 +212,7 @@ func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	}
 
 	return s.instance.Update(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(s.bucket)
+		b := tx.Bucket(s.Realm())
 		if b == nil {
 			return nil
 		}
@@ -230,9 +233,9 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 	// instead, if we collect the mutations and then do a single
 	// update, we have the batched mutations we actually want.
 	return &batchedMutations{
-		kvStore: s,
-		instance: s.instance,
-		bucket:   s.bucket,
+		kvStore:          s,
+		instance:         s.instance,
+		bucket:           s.Realm(),
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
 	}
@@ -240,12 +243,12 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 
 // batchedMutations is a wrapper to do a batched update on a BoltDB.
 type batchedMutations struct {
-	kvStore          *boltStore
+	kvStore *boltStore
 	sync.Mutex
-	instance *bbolt.DB
-	bucket   []byte
-	setOperations     map[string]kvstore.Value
-	deleteOperations  map[string]types.Empty
+	instance         *bbolt.DB
+	bucket           []byte
+	setOperations    map[string]kvstore.Value
+	deleteOperations map[string]types.Empty
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
