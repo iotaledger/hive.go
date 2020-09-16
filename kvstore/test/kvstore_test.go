@@ -117,7 +117,7 @@ func TestDelete(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = store.Get(key)
-		require.Error(t, kvstore.ErrKeyNotFound)
+		require.Error(t, err)
 	}
 }
 
@@ -128,18 +128,20 @@ func TestIterate(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 100
 
+		var err error
+
 		insertedValues := make(map[string]string)
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
 			testValue := "testValue" + str
-			err := store.Set([]byte(testKey), []byte(testValue))
+			err = store.Set([]byte(testKey), []byte(testValue))
 			require.NoError(t, err)
 			insertedValues[testKey] = testValue
 		}
 
-		err := store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			expectedValue, found := insertedValues[string(key)]
 			require.True(t, found)
 			require.Equal(t, expectedValue, string(value))
@@ -159,13 +161,15 @@ func TestIteratePrefix(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 100
 
+		var err error
+
 		insertedValues := make(map[string]string)
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
 			testValue := "testValue" + str
-			err := store.Set([]byte(testKey), []byte(testValue))
+			err = store.Set([]byte(testKey), []byte(testValue))
 			require.NoError(t, err)
 			insertedValues[testKey] = testValue
 		}
@@ -173,11 +177,11 @@ func TestIteratePrefix(t *testing.T) {
 		// Insert some more values with a different prefix
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
-			err := store.Set([]byte("someOtherKey"+str), []byte(str))
+			err = store.Set([]byte("someOtherKey"+str), []byte(str))
 			require.NoError(t, err)
 		}
 
-		err := store.Iterate(kvstore.KeyPrefix("testKey"), func(key kvstore.Key, value kvstore.Value) bool {
+		err = store.Iterate(kvstore.KeyPrefix("testKey"), func(key kvstore.Key, value kvstore.Value) bool {
 			expectedValue, found := insertedValues[string(key)]
 			require.True(t, found)
 			require.Equal(t, expectedValue, string(value))
@@ -198,13 +202,15 @@ func TestIteratePrefixKeyOnly(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 100
 
+		var err error
+
 		insertedValues := make(map[string]string)
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
 			testValue := "testValue" + str
-			err := store.Set([]byte(testKey), []byte(testValue))
+			err = store.Set([]byte(testKey), []byte(testValue))
 			require.NoError(t, err)
 			insertedValues[testKey] = testValue
 		}
@@ -212,11 +218,11 @@ func TestIteratePrefixKeyOnly(t *testing.T) {
 		// Insert some more values with a different prefix
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
-			err := store.Set([]byte("someOtherKey"+str), []byte(str))
+			err = store.Set([]byte("someOtherKey"+str), []byte(str))
 			require.NoError(t, err)
 		}
 
-		err := store.IterateKeys(kvstore.KeyPrefix("testKey"), func(key kvstore.Key) bool {
+		err = store.IterateKeys(kvstore.KeyPrefix("testKey"), func(key kvstore.Key) bool {
 			_, found := insertedValues[string(key)]
 			require.True(t, found)
 			delete(insertedValues, string(key))
@@ -235,13 +241,15 @@ func TestDeletePrefix(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 1000
 
+		var err error
+
 		insertedValues := make(map[string]string)
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
 			testValue := "testValue" + str
-			err := store.Set([]byte(testKey), []byte(testValue))
+			err = store.Set([]byte(testKey), []byte(testValue))
 			require.NoError(t, err)
 			insertedValues[testKey] = testValue
 		}
@@ -249,11 +257,11 @@ func TestDeletePrefix(t *testing.T) {
 		// Insert some more values with a different prefix
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
-			err := store.Set([]byte("someOtherKey"+str), []byte(str))
+			err = store.Set([]byte("someOtherKey"+str), []byte(str))
 			require.NoError(t, err)
 		}
 
-		err := store.DeletePrefix([]byte("someOtherKey"))
+		err = store.DeletePrefix([]byte("someOtherKey"))
 		require.NoError(t, err)
 
 		// Verify, that the database only contains the elements without the delete prefix
@@ -278,15 +286,17 @@ func TestDeletePrefixIsEmpty(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 100
 
+		var err error
+
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
 			testValue := "testValue" + str
-			err := store.Set([]byte(testKey), []byte(testValue))
+			err = store.Set([]byte(testKey), []byte(testValue))
 			require.NoError(t, err)
 		}
 
-		err := store.DeletePrefix([]byte{})
+		err = store.DeletePrefix([]byte{})
 		require.NoError(t, err)
 
 		// Verify, that the database does not contain any items since we deleted using the prefix
@@ -305,16 +315,18 @@ func TestSetAndOverwrite(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 100
 
+		var err error
+
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
-			err := store.Set([]byte(testKey), []byte{0})
+			err = store.Set([]byte(testKey), []byte{0})
 			require.NoError(t, err)
 		}
 
 		verifyCount := 0
 		// Verify that all entries are 0
-		err := store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			require.True(t, bytes.Equal([]byte{0}, value))
 			verifyCount = verifyCount + 1
 			return true
@@ -330,7 +342,7 @@ func TestSetAndOverwrite(t *testing.T) {
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "testKey" + str
-			err := batch.Set([]byte(testKey), []byte{1})
+			err = batch.Set([]byte(testKey), []byte{1})
 			require.NoError(t, err)
 		}
 
@@ -427,6 +439,8 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 		store := testStore(t, dbImplementation, prefix)
 		count := 500_000
 
+		var err error
+
 		batch := store.Batched()
 
 		for i := 0; i < count; i++ {
@@ -434,11 +448,11 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 			testValue := make([]byte, 156)
 			rand.Read(testKey)
 			rand.Read(testValue)
-			err := batch.Set(testKey, testValue)
+			err = batch.Set(testKey, testValue)
 			require.NoError(t, err)
 		}
 
-		err := batch.Commit()
+		err = batch.Commit()
 		require.NoError(t, err)
 
 		verifyCount := 0

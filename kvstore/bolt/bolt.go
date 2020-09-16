@@ -17,8 +17,8 @@ const (
 
 // boltStore implements the KVStore interface around a BoltDB instance.
 type boltStore struct {
-	instance *bbolt.DB
-	bucket   []byte
+	instance                     *bbolt.DB
+	bucket                       []byte
 	accessCallback               kvstore.AccessCallback
 	accessCallbackCommandsFilter kvstore.Command
 }
@@ -230,9 +230,9 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 	// instead, if we collect the mutations and then do a single
 	// update, we have the batched mutations we actually want.
 	return &batchedMutations{
-		kvStore: s,
-		instance: s.instance,
-		bucket:   s.bucket,
+		kvStore:          s,
+		instance:         s.instance,
+		bucket:           s.bucket,
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
 	}
@@ -240,12 +240,12 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 
 // batchedMutations is a wrapper to do a batched update on a BoltDB.
 type batchedMutations struct {
-	kvStore          *boltStore
+	kvStore *boltStore
 	sync.Mutex
-	instance *bbolt.DB
-	bucket   []byte
-	setOperations     map[string]kvstore.Value
-	deleteOperations  map[string]types.Empty
+	instance         *bbolt.DB
+	bucket           []byte
+	setOperations    map[string]kvstore.Value
+	deleteOperations map[string]types.Empty
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
