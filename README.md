@@ -5,14 +5,14 @@
     <a href="https://iota.stackexchange.com/" style="text-decoration:none;"><img src="https://img.shields.io/badge/StackExchange-9cf.svg?logo=stackexchange" alt="StackExchange"></a>
     <a href="https://github.com/iotaledger/hive.go/blob/master/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/github/license/iotaledger/hive.go.svg" alt="Apache 2.0 license"></a>
 </p>
-      
+
 <p align="center">
   <a href="#about">About</a> ◈
   <a href="#prerequisites">Prerequisites</a> ◈
   <a href="#installation">Installation</a> ◈
   <a href="#getting-started">Getting started</a> ◈
   <a href="#supporting-the-project">Supporting the project</a> ◈
-  <a href="#joining-the-discussion">Joining the discussion</a> 
+  <a href="#joining-the-discussion">Joining the discussion</a>
 </p>
 
 ---
@@ -49,7 +49,6 @@ To install Hive.go and its dependencies, you can use one of the following option
     import (
     "github.com/iotaledger/hive.go/logger"
     "github.com/iotaledger/hive.go/node"
-    "github.com/iotaledger/iota.go/trinary"
     )
     ```
 
