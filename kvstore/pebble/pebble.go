@@ -64,14 +64,26 @@ func (s *peppleStore) Shutdown() {
 	}
 }
 
+func (s *peppleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
+	start := s.buildKeyPrefix(prefix)
+
+	if len(start) == 0 {
+		// no bounds
+		return nil, nil
+	}
+
+	end := copyBytes(start)
+	end[len(end)-1] = end[len(end)-1] + 1
+
+	return start, end
+}
+
 func (s *peppleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)
 	}
 
-	start := s.buildKeyPrefix(prefix)
-	end := copyBytes(start)
-	end[len(end)-1] = end[len(end)-1] + 1
+	start, end := s.getIterBounds(prefix)
 
 	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer iter.Close()
@@ -90,9 +102,7 @@ func (s *peppleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 		s.accessCallback(kvstore.IterateKeysCommand, prefix)
 	}
 
-	start := s.buildKeyPrefix(prefix)
-	end := copyBytes(start)
-	end[len(end)-1] = end[len(end)-1] + 1
+	start, end := s.getIterBounds(prefix)
 
 	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer iter.Close()
@@ -179,9 +189,24 @@ func (s *peppleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
 	}
 
-	start := s.buildKeyPrefix(prefix)
-	end := copyBytes(start)
-	end[len(end)-1] = end[len(end)-1] + 1
+	start, end := s.getIterBounds(prefix)
+
+	if start == nil {
+		// DeleteRange does not work without range, so we have to iterate over all keys and delete them
+
+		iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+		defer iter.Close()
+
+		b := s.instance.NewBatch()
+		for iter.First(); iter.Valid(); iter.Next() {
+			if err := b.Delete(iter.Key(), nil); err != nil {
+				b.Close()
+				return err
+			}
+		}
+
+		return b.Commit(pebble.NoSync)
+	}
 
 	return s.instance.DeleteRange(start, end, pebble.NoSync)
 }
