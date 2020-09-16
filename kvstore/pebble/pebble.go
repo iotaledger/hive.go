@@ -10,8 +10,8 @@ import (
 	"github.com/iotaledger/hive.go/types"
 )
 
-// peppleStore implements the KVStore interface around a pebble instance.
-type peppleStore struct {
+// pebbleStore implements the KVStore interface around a pebble instance.
+type pebbleStore struct {
 	instance                     *pebble.DB
 	dbPrefix                     []byte
 	accessCallback               kvstore.AccessCallback
@@ -20,14 +20,14 @@ type peppleStore struct {
 
 // New creates a new KVStore with the underlying pebbleDB.
 func New(db *pebble.DB) kvstore.KVStore {
-	return &peppleStore{
+	return &pebbleStore{
 		instance: db,
 	}
 }
 
 // AccessCallback configures the store to pass all requests to the KVStore to the given callback.
 // This can for example be used for debugging and to examine what the KVStore is doing.
-func (s *peppleStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
+func (s *pebbleStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
 	var accessCallbackCommandsFilter kvstore.Command
 	if len(commandsFilter) == 0 {
 		accessCallbackCommandsFilter = kvstore.AllCommands
@@ -41,30 +41,30 @@ func (s *peppleStore) AccessCallback(callback kvstore.AccessCallback, commandsFi
 	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
-func (s *peppleStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
-	return &peppleStore{
+func (s *pebbleStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+	return &pebbleStore{
 		instance: s.instance,
 		dbPrefix: realm,
 	}
 }
 
-func (s *peppleStore) Realm() []byte {
+func (s *pebbleStore) Realm() []byte {
 	return s.dbPrefix
 }
 
 // builds a key usable for the pebble instance using the realm and the given prefix.
-func (s *peppleStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
+func (s *pebbleStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
 }
 
 // Shutdown marks the store as shutdown.
-func (s *peppleStore) Shutdown() {
+func (s *pebbleStore) Shutdown() {
 	if s.accessCallback != nil {
 		s.accessCallback(kvstore.ShutdownCommand)
 	}
 }
 
-func (s *peppleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
+func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 	start := s.buildKeyPrefix(prefix)
 
 	if len(start) == 0 {
@@ -78,7 +78,7 @@ func (s *peppleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 	return start, end
 }
 
-func (s *peppleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)
 	}
@@ -97,7 +97,7 @@ func (s *peppleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 	return nil
 }
 
-func (s *peppleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
 		s.accessCallback(kvstore.IterateKeysCommand, prefix)
 	}
@@ -116,7 +116,7 @@ func (s *peppleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 	return nil
 }
 
-func (s *peppleStore) Clear() error {
+func (s *pebbleStore) Clear() error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
 		s.accessCallback(kvstore.ClearCommand)
 	}
@@ -124,7 +124,7 @@ func (s *peppleStore) Clear() error {
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
-func (s *peppleStore) Get(key kvstore.Key) (kvstore.Value, error) {
+func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
 		s.accessCallback(kvstore.GetCommand, key)
 	}
@@ -147,7 +147,7 @@ func (s *peppleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	return value, nil
 }
 
-func (s *peppleStore) Set(key kvstore.Key, value kvstore.Value) error {
+func (s *pebbleStore) Set(key kvstore.Key, value kvstore.Value) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
 		s.accessCallback(kvstore.SetCommand, key, value)
 	}
@@ -155,7 +155,7 @@ func (s *peppleStore) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.instance.Set(byteutils.ConcatBytes(s.dbPrefix, key), value, pebble.NoSync)
 }
 
-func (s *peppleStore) Has(key kvstore.Key) (bool, error) {
+func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
 		s.accessCallback(kvstore.HasCommand, key)
 	}
@@ -176,7 +176,7 @@ func (s *peppleStore) Has(key kvstore.Key) (bool, error) {
 	return true, nil
 }
 
-func (s *peppleStore) Delete(key kvstore.Key) error {
+func (s *pebbleStore) Delete(key kvstore.Key) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
 		s.accessCallback(kvstore.DeleteCommand, key)
 	}
@@ -184,7 +184,7 @@ func (s *peppleStore) Delete(key kvstore.Key) error {
 	return s.instance.Delete(byteutils.ConcatBytes(s.dbPrefix, key), pebble.NoSync)
 }
 
-func (s *peppleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
 		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
 	}
@@ -211,7 +211,7 @@ func (s *peppleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return s.instance.DeleteRange(start, end, pebble.NoSync)
 }
 
-func (s *peppleStore) Batched() kvstore.BatchedMutations {
+func (s *pebbleStore) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
 		kvStore:          s,
 		store:            s.instance,
@@ -223,7 +223,7 @@ func (s *peppleStore) Batched() kvstore.BatchedMutations {
 
 // batchedMutations is a wrapper around a WriteBatch of a pebbleDB.
 type batchedMutations struct {
-	kvStore          *peppleStore
+	kvStore          *pebbleStore
 	store            *pebble.DB
 	dbPrefix         []byte
 	setOperations    map[string]kvstore.Value
