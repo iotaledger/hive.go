@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/types"
 )
 
-// KVStore implements the KVStore interface around a BadgerDB instance.
+// badgerStore implements the KVStore interface around a BadgerDB instance.
 type badgerStore struct {
 	instance                     *badger.DB
 	dbPrefix                     []byte

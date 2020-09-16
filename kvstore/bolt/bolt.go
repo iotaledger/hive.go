@@ -15,7 +15,7 @@ const (
 	MaxBoltBatchSize = 50_000
 )
 
-// KVStore implements the KVStore interface around a BoltDB instance.
+// boltStore implements the KVStore interface around a BoltDB instance.
 type boltStore struct {
 	instance *bbolt.DB
 	bucket   []byte
