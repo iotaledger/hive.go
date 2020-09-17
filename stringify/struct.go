@@ -18,6 +18,11 @@ type structBuilder struct {
 	fields []*structField
 }
 
+// AddField dynamically adds a new field to the struct.
+func (stringifyStruct structBuilder) AddField(field *structField) {
+	stringifyStruct.fields = append(stringifyStruct.fields, field)
+}
+
 func (stringifyStruct structBuilder) String() (result string) {
 	result = stringifyStruct.name + " {\n"
 
