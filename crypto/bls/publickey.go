@@ -56,7 +56,7 @@ func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey P
 	return
 }
 
-// IsValid reports whether the signature is valid for the given data.
+// SignatureValid reports whether the signature is valid for the given data.
 func (p PublicKey) SignatureValid(data []byte, signature Signature) bool {
 	return bdn.Verify(blsSuite, p.Point, data, signature.Bytes()) == nil
 }
