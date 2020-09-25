@@ -25,18 +25,18 @@ func TestAggregateSignatures(t *testing.T) {
 	// aggregate 2 signatures
 	a01, err := AggregateSignatures(signatures[0], signatures[1])
 	require.NoError(t, err)
-	assert.True(t, a01.SignatureValid(dataToSign))
+	assert.True(t, a01.IsValid(dataToSign))
 
 	// aggregate N signatures
 	aN, err := AggregateSignatures(signatures...)
 	require.NoError(t, err)
-	assert.True(t, aN.SignatureValid(dataToSign))
+	assert.True(t, aN.IsValid(dataToSign))
 }
 
-func TestPublicKey_SignatureValid(t *testing.T) {
+func TestSingleSignature(t *testing.T) {
 	privateKey := PrivateKeyFromRandomness()
 
 	signature, err := privateKey.Sign(dataToSign)
 	require.NoError(t, err)
-	assert.True(t, signature.SignatureValid(dataToSign))
+	assert.True(t, signature.IsValid(dataToSign))
 }

@@ -74,36 +74,26 @@ func (s Signature) String() string {
 // SignatureWithPublicKey is a combination of a PublicKey and a Signature that is required to perform operations like
 // Signature- and PublicKey-aggregations.
 type SignatureWithPublicKey struct {
-	publicKey PublicKey
-	signature Signature
+	PublicKey PublicKey
+	Signature Signature
 }
 
 // NewSignatureWithPublicKey is the constructor for SignatureWithPublicKey objects.
 func NewSignatureWithPublicKey(publicKey PublicKey, signature Signature) SignatureWithPublicKey {
 	return SignatureWithPublicKey{
-		publicKey: publicKey,
-		signature: signature,
+		PublicKey: publicKey,
+		Signature: signature,
 	}
 }
 
-// PublicKey returns the PublicKey.
-func (s SignatureWithPublicKey) PublicKey() PublicKey {
-	return s.publicKey
-}
-
-// Signature returns the Signature.
-func (s SignatureWithPublicKey) Signature() Signature {
-	return s.signature
-}
-
-// SignatureValid returns true if the signature is correct for the given data.
-func (s SignatureWithPublicKey) SignatureValid(data []byte) bool {
-	return s.publicKey.SignatureValid(data, s.signature)
+// IsValid returns true if the signature is correct for the given data.
+func (s SignatureWithPublicKey) IsValid(data []byte) bool {
+	return s.PublicKey.SignatureValid(data, s.Signature)
 }
 
 // Bytes returns the signature in bytes.
 func (s SignatureWithPublicKey) Bytes() []byte {
-	return byteutils.ConcatBytes(s.publicKey.Bytes(), s.signature.Bytes())
+	return byteutils.ConcatBytes(s.PublicKey.Bytes(), s.Signature.Bytes())
 }
 
 // String returns a human readable version of the SignatureWithPublicKey (base58 encoded).

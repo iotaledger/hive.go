@@ -8,4 +8,10 @@ var (
 
 	// ErrParseBytesFailed is returned if information can not be parsed from a sequence of bytes.
 	ErrParseBytesFailed = errors.New("failed to parse bytes")
+
+	// ErrBLSFailed is returned if any low level BLS method calls fail.
+	ErrBLSFailed = errors.New("failed to execute BLS function")
+
+	// ErrInvalidArgument is returned if a function gets called with an illegal argument.
+	ErrInvalidArgument = errors.New("invalid argument")
 )

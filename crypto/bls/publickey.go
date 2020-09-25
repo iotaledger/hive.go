@@ -10,7 +10,7 @@ import (
 
 // PublicKey is the type of BLS public keys.
 type PublicKey struct {
-	point kyber.Point
+	Point kyber.Point
 }
 
 // PublicKeyFromBytes creates a PublicKey from the given bytes.
@@ -48,7 +48,7 @@ func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey P
 		return
 	}
 
-	if err = publicKey.point.UnmarshalBinary(bytes); err != nil {
+	if err = publicKey.Point.UnmarshalBinary(bytes); err != nil {
 		err = xerrors.Errorf("failed to unmarshal PublicKey (%v): %w", err, ErrParseBytesFailed)
 		return
 	}
@@ -56,14 +56,14 @@ func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey P
 	return
 }
 
-// SignatureValid reports whether the signature is valid for the given data.
+// IsValid reports whether the signature is valid for the given data.
 func (p PublicKey) SignatureValid(data []byte, signature Signature) bool {
-	return bdn.Verify(blsSuite, p.point, data, signature.Bytes()) == nil
+	return bdn.Verify(blsSuite, p.Point, data, signature.Bytes()) == nil
 }
 
 // Bytes returns a marshaled version of the PublicKey.
 func (p PublicKey) Bytes() []byte {
-	bytes, err := p.point.MarshalBinary()
+	bytes, err := p.Point.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}

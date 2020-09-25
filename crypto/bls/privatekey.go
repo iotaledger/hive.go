@@ -10,7 +10,7 @@ import (
 
 // PrivateKey is the type of BLS private keys.
 type PrivateKey struct {
-	scalar kyber.Scalar
+	Scalar kyber.Scalar
 }
 
 // PrivateKeyFromBytes creates a PrivateKey from the given bytes.
@@ -48,7 +48,7 @@ func PrivateKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (privateKey
 		return
 	}
 
-	if err = privateKey.scalar.UnmarshalBinary(bytes); err != nil {
+	if err = privateKey.Scalar.UnmarshalBinary(bytes); err != nil {
 		err = xerrors.Errorf("failed to unmarshal PrivateKey (%v): %w", err, ErrParseBytesFailed)
 		return
 	}
@@ -58,7 +58,7 @@ func PrivateKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (privateKey
 
 // PrivateKeyFromRandomness generates a new random PrivateKey.
 func PrivateKeyFromRandomness() (privateKey PrivateKey) {
-	privateKey.scalar, _ = bdn.NewKeyPair(blsSuite, randomness)
+	privateKey.Scalar, _ = bdn.NewKeyPair(blsSuite, randomness)
 
 	return
 }
@@ -66,27 +66,27 @@ func PrivateKeyFromRandomness() (privateKey PrivateKey) {
 // PublicKey returns the PublicKey corresponding to the PrivateKey.
 func (p PrivateKey) PublicKey() PublicKey {
 	return PublicKey{
-		point: blsSuite.G2().Point().Mul(p.scalar, nil),
+		Point: blsSuite.G2().Point().Mul(p.Scalar, nil),
 	}
 }
 
 // Sign signs the message and returns a SignatureWithPublicKey.
 func (p PrivateKey) Sign(data []byte) (signatureWithPublicKey SignatureWithPublicKey, err error) {
-	sig, err := bdn.Sign(blsSuite, p.scalar, data)
+	sig, err := bdn.Sign(blsSuite, p.Scalar, data)
 	if err != nil {
-		err = xerrors.Errorf("failed to sign data (%v): %w", err, ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to sign data (%v): %w", err, ErrBLSFailed)
 		return
 	}
 
-	signatureWithPublicKey.publicKey = p.PublicKey()
-	copy(signatureWithPublicKey.signature[:], sig)
+	signatureWithPublicKey.PublicKey = p.PublicKey()
+	copy(signatureWithPublicKey.Signature[:], sig)
 
 	return
 }
 
 // Bytes returns a marshaled version of the PrivateKey.
 func (p PrivateKey) Bytes() (bytes []byte) {
-	bytes, err := p.scalar.MarshalBinary()
+	bytes, err := p.Scalar.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
