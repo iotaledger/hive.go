@@ -53,7 +53,7 @@ func ParsePublicKey(marshalUtil *marshalutil.MarshalUtil) (PublicKey, error) {
 	}
 }
 
-// VerifySignature reports whether signature is a valid signature of message by publicKey.
+// SignatureValid reports whether signature is a valid signature of message by publicKey.
 func (publicKey PublicKey) VerifySignature(data []byte, signature Signature) bool {
 	return ed25519.Verify(publicKey[:], data, signature[:])
 }

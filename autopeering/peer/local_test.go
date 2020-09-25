@@ -55,7 +55,7 @@ func TestPublicSalt(t *testing.T) {
 
 	got := p.GetPublicSalt()
 
-	assert.Equal(t, s, got, "Public salt")
+	assert.Equal(t, s, got, "PublicKey salt")
 }
 
 func newTestLocal(t require.TestingT, db *DB) *Local {
