@@ -35,7 +35,7 @@ func (privateKey PrivateKey) Sign(data []byte) (result Signature) {
 	return
 }
 
-// PublicKey returns the PublicKey corresponding to privateKey.
+// Public returns the PublicKey corresponding to privateKey.
 func (privateKey PrivateKey) Public() (result PublicKey) {
 	publicKey := ed25519.PrivateKey(privateKey[:]).Public()
 	copy(result[:], publicKey.(ed25519.PublicKey))
