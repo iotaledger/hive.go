@@ -86,6 +86,49 @@ func NewSignatureWithPublicKey(publicKey PublicKey, signature Signature) Signatu
 	}
 }
 
+// SignatureWithPublicKeyFromBytes unmarshals a SignatureWithPublicKey from a sequence of bytes.
+func SignatureWithPublicKeyFromBytes(bytes []byte) (signatureWithPublicKey SignatureWithPublicKey, consumedBytes int, err error) {
+	marshalUtil := marshalutil.New(bytes)
+	if signatureWithPublicKey, err = SignatureWithPublicKeyFromMarshalUtil(marshalUtil); err != nil {
+		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from MarshalUtil: %w", err)
+		return
+	}
+	consumedBytes = marshalUtil.ReadOffset()
+
+	return
+}
+
+// SignatureWithPublicKeyFromBase58EncodedString creates a SignatureWithPublicKey from a base58 encoded string.
+func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (signatureWithPublicKey SignatureWithPublicKey, err error) {
+	bytes, err := base58.Decode(base58EncodedString)
+	if err != nil {
+		err = xerrors.Errorf("error while decoding base58 encoded SignatureWithPublicKey (%v): %w", err, ErrBase58DecodeFailed)
+		return
+	}
+
+	if signatureWithPublicKey, _, err = SignatureWithPublicKeyFromBytes(bytes); err != nil {
+		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from bytes: %w", err)
+		return
+	}
+
+	return
+}
+
+// SignatureWithPublicKeyFromMarshalUtil unmarshals a SignatureWithPublicKey using a MarshalUtil (for easier unmarshaling).
+func SignatureWithPublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signatureWithPublicKey SignatureWithPublicKey, err error) {
+	if signatureWithPublicKey.PublicKey, err = PublicKeyFromMarshalUtil(marshalUtil); err != nil {
+		err = xerrors.Errorf("failed to parse PublicKey from MarshalUtil: %w", err)
+		return
+	}
+
+	if signatureWithPublicKey.Signature, err = SignatureFromMarshalUtil(marshalUtil); err != nil {
+		err = xerrors.Errorf("failed to parse Signature from MarshalUtil: %w", err)
+		return
+	}
+
+	return
+}
+
 // IsValid returns true if the signature is correct for the given data.
 func (s SignatureWithPublicKey) IsValid(data []byte) bool {
 	return s.PublicKey.SignatureValid(data, s.Signature)
@@ -94,6 +137,11 @@ func (s SignatureWithPublicKey) IsValid(data []byte) bool {
 // Bytes returns the signature in bytes.
 func (s SignatureWithPublicKey) Bytes() []byte {
 	return byteutils.ConcatBytes(s.PublicKey.Bytes(), s.Signature.Bytes())
+}
+
+// Base58 returns a base58 encoded version of the SignatureWithPublicKey.
+func (s SignatureWithPublicKey) Base58() string {
+	return base58.Encode(s.Bytes())
 }
 
 // String returns a human readable version of the SignatureWithPublicKey (base58 encoded).
