@@ -19,6 +19,9 @@ const (
 	PrivateKeySize = 32
 )
 
+// blsSuite is required to perform the BLS operations of the 3rd party library.
+var blsSuite = bn256.NewSuite()
+
 // AggregateSignatures aggregates multiple SignatureWithPublicKey objects into a single SignatureWithPublicKey.
 func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (aggregatedSignature SignatureWithPublicKey, err error) {
 	if len(signaturesWithPublicKey) == 0 {
@@ -67,6 +70,3 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 
 	return
 }
-
-// blsSuite is required to perform the BLS operations.
-var blsSuite = bn256.NewSuite()

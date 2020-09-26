@@ -39,4 +39,5 @@ func TestSingleSignature(t *testing.T) {
 	signature, err := privateKey.Sign(dataToSign)
 	require.NoError(t, err)
 	assert.True(t, signature.IsValid(dataToSign))
+	assert.False(t, signature.IsValid([]byte("some other data")))
 }
