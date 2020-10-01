@@ -4,9 +4,15 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 func Interface(value interface{}) string {
+	if typeutils.IsInterfaceNil(value) {
+		return "<nil>"
+	}
+
 	switch typeCastedValue := value.(type) {
 	case bool:
 		return Bool(typeCastedValue)
