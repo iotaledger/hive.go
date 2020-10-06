@@ -17,13 +17,20 @@ func PrintConfig(config *viper.Viper, ignoreSettingsAtPrint ...[]string) {
 	if len(ignoreSettingsAtPrint) > 0 {
 		for _, ignoredSetting := range ignoreSettingsAtPrint[0] {
 			parameter := settings
-			ignoredSettingSplitted := strings.Split(ignoredSetting, ".")
+			ignoredSettingSplitted := strings.Split(strings.ToLower(ignoredSetting), ".")
 			for lvl, parameterName := range ignoredSettingSplitted {
 				if lvl == len(ignoredSettingSplitted)-1 {
 					delete(parameter, parameterName)
 					continue
 				}
-				parameter = parameter[parameterName].(map[string]interface{})
+
+				par, exists := parameter[parameterName]
+				if !exists {
+					// parameter not found in settings
+					break
+				}
+
+				parameter = par.(map[string]interface{})
 			}
 		}
 	}
