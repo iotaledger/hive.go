@@ -103,3 +103,16 @@ func (util *MarshalUtil) expandWriteCapacity(length int) (writeEndOffset int) {
 
 	return
 }
+
+// Write marshals the given object by writing its Bytes into the underlying buffer.
+func (util *MarshalUtil) Write(object Byteser) *MarshalUtil {
+	util.WriteBytes(object.Bytes())
+
+	return util
+}
+
+// Byteser represents types that have a Bytes method for marshaling them.
+type Byteser interface {
+	// Bytes returns a marshaled version of the object.
+	Bytes() []byte
+}
