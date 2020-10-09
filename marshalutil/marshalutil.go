@@ -105,14 +105,15 @@ func (util *MarshalUtil) expandWriteCapacity(length int) (writeEndOffset int) {
 }
 
 // Write marshals the given object by writing its Bytes into the underlying buffer.
-func (util *MarshalUtil) Write(object Byteser) *MarshalUtil {
+func (util *MarshalUtil) Write(object SimpleBinaryMarshaler) *MarshalUtil {
 	util.WriteBytes(object.Bytes())
 
 	return util
 }
 
-// Byteser represents types that have a Bytes method for marshaling them.
-type Byteser interface {
+// SimpleBinaryMarshaler represents objects that have a Bytes method for marshaling. In contrast to gp's built marshaler
+// interface (encoding.BinaryMarshaler) this interface expect no errors to be returned.
+type SimpleBinaryMarshaler interface {
 	// Bytes returns a marshaled version of the object.
 	Bytes() []byte
 }
