@@ -111,7 +111,7 @@ func (util *MarshalUtil) Write(object SimpleBinaryMarshaler) *MarshalUtil {
 	return util
 }
 
-// SimpleBinaryMarshaler represents objects that have a Bytes method for marshaling. In contrast to gp's built marshaler
+// SimpleBinaryMarshaler represents objects that have a Bytes method for marshaling. In contrast to go's built marshaler
 // interface (encoding.BinaryMarshaler) this interface expect no errors to be returned.
 type SimpleBinaryMarshaler interface {
 	// Bytes returns a marshaled version of the object.
