@@ -3,7 +3,6 @@ package stringify
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -21,9 +20,23 @@ func Interface(value interface{}) string {
 	case []byte:
 		return SliceOfBytes(typeCastedValue)
 	case int:
+		return Int(int64(typeCastedValue))
+	case int8:
+		return Int(int64(typeCastedValue))
+	case int16:
+		return Int(int64(typeCastedValue))
+	case int32:
+		return Int(int64(typeCastedValue))
+	case int64:
 		return Int(typeCastedValue)
+	case uint8:
+		return UInt(uint64(typeCastedValue))
+	case uint16:
+		return UInt(uint64(typeCastedValue))
+	case uint32:
+		return UInt(uint64(typeCastedValue))
 	case uint64:
-		return strconv.FormatUint(typeCastedValue, 10)
+		return UInt(typeCastedValue)
 	case reflect.Value:
 		switch typeCastedValue.Kind() {
 		case reflect.Slice:
@@ -31,11 +44,25 @@ func Interface(value interface{}) string {
 		case reflect.Array:
 			return sliceReflect(typeCastedValue)
 		case reflect.String:
-			return String(typeCastedValue.String())
+			return Interface(typeCastedValue.String())
 		case reflect.Int:
-			return Int(int(typeCastedValue.Int()))
+			return Interface(typeCastedValue.Int())
+		case reflect.Int8:
+			return Interface(typeCastedValue.Int())
+		case reflect.Int16:
+			return Interface(typeCastedValue.Int())
+		case reflect.Int32:
+			return Interface(typeCastedValue.Int())
+		case reflect.Int64:
+			return Interface(typeCastedValue.Int())
 		case reflect.Uint8:
-			return Int(int(typeCastedValue.Uint()))
+			return Interface(typeCastedValue.Uint())
+		case reflect.Uint16:
+			return Interface(typeCastedValue.Uint())
+		case reflect.Uint32:
+			return Interface(typeCastedValue.Uint())
+		case reflect.Uint64:
+			return Interface(typeCastedValue.Uint())
 		case reflect.Ptr:
 			return Interface(typeCastedValue.Interface())
 		case reflect.Struct:
