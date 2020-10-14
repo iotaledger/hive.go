@@ -20,6 +20,6 @@ func NewFactory(store kvstore.KVStore, packagePrefix byte) *Factory {
 
 // New creates a new ObjectStorage with the given parameters. It combines the store specific prefix with the package
 // prefix, to create a unique realm for the KVStore of the ObjectStorage.
-func (factory *Factory) New(storagePrefix byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
+func (factory *Factory) New(storagePrefix byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	return New(factory.store.WithRealm([]byte{factory.packagePrefix, storagePrefix}), objectFactory, optionalOptions...)
 }

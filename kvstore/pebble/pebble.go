@@ -1,32 +1,33 @@
-package badger
+package pebble
 
 import (
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/cockroachdb/pebble"
+
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/types"
 )
 
-// badgerStore implements the KVStore interface around a BadgerDB instance.
-type badgerStore struct {
-	instance                     *badger.DB
+// pebbleStore implements the KVStore interface around a pebble instance.
+type pebbleStore struct {
+	instance                     *pebble.DB
 	dbPrefix                     []byte
 	accessCallback               kvstore.AccessCallback
 	accessCallbackCommandsFilter kvstore.Command
 }
 
-// New creates a new KVStore with the underlying BadgerDB.
-func New(db *badger.DB) kvstore.KVStore {
-	return &badgerStore{
+// New creates a new KVStore with the underlying pebbleDB.
+func New(db *pebble.DB) kvstore.KVStore {
+	return &pebbleStore{
 		instance: db,
 	}
 }
 
 // AccessCallback configures the store to pass all requests to the KVStore to the given callback.
 // This can for example be used for debugging and to examine what the KVStore is doing.
-func (s *badgerStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
+func (s *pebbleStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
 	var accessCallbackCommandsFilter kvstore.Command
 	if len(commandsFilter) == 0 {
 		accessCallbackCommandsFilter = kvstore.AllCommands
@@ -40,79 +41,82 @@ func (s *badgerStore) AccessCallback(callback kvstore.AccessCallback, commandsFi
 	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
-func (s *badgerStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
-	return &badgerStore{
+func (s *pebbleStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+	return &pebbleStore{
 		instance: s.instance,
 		dbPrefix: realm,
 	}
 }
 
-func (s *badgerStore) Realm() []byte {
+func (s *pebbleStore) Realm() []byte {
 	return s.dbPrefix
 }
 
-// builds a key usable for the badger instance using the realm and the given prefix.
-func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
+// builds a key usable for the pebble instance using the realm and the given prefix.
+func (s *pebbleStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
 }
 
 // Shutdown marks the store as shutdown.
-func (s *badgerStore) Shutdown() {
+func (s *pebbleStore) Shutdown() {
 	if s.accessCallback != nil {
 		s.accessCallback(kvstore.ShutdownCommand)
 	}
 }
 
-func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
+	start := s.buildKeyPrefix(prefix)
+
+	if len(start) == 0 {
+		// no bounds
+		return nil, nil
+	}
+
+	end := copyBytes(start)
+	end[len(end)-1] = end[len(end)-1] + 1
+
+	return start, end
+}
+
+func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
 		s.accessCallback(kvstore.IterateCommand, prefix)
 	}
 
-	return s.instance.View(func(txn *badger.Txn) (err error) {
-		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
-		iteratorOptions.PrefetchValues = true
+	start, end := s.getIterBounds(prefix)
 
-		it := txn.NewIterator(iteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			value, err := item.ValueCopy(nil)
-			if err != nil {
-				panic(err)
-			}
-			if !consumerFunc(item.KeyCopy(nil)[len(s.dbPrefix):], value) {
-				break
-			}
+	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+	defer iter.Close()
+
+	for iter.First(); iter.Valid(); iter.Next() {
+		if !consumerFunc(copyBytes(iter.Key())[len(s.dbPrefix):], copyBytes(iter.Value())) {
+			break
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
-func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
 		s.accessCallback(kvstore.IterateKeysCommand, prefix)
 	}
 
-	return s.instance.View(func(txn *badger.Txn) (err error) {
-		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
-		iteratorOptions.PrefetchValues = false
+	start, end := s.getIterBounds(prefix)
 
-		it := txn.NewIterator(iteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			if !consumerFunc(it.Item().KeyCopy(nil)[len(s.dbPrefix):]) {
-				break
-			}
+	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+	defer iter.Close()
+
+	for iter.First(); iter.Valid(); iter.Next() {
+		if !consumerFunc(copyBytes(iter.Key())[len(s.dbPrefix):]) {
+			break
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
-func (s *badgerStore) Clear() error {
+func (s *pebbleStore) Clear() error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
 		s.accessCallback(kvstore.ClearCommand)
 	}
@@ -120,93 +124,94 @@ func (s *badgerStore) Clear() error {
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
-func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
+func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
 		s.accessCallback(kvstore.GetCommand, key)
 	}
 
-	var value []byte
-	err := s.instance.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
-		if err != nil {
-			return err
+	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
+
+	if err != nil {
+		if err == pebble.ErrNotFound {
+			return nil, kvstore.ErrKeyNotFound
 		}
-		value, err = item.ValueCopy(nil)
-		return err
-	})
-	if err == badger.ErrKeyNotFound {
-		return nil, kvstore.ErrKeyNotFound
+		return nil, err
+	}
+
+	value := copyBytes(val)
+
+	if err := closer.Close(); err != nil {
+		return nil, err
 	}
 
 	return value, nil
 }
 
-func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
+func (s *pebbleStore) Set(key kvstore.Key, value kvstore.Value) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
 		s.accessCallback(kvstore.SetCommand, key, value)
 	}
 
-	return s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Set(byteutils.ConcatBytes(s.dbPrefix, key), value)
-	})
+	return s.instance.Set(byteutils.ConcatBytes(s.dbPrefix, key), value, pebble.NoSync)
 }
 
-func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
+func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
 		s.accessCallback(kvstore.HasCommand, key)
 	}
 
-	err := s.instance.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
-		return err
-	})
+	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
+	if err == pebble.ErrNotFound {
+		return false, nil
+	}
+
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return false, nil
-		}
 		return false, err
 	}
+
+	if err := closer.Close(); err != nil {
+		return true, err
+	}
+
 	return true, nil
 }
 
-func (s *badgerStore) Delete(key kvstore.Key) error {
+func (s *pebbleStore) Delete(key kvstore.Key) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
 		s.accessCallback(kvstore.DeleteCommand, key)
 	}
 
-	err := s.instance.Update(func(txn *badger.Txn) error {
-		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
-	})
-	if err != nil && err == badger.ErrKeyNotFound {
-		return kvstore.ErrKeyNotFound
-	}
-	return err
+	return s.instance.Delete(byteutils.ConcatBytes(s.dbPrefix, key), pebble.NoSync)
 }
 
-func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
 		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
 	}
 
-	return s.instance.Update(func(txn *badger.Txn) (err error) {
-		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
-		iteratorOptions.PrefetchValues = false
+	start, end := s.getIterBounds(prefix)
 
-		it := txn.NewIterator(iteratorOptions)
-		defer it.Close()
+	if start == nil {
+		// DeleteRange does not work without range, so we have to iterate over all keys and delete them
 
-		for it.Rewind(); it.Valid(); it.Next() {
-			key := it.Item().KeyCopy(nil)
-			if err := txn.Delete(key); err != nil {
-				panic(err)
+		iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+		defer iter.Close()
+
+		b := s.instance.NewBatch()
+		for iter.First(); iter.Valid(); iter.Next() {
+			if err := b.Delete(iter.Key(), nil); err != nil {
+				b.Close()
+				return err
 			}
 		}
-		return nil
-	})
+
+		return b.Commit(pebble.NoSync)
+	}
+
+	return s.instance.DeleteRange(start, end, pebble.NoSync)
 }
 
-func (s *badgerStore) Batched() kvstore.BatchedMutations {
+func (s *pebbleStore) Batched() kvstore.BatchedMutations {
 	return &batchedMutations{
 		kvStore:          s,
 		store:            s.instance,
@@ -216,10 +221,10 @@ func (s *badgerStore) Batched() kvstore.BatchedMutations {
 	}
 }
 
-// batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
+// batchedMutations is a wrapper around a WriteBatch of a pebbleDB.
 type batchedMutations struct {
-	kvStore          *badgerStore
-	store            *badger.DB
+	kvStore          *pebbleStore
+	store            *pebble.DB
 	dbPrefix         []byte
 	setOperations    map[string]kvstore.Value
 	deleteOperations map[string]types.Empty
@@ -267,24 +272,24 @@ func (b *batchedMutations) Cancel() {
 }
 
 func (b *batchedMutations) Commit() error {
-	writeBatch := b.store.NewWriteBatch()
+	writeBatch := b.store.NewBatch()
 
 	b.operationsMutex.Lock()
 	defer b.operationsMutex.Unlock()
 
 	for key, value := range b.setOperations {
-		err := writeBatch.Set([]byte(key), value)
+		err := writeBatch.Set([]byte(key), value, nil)
 		if err != nil {
 			return err
 		}
 	}
 
 	for key := range b.deleteOperations {
-		err := writeBatch.Delete([]byte(key))
+		err := writeBatch.Delete([]byte(key), nil)
 		if err != nil {
 			return err
 		}
 	}
 
-	return writeBatch.Flush()
+	return writeBatch.Commit(pebble.NoSync)
 }

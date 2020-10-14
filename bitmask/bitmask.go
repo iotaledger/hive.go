@@ -31,3 +31,11 @@ func (bitmask BitMask) HasBit(pos uint) bool {
 func (bitmask BitMask) HasBits(bits BitMask) bool {
 	return bitmask&(bits) > 0
 }
+
+// ModifyBit sets or clears the bit at the given position, given the supplied state bool.
+func (bitmask BitMask) ModifyBit(pos uint, state bool) BitMask {
+	if state {
+		return bitmask.SetBit(pos)
+	}
+	return bitmask.ClearBit(pos)
+}

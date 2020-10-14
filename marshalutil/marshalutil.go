@@ -103,3 +103,15 @@ func (util *MarshalUtil) expandWriteCapacity(length int) (writeEndOffset int) {
 
 	return
 }
+
+// Write marshals the given object by writing its Bytes into the underlying buffer.
+func (util *MarshalUtil) Write(object SimpleBinaryMarshaler) *MarshalUtil {
+	return util.WriteBytes(object.Bytes())
+}
+
+// SimpleBinaryMarshaler represents objects that have a Bytes method for marshaling. In contrast to go's built marshaler
+// interface (encoding.BinaryMarshaler) this interface expect no errors to be returned.
+type SimpleBinaryMarshaler interface {
+	// Bytes returns a marshaled version of the object.
+	Bytes() []byte
+}

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,19 +16,20 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/bbolt"
 )
 
 const (
 	dbBadger = iota
 	dbBolt
 	dbMapDB
+	dbPebble
 )
 
 const (
@@ -37,29 +39,35 @@ const (
 func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
 	switch usedDatabase {
 	case dbBadger:
-		dir, err := ioutil.TempDir("", "objectsdb")
+		dir, err := ioutil.TempDir("", "database.badger")
 		require.NoError(t, err)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
 		return badger.New(db).WithRealm(realm)
 
 	case dbBolt:
-		dir, err := ioutil.TempDir("", "bboltdb")
+		dir, err := ioutil.TempDir("", "database.bolt")
 		require.NoError(t, err)
-		dirAndFile := fmt.Sprintf("%s/my.db", dir)
-		db, err := bbolt.Open(dirAndFile, 0666, nil)
+		db, err := bolt.CreateDB(dir, "my.db", nil)
 		require.NoError(t, err)
 		return bolt.New(db).WithRealm(realm)
 
 	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
+
+	case dbPebble:
+		dir, err := ioutil.TempDir("", "database.pebble")
+		require.NoError(t, err)
+		db, err := pebble.CreateDB(dir)
+		require.NoError(t, err)
+		return pebble.New(db).WithRealm(realm)
 	}
 
 	panic("unknown database")
 }
 
-func testObjectFactory(key []byte) (objectstorage.StorableObject, int, error) {
-	return &testObject{id: key}, len(key), nil
+func testObjectFactory(key []byte, data []byte) (objectstorage.StorableObject, error) {
+	return &testObject{id: key, value: binary.LittleEndian.Uint32(data)}, nil
 }
 
 // TestConcurrentCreateDelete tests if ConsumeIfAbsent and Store can be used in parallel without breaking the
@@ -151,6 +159,251 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	missingMessageStorage.Shutdown()
 	metadataStorage.Shutdown()
 	wp.Shutdown()
+}
+
+// TestTransaction tests if Transactions with the same identifier can not run in parallel and that Transactions and
+// RTransactions wait for each other.
+func TestTransaction(t *testing.T) {
+	// initialize ObjectStorage
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	// retrieve a CachedObject
+	cachedObject := objects.Load([]byte("someObject"))
+
+	// initialize variables to keep track of the execution order
+	firstTransactionFinished := false
+	rTransactionFinished := false
+
+	// initialize WaitGroup to wait for goroutines to finish
+	var wg sync.WaitGroup
+
+	// execute first Transaction with identifier 1
+	wg.Add(1)
+	go func() {
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+
+			time.Sleep(200 * time.Millisecond)
+
+			firstTransactionFinished = true
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// make sure the second Transaction with identifier 1 executes after the first one
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// make sure the third Transaction with identifier 1 and 2 also waits for 1
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1, 2)
+
+		wg.Done()
+	}()
+
+	// make sure the fourth Transaction with identifier 2 runs in parallel to number 1
+	wg.Add(1)
+	go func() {
+		// make the Transaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, false)
+		}, 2)
+
+		wg.Done()
+	}()
+
+	// make sure that RTransactions wait for Transactions to finish
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, firstTransactionFinished, true)
+		}, 1)
+
+		wg.Done()
+	}()
+
+	// run RTransaction with a new identifier and keep track of its execution order
+	wg.Add(1)
+	go func() {
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+
+			time.Sleep(200 * time.Millisecond)
+
+			rTransactionFinished = true
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// make sure that RTransactions can run simultaneously
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, rTransactionFinished, false)
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// make sure that Transactions wait for RTransactions to finish
+	wg.Add(1)
+	go func() {
+		// make the RTransaction start slightly later but while the first one is still running
+		time.Sleep(100 * time.Millisecond)
+
+		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+			assert.Equal(t, object, nil)
+			assert.Equal(t, rTransactionFinished, true)
+		}, 4)
+
+		wg.Done()
+	}()
+
+	// wait for goroutines to finish
+	wg.Wait()
+
+	// release object and shutdown ObjectStorage
+	cachedObject.Release()
+	objects.Shutdown()
+}
+
+// TestComputeIfAbsentReturningNil tests if ComputeIfAbsent can return nil to simply execute some code if something is
+// missing without interfering with consecutive StoreIfAbsent calls and without intersecting parallel ComputeIfAbsent
+// calls.
+func TestComputeIfAbsentReturningNil(t *testing.T) {
+	// define test iterations
+	testCount := 50
+
+	// initialize ObjectStorage
+	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	if err := objects.Prune(); err != nil {
+		t.Error(err)
+	}
+
+	// repeat test the defined times
+	for i := 0; i < testCount; i++ {
+		objectStringKey := "missingEntry" + strconv.Itoa(i)
+
+		// define variables to track the execution flow
+		firstComputeIfAbsentExecutedOrder := -1
+		firstComputeIfAbsentFinished := false
+		secondComputeIfAbsentExecutedOrder := -1
+		secondComputeIfAbsentFinished := false
+		storeExecutedOrder := -1
+		orderCounter := 0
+
+		// initialize WaitGroup to wait for the finished goroutines
+		var wg sync.WaitGroup
+
+		// start the first ComputeIfAbsent call
+		wg.Add(1)
+		go func() {
+			objects.ComputeIfAbsent([]byte(objectStringKey), func(key []byte) objectstorage.StorableObject {
+				firstComputeIfAbsentExecutedOrder = orderCounter
+				orderCounter++
+
+				if secondComputeIfAbsentExecutedOrder != -1 {
+					assert.Equal(t, secondComputeIfAbsentFinished, true)
+				}
+
+				time.Sleep(100 * time.Millisecond)
+
+				firstComputeIfAbsentFinished = true
+
+				return nil
+			}).Release()
+
+			wg.Done()
+		}()
+
+		// start the second ComputeIfAbsent call
+		wg.Add(1)
+		go func() {
+			objects.ComputeIfAbsent([]byte(objectStringKey), func(key []byte) objectstorage.StorableObject {
+				secondComputeIfAbsentExecutedOrder = orderCounter
+				orderCounter++
+
+				if firstComputeIfAbsentExecutedOrder != -1 {
+					assert.Equal(t, firstComputeIfAbsentFinished, true)
+				}
+
+				time.Sleep(100 * time.Millisecond)
+
+				secondComputeIfAbsentFinished = true
+
+				return nil
+			}).Release()
+
+			wg.Done()
+		}()
+
+		// start the StoreIfAbsent call
+		wg.Add(1)
+		go func() {
+			cachedObject, stored := objects.StoreIfAbsent(newTestObject(objectStringKey, 33))
+			cachedObject.Release()
+
+			if assert.Equal(t, true, stored) {
+				storeExecutedOrder = orderCounter
+				orderCounter++
+			}
+
+			wg.Done()
+		}()
+
+		// wait for goroutines to finish
+		wg.Wait()
+
+		// make sure the result are as expected
+		switch storeExecutedOrder {
+		case 0:
+			assert.Equal(t, firstComputeIfAbsentExecutedOrder, -1)
+			assert.Equal(t, secondComputeIfAbsentExecutedOrder, -1)
+			assert.True(t, !firstComputeIfAbsentFinished && !secondComputeIfAbsentFinished)
+		case 1:
+			assert.True(t, (firstComputeIfAbsentExecutedOrder == 0 && secondComputeIfAbsentExecutedOrder == -1) || (firstComputeIfAbsentExecutedOrder == -1 && secondComputeIfAbsentExecutedOrder == 0))
+			assert.True(t, (firstComputeIfAbsentFinished && !secondComputeIfAbsentFinished) || (!firstComputeIfAbsentFinished && secondComputeIfAbsentFinished))
+		case 2:
+			assert.True(t, (firstComputeIfAbsentExecutedOrder == 0 && secondComputeIfAbsentExecutedOrder == 1) || (firstComputeIfAbsentExecutedOrder == 1 && secondComputeIfAbsentExecutedOrder == 0))
+			assert.True(t, firstComputeIfAbsentFinished && secondComputeIfAbsentFinished)
+		}
+	}
+
+	// shutdown the ObjectStorage
+	objects.Shutdown()
 }
 
 func TestPrefixIteration(t *testing.T) {
