@@ -2,7 +2,7 @@ package marshalutil
 
 import "encoding/binary"
 
-const UINT16_SIZE = 4
+const UINT16_SIZE = 2
 
 func (util *MarshalUtil) WriteUint16(value uint16) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(UINT16_SIZE)
