@@ -8,20 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestValueRange_Open tests the Open ValueRange which contains elements according to {x | lower < x < upper}.
 func TestValueRange_Open(t *testing.T) {
-	// create ValueRange for tests
+	// create open ValueRange for tests
 	valueRange := Open(Int64Value(10), Int64Value(114))
 
 	// test Empty
 	assert.False(t, valueRange.Empty(), "the ValueRange should not be empty")
 	assert.False(t, Open(Int64Value(10), Int64Value(11)).Empty(), "the ValueRange should not be empty")
 
-	// test Has...Bound method
+	// test Has...Bound methods
 	assert.True(t, valueRange.HasLowerBound(), "the ValueRange should have a lower bound")
 	assert.True(t, valueRange.HasUpperBound(), "the ValueRange should have an upper bound")
 
+	// test ...BoundType methods
 	assert.Equal(t, valueRange.LowerBoundType(), BoundTypeOpen, "the lower bound should be Open")
 	assert.Equal(t, valueRange.UpperBoundType(), BoundTypeOpen, "the lower bound should be Open")
+
+	// test ...EndPoint methods
+	assert.Equal(t, &EndPoint{value: Int64Value(10), boundType: BoundTypeOpen}, valueRange.LowerEndPoint(), "the lower EndPoint should be equal to the expected value")
+	assert.Equal(t, &EndPoint{value: Int64Value(114), boundType: BoundTypeOpen}, valueRange.UpperEndPoint(), "the upper EndPoint should be equal to the expected value")
 
 	// test Compare
 	assert.Equal(t, 1, valueRange.Compare(Int64Value(10)), "the ValueRange should be larger than Int64Value(10)")

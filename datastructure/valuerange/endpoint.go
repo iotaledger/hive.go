@@ -39,6 +39,16 @@ func EndPointFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (endPoint *En
 	return
 }
 
+// Value returns the Value of the EndPoint.
+func (e *EndPoint) Value() Value {
+	return e.value
+}
+
+// BoundType returns the BoundType of the EndPoint.
+func (e *EndPoint) BoundType() BoundType {
+	return e.boundType
+}
+
 // Bytes returns a marshaled version of the EndPoint.
 func (e *EndPoint) Bytes() []byte {
 	return marshalutil.New().
