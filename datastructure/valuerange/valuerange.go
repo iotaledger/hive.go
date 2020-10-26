@@ -33,10 +33,10 @@ type ValueRange struct {
 	upperEndPoint *EndPoint
 }
 
-// ValueRangeFromBytes unmarshals a ValueRange from a sequence of bytes.
-func ValueRangeFromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes int, err error) {
+// FromBytes unmarshals a ValueRange from a sequence of bytes.
+func FromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(valueRangeBytes)
-	if valueRange, err = ValueRangeFromMarshalUtil(marshalUtil); err != nil {
+	if valueRange, err = FromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse ValueRange from MarshalUtil: %w", err)
 		return
 	}
@@ -45,8 +45,8 @@ func ValueRangeFromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consum
 	return
 }
 
-// ValueRangeFromMarshalUtil unmarshals a ValueRange using a MarshalUtil (for easier unmarshaling).
-func ValueRangeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRange, err error) {
+// FromMarshalUtil unmarshals a ValueRange using a MarshalUtil (for easier unmarshaling).
+func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRange, err error) {
 	endPointExistsMaskByte, err := marshalUtil.ReadByte()
 	if err != nil {
 		err = xerrors.Errorf("failed to read endpoint exists mask (%v): %w", err, cerrors.ErrParseBytesFailed)
@@ -248,10 +248,10 @@ func (v *ValueRange) UpperEndPoint() *EndPoint {
 func (v *ValueRange) Bytes() []byte {
 	var endPointExistsMask bitmask.BitMask
 	if v.lowerEndPoint != nil {
-		endPointExistsMask.SetBit(0)
+		endPointExistsMask = endPointExistsMask.SetBit(0)
 	}
 	if v.upperEndPoint != nil {
-		endPointExistsMask.SetBit(1)
+		endPointExistsMask = endPointExistsMask.SetBit(1)
 	}
 
 	marshalUtil := marshalutil.New()
