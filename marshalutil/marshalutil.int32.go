@@ -3,7 +3,7 @@ package marshalutil
 import "encoding/binary"
 
 // Int32Size contains the amount of bytes of a marshaled int32 value.
-const Int32Size = 2
+const Int32Size = 4
 
 // WriteInt32 writes a marshaled int32 value to the internal buffer of the MarshalUtil.
 func (util *MarshalUtil) WriteInt32(value int32) *MarshalUtil {
