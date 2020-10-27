@@ -5,7 +5,7 @@ import "encoding/binary"
 // Int32Size contains the amount of bytes of a marshaled int32 value.
 const Int32Size = 4
 
-// WriteInt32 writes a marshaled int32 value to the internal buffer of the MarshalUtil.
+// WriteInt32 writes a marshaled int32 value to the internal buffer.
 func (util *MarshalUtil) WriteInt32(value int32) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(Int32Size)
 
@@ -16,7 +16,7 @@ func (util *MarshalUtil) WriteInt32(value int32) *MarshalUtil {
 	return util
 }
 
-// ReadInt32 reads an int32 value from the internal buffer of the MarshalUtil.
+// ReadInt32 reads an int32 value from the internal buffer.
 func (util *MarshalUtil) ReadInt32() (int32, error) {
 	readEndOffset, err := util.checkReadCapacity(Int32Size)
 	if err != nil {

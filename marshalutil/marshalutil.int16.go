@@ -7,7 +7,7 @@ import (
 // Int16Size contains the amount of bytes of a marshaled int16 value.
 const Int16Size = 2
 
-// WriteInt16 writes a marshaled int16 value to the internal buffer of the MarshalUtil.
+// WriteInt16 writes a marshaled int16 value to the internal buffer.
 func (util *MarshalUtil) WriteInt16(value int16) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(Int16Size)
 
@@ -18,7 +18,7 @@ func (util *MarshalUtil) WriteInt16(value int16) *MarshalUtil {
 	return util
 }
 
-// ReadInt16 reads an int16 value from the internal buffer of the MarshalUtil.
+// ReadInt16 reads an int16 value from the internal buffer.
 func (util *MarshalUtil) ReadInt16() (int16, error) {
 	readEndOffset, err := util.checkReadCapacity(Int16Size)
 	if err != nil {

@@ -1,7 +1,9 @@
 package marshalutil
 
+// BoolSize contains the amount of bytes of a marshaled bool value.
 const BoolSize = 1
 
+// WriteBool writes a marshaled bool value to the internal buffer.
 func (util *MarshalUtil) WriteBool(bool bool) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(1)
 
@@ -16,6 +18,7 @@ func (util *MarshalUtil) WriteBool(bool bool) *MarshalUtil {
 	return util
 }
 
+// ReadBool reads a bool value from the internal buffer.
 func (util *MarshalUtil) ReadBool() (bool, error) {
 	readEndOffset, err := util.checkReadCapacity(1)
 	if err != nil {

@@ -2,8 +2,10 @@ package marshalutil
 
 import "encoding/binary"
 
+// Uint64Size contains the amount of bytes of a marshaled uint64 value.
 const Uint64Size = 8
 
+// WriteUint64 writes a marshaled uint64 value to the internal buffer.
 func (util *MarshalUtil) WriteUint64(value uint64) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(Uint64Size)
 
@@ -14,6 +16,7 @@ func (util *MarshalUtil) WriteUint64(value uint64) *MarshalUtil {
 	return util
 }
 
+// ReadUint64 reads an uint64 value from the internal buffer.
 func (util *MarshalUtil) ReadUint64() (uint64, error) {
 	readEndOffset, err := util.checkReadCapacity(Uint64Size)
 	if err != nil {

@@ -3,7 +3,7 @@ package marshalutil
 // Uint8Size contains the amount of bytes of a marshaled uint8 value.
 const Uint8Size = 1
 
-// WriteUint8 writes a marshaled uint8 value to the internal buffer of the MarshalUtil.
+// WriteUint8 writes a marshaled uint8 value to the internal buffer.
 func (util *MarshalUtil) WriteUint8(value uint8) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(Uint8Size)
 
@@ -14,7 +14,7 @@ func (util *MarshalUtil) WriteUint8(value uint8) *MarshalUtil {
 	return util
 }
 
-// ReadUint8 reads an uint8 value from the internal buffer of the MarshalUtil.
+// ReadUint8 reads an uint8 value from the internal buffer.
 func (util *MarshalUtil) ReadUint8() (uint8, error) {
 	readEndOffset, err := util.checkReadCapacity(Uint8Size)
 	if err != nil {
