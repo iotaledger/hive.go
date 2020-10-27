@@ -2,10 +2,10 @@ package marshalutil
 
 import "encoding/binary"
 
-const UINT16_SIZE = 2
+const Uint16Size = 2
 
 func (util *MarshalUtil) WriteUint16(value uint16) *MarshalUtil {
-	writeEndOffset := util.expandWriteCapacity(UINT16_SIZE)
+	writeEndOffset := util.expandWriteCapacity(Uint16Size)
 
 	binary.LittleEndian.PutUint16(util.bytes[util.writeOffset:writeEndOffset], value)
 
@@ -15,7 +15,7 @@ func (util *MarshalUtil) WriteUint16(value uint16) *MarshalUtil {
 }
 
 func (util *MarshalUtil) ReadUint16() (uint16, error) {
-	readEndOffset, err := util.checkReadCapacity(UINT16_SIZE)
+	readEndOffset, err := util.checkReadCapacity(Uint16Size)
 	if err != nil {
 		return 0, err
 	}

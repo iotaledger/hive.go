@@ -2,10 +2,10 @@ package marshalutil
 
 import "encoding/binary"
 
-const UINT64_SIZE = 8
+const Uint64Size = 8
 
 func (util *MarshalUtil) WriteUint64(value uint64) *MarshalUtil {
-	writeEndOffset := util.expandWriteCapacity(UINT64_SIZE)
+	writeEndOffset := util.expandWriteCapacity(Uint64Size)
 
 	binary.LittleEndian.PutUint64(util.bytes[util.writeOffset:writeEndOffset], value)
 
@@ -15,7 +15,7 @@ func (util *MarshalUtil) WriteUint64(value uint64) *MarshalUtil {
 }
 
 func (util *MarshalUtil) ReadUint64() (uint64, error) {
-	readEndOffset, err := util.checkReadCapacity(UINT64_SIZE)
+	readEndOffset, err := util.checkReadCapacity(Uint64Size)
 	if err != nil {
 		return 0, err
 	}

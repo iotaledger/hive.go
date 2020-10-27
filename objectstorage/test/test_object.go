@@ -55,7 +55,7 @@ func (t *testObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int
 
 	t.value = binary.LittleEndian.Uint32(data)
 
-	return marshalutil.UINT32_SIZE, nil
+	return marshalutil.Uint32Size, nil
 }
 
 func (t *testObject) get() uint32 {

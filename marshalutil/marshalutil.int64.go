@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 )
 
-const INT64_SIZE = 8
+const Int64Size = 8
 
 func (util *MarshalUtil) WriteInt64(value int64) *MarshalUtil {
-	writeEndOffset := util.expandWriteCapacity(INT64_SIZE)
+	writeEndOffset := util.expandWriteCapacity(Int64Size)
 
 	binary.LittleEndian.PutUint64(util.bytes[util.writeOffset:writeEndOffset], uint64(value))
 
@@ -17,7 +17,7 @@ func (util *MarshalUtil) WriteInt64(value int64) *MarshalUtil {
 }
 
 func (util *MarshalUtil) ReadInt64() (int64, error) {
-	readEndOffset, err := util.checkReadCapacity(INT64_SIZE)
+	readEndOffset, err := util.checkReadCapacity(Int64Size)
 	if err != nil {
 		return 0, err
 	}

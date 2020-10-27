@@ -494,7 +494,7 @@ func (i Int64Value) Compare(other Value) int {
 
 // Bytes returns a marshaled version of the Value.
 func (i Int64Value) Bytes() []byte {
-	return marshalutil.New(1 + marshalutil.INT64_SIZE).
+	return marshalutil.New(1 + marshalutil.Int64Size).
 		Write(Int64ValueType).
 		WriteInt64(int64(i)).
 		Bytes()
@@ -656,7 +656,7 @@ func (i Uint16Value) Compare(other Value) int {
 
 // Bytes returns a marshaled version of the Value.
 func (i Uint16Value) Bytes() []byte {
-	return marshalutil.New(1 + marshalutil.UINT16_SIZE).
+	return marshalutil.New(1 + marshalutil.Uint16Size).
 		Write(Uint16ValueType).
 		WriteUint16(uint16(i)).
 		Bytes()
@@ -737,7 +737,7 @@ func (i Uint32Value) Compare(other Value) int {
 
 // Bytes returns a marshaled version of the Value.
 func (i Uint32Value) Bytes() []byte {
-	return marshalutil.New(1 + marshalutil.UINT32_SIZE).
+	return marshalutil.New(1 + marshalutil.Uint32Size).
 		Write(Uint32ValueType).
 		WriteUint32(uint32(i)).
 		Bytes()
@@ -818,7 +818,7 @@ func (i Uint64Value) Compare(other Value) int {
 
 // Bytes returns a marshaled version of the Value.
 func (i Uint64Value) Bytes() []byte {
-	return marshalutil.New(1 + marshalutil.UINT64_SIZE).
+	return marshalutil.New(1 + marshalutil.Uint64Size).
 		Write(Uint64ValueType).
 		WriteUint64(uint64(i)).
 		Bytes()
