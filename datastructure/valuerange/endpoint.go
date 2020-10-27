@@ -12,6 +12,14 @@ type EndPoint struct {
 	boundType BoundType
 }
 
+// NewEndPoint create a new EndPoint from the given details.
+func NewEndPoint(value Value, boundType BoundType) *EndPoint {
+	return &EndPoint{
+		value:     value,
+		boundType: boundType,
+	}
+}
+
 // EndPointFromBytes unmarshals an EndPoint from a sequence of bytes.
 func EndPointFromBytes(endPointBytes []byte) (endPoint *EndPoint, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(endPointBytes)
