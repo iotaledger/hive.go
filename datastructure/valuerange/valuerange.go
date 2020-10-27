@@ -156,6 +156,10 @@ func OpenClosed(lower Value, upper Value) *ValueRange {
 // are bigger.
 func (v *ValueRange) Compare(value Value) int {
 	if v.lowerEndPoint == nil {
+		if v.upperEndPoint == nil {
+			return 0
+		}
+
 		if cmp := v.upperEndPoint.value.Compare(value); cmp == 1 || (cmp == 0 && v.upperEndPoint.boundType == BoundTypeClosed) {
 			return 0
 		}
@@ -164,6 +168,10 @@ func (v *ValueRange) Compare(value Value) int {
 	}
 
 	if v.upperEndPoint == nil {
+		if v.lowerEndPoint == nil {
+			return 0
+		}
+
 		if cmp := v.lowerEndPoint.value.Compare(value); cmp == -1 || (cmp == 0 && v.lowerEndPoint.boundType == BoundTypeClosed) {
 			return 0
 		}
@@ -175,7 +183,7 @@ func (v *ValueRange) Compare(value Value) int {
 		return 1
 	}
 
-	if cmp := v.upperEndPoint.value.Compare(value); cmp == -1 || (cmp == 0 && v.lowerEndPoint.boundType == BoundTypeOpen) {
+	if cmp := v.upperEndPoint.value.Compare(value); cmp == -1 || (cmp == 0 && v.upperEndPoint.boundType == BoundTypeOpen) {
 		return -1
 	}
 
