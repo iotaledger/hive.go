@@ -14,8 +14,8 @@ type Tree struct {
 	size       int
 }
 
-// New creates a new red-black Tree that uses the given comparator (or the default Comparator) to compare the
-// keys used to identify the nodes.
+// New creates a new red-black Tree that uses the given comparator (or the default Comparator if the parameter is
+// omitted) to compare the keys used to identify the nodes.
 func New(optionalComparator ...genericcomparator.Type) *Tree {
 	if len(optionalComparator) >= 1 {
 		return &Tree{
