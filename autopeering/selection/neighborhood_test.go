@@ -139,7 +139,7 @@ func TestRemove(t *testing.T) {
 
 	for _, test := range tests {
 		test.input.RemovePeer(test.toRemove.ID())
-		assert.Equal(t, test.expected, test.input.neighbors, "Delete")
+		assert.Equal(t, test.expected, test.input.neighbors, "Remove")
 	}
 }
 
