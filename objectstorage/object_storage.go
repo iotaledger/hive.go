@@ -62,7 +62,7 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
 	}
 
 	if !objectStorage.options.persistenceEnabled {
-		panic("persistence is disabled - use Put(object StorableObject) instead of Store(object StorableObject)")
+		panic("persistence is disabled - use Set(object StorableObject) instead of Store(object StorableObject)")
 	}
 
 	object.Persist()

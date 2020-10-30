@@ -4,55 +4,114 @@ import (
 	"github.com/iotaledger/hive.go/stringify"
 )
 
+// Node represents a Node in the Tree.
 type Node struct {
-	Key    interface{}
-	Value  interface{}
-	Left   *Node
-	Right  *Node
-	Parent *Node
-	color  Color
+	key         interface{}
+	value       interface{}
+	parent      *Node
+	left        *Node
+	right       *Node
+	predecessor *Node
+	successor   *Node
+	isBlack     bool
 }
 
-func (n *Node) Color() Color {
+// Key returns the key that is used to identify the Node.
+func (n *Node) Key() interface{} {
+	return n.key
+}
+
+// Value returns the value that is associated to the Node.
+func (n *Node) Value() interface{} {
+	return n.key
+}
+
+// Parent returns the parent of the Node (or nil if the Node is the root of the Tree).
+func (n *Node) Parent() *Node {
+	return n.parent
+}
+
+// Successor returns the Node with the next highest key (or nil if none exists).
+func (n *Node) Successor() *Node {
+	return n.successor
+}
+
+// Predecessor returns the Node with the next lower key (or nil if none exists).
+func (n *Node) Predecessor() *Node {
+	return n.predecessor
+}
+
+// IsBlack returns true if the Node is marked as black (colors are used for the self-balancing properties of the Tree)..
+func (n *Node) IsBlack() bool {
 	if n == nil {
-		return ColorBlack
+		return true
 	}
 
-	return n.color
+	return n.isBlack
 }
 
+// GrandParent returns the parent of the parent Node (or nil if it does not exist).
 func (n *Node) GrandParent() *Node {
-	if n != nil && n.Parent != nil {
-		return n.Parent.Parent
+	if n != nil && n.parent != nil {
+		return n.parent.parent
 	}
 
 	return nil
 }
 
+// Uncle returns the sibling of the parent Node.
 func (n *Node) Uncle() *Node {
-	if n == nil || n.Parent == nil || n.Parent.Parent == nil {
+	if n == nil || n.parent == nil || n.parent.parent == nil {
 		return nil
 	}
 
-	return n.Parent.Sibling()
+	return n.parent.Sibling()
 }
 
+// Sibling returns the alternative Node sharing the same parent Node.
 func (n *Node) Sibling() *Node {
-	if n == nil || n.Parent == nil {
+	if n == nil || n.parent == nil {
 		return nil
 	}
 
-	if n == n.Parent.Left {
-		return n.Parent.Right
+	if n == n.parent.left {
+		return n.parent.right
 	}
 
-	return n.Parent.Left
+	return n.parent.left
 }
 
+// Min returns the smallest of all descendants of the Node.
+func (n *Node) Min() (node *Node) {
+	if node = n; node == nil {
+		return
+	}
+
+	for node.left != nil {
+		node = node.left
+	}
+
+	return
+}
+
+// Max returns the largest of all descendants of the Node.
+func (n *Node) Max() (node *Node) {
+	if node = n; node == nil {
+		return
+	}
+
+	for node.right != nil {
+		node = node.right
+	}
+
+	return
+}
+
+// String returns a human readable version of the Node.
 func (n *Node) String() string {
 	return stringify.Struct("Node",
-		stringify.StructField("key", n.Key),
-		stringify.StructField("left", n.Left),
-		stringify.StructField("right", n.Right),
+		stringify.StructField("key", n.key),
+		stringify.StructField("left", n.left),
+		stringify.StructField("right", n.right),
 	)
 }
