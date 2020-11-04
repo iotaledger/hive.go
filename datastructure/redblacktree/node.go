@@ -23,7 +23,7 @@ func (n *Node) Key() interface{} {
 
 // Value returns the value that is associated to the Node.
 func (n *Node) Value() interface{} {
-	return n.key
+	return n.value
 }
 
 // Parent returns the parent of the Node (or nil if the Node is the root of the Tree).
@@ -109,8 +109,9 @@ func (n *Node) Max() (node *Node) {
 
 // String returns a human readable version of the Node.
 func (n *Node) String() string {
-	return stringify.Struct("Node",
+	return stringify.Struct("GetElement",
 		stringify.StructField("key", n.key),
+		stringify.StructField("value", n.value),
 		stringify.StructField("left", n.left),
 		stringify.StructField("right", n.right),
 	)

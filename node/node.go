@@ -32,7 +32,7 @@ func New(optionalOptions ...NodeOption) *Node {
 	node.init(node.options.plugins...)
 
 	// initialize logger after init phase because plugins could modify it
-	node.Logger = logger.NewLogger("Node")
+	node.Logger = logger.NewLogger("GetElement")
 
 	// configure the enabled plugins
 	node.configure(node.options.plugins...)

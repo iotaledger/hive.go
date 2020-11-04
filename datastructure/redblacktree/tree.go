@@ -104,13 +104,21 @@ func (t *Tree) Get(key interface{}) (value interface{}, found bool) {
 	return
 }
 
-// Delete removes a Node from the Tree and returns it (if it existed) together with a flag that indicates if it existed.
+// Delete removes a Node belonging to the given key from the Tree and returns it (if it existed) together with a flag
+// that indicates if it existed.
 func (t *Tree) Delete(key interface{}) (node *Node, success bool) {
 	node = t.Node(key)
 	if success = node != nil; !success {
 		return
 	}
 
+	t.DeleteNode(node)
+
+	return
+}
+
+// DeleteNode removes the Node from the Tree (which can be i.e. useful for modifying the Tree while iterating.
+func (t *Tree) DeleteNode(node *Node) {
 	if node.predecessor != nil {
 		node.predecessor.successor = node.successor
 	} else {
@@ -146,8 +154,6 @@ func (t *Tree) Delete(key interface{}) (node *Node, success bool) {
 		}
 	}
 	t.size--
-
-	return
 }
 
 // ForEach iterates through the Nodes of the Tree in ascending order and calls the iterator function for each Node. The
@@ -208,7 +214,7 @@ func (t *Tree) Max() *Node {
 // Floor returns the Node with the largest key that is <= the given key (or nil if no floor was found).
 func (t *Tree) Floor(key interface{}) (floor *Node) {
 	for node := t.root; node != nil; {
-		switch t.comparator(key, node.Key) {
+		switch t.comparator(key, node.key) {
 		case 0:
 			floor = node
 			return
@@ -226,7 +232,7 @@ func (t *Tree) Floor(key interface{}) (floor *Node) {
 // Ceiling returns the Node with the smallest key that is >= the given key (or nil if no ceiling was found).
 func (t *Tree) Ceiling(key interface{}) (ceiling *Node) {
 	for node := t.root; node != nil; {
-		switch t.comparator(key, node.Key) {
+		switch t.comparator(key, node.key) {
 		case 0:
 			ceiling = node
 			return
