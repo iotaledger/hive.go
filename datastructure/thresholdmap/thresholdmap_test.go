@@ -6,7 +6,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	thresholdMap := New()
+	thresholdMap := New(LowerThresholdMode)
 
 	// marker two references marker 5
 	thresholdMap.Set(2, 5)
@@ -14,8 +14,18 @@ func Test(t *testing.T) {
 	// marker 3 references marker 7
 	thresholdMap.Set(3, 7)
 
-	for it := thresholdMap.Iterator(); it.HasNext(); {
-		fmt.Println("ITERATOR", it.Next().Value())
+	it := thresholdMap.Iterator()
+
+	for it.HasPrev() {
+		fmt.Println("ITERATORP", it.Prev().Value())
+	}
+
+	for it.HasNext() {
+		fmt.Println("ITERATORN", it.Next().Value())
+	}
+
+	for it.HasPrev() {
+		fmt.Println("ITERATORP", it.Prev().Value())
 	}
 
 	fmt.Println(thresholdMap.Get(1))
