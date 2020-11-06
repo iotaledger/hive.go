@@ -5,8 +5,11 @@ import (
 	"github.com/iotaledger/hive.go/stringify"
 )
 
-// Tree represents a self balancing binary search tree, that can be used to red-black tree which
-type Tree struct {
+// region RedBlackTree /////////////////////////////////////////////////////////////////////////////////////////////////
+
+// RedBlackTree represents a self balancing binary search tree, that can be used to efficiently look up value associated
+// to a set of keys.
+type RedBlackTree struct {
 	root       *Node
 	min        *Node
 	max        *Node
@@ -14,22 +17,23 @@ type Tree struct {
 	size       int
 }
 
-// New creates a new red-black Tree that uses the given comparator (or the default Comparator if the parameter is
+// New creates a new red-black RedBlackTree that uses the given comparator (or the default Comparator if the parameter is
 // omitted) to compare the keys used to identify the nodes.
-func New(optionalComparator ...genericcomparator.Type) *Tree {
+func New(optionalComparator ...genericcomparator.Type) *RedBlackTree {
 	if len(optionalComparator) >= 1 {
-		return &Tree{
+		return &RedBlackTree{
 			comparator: optionalComparator[0],
 		}
 	}
 
-	return &Tree{
+	return &RedBlackTree{
 		comparator: genericcomparator.Comparator,
 	}
 }
 
-// Set inserts or updates a Node in the Tree and returns it together with a flag that indicates if it was inserted.
-func (t *Tree) Set(key interface{}, value interface{}) (node *Node, inserted bool) {
+// Set inserts or updates a Node in the RedBlackTree and returns it together with a flag that indicates if it was
+// inserted.
+func (t *RedBlackTree) Set(key interface{}, value interface{}) (node *Node, inserted bool) {
 	if t.root == nil {
 		node = &Node{key: key, value: value, isBlack: true}
 		t.root = node
@@ -94,7 +98,7 @@ InsertNode:
 }
 
 // Get returns the value stored with the given key (or nil if the value does not exist with found being false).
-func (t *Tree) Get(key interface{}) (value interface{}, found bool) {
+func (t *RedBlackTree) Get(key interface{}) (value interface{}, found bool) {
 	if node := t.Node(key); node != nil {
 		value = node.value
 		found = true
@@ -104,9 +108,9 @@ func (t *Tree) Get(key interface{}) (value interface{}, found bool) {
 	return
 }
 
-// Delete removes a Node belonging to the given key from the Tree and returns it (if it existed) together with a flag
+// Delete removes a Node belonging to the given key from the RedBlackTree and returns it (if it existed) together with a flag
 // that indicates if it existed.
-func (t *Tree) Delete(key interface{}) (node *Node, success bool) {
+func (t *RedBlackTree) Delete(key interface{}) (node *Node, success bool) {
 	node = t.Node(key)
 	if success = node != nil; !success {
 		return
@@ -117,8 +121,9 @@ func (t *Tree) Delete(key interface{}) (node *Node, success bool) {
 	return
 }
 
-// DeleteNode removes the Node from the Tree (which can be i.e. useful for modifying the Tree while iterating.
-func (t *Tree) DeleteNode(node *Node) {
+// DeleteNode removes the Node from the RedBlackTree (which can be i.e. useful for modifying the RedBlackTree while
+// iterating.
+func (t *RedBlackTree) DeleteNode(node *Node) {
 	if node.predecessor != nil {
 		node.predecessor.successor = node.successor
 	} else {
@@ -156,17 +161,17 @@ func (t *Tree) DeleteNode(node *Node) {
 	t.size--
 }
 
-// ForEach iterates through the Nodes of the Tree in ascending order and calls the iterator function for each Node. The
+// ForEach iterates through the Nodes of the RedBlackTree in ascending order and calls the iterator function for each Node. The
 // iteration aborts as soon as the iterator function returns false.
-func (t *Tree) ForEach(iterator func(node *Node) bool) {
+func (t *RedBlackTree) ForEach(iterator func(node *Node) bool) {
 	abortIteration := false
 	for currentNode := t.Min(); currentNode != nil && !abortIteration; currentNode = currentNode.successor {
 		abortIteration = !iterator(currentNode)
 	}
 }
 
-// Keys returns an ordered list of keys that are stored in the Tree.
-func (t *Tree) Keys() (keys []interface{}) {
+// Keys returns an ordered list of keys that are stored in the RedBlackTree.
+func (t *RedBlackTree) Keys() (keys []interface{}) {
 	keys = make([]interface{}, 0, t.size)
 	for currentNode := t.Min(); currentNode != nil; currentNode = currentNode.successor {
 		keys = append(keys, currentNode.key)
@@ -175,8 +180,8 @@ func (t *Tree) Keys() (keys []interface{}) {
 	return
 }
 
-// Values returns an ordered list of values that are stored in the Tree.
-func (t *Tree) Values() (values []interface{}) {
+// Values returns an ordered list of values that are stored in the RedBlackTree.
+func (t *RedBlackTree) Values() (values []interface{}) {
 	values = make([]interface{}, 0, t.size)
 	for currentNode := t.Min(); currentNode != nil; currentNode = currentNode.successor {
 		values = append(values, currentNode.value)
@@ -186,7 +191,7 @@ func (t *Tree) Values() (values []interface{}) {
 }
 
 // Node returns the Node that belongs to the given key (or nil if it doesn't exist).
-func (t *Tree) Node(key interface{}) (node *Node) {
+func (t *RedBlackTree) Node(key interface{}) (node *Node) {
 	for node = t.root; node != nil; {
 		switch t.comparator(key, node.key) {
 		case 0:
@@ -201,18 +206,18 @@ func (t *Tree) Node(key interface{}) (node *Node) {
 	return
 }
 
-// Min returns the Node with the smallest key (or nil if the Tree is empty).
-func (t *Tree) Min() *Node {
+// Min returns the Node with the smallest key (or nil if the RedBlackTree is empty).
+func (t *RedBlackTree) Min() *Node {
 	return t.root.Min()
 }
 
-// Max returns the Node with the largest key (or nil if the Tree is empty).
-func (t *Tree) Max() *Node {
+// Max returns the Node with the largest key (or nil if the RedBlackTree is empty).
+func (t *RedBlackTree) Max() *Node {
 	return t.root.Max()
 }
 
 // Floor returns the Node with the largest key that is <= the given key (or nil if no floor was found).
-func (t *Tree) Floor(key interface{}) (floor *Node) {
+func (t *RedBlackTree) Floor(key interface{}) (floor *Node) {
 	for node := t.root; node != nil; {
 		switch t.comparator(key, node.key) {
 		case 0:
@@ -230,7 +235,7 @@ func (t *Tree) Floor(key interface{}) (floor *Node) {
 }
 
 // Ceiling returns the Node with the smallest key that is >= the given key (or nil if no ceiling was found).
-func (t *Tree) Ceiling(key interface{}) (ceiling *Node) {
+func (t *RedBlackTree) Ceiling(key interface{}) (ceiling *Node) {
 	for node := t.root; node != nil; {
 		switch t.comparator(key, node.key) {
 		case 0:
@@ -247,34 +252,34 @@ func (t *Tree) Ceiling(key interface{}) (ceiling *Node) {
 	return
 }
 
-// Size returns the amount of Nodes in the Tree.
-func (t *Tree) Size() int {
+// Size returns the amount of Nodes in the RedBlackTree.
+func (t *RedBlackTree) Size() int {
 	return t.size
 }
 
-// Empty returns true if the Tree has no Nodes.
-func (t *Tree) Empty() bool {
+// Empty returns true if the RedBlackTree has no Nodes.
+func (t *RedBlackTree) Empty() bool {
 	return t.size == 0
 }
 
-// Clear removes all Nodes from the Tree.
-func (t *Tree) Clear() {
+// Clear removes all Nodes from the RedBlackTree.
+func (t *RedBlackTree) Clear() {
 	t.root = nil
 	t.min = nil
 	t.max = nil
 	t.size = 0
 }
 
-// String returns a human readable version of the Tree.
-func (t *Tree) String() string {
-	return stringify.Struct("Tree",
+// String returns a human readable version of the RedBlackTree.
+func (t *RedBlackTree) String() string {
+	return stringify.Struct("RedBlackTree",
 		stringify.StructField("size", t.size),
 		stringify.StructField("root", t.root),
 	)
 }
 
 // insertCase1 is an internal utility function that implements the 1st insert case.
-func (t *Tree) insertCase1(node *Node) {
+func (t *RedBlackTree) insertCase1(node *Node) {
 	if node.parent == nil {
 		node.isBlack = true
 		return
@@ -284,7 +289,7 @@ func (t *Tree) insertCase1(node *Node) {
 }
 
 // insertCase2 is an internal utility function that implements the 2nd insert case.
-func (t *Tree) insertCase2(node *Node) {
+func (t *RedBlackTree) insertCase2(node *Node) {
 	if node.parent.IsBlack() {
 		return
 	}
@@ -293,7 +298,7 @@ func (t *Tree) insertCase2(node *Node) {
 }
 
 // insertCase3 is an internal utility function that implements the 3rd insert case.
-func (t *Tree) insertCase3(node *Node) {
+func (t *RedBlackTree) insertCase3(node *Node) {
 	uncle := node.Uncle()
 	if !uncle.IsBlack() {
 		node.parent.isBlack = true
@@ -309,7 +314,7 @@ func (t *Tree) insertCase3(node *Node) {
 }
 
 // insertCase4 is an internal utility function that implements the 4th insert case.
-func (t *Tree) insertCase4(node *Node) {
+func (t *RedBlackTree) insertCase4(node *Node) {
 	parent := node.parent
 	grandParent := node.GrandParent()
 
@@ -326,7 +331,7 @@ func (t *Tree) insertCase4(node *Node) {
 }
 
 // insertCase5 is an internal utility function that implements the 5th insert case.
-func (t *Tree) insertCase5(node *Node) {
+func (t *RedBlackTree) insertCase5(node *Node) {
 	parent := node.parent
 	grandParent := node.GrandParent()
 
@@ -341,7 +346,7 @@ func (t *Tree) insertCase5(node *Node) {
 }
 
 // deleteCase1 is an internal utility function that implements the 1st delete case.
-func (t *Tree) deleteCase1(node *Node) {
+func (t *RedBlackTree) deleteCase1(node *Node) {
 	if node.parent == nil {
 		return
 	}
@@ -350,7 +355,7 @@ func (t *Tree) deleteCase1(node *Node) {
 }
 
 // deleteCase2 is an internal utility function that implements the 2nd delete case.
-func (t *Tree) deleteCase2(node *Node) {
+func (t *RedBlackTree) deleteCase2(node *Node) {
 	if sibling := node.Sibling(); !sibling.IsBlack() {
 		parent := node.parent
 
@@ -369,7 +374,7 @@ func (t *Tree) deleteCase2(node *Node) {
 }
 
 // deleteCase3 is an internal utility function that implements the 3rd delete case.
-func (t *Tree) deleteCase3(node *Node) {
+func (t *RedBlackTree) deleteCase3(node *Node) {
 	parent := node.parent
 	sibling := node.Sibling()
 
@@ -383,7 +388,7 @@ func (t *Tree) deleteCase3(node *Node) {
 }
 
 // deleteCase4 is an internal utility function that implements the 4th delete case.
-func (t *Tree) deleteCase4(node *Node) {
+func (t *RedBlackTree) deleteCase4(node *Node) {
 	parent := node.parent
 	sibling := node.Sibling()
 
@@ -397,7 +402,7 @@ func (t *Tree) deleteCase4(node *Node) {
 }
 
 // deleteCase5 is an internal utility function that implements the 5th delete case.
-func (t *Tree) deleteCase5(node *Node) {
+func (t *RedBlackTree) deleteCase5(node *Node) {
 	parent := node.parent
 	sibling := node.Sibling()
 
@@ -416,7 +421,7 @@ func (t *Tree) deleteCase5(node *Node) {
 }
 
 // deleteCase6 is an internal utility function that implements the 6th delete case.
-func (t *Tree) deleteCase6(node *Node) {
+func (t *RedBlackTree) deleteCase6(node *Node) {
 	parent := node.parent
 	sibling := node.Sibling()
 
@@ -434,7 +439,7 @@ func (t *Tree) deleteCase6(node *Node) {
 }
 
 // rotateLeft is an internal utility function that performs a left rotation to re-balance the tree.
-func (t *Tree) rotateLeft(node *Node) {
+func (t *RedBlackTree) rotateLeft(node *Node) {
 	right := node.right
 	t.swapNodes(node, right)
 	node.right = right.left
@@ -446,7 +451,7 @@ func (t *Tree) rotateLeft(node *Node) {
 }
 
 // rotateRight is an internal utility function that performs a right rotation to re-balance the tree.
-func (t *Tree) rotateRight(node *Node) {
+func (t *RedBlackTree) rotateRight(node *Node) {
 	left := node.left
 	t.swapNodes(node, left)
 	node.left = left.right
@@ -458,7 +463,7 @@ func (t *Tree) rotateRight(node *Node) {
 }
 
 // swapNodes is an internal utility function that swaps the position of a parent node with its child.
-func (t *Tree) swapNodes(parent *Node, child *Node) {
+func (t *RedBlackTree) swapNodes(parent *Node, child *Node) {
 	if child != nil {
 		child.parent = parent.parent
 	}
@@ -473,3 +478,123 @@ func (t *Tree) swapNodes(parent *Node, child *Node) {
 		parent.parent.right = child
 	}
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region Node /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Node represents a Node in the RedBlackTree.
+type Node struct {
+	key         interface{}
+	value       interface{}
+	parent      *Node
+	left        *Node
+	right       *Node
+	predecessor *Node
+	successor   *Node
+	isBlack     bool
+}
+
+// Key returns the key that is used to identify the Node.
+func (n *Node) Key() interface{} {
+	return n.key
+}
+
+// Value returns the value that is associated to the Node.
+func (n *Node) Value() interface{} {
+	return n.value
+}
+
+// Parent returns the parent of the Node (or nil if the Node is the root of the RedBlackTree).
+func (n *Node) Parent() *Node {
+	return n.parent
+}
+
+// Successor returns the Node with the next highest key (or nil if none exists).
+func (n *Node) Successor() *Node {
+	return n.successor
+}
+
+// Predecessor returns the Node with the next lower key (or nil if none exists).
+func (n *Node) Predecessor() *Node {
+	return n.predecessor
+}
+
+// IsBlack returns true if the Node is marked as black (colors are used for the self-balancing properties of the
+// RedBlackTree).
+func (n *Node) IsBlack() bool {
+	if n == nil {
+		return true
+	}
+
+	return n.isBlack
+}
+
+// GrandParent returns the parent of the parent Node (or nil if it does not exist).
+func (n *Node) GrandParent() *Node {
+	if n != nil && n.parent != nil {
+		return n.parent.parent
+	}
+
+	return nil
+}
+
+// Uncle returns the sibling of the parent Node.
+func (n *Node) Uncle() *Node {
+	if n == nil || n.parent == nil || n.parent.parent == nil {
+		return nil
+	}
+
+	return n.parent.Sibling()
+}
+
+// Sibling returns the alternative Node sharing the same parent Node.
+func (n *Node) Sibling() *Node {
+	if n == nil || n.parent == nil {
+		return nil
+	}
+
+	if n == n.parent.left {
+		return n.parent.right
+	}
+
+	return n.parent.left
+}
+
+// Min returns the smallest of all descendants of the Node.
+func (n *Node) Min() (node *Node) {
+	if node = n; node == nil {
+		return
+	}
+
+	for node.left != nil {
+		node = node.left
+	}
+
+	return
+}
+
+// Max returns the largest of all descendants of the Node.
+func (n *Node) Max() (node *Node) {
+	if node = n; node == nil {
+		return
+	}
+
+	for node.right != nil {
+		node = node.right
+	}
+
+	return
+}
+
+// String returns a human readable version of the Node.
+func (n *Node) String() string {
+	return stringify.Struct("GetElement",
+		stringify.StructField("key", n.key),
+		stringify.StructField("value", n.value),
+		stringify.StructField("left", n.left),
+		stringify.StructField("right", n.right),
+	)
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
