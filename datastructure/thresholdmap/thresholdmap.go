@@ -174,29 +174,6 @@ const (
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region IteratorState ////////////////////////////////////////////////////////////////////////////////////////////////
-
-// IteratorState represents the state of the Iterator that is used to track where in the set of contained Elements the
-// pointer is currently located.
-type IteratorState int
-
-const (
-	// InitialState is the state of the Iterator before the first Element has been retrieved.
-	InitialState IteratorState = iota
-
-	// IterationStartedState is the state of the Iterator after the first Element has been retrieved and before we have
-	// reached either the first or the last Element.
-	IterationStartedState
-
-	// LeftEndReachedState is the state of the Iterator after we have reached the smallest Element.
-	LeftEndReachedState
-
-	// RightEndReachedState is the state of the Iterator after we have reached the largest Element.
-	RightEndReachedState
-)
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // region Iterator /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Iterator is an object that allows to iterate over the ThresholdMap by providing methods to walk through the map in a
@@ -213,6 +190,11 @@ func NewIterator(startingElement *Element) *Iterator {
 		start:   startingElement,
 		current: startingElement,
 	}
+}
+
+// State returns the current IteratorState that the Iterator is in.
+func (i *Iterator) State() IteratorState {
+	return i.state
 }
 
 // HasNext returns true if there is another Element after the previously retrieved Element that can be requested via the
@@ -299,5 +281,28 @@ func (i *Iterator) wrapNode(node *redblacktree.Node) (element *Element) {
 
 	return &Element{node}
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region IteratorState ////////////////////////////////////////////////////////////////////////////////////////////////
+
+// IteratorState represents the state of the Iterator that is used to track where in the set of contained Elements the
+// pointer is currently located.
+type IteratorState int
+
+const (
+	// InitialState is the state of the Iterator before the first Element has been retrieved.
+	InitialState IteratorState = iota
+
+	// IterationStartedState is the state of the Iterator after the first Element has been retrieved and before we have
+	// reached either the first or the last Element.
+	IterationStartedState
+
+	// LeftEndReachedState is the state of the Iterator after we have reached the smallest Element.
+	LeftEndReachedState
+
+	// RightEndReachedState is the state of the Iterator after we have reached the largest Element.
+	RightEndReachedState
+)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
