@@ -10,7 +10,7 @@ import (
 // ThresholdMap is a data structure that allows to map keys bigger or lower than a certain threshold to a given value.
 type ThresholdMap struct {
 	mode Mode
-	tree *redblacktree.Tree
+	tree *redblacktree.RedBlackTree
 }
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
@@ -136,7 +136,7 @@ func (t *ThresholdMap) Clear() {
 	t.tree.Clear()
 }
 
-// wrapNode is an internal utility function that wraps the Node of the underlying Tree with a map Element.
+// wrapNode is an internal utility function that wraps the Node of the underlying RedBlackTree with a map Element.
 func (t *ThresholdMap) wrapNode(node *redblacktree.Node) (element *Element) {
 	if node == nil {
 		return
@@ -149,7 +149,7 @@ func (t *ThresholdMap) wrapNode(node *redblacktree.Node) (element *Element) {
 
 // region Element //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Element is a wrapper for the Node used in the underlying red-black Tree.
+// Element is a wrapper for the Node used in the underlying red-black RedBlackTree.
 type Element struct {
 	*redblacktree.Node
 }
@@ -273,7 +273,7 @@ func (i *Iterator) Reset() {
 	i.state = InitialState
 }
 
-// wrapNode is an internal utility function that wraps the Node of the underlying Tree with a map Element.
+// wrapNode is an internal utility function that wraps the Node of the underlying RedBlackTree with a map Element.
 func (i *Iterator) wrapNode(node *redblacktree.Node) (element *Element) {
 	if node == nil {
 		return
