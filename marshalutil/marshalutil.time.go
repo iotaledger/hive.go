@@ -4,9 +4,10 @@ import (
 	"time"
 )
 
-const TIME_SIZE = INT64_SIZE
+// TimeSize contains the amount of bytes of a marshaled Time value.
+const TimeSize = Int64Size
 
-// WriteTime marshals the given time into a sequence of bytes, that get appended to the internal buffer.
+// WriteTime writes a marshaled Time value to the internal buffer.
 func (util *MarshalUtil) WriteTime(timeToWrite time.Time) *MarshalUtil {
 	nanoSeconds := timeToWrite.UnixNano()
 
@@ -20,7 +21,7 @@ func (util *MarshalUtil) WriteTime(timeToWrite time.Time) *MarshalUtil {
 	return util
 }
 
-// ReadTime unmarshals a time object from the internal read buffer.
+// ReadTime reads a Time value from the internal buffer.
 func (util *MarshalUtil) ReadTime() (result time.Time, err error) {
 	nanoSeconds, err := util.ReadInt64()
 	if err != nil {

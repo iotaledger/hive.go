@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/iotaledger/hive.go/types"
 )
 
 func init() {
@@ -150,6 +152,42 @@ func (rmap *RandomMap) RandomEntry() (result interface{}) {
 	}
 
 	rmap.mutex.RUnlock()
+
+	return
+}
+
+// RandomUniqueEntries returns n random and unique values from the map.
+// When count is equal or bigger than the size of the random map, the every entry in the map is returned.
+func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
+	rmap.mutex.RLock()
+	defer rmap.mutex.RUnlock()
+
+	// zero or negative count results in empty result
+	if count < 1 {
+		return
+	}
+
+	// can only return as many as there are in the map
+	if rmap.size <= count {
+		results = make([]interface{}, 0, rmap.size)
+		rmap.ForEach(func(key interface{}, value interface{}) {
+			results = append(results, value)
+		})
+		return
+	}
+
+	// helper to keep track of already seen keys
+	seenKeys := make(map[interface{}]types.Empty)
+	results = make([]interface{}, 0, count)
+
+	// there has to be at least (count + 1) key value pairs in the map
+	for len(seenKeys) != count {
+		randomKey := rmap.randomKey()
+		if _, seenAlready := seenKeys[randomKey]; !seenAlready {
+			seenKeys[randomKey] = types.Void
+			results = append(results, rmap.rawMap[randomKey].value)
+		}
+	}
 
 	return
 }

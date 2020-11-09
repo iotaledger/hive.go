@@ -51,6 +51,7 @@ func (util *MarshalUtil) ReadBytes(length int, optionalReadOffset ...int) ([]byt
 	return util.bytes[util.readOffset:readEndOffset], nil
 }
 
+// ReadRemainingBytes reads the remaining bytes from the internal buffer.
 func (util *MarshalUtil) ReadRemainingBytes() []byte {
 	defer util.ReadSeek(util.size)
 
