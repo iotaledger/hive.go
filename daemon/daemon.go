@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -62,11 +63,20 @@ func IsStopped() bool {
 	return defaultDaemon.IsStopped()
 }
 
+// ContextStopped returns a context that is done when the deamon is stopped.
+func ContextStopped() context.Context {
+	return defaultDaemon.ContextStopped()
+}
+
 // New creates a new daemon instance.
 func New() *OrderedDaemon {
+	stoppedCtx, stoppedCtxCancel := context.WithCancel(context.Background())
+
 	return &OrderedDaemon{
 		running:                typeutils.NewAtomicBool(),
 		stopped:                typeutils.NewAtomicBool(),
+		stoppedCtx:             stoppedCtx,
+		stoppedCtxCancel:       stoppedCtxCancel,
 		workers:                make(map[string]*worker),
 		shutdownOrderWorker:    make([]string, 0),
 		wgPerSameShutdownOrder: make(map[int]*sync.WaitGroup),
@@ -78,6 +88,8 @@ func New() *OrderedDaemon {
 type OrderedDaemon struct {
 	running                *typeutils.AtomicBool
 	stopped                *typeutils.AtomicBool
+	stoppedCtx             context.Context
+	stoppedCtxCancel       context.CancelFunc
 	stopOnce               sync.Once
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
@@ -227,6 +239,7 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 
 func (d *OrderedDaemon) shutdown() {
 	d.stopped.Set()
+	d.stoppedCtxCancel()
 	if !d.IsRunning() {
 		return
 	}
@@ -293,4 +306,9 @@ func (d *OrderedDaemon) IsRunning() bool {
 // IsStopped checks whether the daemon was stopped.
 func (d *OrderedDaemon) IsStopped() bool {
 	return d.stopped.IsSet()
+}
+
+// ContextStopped returns a context that is done when the deamon is stopped.
+func (d *OrderedDaemon) ContextStopped() context.Context {
+	return d.stoppedCtx
 }
