@@ -1,5 +1,9 @@
 package daemon
 
+import (
+	"context"
+)
+
 // WorkerFunc is the function to run a worker accepting its shutdown signal handler channel.
 type WorkerFunc = func(shutdownSignal <-chan struct{})
 
@@ -33,4 +37,7 @@ type Daemon interface {
 
 	// IsStopped checks whether the daemon was stopped.
 	IsStopped() bool
+
+	// ContextStopped returns a context that is done when the deamon is stopped.
+	ContextStopped() context.Context
 }

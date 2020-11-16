@@ -1,6 +1,8 @@
 package daemon_test
 
 import (
+	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -14,13 +16,28 @@ import (
 // graceTime for go routines to start
 const graceTime = 5 * time.Millisecond
 
+var ErrDaemonStopped = errors.New("daemon was stopped")
+
+// returnErrIfCtxDone returns the given error if the provided context is done.
+func returnErrIfCtxDone(ctx context.Context, err error) error {
+	select {
+	case <-ctx.Done():
+		return err
+	default:
+		return nil
+	}
+}
+
 func TestShutdown(t *testing.T) {
 	d := daemon.New()
+	ctxStopped := d.ContextStopped()
 	d.Start()
 	assert.True(t, d.IsRunning())
+	require.NoError(t, returnErrIfCtxDone(ctxStopped, ErrDaemonStopped))
 	d.ShutdownAndWait()
 	assert.False(t, d.IsRunning())
 	assert.True(t, d.IsStopped())
+	require.Equal(t, returnErrIfCtxDone(ctxStopped, ErrDaemonStopped), ErrDaemonStopped)
 }
 
 func TestShutdownWithoutStart(t *testing.T) {
