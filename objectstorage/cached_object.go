@@ -7,6 +7,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -85,7 +86,7 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 				atomic.StorePointer(&cachedObject.releaseTimer, nil)
 
 				if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-					cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+					cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
 				} else if consumers < 0 {
 					panic("called Release() too often")
 				}
@@ -94,7 +95,7 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 			// only force release if there is no timer running, so that objects that landed in the cache through normal
 			// loading stay available
 			if atomic.LoadPointer(&cachedObject.releaseTimer) == nil {
-				cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+				cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
 			}
 		}
 	} else if consumers < 0 {
@@ -195,7 +196,7 @@ func (cachedObject *CachedObjectImpl) retain() CachedObject {
 func (cachedObject *CachedObjectImpl) storeOnCreation() {
 	if cachedObject.objectStorage.options.persistenceEnabled && cachedObject.objectStorage.options.storeOnCreation && !typeutils.IsInterfaceNil(cachedObject.value) && cachedObject.value.IsModified() && cachedObject.value.ShouldPersist() {
 		// store the object immediately
-		cachedObject.objectStorage.options.batchedWriterInstance.batchWrite(cachedObject)
+		cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
 	}
 }
 
@@ -260,4 +261,97 @@ func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
 	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
 		(*(*time.Timer)(timer)).Stop()
 	}
+}
+
+// BatchWriteObject interface methods
+
+// BatchWrite checks if the cachedObject should be persisted.
+// If all checks pass, the cachedObject is marshalled and added to the BatchedMutations.
+func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
+	objectStorage := cachedObject.objectStorage
+	if !objectStorage.options.persistenceEnabled {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
+			storableObject.SetModified(false)
+		}
+
+		return
+	}
+
+	consumers := atomic.LoadInt32(&(cachedObject.consumers))
+	if consumers < 0 {
+		panic("too many unregistered consumers of cached object")
+	}
+
+	storableObject := cachedObject.Get()
+
+	if typeutils.IsInterfaceNil(storableObject) {
+		// only blind delete if there are no consumers
+		if consumers == 0 && cachedObject.blindDelete.IsSet() {
+			if err := batchedMuts.Delete(cachedObject.key); err != nil {
+				panic(err)
+			}
+		}
+
+		return
+	}
+
+	if storableObject.IsDeleted() {
+		// only delete if there are no consumers
+		if consumers == 0 {
+			storableObject.SetModified(false)
+
+			if err := batchedMuts.Delete(cachedObject.key); err != nil {
+				panic(err)
+			}
+		}
+
+		return
+	}
+
+	// only store if there are no consumers anymore or the object should be stored on creation
+	if consumers != 0 && !cachedObject.objectStorage.options.storeOnCreation {
+		return
+	}
+
+	if storableObject.ShouldPersist() && storableObject.IsModified() {
+		storableObject.SetModified(false)
+
+		var marshaledValue []byte
+		if !objectStorage.options.keysOnly {
+			marshaledValue = storableObject.ObjectStorageValue()
+		}
+
+		if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// BatchWriteDone is called after the cachedObject was persisted.
+// It releases the cachedObject from the cache if no consumers are left and it was not modified in the meantime.
+func (cachedObject *CachedObjectImpl) BatchWriteDone() {
+	objectStorage := cachedObject.objectStorage
+
+	objectStorage.flushMutex.RLock()
+	defer objectStorage.flushMutex.RUnlock()
+
+	objectStorage.cacheMutex.Lock()
+	defer objectStorage.cacheMutex.Unlock()
+
+	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
+		// only delete if the object is still empty, or was not modified since the write (and was not evicted yet)
+		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && atomic.AddInt32(&cachedObject.evicted, 1) == 1 && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
+			objectStorage.cachedObjectsEmpty.Done()
+		}
+	}
+}
+
+// BatchWriteScheduled returns true if the cachedObject is already scheduled for a BatchWrite operation.
+func (cachedObject *CachedObjectImpl) BatchWriteScheduled() bool {
+	return atomic.AddInt32(&(cachedObject.batchWriteScheduled), 1) != 1
+}
+
+// ResetBatchWriteScheduled resets the flag that the cachedObject is scheduled for a BatchWrite operation.
+func (cachedObject *CachedObjectImpl) ResetBatchWriteScheduled() {
+	atomic.StoreInt32(&(cachedObject.batchWriteScheduled), 0)
 }
