@@ -216,6 +216,14 @@ func (s *badgerStore) Batched() kvstore.BatchedMutations {
 	}
 }
 
+func (s *badgerStore) Flush() error {
+	return s.instance.Sync()
+}
+
+func (s *badgerStore) Close() error {
+	return s.instance.Close()
+}
+
 // batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
 type batchedMutations struct {
 	kvStore          *badgerStore
