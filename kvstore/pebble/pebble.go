@@ -221,6 +221,14 @@ func (s *pebbleStore) Batched() kvstore.BatchedMutations {
 	}
 }
 
+func (s *pebbleStore) Flush() error {
+	return s.instance.Flush()
+}
+
+func (s *pebbleStore) Close() error {
+	return s.instance.Close()
+}
+
 // batchedMutations is a wrapper around a WriteBatch of a pebbleDB.
 type batchedMutations struct {
 	kvStore          *pebbleStore

@@ -136,4 +136,10 @@ type KVStore interface {
 
 	// Batched returns a BatchedMutations interface to execute batched mutations.
 	Batched() BatchedMutations
+
+	// Flush persists all outstanding write operations to disc.
+	Flush() error
+
+	// Close closes the database file handles.
+	Close() error
 }
