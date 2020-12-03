@@ -15,4 +15,7 @@ var (
 
 	// ErrParseBytesFailed is returned if information can not be parsed from a sequence of bytes.
 	ErrParseBytesFailed = errors.New("failed to parse bytes")
+
+	// ErrFatal is returned if a fatal error occurs that does not allow the program to continue execution.
+	ErrFatal = errors.New("fatal error")
 )
