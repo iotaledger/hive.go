@@ -33,7 +33,6 @@ func PebbleDB(t *testing.T) (kvstore.KVStore, error) {
 		MemTableSize:                64 << 20,
 		MemTableStopWritesThreshold: 4,
 	}
-	opts.Experimental.L0SublevelCompactions = true
 
 	for i := 0; i < len(opts.Levels); i++ {
 		l := &opts.Levels[i]
@@ -47,7 +46,6 @@ func PebbleDB(t *testing.T) (kvstore.KVStore, error) {
 		l.EnsureDefaults()
 	}
 	opts.Levels[6].FilterPolicy = nil
-	opts.Experimental.FlushSplitBytes = opts.Levels[0].TargetFileSize
 
 	opts.EnsureDefaults()
 
