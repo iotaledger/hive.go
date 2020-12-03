@@ -3,7 +3,7 @@ module github.com/iotaledger/hive.go
 go 1.15
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20201023120638-f1224da22976
+	github.com/cockroachdb/pebble v0.0.0-20201130172119-f19faf8529d6
 	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
