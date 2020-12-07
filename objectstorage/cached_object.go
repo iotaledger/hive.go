@@ -13,6 +13,7 @@ import (
 )
 
 type CachedObject interface {
+	Key() []byte
 	Exists() bool
 	Get() (result StorableObject)
 	Consume(consumer func(StorableObject), forceRelease ...bool) bool
@@ -62,6 +63,11 @@ func NewEmptyCachedObject(key []byte) (result *CachedObjectImpl) {
 	}
 
 	return
+}
+
+// Key returns the object storage key that is used to address the object.
+func (cachedObject *CachedObjectImpl) Key() []byte {
+	return cachedObject.key
 }
 
 // Retrieves the StorableObject, that is cached in this container.
