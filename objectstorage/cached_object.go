@@ -319,37 +319,63 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 		return
 	}
 
-	if storableObject.ShouldPersist() && storableObject.IsModified() {
-		storableObject.SetModified(false)
+	if !storableObject.IsModified() {
+		return
+	}
 
-		var marshaledValue []byte
-		if !objectStorage.options.keysOnly {
-			marshaledValue = storableObject.ObjectStorageValue()
-		}
+	storableObject.SetModified(false)
 
-		if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
-			panic(err)
-		}
+	if !storableObject.ShouldPersist() {
+		return
+	}
+
+	var marshaledValue []byte
+	if !objectStorage.options.keysOnly {
+		marshaledValue = storableObject.ObjectStorageValue()
+	}
+
+	if err := batchedMuts.Set(cachedObject.key, marshaledValue); err != nil {
+		panic(err)
 	}
 }
 
 // BatchWriteDone is called after the cachedObject was persisted.
 // It releases the cachedObject from the cache if no consumers are left and it was not modified in the meantime.
 func (cachedObject *CachedObjectImpl) BatchWriteDone() {
-	objectStorage := cachedObject.objectStorage
+	// abort if there are still consumers
+	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers != 0 {
+		return
+	}
 
+	// abort if the object was modified in the mean time
+	if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) && storableObject.IsModified() {
+		return
+	}
+
+	// abort if the object was evicted already
+	if atomic.AddInt32(&cachedObject.evicted, 1) != 1 {
+		return
+	}
+
+	// acquire mutexes prior to cache modifications
+	objectStorage := cachedObject.objectStorage
 	objectStorage.flushMutex.RLock()
 	defer objectStorage.flushMutex.RUnlock()
-
 	objectStorage.cacheMutex.Lock()
 	defer objectStorage.cacheMutex.Unlock()
 
-	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-		// only delete if the object is still empty, or was not modified since the write (and was not evicted yet)
-		if storableObject := cachedObject.Get(); (typeutils.IsInterfaceNil(storableObject) || !storableObject.IsModified()) && atomic.AddInt32(&cachedObject.evicted, 1) == 1 && objectStorage.deleteElementFromCache(cachedObject.key) && objectStorage.size == 0 {
-			objectStorage.cachedObjectsEmpty.Done()
-		}
+	// abort if the object could not be deleted from the cache
+	if !objectStorage.deleteElementFromCache(cachedObject.key) {
+		return
 	}
+
+	// abort if the storage is not empty
+	if objectStorage.size != 0 {
+		return
+	}
+
+	// mark storage as empty
+	objectStorage.cachedObjectsEmpty.Done()
 }
 
 // BatchWriteScheduled returns true if the cachedObject is already scheduled for a BatchWrite operation.
