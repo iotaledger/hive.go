@@ -376,7 +376,7 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 		return
 	}
 
-	// marl storage as empty
+	// mark storage as empty
 	objectStorage.cachedObjectsEmpty.Done()
 }
 
