@@ -326,7 +326,7 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 	storableObject.SetModified(false)
 
 	if !storableObject.ShouldPersist() {
-		returns
+		return
 	}
 
 	var marshaledValue []byte
