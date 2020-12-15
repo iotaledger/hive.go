@@ -319,13 +319,13 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 		return
 	}
 
-	if !storableObject.ShouldPersist() {
-		// set object as not modified even if we do not persist because it otherwise will not get evicted from the cache
-		storableObject.SetModified(false)
+	if !storableObject.IsModified() {
 		return
 	}
 
-	if !storableObject.IsModified() {
+	if !storableObject.ShouldPersist() {
+		// set object as not modified even if we do not persist because it otherwise will not get evicted from the cache
+		storableObject.SetModified(false)
 		return
 	}
 
