@@ -463,6 +463,23 @@ func (objectStorage *ObjectStorage) Prune() error {
 
 	objectStorage.flushMutex.Lock()
 
+	// create a list of objects that shall be marked as evicted
+	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
+	var i int
+	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
+		cachedObject.cancelScheduledRelease()
+
+		cachedObjects[i] = cachedObject
+		i++
+
+		return true
+	})
+
+	// mark collected objects as evicted
+	for j := 0; j < i; j++ {
+		atomic.AddInt32(&(cachedObjects[j].evicted), 1)
+	}
+
 	objectStorage.cacheMutex.Lock()
 	if err := objectStorage.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
@@ -471,6 +488,10 @@ func (objectStorage *ObjectStorage) Prune() error {
 	}
 
 	objectStorage.cachedObjects = make(map[string]interface{})
+	if objectStorage.size != 0 {
+		objectStorage.size = 0
+		objectStorage.cachedObjectsEmpty.Done()
+	}
 	objectStorage.cacheMutex.Unlock()
 
 	objectStorage.flushMutex.Unlock()
