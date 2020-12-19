@@ -468,6 +468,9 @@ func (objectStorage *ObjectStorage) Prune() error {
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		cachedObject.cancelScheduledRelease()
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.SetModified(false)
+		}
 
 		cachedObjects[i] = cachedObject
 		i++
