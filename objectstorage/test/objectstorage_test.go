@@ -834,7 +834,7 @@ func TestEvictionBug(t *testing.T) {
 		//time.Sleep(time.Duration(10) * time.Microsecond)
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
 		if cachedObject.Get().(*testObject).value != count*2 {
-			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count))
+			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count*2))
 
 			return
 		}
