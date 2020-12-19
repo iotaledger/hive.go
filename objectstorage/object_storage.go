@@ -463,25 +463,16 @@ func (objectStorage *ObjectStorage) Prune() error {
 
 	objectStorage.flushMutex.Lock()
 
-	// create a list of objects that shall be marked as evicted
-	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
-	var i int
+	// mark cached objects as evicted
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		cachedObject.cancelScheduledRelease()
+		atomic.AddInt32(&(cachedObject.evicted), 1)
 		if storableObject := cachedObject.Get(); storableObject != nil {
 			storableObject.SetModified(false)
 		}
 
-		cachedObjects[i] = cachedObject
-		i++
-
 		return true
 	})
-
-	// mark collected objects as evicted
-	for j := 0; j < i; j++ {
-		atomic.AddInt32(&(cachedObjects[j].evicted), 1)
-	}
 
 	objectStorage.cacheMutex.Lock()
 	if err := objectStorage.store.Clear(); err != nil {
