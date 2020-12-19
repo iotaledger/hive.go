@@ -342,6 +342,13 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 // BatchWriteDone is called after the cachedObject was persisted.
 // It releases the cachedObject from the cache if no consumers are left and it was not modified in the meantime.
 func (cachedObject *CachedObjectImpl) BatchWriteDone() {
+	// acquire mutexes prior to cache modifications
+	objectStorage := cachedObject.objectStorage
+	objectStorage.flushMutex.RLock()
+	defer objectStorage.flushMutex.RUnlock()
+	objectStorage.cacheMutex.Lock()
+	defer objectStorage.cacheMutex.Unlock()
+
 	// abort if there are still consumers
 	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers != 0 {
 		return
@@ -356,13 +363,6 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 	if atomic.AddInt32(&cachedObject.evicted, 1) != 1 {
 		return
 	}
-
-	// acquire mutexes prior to cache modifications
-	objectStorage := cachedObject.objectStorage
-	objectStorage.flushMutex.RLock()
-	defer objectStorage.flushMutex.RUnlock()
-	objectStorage.cacheMutex.Lock()
-	defer objectStorage.cacheMutex.Unlock()
 
 	// abort if the object could not be deleted from the cache
 	if !objectStorage.deleteElementFromCache(cachedObject.key) {
