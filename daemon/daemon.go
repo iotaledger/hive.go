@@ -212,10 +212,9 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 
 // DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
 func (d *OrderedDaemon) DebugEnabled(enabled bool) {
-	switch enabled {
-	case true:
+	if enabled {
 		defaultDaemon.logger = logger.NewLogger("Daemon")
-	case false:
+	} else {
 		defaultDaemon.logger = nil
 	}
 }
@@ -261,6 +260,10 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 }
 
 func (d *OrderedDaemon) shutdown() {
+	if d.logger != nil {
+		d.logger.Debugf("Shutting down ...")
+	}
+
 	d.stopped.Set()
 	d.stoppedCtxCancel()
 	if !d.IsRunning() {
