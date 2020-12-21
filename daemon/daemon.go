@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -29,6 +30,11 @@ func GetRunningBackgroundWorkers() []string {
 // to define in which shutdown order this particular background worker is shut down (higher = earlier).
 func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	return defaultDaemon.BackgroundWorker(name, handler, priority...)
+}
+
+// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
+func DebugEnabled(enabled bool) {
+	defaultDaemon.DebugEnabled(enabled)
 }
 
 // Start starts the default daemon instance.
@@ -95,6 +101,7 @@ type OrderedDaemon struct {
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
 	lock                   syncutils.RWMutex
+	logger                 *logger.Logger
 }
 
 type worker struct {
@@ -127,9 +134,15 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 
 	worker.running.Set()
 	go func() {
+		if d.logger != nil {
+			d.logger.Debugf("Starting Background Worker: %s ...", name)
+		}
 		backgroundWorker(worker.shutdownSignal)
 		worker.running.UnSet()
 		shutdownOrderWaitGroup.Done()
+		if d.logger != nil {
+			d.logger.Debugf("Stopping Background Worker: %s ... done", name)
+		}
 	}()
 }
 
@@ -195,6 +208,16 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	}
 
 	return nil
+}
+
+// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
+func (d *OrderedDaemon) DebugEnabled(enabled bool) {
+	switch enabled {
+	case true:
+		defaultDaemon.logger = logger.NewLogger("Daemon")
+	case false:
+		defaultDaemon.logger = nil
+	}
 }
 
 // Start starts the daemon.
@@ -269,6 +292,9 @@ func (d *OrderedDaemon) stopWorkers() {
 				// wait for every worker in the previous shutdown priority to terminate
 				d.wgPerSameShutdownOrder[prevPriority].Wait()
 				prevPriority = worker.shutdownOrder
+			}
+			if d.logger != nil {
+				d.logger.Debugf("Stopping Background Worker: %s ...", name)
 			}
 			close(worker.shutdownSignal)
 		}
