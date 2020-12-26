@@ -22,7 +22,8 @@ func TestTicker_WaitForShutdown(t *testing.T) {
 		}
 	}()
 
-	NewTicker(func() { counter.Inc() }, 100*time.Millisecond, shutdownChan).WaitForShutdown()
+	ticker := NewTicker(func() { counter.Inc() }, 100*time.Millisecond, shutdownChan)
+	ticker.WaitForShutdown()
 
 	assert.GreaterOrEqual(t, counter.Load(), uint64(10))
 }

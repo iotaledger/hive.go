@@ -45,14 +45,12 @@ func (t *Ticker) Shutdown() {
 // WaitForShutdown waits until the Ticker was shut down.
 func (t *Ticker) WaitForShutdown() {
 	<-t.internalShutdownSignal
-	return
 }
 
 // WaitForGraceFullShutdown waits until the Ticker was shut down and the last handler has terminated.
 func (t *Ticker) WaitForGraceFullShutdown() {
 	<-t.internalShutdownSignal
 	t.handlerDone.Wait()
-	return
 }
 
 // run is an internal utility function that executes the ticker logic.
