@@ -11,7 +11,7 @@ type Ticker struct {
 	interval               time.Duration
 	internalShutdownSignal chan struct{}
 	externalShutdownSignal <-chan struct{}
-	handlerDone            sync.WaitGroup
+	shutdownWG             sync.WaitGroup
 	shutdownOnce           sync.Once
 }
 
@@ -44,13 +44,17 @@ func (t *Ticker) Shutdown() {
 
 // WaitForShutdown waits until the Ticker was shut down.
 func (t *Ticker) WaitForShutdown() {
-	<-t.internalShutdownSignal
+	select {
+	case <-t.externalShutdownSignal:
+		return
+	case <-t.internalShutdownSignal:
+		return
+	}
 }
 
 // WaitForGraceFullShutdown waits until the Ticker was shut down and the last handler has terminated.
 func (t *Ticker) WaitForGraceFullShutdown() {
-	<-t.internalShutdownSignal
-	t.handlerDone.Wait()
+	t.shutdownWG.Wait()
 }
 
 // run is an internal utility function that executes the ticker logic.
@@ -58,15 +62,12 @@ func (t *Ticker) run() {
 	ticker := time.NewTicker(t.interval)
 	defer ticker.Stop() // prevent the ticker from leaking
 
-	t.handlerDone.Add(1)
-	defer t.handlerDone.Done()
+	t.shutdownWG.Add(1)
+	defer t.shutdownWG.Done()
 
 	for {
 		select {
 		case <-t.externalShutdownSignal:
-			if t.externalShutdownSignal != t.internalShutdownSignal {
-				t.Shutdown()
-			}
 			return
 		case <-t.internalShutdownSignal:
 			return
