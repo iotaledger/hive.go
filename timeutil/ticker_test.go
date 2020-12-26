@@ -38,7 +38,7 @@ func TestTicker_ExternalShutdownSignal(t *testing.T) {
 	assert.GreaterOrEqual(t, counter.Load(), uint64(3))
 
 	// wait for the handler to finish
-	ticker.WaitForGraceFullShutdown()
+	ticker.WaitForGracefulShutdown()
 
 	// make sure we really waited for the handler to finish
 	assert.GreaterOrEqual(t, counter.Load(), uint64(4))
