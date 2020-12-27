@@ -48,14 +48,14 @@ func TestTicker_ManualShutdown(t *testing.T) {
 	// use counter to track execution state
 	counter := atomic.NewUint64(0)
 
-	// create ticker and wait for external shutdown
+	// create ticker and wait for manual shutdown
 	ticker := NewTicker(func() {
 		counter.Inc()
 		time.Sleep(1 * time.Second)
 		counter.Inc()
 	}, 100*time.Millisecond)
 
-	// create "external" shutdown signal
+	// manual shutdown when threshold is reached
 	go func() {
 		for {
 			time.Sleep(10 * time.Millisecond)
@@ -69,7 +69,7 @@ func TestTicker_ManualShutdown(t *testing.T) {
 	// wait for the shutdown signal
 	ticker.WaitForShutdown()
 
-	// make sure we really waited for the external shutdown signal
+	// make sure we really waited for the shutdown signal
 	assert.GreaterOrEqual(t, counter.Load(), uint64(3))
 
 	// wait for the handler to finish
