@@ -1,10 +1,12 @@
 package bls
 
 import (
+	"github.com/iotaledger/hive.go/crypto"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/kyber/v3/sign"
 	"go.dedis.ch/kyber/v3/sign/bdn"
+	"go.dedis.ch/kyber/v3/util/random"
 	"golang.org/x/xerrors"
 )
 
@@ -21,6 +23,9 @@ const (
 
 // blsSuite is required to perform the BLS operations of the 3rd party library.
 var blsSuite = bn256.NewSuite()
+
+// randomness contains a secure source of randomness that is used by BLS.
+var randomness = random.New(crypto.Randomness)
 
 // AggregateSignatures aggregates multiple SignatureWithPublicKey objects into a single SignatureWithPublicKey.
 func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (aggregatedSignature SignatureWithPublicKey, err error) {
