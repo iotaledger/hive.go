@@ -130,9 +130,7 @@ func (rmap *RandomMap) ForEach(consumer func(key interface{}, value interface{})
 	rmap.mutex.RLock()
 	defer rmap.mutex.RUnlock()
 
-	for _, key := range rmap.keys {
-		consumer(key, rmap.rawMap[key].value)
-	}
+	rmap.forEach(consumer)
 }
 
 // RandomKey returns a random key from the map.
@@ -170,7 +168,7 @@ func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
 	// can only return as many as there are in the map
 	if rmap.size <= count {
 		results = make([]interface{}, 0, rmap.size)
-		rmap.ForEach(func(key interface{}, value interface{}) {
+		rmap.forEach(func(key interface{}, value interface{}) {
 			results = append(results, value)
 		})
 		return
@@ -203,6 +201,16 @@ func (rmap *RandomMap) Keys() (result []interface{}) {
 	return
 }
 
+// internal methods, not thread safe
+
+// randomKey gets a random key from the map.
 func (rmap *RandomMap) randomKey() (result interface{}) {
 	return rmap.keys[rand.Intn(rmap.size)]
+}
+
+// forEach executes a function for all key-value pairs in the map.
+func (rmap *RandomMap) forEach(consumer func(key interface{}, value interface{})) {
+	for _, key := range rmap.keys {
+		consumer(key, rmap.rawMap[key].value)
+	}
 }
