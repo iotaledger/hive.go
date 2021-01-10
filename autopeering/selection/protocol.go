@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/backoff"
@@ -169,14 +168,14 @@ func (p *Protocol) local() *peer.Local {
 
 // PeeringRequest sends a PeeringRequest to the given peer. This method blocks
 // until a response is received and the status answer is returned.
-func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) {
+func (p *Protocol) PeeringRequest(to *peer.Peer, channel int) (bool, error) {
 	if err := p.disc.EnsureVerified(to); err != nil {
 		return false, err
 	}
 
 	// create the request package
 	toAddr := to.Address()
-	req := newPeeringRequest(salt)
+	req := newPeeringRequest(int32(channel))
 	data := marshal(req)
 
 	// compute the message hash
@@ -234,10 +233,10 @@ func marshal(msg pb.Message) []byte {
 
 // ------ Message Constructors ------
 
-func newPeeringRequest(salt *salt.Salt) *pb.PeeringRequest {
+func newPeeringRequest(channel int32) *pb.PeeringRequest {
 	return &pb.PeeringRequest{
 		Timestamp: time.Now().Unix(),
-		Salt:      salt.ToProto(),
+		Channel:   channel,
 	}
 }
 
@@ -273,23 +272,6 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 		)
 		return false
 	}
-	// check Salt
-	s, err := salt.FromProto(m.GetSalt())
-	if err != nil {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"salt", err,
-		)
-		return false
-	}
-	// check salt expiration
-	if s.Expired() {
-		p.log.Debugw("invalid message",
-			"type", m.Name(),
-			"salt.expiration", s.GetExpiration(),
-		)
-		return false
-	}
 
 	p.log.Debugw("valid message",
 		"type", m.Name(),
@@ -299,15 +281,8 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 }
 
 func (p *Protocol) handlePeeringRequest(s *server.Server, fromID identity.ID, rawData []byte, m *pb.PeeringRequest) {
-	fromSalt, err := salt.FromProto(m.GetSalt())
-	if err != nil {
-		// this should not happen as it is checked in validation
-		p.log.Warnw("invalid salt", "err", err)
-		return
-	}
-
 	from := p.disc.GetVerifiedPeer(fromID)
-	status := p.mgr.requestPeering(from, fromSalt)
+	status := p.mgr.requestPeering(from, int(m.Channel))
 	res := newPeeringResponse(rawData, status)
 
 	p.logSend(from.Address(), res)

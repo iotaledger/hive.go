@@ -1,14 +1,14 @@
 package selection
 
 import (
-	"sync"
-	"time"
-
+	"fmt"
+	"github.com/iotaledger/hive.go/autopeering/ars"
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
+	"sync"
+	"time"
 )
 
 const (
@@ -23,13 +23,13 @@ const (
 type network interface {
 	local() *peer.Local
 
-	PeeringRequest(*peer.Peer, *salt.Salt) (bool, error)
+	PeeringRequest(*peer.Peer, int) (bool, error)
 	PeeringDrop(*peer.Peer)
 }
 
 type peeringRequest struct {
-	peer *peer.Peer
-	salt *salt.Salt
+	peer    *peer.Peer
+	channel int
 }
 
 type manager struct {
@@ -43,7 +43,7 @@ type manager struct {
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
-	rejectionFilter *Filter
+	rejectionFilter map[int]*Filter
 
 	dropChan    chan identity.ID
 	requestChan chan peeringRequest
@@ -54,6 +54,10 @@ type manager struct {
 }
 
 func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, opts *options) *manager {
+	rejectionFilters := make(map[int]*Filter)
+	for channel := 0; channel < outboundNeighborSize; channel++ {
+		rejectionFilters[channel] = NewFilter()
+	}
 	return &manager{
 		net:               net,
 		getPeersToConnect: peersFunc,
@@ -61,14 +65,14 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		dropOnUpdate:      opts.dropOnUpdate,
 		neighborValidator: opts.neighborValidator,
 		events: Events{
-			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
+			ArsUpdated:      events.NewEvent(arsUpdatedCaller),
 			OutgoingPeering: events.NewEvent(peeringCaller),
 			IncomingPeering: events.NewEvent(peeringCaller),
 			Dropped:         events.NewEvent(droppedCaller),
 		},
 		inbound:         NewNeighborhood(inboundNeighborSize),
 		outbound:        NewNeighborhood(outboundNeighborSize),
-		rejectionFilter: NewFilter(),
+		rejectionFilter: rejectionFilters,
 		dropChan:        make(chan identity.ID, queueSize),
 		requestChan:     make(chan peeringRequest, queueSize),
 		replyChan:       make(chan bool, 1),
@@ -77,8 +81,8 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 }
 
 func (m *manager) start() {
-	if m.getPublicSalt() == nil || m.getPrivateSalt() == nil {
-		m.updateSalt()
+	if m.getArs() == nil {
+		m.updateArs()
 	}
 	m.wg.Add(1)
 	go m.loop()
@@ -93,12 +97,8 @@ func (m *manager) getID() identity.ID {
 	return m.net.local().ID()
 }
 
-func (m *manager) getPublicSalt() *salt.Salt {
-	return m.net.local().GetPublicSalt()
-}
-
-func (m *manager) getPrivateSalt() *salt.Salt {
-	return m.net.local().GetPrivateSalt()
+func (m *manager) getArs() *ars.Ars {
+	return m.net.local().GetArs()
 }
 
 func (m *manager) getNeighbors() []*peer.Peer {
@@ -117,10 +117,10 @@ func (m *manager) getOutNeighbors() []*peer.Peer {
 	return m.outbound.GetPeers()
 }
 
-func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
+func (m *manager) requestPeering(p *peer.Peer, channel int) bool {
 	var status bool
 	select {
-	case m.requestChan <- peeringRequest{p, s}:
+	case m.requestChan <- peeringRequest{p, channel}:
 		status = <-m.replyChan
 	default:
 		// a full queue should count as a failed request
@@ -143,14 +143,20 @@ func (m *manager) loop() {
 Loop:
 	for {
 		select {
+		// handle an inbound request
+		case req := <-m.requestChan:
+			status := m.handleInRequest(req)
+			// trigger in the main loop to guarantee order of events
+			m.triggerPeeringEvent(false, req.channel, req.peer, status)
 
 		// update the outbound neighbors
 		case <-updateTimer.C:
 			updateOutResultChan = make(chan peer.PeerDistance)
 			// check salt and update if necessary
-			if m.getPublicSalt().Expired() {
-				m.updateSalt()
+			if m.getArs().Expired() {
+				m.updateArs()
 			}
+
 			// check for new peers to connect to in a separate go routine
 			go m.updateOutbound(updateOutResultChan)
 
@@ -159,11 +165,11 @@ Loop:
 			if req.Remote != nil {
 				// if the peer is already in inbound, do not add it and remove it from inbound
 				if p := m.inbound.RemovePeer(req.Remote.ID()); p != nil {
-					m.triggerPeeringEvent(true, req.Remote, false)
+					m.triggerPeeringEvent(true, req.Channel, req.Remote, false)
 					m.dropPeering(p)
 				} else {
 					m.addNeighbor(m.outbound, req)
-					m.triggerPeeringEvent(true, req.Remote, true)
+					m.triggerPeeringEvent(true, req.Channel, req.Remote, true)
 				}
 			}
 			// call updateOutbound again after the given interval
@@ -172,10 +178,17 @@ Loop:
 
 		// handle a drop request
 		case id := <-m.dropChan:
+
 			droppedPeer := m.inbound.RemovePeer(id)
+			peerIdx := m.outbound.getPeerIndex(id)
+			var peerDistance peer.PeerDistance
+			if peerIdx != -1 {
+				peerDistance = m.outbound.neighbors[peerIdx]
+			}
 			if p := m.outbound.RemovePeer(id); p != nil {
 				droppedPeer = p
-				m.rejectionFilter.AddPeer(id)
+
+				m.rejectionFilter[peerDistance.Channel].AddPeer(p.ID())
 				// if not yet updating, trigger an immediate update
 				if updateOutResultChan == nil && updateTimer.Stop() {
 					updateTimer.Reset(0)
@@ -184,13 +197,6 @@ Loop:
 			if droppedPeer != nil {
 				m.dropPeering(droppedPeer)
 			}
-
-		// handle an inbound request
-		case req := <-m.requestChan:
-			status := m.handleInRequest(req)
-			// trigger in the main loop to guarantee order of events
-			m.triggerPeeringEvent(false, req.peer, status)
-
 		// on close, exit the loop
 		case <-m.closing:
 			break Loop
@@ -208,9 +214,9 @@ func (m *manager) getUpdateTimeout() time.Duration {
 	if m.outbound.IsFull() {
 		result = fullOutboundUpdateInterval
 	}
-	saltExpiration := time.Until(m.getPublicSalt().GetExpiration())
-	if saltExpiration < result {
-		result = saltExpiration
+	arsExpiration := time.Until(m.getArs().GetExpiration())
+	if arsExpiration < result {
+		result = arsExpiration
 	}
 	return result
 }
@@ -219,44 +225,45 @@ func (m *manager) getUpdateTimeout() time.Duration {
 func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	var result peer.PeerDistance
 	defer func() { resultChan <- result }() // assure that a result is always sent to the channel
+	for channel := 0; channel < outboundNeighborSize; channel++ {
+		//fmt.Printf("Channel %d, %s", channel)
+		// sort verified peers by distance
+		distList := peer.SortByArs(channel, m.getArs(), m.getPeersToConnect())
 
-	// sort verified peers by distance
-	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), m.getPeersToConnect())
+		// filter out current neighbors
+		filter := m.getConnectedFilter()
+		if m.neighborValidator != nil {
+			filter.AddCondition(m.neighborValidator.IsValid)
+		}
 
-	// filter out current neighbors
-	filter := m.getConnectedFilter()
-	if m.neighborValidator != nil {
-		filter.AddCondition(m.neighborValidator.IsValid)
+		// filter out previous rejections
+		filteredList := m.rejectionFilter[channel].Apply(filter.Apply(distList))
+		if len(filteredList) == 0 {
+			continue
+		}
+
+		// select new candidate
+		candidate := m.outbound.Select(filteredList, channel)
+		if candidate.Remote == nil {
+			continue
+		}
+		status, err := m.net.PeeringRequest(candidate.Remote, channel)
+		if err != nil {
+			m.rejectionFilter[channel].AddPeer(candidate.Remote.ID())
+			m.log.Debugw("error requesting peering",
+				"id", candidate.Remote.ID(),
+				"addr", candidate.Remote.Address(), "err", err,
+			)
+			return
+		}
+		if !status {
+			m.rejectionFilter[channel].AddPeer(candidate.Remote.ID())
+			m.triggerPeeringEvent(true, channel, candidate.Remote, false)
+			return
+		}
+
+		result = candidate
 	}
-
-	// filter out previous rejections
-	filteredList := m.rejectionFilter.Apply(filter.Apply(distList))
-	if len(filteredList) == 0 {
-		return
-	}
-
-	// select new candidate
-	candidate := m.outbound.Select(filteredList)
-	if candidate.Remote == nil {
-		return
-	}
-
-	status, err := m.net.PeeringRequest(candidate.Remote, m.getPublicSalt())
-	if err != nil {
-		m.rejectionFilter.AddPeer(candidate.Remote.ID())
-		m.log.Debugw("error requesting peering",
-			"id", candidate.Remote.ID(),
-			"addr", candidate.Remote.Address(), "err", err,
-		)
-		return
-	}
-	if !status {
-		m.rejectionFilter.AddPeer(candidate.Remote.ID())
-		m.triggerPeeringEvent(true, candidate.Remote, false)
-		return
-	}
-
-	result = candidate
 }
 
 func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
@@ -266,16 +273,18 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	if !m.isValidNeighbor(req.peer) {
 		return
 	}
-
-	reqDistance := peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), req.peer)
+	peerArs, _ := ars.NewArs(m.getArs().GetExpiration().Sub(time.Now()), outboundNeighborSize, req.peer.Identity)
+	reqDistance := peer.NewPeerDistance(m.getArs().GetArs()[req.channel], peerArs.GetArs()[req.channel], req.channel, req.peer)
 	filter := m.getConnectedFilter()
 	filteredList := filter.Apply([]peer.PeerDistance{reqDistance})
 	if len(filteredList) == 0 {
+		fmt.Print("Rejected because already connected to this node\n")
 		return
 	}
 
-	toAccept := m.inbound.Select(filteredList)
+	toAccept := m.inbound.Select(filteredList, reqDistance.Channel)
 	if toAccept.Remote == nil {
+		fmt.Print("Rejected because already connected to node with smaller distance\n")
 		return
 	}
 
@@ -286,7 +295,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 
 func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) {
 	// drop furthest neighbor if necessary
-	if furthest, _ := nh.getFurthest(); furthest.Remote != nil {
+	if furthest, _ := nh.getFurthest(toAdd.Channel); furthest.Remote != nil {
 		if p := nh.RemovePeer(furthest.Remote.ID()); p != nil {
 			m.dropPeering(p)
 		}
@@ -294,18 +303,18 @@ func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) {
 	nh.Add(toAdd)
 }
 
-func (m *manager) updateSalt() {
-	public, _ := salt.NewSalt(saltLifetime)
-	m.net.local().SetPublicSalt(public)
-	private, _ := salt.NewSalt(saltLifetime)
-	m.net.local().SetPrivateSalt(private)
+func (m *manager) updateArs() {
+	newArs, _ := ars.NewArs(saltLifetime, outboundNeighborSize, m.net.local().Identity)
+	m.net.local().SetArs(newArs)
 
 	// clean the rejection filter
-	m.rejectionFilter.Clean()
+	for channel := range m.rejectionFilter {
+		m.rejectionFilter[channel].Clean()
+	}
 
 	if !m.dropOnUpdate { // update distance without dropping neighbors
-		m.outbound.UpdateDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes())
-		m.inbound.UpdateDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes())
+		m.outbound.UpdateDistance(m.getArs())
+		m.inbound.UpdateDistance(m.getArs())
 	} else { // drop all the neighbors
 		m.dropNeighborhood(m.inbound)
 		m.dropNeighborhood(m.outbound)
@@ -315,7 +324,7 @@ func (m *manager) updateSalt() {
 		"public", saltLifetime,
 		"private", saltLifetime,
 	)
-	m.events.SaltUpdated.Trigger(&SaltUpdatedEvent{Public: public, Private: private})
+	m.events.ArsUpdated.Trigger(&ArsUpdatedEvent{Ars: newArs})
 }
 
 func (m *manager) dropNeighborhood(nh *Neighborhood) {
@@ -357,32 +366,34 @@ func (m *manager) isValidNeighbor(p *peer.Peer) bool {
 	return m.neighborValidator.IsValid(p)
 }
 
-func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
+func (m *manager) triggerPeeringEvent(isOut bool, channel int, p *peer.Peer, status bool) {
 	if isOut {
 		m.log.Debugw("peering requested",
 			"direction", "out",
 			"status", status,
 			"to", p.ID(),
+			"channel", channel,
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
 		m.events.OutgoingPeering.Trigger(&PeeringEvent{
-			Peer:     p,
-			Status:   status,
-			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes(), p).Distance,
+			Peer:    p,
+			Status:  status,
+			Channel: channel,
 		})
 	} else {
 		m.log.Debugw("peering requested",
 			"direction", "in",
 			"status", status,
 			"from", p.ID(),
+			"channel", channel,
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
 		m.events.IncomingPeering.Trigger(&PeeringEvent{
-			Peer:     p,
-			Status:   status,
-			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
+			Peer:    p,
+			Status:  status,
+			Channel: channel,
 		})
 	}
 }

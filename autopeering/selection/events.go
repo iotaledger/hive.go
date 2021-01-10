@@ -1,8 +1,8 @@
 package selection
 
 import (
+	"github.com/iotaledger/hive.go/autopeering/ars"
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 )
@@ -10,7 +10,7 @@ import (
 // Events contains all the events that are triggered during the neighbor selection.
 type Events struct {
 	// A SaltUpdated event is triggered, when the private and public salt were updated.
-	SaltUpdated *events.Event
+	ArsUpdated *events.Event
 	// An OutgoingPeering event is triggered, when a valid response of PeeringRequest has been received.
 	OutgoingPeering *events.Event
 	// An IncomingPeering event is triggered, when a valid PeerRequest has been received.
@@ -20,15 +20,15 @@ type Events struct {
 }
 
 // SaltUpdatedEvent bundles the information sent in the SaltUpdated event.
-type SaltUpdatedEvent struct {
-	Public, Private *salt.Salt // the updated salt
+type ArsUpdatedEvent struct {
+	Ars *ars.Ars // the updated salt
 }
 
 // PeeringEvent bundles the information sent in the OutgoingPeering and IncomingPeering event.
 type PeeringEvent struct {
-	Peer     *peer.Peer // peering partner
-	Status   bool       // true, when the peering partner has accepted the request
-	Distance uint32     // the distance between the peers
+	Peer    *peer.Peer // peering partner
+	Status  bool       // true, when the peering partner has accepted the request
+	Channel int        // the distance between the peers
 }
 
 // DroppedEvent bundles the information sent in Dropped events.
@@ -36,8 +36,8 @@ type DroppedEvent struct {
 	DroppedID identity.ID // ID of the peer that gets dropped.
 }
 
-func saltUpdatedCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*SaltUpdatedEvent))(params[0].(*SaltUpdatedEvent))
+func arsUpdatedCaller(handler interface{}, params ...interface{}) {
+	handler.(func(*ArsUpdatedEvent))(params[0].(*ArsUpdatedEvent))
 }
 
 func peeringCaller(handler interface{}, params ...interface{}) {

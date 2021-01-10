@@ -2,7 +2,9 @@ package selection
 
 import (
 	"fmt"
+	"github.com/iotaledger/hive.go/autopeering/ars"
 	"sync"
+	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/distance"
 	"github.com/iotaledger/hive.go/autopeering/peer"
@@ -26,30 +28,37 @@ func (nh *Neighborhood) String() string {
 	return fmt.Sprintf("%d/%d", nh.GetNumPeers(), nh.size)
 }
 
-func (nh *Neighborhood) getFurthest() (peer.PeerDistance, int) {
+func (nh *Neighborhood) getFurthest(channel int) (peer.PeerDistance, int) {
 	nh.mu.RLock()
 	defer nh.mu.RUnlock()
-	if len(nh.neighbors) < nh.size {
+
+	channelConnected := false
+	index := 0
+	furthest := peer.PeerDistance{
+		Remote:   nil,
+		Channel:  channel,
+		Distance: 0,
+	}
+	for i, n := range nh.neighbors {
+		if n.Channel == channel && n.Distance > furthest.Distance {
+			furthest = n
+			index = i
+			channelConnected = true
+		}
+	}
+	if !channelConnected {
 		return peer.PeerDistance{
 			Remote:   nil,
 			Distance: distance.Max,
 		}, len(nh.neighbors)
 	}
 
-	index := 0
-	furthest := nh.neighbors[index]
-	for i, n := range nh.neighbors {
-		if n.Distance > furthest.Distance {
-			furthest = n
-			index = i
-		}
-	}
 	return furthest, index
 }
 
-func (nh *Neighborhood) Select(candidates []peer.PeerDistance) peer.PeerDistance {
+func (nh *Neighborhood) Select(candidates []peer.PeerDistance, channel int) peer.PeerDistance {
 	if len(candidates) > 0 {
-		target, _ := nh.getFurthest()
+		target, _ := nh.getFurthest(channel)
 		for _, candidate := range candidates {
 			if candidate.Distance < target.Distance {
 				return candidate
@@ -102,11 +111,12 @@ func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 	return -1
 }
 
-func (nh *Neighborhood) UpdateDistance(anchor, salt []byte) {
+func (nh *Neighborhood) UpdateDistance(localArs *ars.Ars) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
 	for i, n := range nh.neighbors {
-		nh.neighbors[i].Distance = distance.BySalt(anchor, n.Remote.ID().Bytes(), salt)
+		peerArs, _ := ars.NewArs(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
+		nh.neighbors[i].Distance = distance.ByArs(localArs.GetArs()[n.Channel], peerArs.GetArs()[n.Channel])
 	}
 }
 
