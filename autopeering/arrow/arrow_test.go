@@ -1,4 +1,4 @@
-package ars
+package arrow
 
 //
 //import (
@@ -22,7 +22,7 @@ package ars
 //	}
 //
 //	for _, test := range tests {
-//		_, err := NewArs(test.input)
+//		_, err := NewArRow(test.input)
 //		assert.Equal(t, test.want, err, test)
 //	}
 //}

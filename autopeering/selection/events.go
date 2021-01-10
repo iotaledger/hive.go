@@ -1,7 +1,7 @@
 package selection
 
 import (
-	"github.com/iotaledger/hive.go/autopeering/ars"
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
@@ -10,7 +10,9 @@ import (
 // Events contains all the events that are triggered during the neighbor selection.
 type Events struct {
 	// A SaltUpdated event is triggered, when the private and public salt were updated.
-	ArsUpdated *events.Event
+	ArsUpdated  *events.Event
+	RowsUpdated *events.Event
+
 	// An OutgoingPeering event is triggered, when a valid response of PeeringRequest has been received.
 	OutgoingPeering *events.Event
 	// An IncomingPeering event is triggered, when a valid PeerRequest has been received.
@@ -21,7 +23,10 @@ type Events struct {
 
 // SaltUpdatedEvent bundles the information sent in the SaltUpdated event.
 type ArsUpdatedEvent struct {
-	Ars *ars.Ars // the updated salt
+	Ars *arrow.ArRow // the updated salt
+}
+type RowsUpdatedEvent struct {
+	Rows *arrow.ArRow // the updated salt
 }
 
 // PeeringEvent bundles the information sent in the OutgoingPeering and IncomingPeering event.
@@ -39,7 +44,9 @@ type DroppedEvent struct {
 func arsUpdatedCaller(handler interface{}, params ...interface{}) {
 	handler.(func(*ArsUpdatedEvent))(params[0].(*ArsUpdatedEvent))
 }
-
+func rowsUpdatedCaller(handler interface{}, params ...interface{}) {
+	handler.(func(*RowsUpdatedEvent))(params[0].(*RowsUpdatedEvent))
+}
 func peeringCaller(handler interface{}, params ...interface{}) {
 	handler.(func(*PeeringEvent))(params[0].(*PeeringEvent))
 }

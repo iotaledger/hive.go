@@ -1,7 +1,7 @@
 package peer
 
 import (
-	"github.com/iotaledger/hive.go/autopeering/ars"
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"sort"
 	"time"
 
@@ -32,11 +32,22 @@ func NewPeerDistance(localAr, remoteAr float64, channel int, remote *Peer) PeerD
 }
 
 // SortBySalt returns a slice of PeerDistance given a list of remote peers
-func SortByArs(channel int, localArs *ars.Ars, remotePeers []*Peer) (result []PeerDistance) {
+func SortByOutbound(channel int, localArRow *arrow.ArRow, remotePeers []*Peer) (result []PeerDistance) {
 	result = make(byDistance, len(remotePeers))
 	for i, remote := range remotePeers {
-		peerArs, _ := ars.NewArs(localArs.GetExpiration().Sub(time.Now()), len(localArs.GetArs()), remote.Identity)
-		result[i] = NewPeerDistance(localArs.GetArs()[channel], peerArs.GetArs()[channel], channel, remote)
+		peerRows, _ := arrow.NewArRow(localArRow.GetExpiration().Sub(time.Now()), len(localArRow.GetArs()), remote.Identity)
+		result[i] = NewPeerDistance(localArRow.GetArs()[channel], peerRows.GetRows()[channel], channel, remote)
+	}
+	sort.Sort(byDistance(result))
+	return result
+}
+
+// SortBySalt returns a slice of PeerDistance given a list of remote peers
+func SortByInbound(channel int, localArs *arrow.ArRow, remotePeers []*Peer) (result []PeerDistance) {
+	result = make(byDistance, len(remotePeers))
+	for i, remote := range remotePeers {
+		peerRows, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), len(localArs.GetRows()), remote.Identity)
+		result[i] = NewPeerDistance(localArs.GetRows()[channel], peerRows.GetArs()[channel], channel, remote)
 	}
 	sort.Sort(byDistance(result))
 	return result

@@ -2,7 +2,7 @@ package selection
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/autopeering/ars"
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"sync"
 	"time"
 
@@ -111,15 +111,23 @@ func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 	return -1
 }
 
-func (nh *Neighborhood) UpdateDistance(localArs *ars.Ars) {
+func (nh *Neighborhood) UpdateInboundDistance(localArs *arrow.ArRow) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
 	for i, n := range nh.neighbors {
-		peerArs, _ := ars.NewArs(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
-		nh.neighbors[i].Distance = distance.ByArs(localArs.GetArs()[n.Channel], peerArs.GetArs()[n.Channel])
+		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
+		nh.neighbors[i].Distance = distance.ByArs(localArs.GetRows()[n.Channel], peerArs.GetArs()[n.Channel])
 	}
 }
 
+func (nh *Neighborhood) UpdateOutboundDistance(localArs *arrow.ArRow) {
+	nh.mu.Lock()
+	defer nh.mu.Unlock()
+	for i, n := range nh.neighbors {
+		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
+		nh.neighbors[i].Distance = distance.ByArs(localArs.GetArs()[n.Channel], peerArs.GetRows()[n.Channel])
+	}
+}
 func (nh *Neighborhood) IsFull() bool {
 	nh.mu.RLock()
 	defer nh.mu.RUnlock()

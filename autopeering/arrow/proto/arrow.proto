@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option go_package = "github.com/iotaledger/hive.go/autopeering/arrow/proto";
+
+package proto;
+
+message ArRow {
+  // value of the ars
+  repeated double ars = 1;
+  // value of the rows
+  repeated double rows = 2;
+  // expiration time of the salt
+  fixed64 exp_time = 3;
+}

@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/iotaledger/hive.go/autopeering/ars"
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
@@ -19,8 +19,7 @@ type Local struct {
 	// everything below is protected by a lock
 	mu            sync.RWMutex
 	serviceRecord *service.Record
-	ars           *ars.Ars
-	rows          *ars.Ars
+	arrow         *arrow.ArRow
 }
 
 // newLocal creates a new local peer.
@@ -78,17 +77,17 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 }
 
 // GetArs returns current Ar values
-func (l *Local) GetArs() *ars.Ars {
+func (l *Local) GetArRow() *arrow.ArRow {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return l.ars
+	return l.arrow
 }
 
 // SetArs sets current Ar values
-func (l *Local) SetArs(ars *ars.Ars) {
+func (l *Local) SetArRow(arrow *arrow.ArRow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.ars = ars
+	l.arrow = arrow
 }
 
 // Sign signs a message using the node's LocalIdentity.
