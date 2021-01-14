@@ -11,7 +11,8 @@ import (
 const (
 	DefaultInboundNeighborSize        = 4
 	DefaultOutboundNeighborSize       = 4
-	DefaultSaltLifetime               = 2 * time.Hour
+	DefaultArrowLifetime              = 2 * time.Hour
+	DefaultEpochDuration              = 1 * time.Hour
 	DefaultOutboundUpdateInterval     = 1 * time.Second
 	DefaultFullOutboundUpdateInterval = 1 * time.Minute
 )
@@ -19,14 +20,14 @@ const (
 var (
 	inboundNeighborSize        = DefaultInboundNeighborSize        // number of inbound neighbors
 	outboundNeighborSize       = DefaultOutboundNeighborSize       // number of outbound neighbors
-	saltLifetime               = DefaultSaltLifetime               // lifetime of the private and public local salt
+	arrowLifetime              = DefaultArrowLifetime              // lifetime of the arrow values
 	outboundUpdateInterval     = DefaultOutboundUpdateInterval     // time after which out neighbors are updated
 	fullOutboundUpdateInterval = DefaultFullOutboundUpdateInterval // time after which full out neighbors are updated
 )
 
 type options struct {
 	log               *logger.Logger // Logger
-	dropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
+	dropOnUpdate      bool           // set true to drop all neighbors when the arrow is updated
 	neighborValidator Validator      // potential neighbor validator
 }
 
@@ -47,7 +48,7 @@ func Logger(log *logger.Logger) Option {
 	})
 }
 
-// DropOnUpdate sets the Option to drop all neighbors when the salt is updated
+// DropOnUpdate sets the Option to drop all neighbors when the arrow is updated
 func DropOnUpdate(dropOnUpdate bool) Option {
 	return optionFunc(func(opts *options) {
 		opts.dropOnUpdate = dropOnUpdate
@@ -77,7 +78,7 @@ func (f ValidatorFunc) IsValid(p *peer.Peer) bool { return f(p) }
 type Parameters struct {
 	InboundNeighborSize        int           // number of inbound neighbors
 	OutboundNeighborSize       int           // number of outbound neighbors
-	SaltLifetime               time.Duration // lifetime of the private and public local salt
+	ArRowLifetime              time.Duration // lifetime of the private and public local arrow
 	OutboundUpdateInterval     time.Duration // time interval after which the outbound neighbors are checked
 	FullOutboundUpdateInterval time.Duration // time after which the full outbound neighbors are updated
 }
@@ -95,10 +96,10 @@ func SetParameters(param Parameters) {
 	} else {
 		outboundNeighborSize = DefaultOutboundNeighborSize
 	}
-	if param.SaltLifetime > 0 {
-		saltLifetime = param.SaltLifetime
+	if param.ArRowLifetime > 0 {
+		arrowLifetime = param.ArRowLifetime
 	} else {
-		saltLifetime = DefaultSaltLifetime
+		arrowLifetime = DefaultArrowLifetime
 	}
 	if param.OutboundUpdateInterval > 0 {
 		outboundUpdateInterval = param.OutboundUpdateInterval

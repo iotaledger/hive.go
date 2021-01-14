@@ -28,7 +28,7 @@ func (nh *Neighborhood) String() string {
 	return fmt.Sprintf("%d/%d", nh.GetNumPeers(), nh.size)
 }
 
-func (nh *Neighborhood) getFurthest(channel int) (peer.PeerDistance, int) {
+func (nh *Neighborhood) getFromChannel(channel int) (peer.PeerDistance, int) {
 	nh.mu.RLock()
 	defer nh.mu.RUnlock()
 
@@ -50,6 +50,7 @@ func (nh *Neighborhood) getFurthest(channel int) (peer.PeerDistance, int) {
 		return peer.PeerDistance{
 			Remote:   nil,
 			Distance: distance.Max,
+			Channel:  channel,
 		}, len(nh.neighbors)
 	}
 
@@ -58,7 +59,7 @@ func (nh *Neighborhood) getFurthest(channel int) (peer.PeerDistance, int) {
 
 func (nh *Neighborhood) Select(candidates []peer.PeerDistance, channel int) peer.PeerDistance {
 	if len(candidates) > 0 {
-		target, _ := nh.getFurthest(channel)
+		target, _ := nh.getFromChannel(channel)
 		for _, candidate := range candidates {
 			if candidate.Distance < target.Distance {
 				return candidate
@@ -114,8 +115,10 @@ func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 func (nh *Neighborhood) UpdateInboundDistance(localArs *arrow.ArRow) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
+	now := time.Now().Unix()
+	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
 	for i, n := range nh.neighbors {
-		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
+		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity, epoch)
 		nh.neighbors[i].Distance = distance.ByArs(localArs.GetRows()[n.Channel], peerArs.GetArs()[n.Channel])
 	}
 }
@@ -123,8 +126,10 @@ func (nh *Neighborhood) UpdateInboundDistance(localArs *arrow.ArRow) {
 func (nh *Neighborhood) UpdateOutboundDistance(localArs *arrow.ArRow) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
+	now := time.Now().Unix()
+	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
 	for i, n := range nh.neighbors {
-		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity)
+		peerArs, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), outboundNeighborSize, n.Remote.Identity, epoch)
 		nh.neighbors[i].Distance = distance.ByArs(localArs.GetArs()[n.Channel], peerArs.GetRows()[n.Channel])
 	}
 }

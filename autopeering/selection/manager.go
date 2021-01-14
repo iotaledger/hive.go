@@ -1,7 +1,6 @@
 package selection
 
 import (
-	"fmt"
 	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/events"
@@ -36,7 +35,7 @@ type manager struct {
 	net               network
 	getPeersToConnect func() []*peer.Peer
 	log               *logger.Logger
-	dropOnUpdate      bool      // set true to drop all neighbors when the salt is updated
+	dropOnUpdate      bool      // set true to drop all neighbors when the arrow is updated
 	neighborValidator Validator // potential neighbor validator
 
 	events   Events
@@ -65,8 +64,7 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		dropOnUpdate:      opts.dropOnUpdate,
 		neighborValidator: opts.neighborValidator,
 		events: Events{
-			ArsUpdated:      events.NewEvent(arsUpdatedCaller),
-			RowsUpdated:     events.NewEvent(rowsUpdatedCaller),
+			ArRowUpdated:    events.NewEvent(arsUpdatedCaller),
 			OutgoingPeering: events.NewEvent(peeringCaller),
 			IncomingPeering: events.NewEvent(peeringCaller),
 			Dropped:         events.NewEvent(droppedCaller),
@@ -148,7 +146,7 @@ Loop:
 		// update the outbound neighbors
 		case <-updateTimer.C:
 			updateOutResultChan = make(chan peer.PeerDistance)
-			// check salt and update if necessary
+			// check arrow and update if necessary
 			if m.getArRow().Expired() {
 				m.updateArRow()
 			}
@@ -229,9 +227,11 @@ func (m *manager) getUpdateTimeout() time.Duration {
 func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	var result peer.PeerDistance
 	defer func() { resultChan <- result }() // assure that a result is always sent to the channel
+	now := time.Now().Unix()
+	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
 	for channel := 0; channel < outboundNeighborSize; channel++ {
 		// sort verified peers by distance
-		distList := peer.SortByOutbound(channel, m.getArRow(), m.getPeersToConnect())
+		distList := peer.SortByOutbound(channel, m.getArRow(), m.getPeersToConnect(), epoch)
 
 		// filter out current neighbors
 		filter := m.getConnectedFilter()
@@ -277,18 +277,19 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	if !m.isValidNeighbor(req.peer) {
 		return
 	}
-	peerArs, _ := arrow.NewArRow(m.getArRow().GetExpiration().Sub(time.Now()), outboundNeighborSize, req.peer.Identity)
+	now := time.Now().Unix()
+	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
+
+	peerArs, _ := arrow.NewArRow(m.getArRow().GetExpiration().Sub(time.Now()), outboundNeighborSize, req.peer.Identity, epoch)
 	reqDistance := peer.NewPeerDistance(m.getArRow().GetRows()[req.channel], peerArs.GetArs()[req.channel], req.channel, req.peer)
 	filter := m.getConnectedFilter()
 	filteredList := filter.Apply([]peer.PeerDistance{reqDistance})
 	if len(filteredList) == 0 {
-		fmt.Print("Rejected because already connected to this node\n")
 		return
 	}
 
 	toAccept := m.inbound.Select(filteredList, reqDistance.Channel)
 	if toAccept.Remote == nil {
-		fmt.Print("Rejected because already connected to node with smaller distance\n")
 		return
 	}
 
@@ -299,17 +300,18 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 
 func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) {
 	// drop furthest neighbor if necessary
-	if furthest, _ := nh.getFurthest(toAdd.Channel); furthest.Remote != nil {
+	if furthest, _ := nh.getFromChannel(toAdd.Channel); furthest.Remote != nil {
 		if p := nh.RemovePeer(furthest.Remote.ID()); p != nil {
 			m.dropPeering(p)
-			fmt.Print("Drop existing because found a better one\n")
 		}
 	}
 	nh.Add(toAdd)
 }
 
 func (m *manager) updateArRow() {
-	newArRow, _ := arrow.NewArRow(saltLifetime, outboundNeighborSize, m.net.local().Identity)
+	now := time.Now().Unix()
+	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
+	newArRow, _ := arrow.NewArRow(arrowLifetime, outboundNeighborSize, m.net.local().Identity, epoch)
 	m.net.local().SetArRow(newArRow)
 
 	// clean the rejection filter
@@ -325,11 +327,10 @@ func (m *manager) updateArRow() {
 		m.dropNeighborhood(m.outbound)
 	}
 
-	m.log.Debugw("salt updated",
-		"public", saltLifetime,
-		"private", saltLifetime,
+	m.log.Debugw("arrow updated",
+		"arrow", arrowLifetime,
 	)
-	m.events.ArsUpdated.Trigger(&ArsUpdatedEvent{Ars: newArRow})
+	m.events.ArRowUpdated.Trigger(&ArRowUpdatedEvent{ArRow: newArRow})
 }
 
 func (m *manager) dropNeighborhood(nh *Neighborhood) {

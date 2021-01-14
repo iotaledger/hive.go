@@ -7,7 +7,6 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
@@ -131,11 +130,6 @@ func newTestServer(t require.TestingT, name string, conn *net.UDPConn) (*Server,
 	services.Update(service.PeeringKey, conn.LocalAddr().Network(), conn.LocalAddr().(*net.UDPAddr).Port)
 	local, err := peer.NewLocal(conn.LocalAddr().(*net.UDPAddr).IP, services, newTestDB(t))
 	require.NoError(t, err)
-
-	s, _ := salt.NewSalt(100 * time.Second)
-	local.SetPrivateSalt(s)
-	s, _ = salt.NewSalt(100 * time.Second)
-	local.SetPublicSalt(s)
 
 	srv := Serve(local, conn, l, HandlerFunc(handle))
 

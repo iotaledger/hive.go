@@ -9,7 +9,6 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
@@ -17,7 +16,7 @@ import (
 )
 
 const (
-	testSaltLifetime   = time.Hour     // disable salt updates
+	testArrowLifetime  = 3 * time.Hour // disable arrow updates
 	testUpdateInterval = 2 * graceTime // very short update interval to speed up tests
 )
 
@@ -29,7 +28,7 @@ func TestMgrNoDuplicates(t *testing.T) {
 	SetParameters(Parameters{
 		OutboundNeighborSize:   nNeighbors,
 		InboundNeighborSize:    nNeighbors,
-		SaltLifetime:           testSaltLifetime,
+		ArRowLifetime:          testArrowLifetime,
 		OutboundUpdateInterval: testUpdateInterval,
 	})
 
@@ -52,7 +51,7 @@ func TestEvents(t *testing.T) {
 	SetParameters(Parameters{
 		OutboundNeighborSize:   nNeighbors,
 		InboundNeighborSize:    nNeighbors,
-		SaltLifetime:           3 * testUpdateInterval,
+		ArRowLifetime:          3 * testArrowLifetime,
 		OutboundUpdateInterval: testUpdateInterval,
 	})
 
@@ -193,7 +192,7 @@ func (n *networkMock) PeeringDrop(p *peer.Peer) {
 	n.mgr[p.ID()].removeNeighbor(n.local().ID())
 }
 
-func (n *networkMock) PeeringRequest(p *peer.Peer, s *salt.Salt) (bool, error) {
+func (n *networkMock) PeeringRequest(p *peer.Peer, s int) (bool, error) {
 	return n.mgr[p.ID()].requestPeering(n.local().Peer, s), nil
 }
 

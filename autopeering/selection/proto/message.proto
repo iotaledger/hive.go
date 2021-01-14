@@ -7,7 +7,7 @@ package proto;
 message PeeringRequest {
   // unix time
   int64 timestamp = 1;
-  // salt of the requester
+  // requesting channel
   int32 channel = 2;
 }
 

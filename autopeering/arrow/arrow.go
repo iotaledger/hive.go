@@ -12,21 +12,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const EPOCH_DURATION_SECONDS = 3600
-
 // ArRow encapsulates high level functions around values management.
 type ArRow struct {
 	ars            []float64 // value of ars and rows
 	rows           []float64 // value of ars and rows
-	expirationTime time.Time // expiration time of the salt
+	expirationTime time.Time // expiration time
 	mutex          sync.RWMutex
 }
 
 // NewArRow generates a new values given a lifetime duration for given identity and number of neighbours
-func NewArRow(lifetime time.Duration, k int, identity *identity.Identity) (arrowObj *ArRow, err error) {
+func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch uint64) (arrowObj *ArRow, err error) {
 	epochId := make([]byte, 8)
-	now := time.Now().Unix()
-	epoch := uint64(now - now%EPOCH_DURATION_SECONDS)
+
 	binary.LittleEndian.PutUint64(epochId, epoch)
 
 	h := md5.New()
@@ -68,12 +65,12 @@ func (s *ArRow) GetExpiration() time.Time {
 	return s.expirationTime
 }
 
-// Expired returns true if the given salt expired
+// Expired returns true if the given arrow expired
 func (s *ArRow) Expired() bool {
 	return time.Now().After(s.GetExpiration())
 }
 
-// ToProto encodes the Salt into a proto buffer Salt message
+// ToProto encodes the ArRow into a proto buffer ArRow message
 func (s *ArRow) ToProto() *pb.ArRow {
 	return &pb.ArRow{
 		Ars:     s.ars,
@@ -82,11 +79,8 @@ func (s *ArRow) ToProto() *pb.ArRow {
 	}
 }
 
-// FromProto decodes a given proto buffer Salt message (in) and returns the corresponding Salt.
+// FromProto decodes a given proto buffer ArRow message (in) and returns the corresponding Salt.
 func FromProto(in *pb.ArRow) (*ArRow, error) {
-	//if l := len(in.ArRow()); l != SaltByteSize {
-	//	return nil, fmt.Errorf("invalid salt length: %d, need %d", l, SaltByteSize)
-	//}
 	out := &ArRow{
 		ars:            in.GetArs(),
 		rows:           in.GetRows(),
@@ -95,12 +89,12 @@ func FromProto(in *pb.ArRow) (*ArRow, error) {
 	return out, nil
 }
 
-// Marshal serializes a given salt (s) into a slice of bytes (data)
+// Marshal serializes a given arrow (s) into a slice of bytes (data)
 func (s *ArRow) Marshal() ([]byte, error) {
 	return proto.Marshal(s.ToProto())
 }
 
-// Unmarshal de-serializes a given slice of bytes (data) into a Salt.
+// Unmarshal de-serializes a given slice of bytes (data) into a ArRow.
 func Unmarshal(data []byte) (*ArRow, error) {
 	s := &pb.ArRow{}
 	if err := proto.Unmarshal(data, s); err != nil {

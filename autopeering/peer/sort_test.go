@@ -1,12 +1,12 @@
 package peer
 
 import (
-	"net"
-	"testing"
-
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
+	"net"
+	"testing"
 )
 
 func newTestPeerWithID(ID byte) *Peer {
@@ -34,9 +34,10 @@ func TestOrderedDistanceList(t *testing.T) {
 	for i := range remotePeers {
 		remotePeers[i] = newTestPeerWithID(byte(i + 1))
 	}
+	localArRow, _ := arrow.NewArRow(100, 4, remotePeers[0].Identity, 1000)
 
 	for _, test := range tests {
-		d := SortBySalt(test.anchor, test.salt, remotePeers)
+		d := SortByInbound(0, localArRow, remotePeers, 1000)
 		prev := d[0]
 		for _, next := range d[1:] {
 			got := prev.Distance < next.Distance

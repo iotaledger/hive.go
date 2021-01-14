@@ -8,7 +8,6 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/discover"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
 	"github.com/iotaledger/hive.go/identity"
@@ -32,7 +31,7 @@ var (
 func TestProtocol(t *testing.T) {
 	// assure that the default test parameters are used for all protocol tests
 	SetParameters(Parameters{
-		SaltLifetime:           testSaltLifetime,
+		ArRowLifetime:          testArrowLifetime,
 		OutboundUpdateInterval: testUpdateInterval,
 	})
 
@@ -48,41 +47,20 @@ func TestProtocol(t *testing.T) {
 		defer closeB()
 
 		peerA := getPeer(protA)
-		saltA, _ := salt.NewSalt(100 * time.Second)
 		peerB := getPeer(protB)
-		saltB, _ := salt.NewSalt(100 * time.Second)
 
 		// request peering to peer B
 		t.Run("A->B", func(t *testing.T) {
-			if accepted, err := protA.PeeringRequest(peerB, saltA); assert.NoError(t, err) {
+			if accepted, err := protA.PeeringRequest(peerB, 0); assert.NoError(t, err) {
 				assert.True(t, accepted)
 			}
 		})
 		// request peering to peer A
 		t.Run("B->A", func(t *testing.T) {
-			if accepted, err := protB.PeeringRequest(peerA, saltB); assert.NoError(t, err) {
+			if accepted, err := protB.PeeringRequest(peerA, 0); assert.NoError(t, err) {
 				assert.True(t, accepted)
 			}
 		})
-	})
-
-	t.Run("ExpiredSalt", func(t *testing.T) {
-		connA := servertest.NewConn()
-		defer connA.Close()
-		connB := servertest.NewConn()
-		defer connB.Close()
-
-		protA, closeA := newTestProtocol("A", connA)
-		defer closeA()
-		protB, closeB := newTestProtocol("B", connB)
-		defer closeB()
-
-		saltA, _ := salt.NewSalt(-1 * time.Second)
-		peerB := getPeer(protB)
-
-		// request peering to peer B
-		_, err := protA.PeeringRequest(peerB, saltA)
-		assert.EqualError(t, err, server.ErrTimeout.Error())
 	})
 
 	t.Run("PeeringDrop", func(t *testing.T) {
@@ -97,11 +75,10 @@ func TestProtocol(t *testing.T) {
 		defer closeB()
 
 		peerA := getPeer(protA)
-		saltA, _ := salt.NewSalt(100 * time.Second)
 		peerB := getPeer(protB)
 
 		// request peering to peer B
-		status, err := protA.PeeringRequest(peerB, saltA)
+		status, err := protA.PeeringRequest(peerB, 0)
 		require.NoError(t, err)
 		assert.True(t, status)
 

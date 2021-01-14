@@ -1,15 +1,13 @@
 package peer
 
 import (
-	"testing"
-	"time"
-
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestID(t *testing.T) {
@@ -37,25 +35,14 @@ func TestAddress(t *testing.T) {
 	assert.EqualValues(t, endpoint.Network(), local.Address().Network())
 }
 
-func TestPrivateSalt(t *testing.T) {
+func TestArRow(t *testing.T) {
 	p := newTestLocal(t, nil)
 
-	s, _ := salt.NewSalt(time.Second * 10)
-	p.SetPrivateSalt(s)
+	s, _ := arrow.NewArRow(600, 4, p.identity.Identity, 1000)
+	p.SetArRow(s)
 
-	got := p.GetPrivateSalt()
+	got := p.GetArRow()
 	assert.Equal(t, s, got, "Private salt")
-}
-
-func TestPublicSalt(t *testing.T) {
-	p := newTestLocal(t, nil)
-
-	s, _ := salt.NewSalt(time.Second * 10)
-	p.SetPublicSalt(s)
-
-	got := p.GetPublicSalt()
-
-	assert.Equal(t, s, got, "Public salt")
 }
 
 func newTestLocal(t require.TestingT, db *DB) *Local {

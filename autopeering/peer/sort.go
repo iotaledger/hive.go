@@ -2,10 +2,9 @@ package peer
 
 import (
 	"github.com/iotaledger/hive.go/autopeering/arrow"
+	"github.com/iotaledger/hive.go/autopeering/distance"
 	"sort"
 	"time"
-
-	"github.com/iotaledger/hive.go/autopeering/distance"
 )
 
 // PeerDistance defines the relative distance wrt a remote peer
@@ -31,22 +30,25 @@ func NewPeerDistance(localAr, remoteAr float64, channel int, remote *Peer) PeerD
 	}
 }
 
-// SortBySalt returns a slice of PeerDistance given a list of remote peers
-func SortByOutbound(channel int, localArRow *arrow.ArRow, remotePeers []*Peer) (result []PeerDistance) {
+// SortByOutbound returns a slice of PeerDistance given a list of remote peers sorted from outbound perspective
+func SortByOutbound(channel int, localArRow *arrow.ArRow, remotePeers []*Peer, epoch uint64) (result []PeerDistance) {
 	result = make(byDistance, len(remotePeers))
+
 	for i, remote := range remotePeers {
-		peerRows, _ := arrow.NewArRow(localArRow.GetExpiration().Sub(time.Now()), len(localArRow.GetArs()), remote.Identity)
+		peerRows, _ := arrow.NewArRow(localArRow.GetExpiration().Sub(time.Now()), len(localArRow.GetArs()), remote.Identity, epoch)
 		result[i] = NewPeerDistance(localArRow.GetArs()[channel], peerRows.GetRows()[channel], channel, remote)
 	}
 	sort.Sort(byDistance(result))
 	return result
 }
 
-// SortBySalt returns a slice of PeerDistance given a list of remote peers
-func SortByInbound(channel int, localArs *arrow.ArRow, remotePeers []*Peer) (result []PeerDistance) {
+// SortByInbound returns a slice of PeerDistance given a list of remote peers sorted from inbound perspective
+func SortByInbound(channel int, localArs *arrow.ArRow, remotePeers []*Peer, epoch uint64) (result []PeerDistance) {
 	result = make(byDistance, len(remotePeers))
+
 	for i, remote := range remotePeers {
-		peerRows, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), len(localArs.GetRows()), remote.Identity)
+
+		peerRows, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), len(localArs.GetRows()), remote.Identity, epoch)
 		result[i] = NewPeerDistance(localArs.GetRows()[channel], peerRows.GetArs()[channel], channel, remote)
 	}
 	sort.Sort(byDistance(result))

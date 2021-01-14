@@ -9,6 +9,6 @@ message ArRow {
   repeated double ars = 1;
   // value of the rows
   repeated double rows = 2;
-  // expiration time of the salt
+  // expiration time of the ArRow
   fixed64 exp_time = 3;
 }

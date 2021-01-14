@@ -83,7 +83,9 @@ func TestFilterApply(t *testing.T) {
 	d := make([]peer.PeerDistance, 5)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Distance = float64(i + 1)
+		d[i].Channel = i
+
 	}
 
 	type testCase struct {
@@ -117,12 +119,14 @@ func TestSelection(t *testing.T) {
 	d := make([]peer.PeerDistance, 10)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Distance = float64(i + 1)
+		d[i].Channel = i
 	}
 
 	type testCase struct {
 		nh           *Neighborhood
 		expCandidate *peer.Peer
+		channel      int
 	}
 
 	tests := []testCase{
@@ -131,24 +135,28 @@ func TestSelection(t *testing.T) {
 				neighbors: []peer.PeerDistance{d[0]},
 				size:      4},
 			expCandidate: d[1].Remote,
+			channel:      1,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[3]},
 				size:      4},
 			expCandidate: d[2].Remote,
+			channel:      2,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
 				size:      4},
 			expCandidate: d[3].Remote,
+			channel:      3,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[2], d[3]},
 				size:      4},
 			expCandidate: nil,
+			channel:      0,
 		},
 	}
 
@@ -157,7 +165,7 @@ func TestSelection(t *testing.T) {
 		filter.AddPeers(test.nh.GetPeers())
 		fList := filter.Apply(d)
 
-		got := test.nh.Select(fList)
+		got := test.nh.Select(fList, test.channel)
 
 		assert.Equal(t, test.expCandidate, got.Remote, "Next Candidate", test)
 	}

@@ -9,9 +9,8 @@ import (
 
 // Events contains all the events that are triggered during the neighbor selection.
 type Events struct {
-	// A SaltUpdated event is triggered, when the private and public salt were updated.
-	ArsUpdated  *events.Event
-	RowsUpdated *events.Event
+	// A ArRowUpdated event is triggered, when the ArRow values are updated.
+	ArRowUpdated *events.Event
 
 	// An OutgoingPeering event is triggered, when a valid response of PeeringRequest has been received.
 	OutgoingPeering *events.Event
@@ -21,12 +20,9 @@ type Events struct {
 	Dropped *events.Event
 }
 
-// SaltUpdatedEvent bundles the information sent in the SaltUpdated event.
-type ArsUpdatedEvent struct {
-	Ars *arrow.ArRow // the updated salt
-}
-type RowsUpdatedEvent struct {
-	Rows *arrow.ArRow // the updated salt
+// ArRowUpdatedEvent bundles the information sent in the ArRowUpdated event.
+type ArRowUpdatedEvent struct {
+	ArRow *arrow.ArRow // the updated arrow
 }
 
 // PeeringEvent bundles the information sent in the OutgoingPeering and IncomingPeering event.
@@ -42,10 +38,7 @@ type DroppedEvent struct {
 }
 
 func arsUpdatedCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*ArsUpdatedEvent))(params[0].(*ArsUpdatedEvent))
-}
-func rowsUpdatedCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*RowsUpdatedEvent))(params[0].(*RowsUpdatedEvent))
+	handler.(func(*ArRowUpdatedEvent))(params[0].(*ArRowUpdatedEvent))
 }
 func peeringCaller(handler interface{}, params ...interface{}) {
 	handler.(func(*PeeringEvent))(params[0].(*PeeringEvent))

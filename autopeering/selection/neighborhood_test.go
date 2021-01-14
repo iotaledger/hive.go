@@ -1,24 +1,26 @@
 package selection
 
 import (
+	"github.com/iotaledger/hive.go/autopeering/arrow"
 	"testing"
 	"time"
 
 	"github.com/iotaledger/hive.go/autopeering/distance"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
-	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetFurthest(t *testing.T) {
+func TestGetFromChannel(t *testing.T) {
 	d := make([]peer.PeerDistance, 5)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Channel = i
+		d[i].Distance = float64(i + 1)
 	}
 
 	type testCase struct {
+		channel  int
 		input    *Neighborhood
 		expected peer.PeerDistance
 		index    int
@@ -26,22 +28,26 @@ func TestGetFurthest(t *testing.T) {
 
 	tests := []testCase{
 		{
+			channel: 1,
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
 				size:      4},
 			expected: peer.PeerDistance{
 				Remote:   nil,
+				Channel:  1,
 				Distance: distance.Max},
 			index: 1,
 		},
 		{
+			channel: 2,
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[2], d[3]},
 				size:      4},
-			expected: d[3],
-			index:    3,
+			expected: d[2],
+			index:    2,
 		},
 		{
+			channel: 4,
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
 				size:      4},
@@ -51,9 +57,9 @@ func TestGetFurthest(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		p, l := test.input.getFurthest()
-		assert.Equal(t, test.expected, p, "Get furthest neighbor")
-		assert.Equal(t, test.index, l, "Get furthest neighbor")
+		p, l := test.input.getFromChannel(test.channel)
+		assert.Equal(t, test.expected, p, "Get neighbor from channel")
+		assert.Equal(t, test.index, l, "Get neighbor from channel")
 	}
 }
 
@@ -61,7 +67,8 @@ func TestGetPeerIndex(t *testing.T) {
 	d := make([]peer.PeerDistance, 5)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Channel = 1
+		d[i].Distance = float64(i + 1)
 	}
 
 	type testCase struct {
@@ -104,7 +111,8 @@ func TestRemove(t *testing.T) {
 	d := make([]peer.PeerDistance, 10)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Channel = i
+		d[i].Distance = float64(i + 1)
 	}
 
 	type testCase struct {
@@ -147,7 +155,8 @@ func TestAdd(t *testing.T) {
 	d := make([]peer.PeerDistance, 10)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Distance = float64(i + 1)
+		d[i].Channel = i
 	}
 
 	type testCase struct {
@@ -190,22 +199,25 @@ func TestUpdateDistance(t *testing.T) {
 	d := make([]peer.PeerDistance, 5)
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Distance = float64(i + 1)
+		d[i].Channel = 0
 	}
-
-	s, _ := salt.NewSalt(100 * time.Second)
+	epoch := uint64(1000)
+	localArrow, _ := arrow.NewArRow(time.Duration(10), 1, d[0].Remote.Identity, epoch)
 
 	d2 := make([]peer.PeerDistance, 4)
 	for i := range d2 {
 		d2[i].Remote = d[i+1].Remote
-		d2[i].Distance = distance.BySalt(d[0].Remote.ID().Bytes(), d2[i].Remote.ID().Bytes(), s.GetBytes())
+		d2[i].Channel = 0
+		remoteArrow, _ := arrow.NewArRow(time.Duration(10), 1, d[i+1].Remote.Identity, epoch)
+		d2[i].Distance = distance.ByArs(localArrow.GetRows()[0], remoteArrow.GetArs()[0])
 	}
 
 	neighborhood := Neighborhood{
 		neighbors: d[1:],
 		size:      4}
 
-	neighborhood.UpdateDistance(d[0].Remote.ID().Bytes(), s.GetBytes())
+	neighborhood.UpdateInboundDistance(localArrow)
 
 	assert.Equal(t, d2, neighborhood.neighbors, "UpdateDistance")
 }
@@ -216,7 +228,8 @@ func TestGetPeers(t *testing.T) {
 
 	for i := range d {
 		d[i].Remote = peertest.NewPeer(testNetwork, testIP, i)
-		d[i].Distance = uint32(i + 1)
+		d[i].Distance = float64(i + 1)
+		d[i].Channel = i
 		peers[i] = d[i].Remote
 	}
 
