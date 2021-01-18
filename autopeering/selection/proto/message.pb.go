@@ -32,7 +32,7 @@ type PeeringRequest struct {
 
 	// unix time
 	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	// salt of the requester
+	// requesting channel
 	Channel int32 `protobuf:"varint,2,opt,name=channel,proto3" json:"channel,omitempty"`
 }
 
