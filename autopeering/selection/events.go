@@ -29,7 +29,7 @@ type ArRowUpdatedEvent struct {
 type PeeringEvent struct {
 	Peer    *peer.Peer // peering partner
 	Status  bool       // true, when the peering partner has accepted the request
-	Channel int        // the distance between the peers
+	Channel int        //  channel on which nodes tried to connect. 
 }
 
 // DroppedEvent bundles the information sent in Dropped events.

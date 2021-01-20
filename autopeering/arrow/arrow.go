@@ -20,7 +20,7 @@ type ArRow struct {
 	mutex          sync.RWMutex
 }
 
-// NewArRow generates a new values given a lifetime duration for given identity and number of neighbours
+// NewArRow generates a new value given a lifetime duration for the given identity and the number of neighbours.
 func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch uint64) (arrowObj *ArRow, err error) {
 	epochID := make([]byte, 8)
 
@@ -29,15 +29,12 @@ func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch 
 	h := md5.New()
 	var seed = binary.BigEndian.Uint64(h.Sum(append(identity.ID().Bytes(), epochID...)))
 	randSource := rand.New(rand.NewSource(int64(seed)))
-	ars := make([]float64, 0, k)
-	rows := make([]float64, 0, k)
+	ars := make([]float64, k)
+	rows := make([]float64, k)
 
 	for idx := 0; idx < k; idx++ {
-		ars = append(ars, randSource.Float64())
-	}
-
-	for idx := 0; idx < k; idx++ {
-		rows = append(rows, randSource.Float64())
+		ars[idx] = randSource.Float64()
+		rows[idx] = randSource.Float64()
 	}
 
 	arrowObj = &ArRow{
@@ -50,20 +47,26 @@ func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch 
 }
 
 // GetArs returns slice of Ar values
+// GetArs returns the ars internal slice. 
 func (s *ArRow) GetArs() []float64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return append([]float64{}, s.ars...)
+	ars := make([]float64, len(s.ars))
+	copy(ars[:], s.ars[:])
+	return ars
 }
 
 // GetRows returns slice of Row values
 func (s *ArRow) GetRows() []float64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return append([]float64{}, s.rows...)
+	rows := make([]float64, len(s.rows))
+	copy(rows[:], s.rows[:])
+	return rows
 }
 
 // GetExpiration returns time of ArRow expiration
+// GetExpiration returns the internal expiration time.
 func (s *ArRow) GetExpiration() time.Time {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
