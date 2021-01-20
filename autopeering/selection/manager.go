@@ -176,11 +176,6 @@ Loop:
 		case id := <-m.dropChan:
 
 			droppedPeer := m.inbound.RemovePeer(id)
-			//peerIdx := m.outbound.getPeerIndex(id)
-			//var peerDistance peer.PeerDistance
-			//if peerIdx != -1 {
-			//	peerDistance = m.outbound.neighbors[peerIdx]
-			//}
 			if p := m.outbound.RemovePeer(id); p != nil {
 				droppedPeer = p
 
