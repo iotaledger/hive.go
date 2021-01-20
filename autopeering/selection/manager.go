@@ -280,7 +280,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	now := time.Now().Unix()
 	epoch := uint64(now - now%int64(arrowLifetime.Seconds()))
 
-	peerArs, _ := arrow.NewArRow(m.getArRow().GetExpiration().Sub(time.Now()), outboundNeighborSize, req.peer.Identity, epoch)
+	peerArs, _ := arrow.NewArRow(time.Until(m.getArRow().GetExpiration()), outboundNeighborSize, req.peer.Identity, epoch)
 	reqDistance := peer.NewPeerDistance(m.getArRow().GetRows()[req.channel], peerArs.GetArs()[req.channel], req.channel, req.peer)
 	filter := m.getConnectedFilter()
 	filteredList := filter.Apply([]peer.PeerDistance{reqDistance})

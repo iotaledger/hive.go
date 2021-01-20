@@ -35,7 +35,7 @@ func SortByOutbound(channel int, localArRow *arrow.ArRow, remotePeers []*Peer, e
 	result = make(byDistance, len(remotePeers))
 
 	for i, remote := range remotePeers {
-		peerRows, _ := arrow.NewArRow(localArRow.GetExpiration().Sub(time.Now()), len(localArRow.GetArs()), remote.Identity, epoch)
+		peerRows, _ := arrow.NewArRow(time.Until(localArRow.GetExpiration()), len(localArRow.GetArs()), remote.Identity, epoch)
 		result[i] = NewPeerDistance(localArRow.GetArs()[channel], peerRows.GetRows()[channel], channel, remote)
 	}
 	sort.Sort(byDistance(result))
@@ -48,7 +48,7 @@ func SortByInbound(channel int, localArs *arrow.ArRow, remotePeers []*Peer, epoc
 
 	for i, remote := range remotePeers {
 
-		peerRows, _ := arrow.NewArRow(localArs.GetExpiration().Sub(time.Now()), len(localArs.GetRows()), remote.Identity, epoch)
+		peerRows, _ := arrow.NewArRow(time.Until(localArs.GetExpiration()), len(localArs.GetRows()), remote.Identity, epoch)
 		result[i] = NewPeerDistance(localArs.GetRows()[channel], peerRows.GetArs()[channel], channel, remote)
 	}
 	sort.Sort(byDistance(result))

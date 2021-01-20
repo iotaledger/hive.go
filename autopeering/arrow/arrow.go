@@ -20,7 +20,7 @@ type ArRow struct {
 	mutex          sync.RWMutex
 }
 
-// NewArRow generates a new values given a lifetime duration for given identity and number of neighbours
+// NewArRow generates a new values given a lifetime duration for given identity and number of neighbors
 func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch uint64) (arrowObj *ArRow, err error) {
 	epochID := make([]byte, 8)
 
