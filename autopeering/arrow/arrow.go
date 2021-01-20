@@ -22,12 +22,12 @@ type ArRow struct {
 
 // NewArRow generates a new values given a lifetime duration for given identity and number of neighbours
 func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch uint64) (arrowObj *ArRow, err error) {
-	epochId := make([]byte, 8)
+	epochID := make([]byte, 8)
 
-	binary.LittleEndian.PutUint64(epochId, epoch)
+	binary.LittleEndian.PutUint64(epochID, epoch)
 
 	h := md5.New()
-	var seed = binary.BigEndian.Uint64(h.Sum(append(identity.ID().Bytes(), epochId...)))
+	var seed = binary.BigEndian.Uint64(h.Sum(append(identity.ID().Bytes(), epochID...)))
 	randSource := rand.New(rand.NewSource(int64(seed)))
 	ars := make([]float64, 0, k)
 	rows := make([]float64, 0, k)
@@ -49,16 +49,21 @@ func NewArRow(lifetime time.Duration, k int, identity *identity.Identity, epoch 
 	return arrowObj, nil
 }
 
+// GetArs returns slice of Ar values
 func (s *ArRow) GetArs() []float64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return append([]float64{}, s.ars...)
 }
+
+// GetRows returns slice of Row values
 func (s *ArRow) GetRows() []float64 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return append([]float64{}, s.rows...)
 }
+
+// GetExpiration returns time of ArRow expiration
 func (s *ArRow) GetExpiration() time.Time {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()

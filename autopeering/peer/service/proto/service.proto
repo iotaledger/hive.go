@@ -9,7 +9,7 @@ package proto;
 message ServiceMap {
   map<string, NetworkAddress> map = 1;
 }
-  
+
 // The service type (e.g., tcp, upd) and the address (e.g., 198.51.100.1:80)
 message NetworkAddress {
   string network = 1;

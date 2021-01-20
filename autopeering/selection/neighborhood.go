@@ -57,6 +57,7 @@ func (nh *Neighborhood) getFromChannel(channel int) (peer.PeerDistance, int) {
 	return furthest, index
 }
 
+// Select returns peer with candidate to replace existing connection on a given channel.
 func (nh *Neighborhood) Select(candidates []peer.PeerDistance, channel int) peer.PeerDistance {
 	if len(candidates) > 0 {
 		target, _ := nh.getFromChannel(channel)
@@ -112,6 +113,7 @@ func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 	return -1
 }
 
+// UpdateInboundDistance updates distances of incoming connections.
 func (nh *Neighborhood) UpdateInboundDistance(localArs *arrow.ArRow) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
@@ -123,6 +125,7 @@ func (nh *Neighborhood) UpdateInboundDistance(localArs *arrow.ArRow) {
 	}
 }
 
+// UpdateOutboundDistance updates distances of outgoing connections.
 func (nh *Neighborhood) UpdateOutboundDistance(localArs *arrow.ArRow) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()

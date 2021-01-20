@@ -6,6 +6,7 @@ import (
 	"math"
 )
 
+// ByArs returns the difference (float64) between x and y
 func ByArs(x, y float64) float64 {
 	return math.Abs(x - y)
 }

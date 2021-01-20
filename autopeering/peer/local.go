@@ -76,14 +76,14 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	return nil
 }
 
-// GetArs returns current Ar values
+// GetArRow returns current Ar values
 func (l *Local) GetArRow() *arrow.ArRow {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.arrow
 }
 
-// SetArs sets current Ar values
+// SetArRow sets current Ar values
 func (l *Local) SetArRow(arrow *arrow.ArRow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
