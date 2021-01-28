@@ -1,11 +1,14 @@
 package daemon
 
+import (
+	"context"
+)
+
 // WorkerFunc is the function to run a worker accepting its shutdown signal handler channel.
 type WorkerFunc = func(shutdownSignal <-chan struct{})
 
 // Daemon specifies an interface to run background go routines.
 type Daemon interface {
-
 	// GetRunningBackgroundWorkers gets the running background workers.
 	GetRunningBackgroundWorkers() []string
 
@@ -13,6 +16,9 @@ type Daemon interface {
 	// Use order to define in which shutdown order this particular
 	// background worker is shut down (higher = earlier).
 	BackgroundWorker(name string, handler WorkerFunc, order ...int) error
+
+	// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
+	DebugEnabled(enabled bool)
 
 	// Start starts the daemon.
 	Start()
@@ -33,4 +39,7 @@ type Daemon interface {
 
 	// IsStopped checks whether the daemon was stopped.
 	IsStopped() bool
+
+	// ContextStopped returns a context that is done when the deamon is stopped.
+	ContextStopped() context.Context
 }

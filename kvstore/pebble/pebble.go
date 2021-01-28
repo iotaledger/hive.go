@@ -72,10 +72,19 @@ func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 		return nil, nil
 	}
 
-	end := copyBytes(start)
-	end[len(end)-1] = end[len(end)-1] + 1
+	return start, keyUpperBound(start)
+}
 
-	return start, end
+func keyUpperBound(b []byte) []byte {
+	end := make([]byte, len(b))
+	copy(end, b)
+	for i := len(end) - 1; i >= 0; i-- {
+		end[i] = end[i] + 1
+		if end[i] != 0 {
+			return end[:i+1]
+		}
+	}
+	return nil // no upper-bound
 }
 
 func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
@@ -219,6 +228,14 @@ func (s *pebbleStore) Batched() kvstore.BatchedMutations {
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
 	}
+}
+
+func (s *pebbleStore) Flush() error {
+	return s.instance.Flush()
+}
+
+func (s *pebbleStore) Close() error {
+	return s.instance.Close()
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a pebbleDB.

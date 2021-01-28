@@ -1,11 +1,13 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"sync"
 
+	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/syncutils"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -28,6 +30,11 @@ func GetRunningBackgroundWorkers() []string {
 // to define in which shutdown order this particular background worker is shut down (higher = earlier).
 func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	return defaultDaemon.BackgroundWorker(name, handler, priority...)
+}
+
+// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
+func DebugEnabled(enabled bool) {
+	defaultDaemon.DebugEnabled(enabled)
 }
 
 // Start starts the default daemon instance.
@@ -62,11 +69,20 @@ func IsStopped() bool {
 	return defaultDaemon.IsStopped()
 }
 
+// ContextStopped returns a context that is done when the deamon is stopped.
+func ContextStopped() context.Context {
+	return defaultDaemon.ContextStopped()
+}
+
 // New creates a new daemon instance.
 func New() *OrderedDaemon {
+	stoppedCtx, stoppedCtxCancel := context.WithCancel(context.Background())
+
 	return &OrderedDaemon{
 		running:                typeutils.NewAtomicBool(),
 		stopped:                typeutils.NewAtomicBool(),
+		stoppedCtx:             stoppedCtx,
+		stoppedCtxCancel:       stoppedCtxCancel,
 		workers:                make(map[string]*worker),
 		shutdownOrderWorker:    make([]string, 0),
 		wgPerSameShutdownOrder: make(map[int]*sync.WaitGroup),
@@ -78,11 +94,14 @@ func New() *OrderedDaemon {
 type OrderedDaemon struct {
 	running                *typeutils.AtomicBool
 	stopped                *typeutils.AtomicBool
+	stoppedCtx             context.Context
+	stoppedCtxCancel       context.CancelFunc
 	stopOnce               sync.Once
 	workers                map[string]*worker
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
 	lock                   syncutils.RWMutex
+	logger                 *logger.Logger
 }
 
 type worker struct {
@@ -115,9 +134,15 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 
 	worker.running.Set()
 	go func() {
+		if d.logger != nil {
+			d.logger.Debugf("Starting Background Worker: %s ...", name)
+		}
 		backgroundWorker(worker.shutdownSignal)
 		worker.running.UnSet()
 		shutdownOrderWaitGroup.Done()
+		if d.logger != nil {
+			d.logger.Debugf("Stopping Background Worker: %s ... done", name)
+		}
 	}()
 }
 
@@ -185,6 +210,15 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	return nil
 }
 
+// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
+func (d *OrderedDaemon) DebugEnabled(enabled bool) {
+	if enabled {
+		defaultDaemon.logger = logger.NewLogger("Daemon")
+	} else {
+		defaultDaemon.logger = nil
+	}
+}
+
 // Start starts the daemon.
 func (d *OrderedDaemon) Start() {
 	// do not allow restarts
@@ -226,7 +260,12 @@ func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
 }
 
 func (d *OrderedDaemon) shutdown() {
+	if d.logger != nil {
+		d.logger.Debugf("Shutting down ...")
+	}
+
 	d.stopped.Set()
+	d.stoppedCtxCancel()
 	if !d.IsRunning() {
 		return
 	}
@@ -256,6 +295,9 @@ func (d *OrderedDaemon) stopWorkers() {
 				// wait for every worker in the previous shutdown priority to terminate
 				d.wgPerSameShutdownOrder[prevPriority].Wait()
 				prevPriority = worker.shutdownOrder
+			}
+			if d.logger != nil {
+				d.logger.Debugf("Stopping Background Worker: %s ...", name)
 			}
 			close(worker.shutdownSignal)
 		}
@@ -293,4 +335,9 @@ func (d *OrderedDaemon) IsRunning() bool {
 // IsStopped checks whether the daemon was stopped.
 func (d *OrderedDaemon) IsStopped() bool {
 	return d.stopped.IsSet()
+}
+
+// ContextStopped returns a context that is done when the deamon is stopped.
+func (d *OrderedDaemon) ContextStopped() context.Context {
+	return d.stoppedCtx
 }

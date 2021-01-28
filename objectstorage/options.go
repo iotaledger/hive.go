@@ -11,7 +11,7 @@ import (
 )
 
 type Options struct {
-	batchedWriterInstance *BatchedWriter
+	batchedWriterInstance *kvstore.BatchedWriter
 	cacheTime             time.Duration
 	keyPartitions         []int
 	persistenceEnabled    bool
@@ -38,7 +38,7 @@ func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options
 	}
 
 	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = NewBatchedWriter(objectStorage.store)
+		result.batchedWriterInstance = kvstore.NewBatchedWriter(objectStorage.store)
 	}
 
 	for _, delayedOption := range result.delayedOptions {
@@ -135,14 +135,14 @@ func LogStoreAccess(fileName string, commandsFilter ...kvstore.Command) Option {
 			}()
 
 			// pass through calls to logger channel
-			args.batchedWriterInstance.store.AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
+			args.batchedWriterInstance.KVStore().AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
 				logChannel <- logEntry{time.Now(), command, parameters}
 			}, commandsFilter...)
 		})
 	}
 }
 
-func BatchedWriterInstance(batchedWriterInstance *BatchedWriter) Option {
+func BatchedWriterInstance(batchedWriterInstance *kvstore.BatchedWriter) Option {
 	return func(args *Options) {
 		args.batchedWriterInstance = batchedWriterInstance
 	}

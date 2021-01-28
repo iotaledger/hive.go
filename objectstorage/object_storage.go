@@ -462,6 +462,17 @@ func (objectStorage *ObjectStorage) Prune() error {
 
 	objectStorage.flushMutex.Lock()
 
+	// mark cached objects as evicted
+	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
+		cachedObject.cancelScheduledRelease()
+		atomic.AddInt32(&(cachedObject.evicted), 1)
+		if storableObject := cachedObject.Get(); storableObject != nil {
+			storableObject.SetModified(false)
+		}
+
+		return true
+	})
+
 	objectStorage.cacheMutex.Lock()
 	if err := objectStorage.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
@@ -470,6 +481,10 @@ func (objectStorage *ObjectStorage) Prune() error {
 	}
 
 	objectStorage.cachedObjects = make(map[string]interface{})
+	if objectStorage.size != 0 {
+		objectStorage.size = 0
+		objectStorage.cachedObjectsEmpty.Done()
+	}
 	objectStorage.cacheMutex.Unlock()
 
 	objectStorage.flushMutex.Unlock()
@@ -916,7 +931,7 @@ func (objectStorage *ObjectStorage) flush() {
 	// force release the collected objects
 	for j := 0; j < i; j++ {
 		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
-			objectStorage.options.batchedWriterInstance.batchWrite(cachedObjects[j])
+			objectStorage.options.batchedWriterInstance.Enqueue(cachedObjects[j])
 		}
 	}
 

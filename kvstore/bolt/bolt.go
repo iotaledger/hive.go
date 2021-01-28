@@ -241,6 +241,14 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 	}
 }
 
+func (s *boltStore) Flush() error {
+	return s.instance.Sync()
+}
+
+func (s *boltStore) Close() error {
+	return s.instance.Close()
+}
+
 // batchedMutations is a wrapper to do a batched update on a BoltDB.
 type batchedMutations struct {
 	kvStore *boltStore

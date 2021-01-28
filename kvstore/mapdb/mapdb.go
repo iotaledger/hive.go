@@ -143,6 +143,14 @@ func (s *mapDB) Batched() kvstore.BatchedMutations {
 	}
 }
 
+func (s *mapDB) Flush() error {
+	return nil
+}
+
+func (s *mapDB) Close() error {
+	return nil
+}
+
 type kvtuple struct {
 	key   kvstore.Key
 	value kvstore.Value
