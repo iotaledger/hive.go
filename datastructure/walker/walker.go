@@ -15,9 +15,9 @@ type Walker struct {
 	walkStopped  bool
 }
 
-// NewWalker is the constructor of the Walker. It accepts an optional boolean flag that controls whether the Walker will
-// visit the same Element multiple times.
-func NewWalker(revisitElements ...bool) (walker *Walker) {
+// New is the constructor of the Walker. It accepts an optional boolean flag that controls whether the Walker will visit
+// the same Element multiple times.
+func New(revisitElements ...bool) (walker *Walker) {
 	walker = &Walker{
 		stack: list.New(),
 	}
