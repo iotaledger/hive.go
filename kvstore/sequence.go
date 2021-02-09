@@ -31,9 +31,6 @@ func NewSequence(store KVStore, key []byte, interval uint64) (*Sequence, error) 
 		reserved: 0,
 		interval: interval,
 	}
-	if err := seq.update(); err != nil {
-		return nil, err
-	}
 	return seq, nil
 }
 
