@@ -4,8 +4,9 @@ go 1.15
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20210303200444-070a80fcca6f
-	github.com/dgraph-io/badger/v2 v2.0.3
+	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/golang/protobuf v1.4.3
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/knadh/koanf v0.15.0
 	github.com/kr/text v0.2.0
@@ -20,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.etcd.io/bbolt v1.3.5
+	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
