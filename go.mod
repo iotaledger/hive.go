@@ -9,11 +9,15 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/knadh/koanf v0.14.0
 	github.com/kr/text v0.2.0
+	github.com/markbates/errx v1.1.0 // indirect
 	github.com/mr-tron/base58 v1.2.0
+	github.com/nikkolasg/hexjson v0.0.0-20181101101858-78e39397e00c // indirect
 	github.com/oasisprotocol/ed25519 v0.0.0-20200819094954-65138ca6ec7c
 	github.com/panjf2000/ants/v2 v2.4.3
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/sasha-s/go-deadlock v0.2.0
+	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/objx v0.3.0 // indirect
