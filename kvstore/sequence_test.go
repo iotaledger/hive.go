@@ -20,6 +20,10 @@ func TestNewSequence(t *testing.T) {
 	assert.NotNil(t, s1)
 	assert.NoError(t, err)
 
+	newKey, err := s1.Next()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(0), newKey)
+
 	// key should exists in the store
 	_, err = store.Get(sequenceKey)
 	require.NoError(t, err)
