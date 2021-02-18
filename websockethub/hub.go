@@ -37,6 +37,9 @@ type Hub struct {
 
 	// indicates that the websocket hub was shut down
 	shutdownFlag bool
+
+	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
+	clientReadLimit int64
 }
 
 // message is a message that is sent to the broadcast channel.
@@ -45,7 +48,7 @@ type message struct {
 	dontDrop bool
 }
 
-func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int) *Hub {
+func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
 	return &Hub{
 		logger:                logger,
 		upgrader:              upgrader,
@@ -55,6 +58,7 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
 		shutdownSignal:        make(chan struct{}),
+		clientReadLimit:       clientReadLimit,
 	}
 }
 
@@ -213,6 +217,7 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 		sendChan:       make(chan interface{}, h.clientSendChannelSize),
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
+		readLimit:      h.clientReadLimit,
 	}
 
 	if onCreate != nil {
