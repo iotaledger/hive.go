@@ -17,6 +17,7 @@ type TimedQueue struct {
 	heapMutex sync.RWMutex
 
 	waitForNewElements sync.WaitGroup
+	waitForNewElementsMutex sync.Mutex
 
 	shutdownSignal chan byte
 	isShutdown     bool
@@ -147,7 +148,9 @@ func (t *TimedQueue) IsShutdown() bool {
 func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 	// optionally wait for new elements before continuing
 	if waitIfEmpty {
+		t.waitForNewElementsMutex.Lock()
 		t.waitForNewElements.Wait()
+		t.waitForNewElementsMutex.Unlock()
 	}
 
 	// acquire locks
@@ -234,7 +237,9 @@ func (t *TimedQueue) markEmptyQueueAsWaitingForElements() {
 	if len(t.heap) == 0 {
 		t.shutdownMutex.Lock()
 		if !t.isShutdown {
+			t.waitForNewElementsMutex.Lock()
 			t.waitForNewElements.Add(1)
+			t.waitForNewElementsMutex.Unlock()
 		}
 		t.shutdownMutex.Unlock()
 	}
