@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
@@ -16,9 +17,6 @@ const (
 
 	// send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
-
-	// maximum message size allowed from peer.
-	maxMessageSize = 125 // 125 is the maximum payload size for ping pongs
 )
 
 // The message types are defined in RFC 6455, section 11.8.
@@ -84,6 +82,12 @@ type Client struct {
 
 	// shutdownWaitGroup is used wait until writePump and receivePong func stopped
 	shutdownWaitGroup sync.WaitGroup
+
+	// indicates that the client was shut down
+	shutdownFlag *typeutils.AtomicBool
+
+	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
+	readLimit int64
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
@@ -102,12 +106,25 @@ func (c *Client) checkPong() {
 			c.hub.unregister <- c
 		}
 
+		if c.ReceiveChan != nil {
+			// drain and close the receive channel
+		drainLoop:
+			for {
+				select {
+				case <-c.ReceiveChan:
+				default:
+					break drainLoop
+				}
+			}
+			close(c.ReceiveChan)
+		}
+
 		c.shutdownWaitGroup.Done()
 	}()
 
 	c.startWaitGroup.Done()
 
-	c.conn.SetReadLimit(maxMessageSize)
+	c.conn.SetReadLimit(c.readLimit)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
@@ -147,6 +164,9 @@ func (c *Client) writePump() {
 	defer func() {
 		// signal the hub to not send messages to sendChan anymore
 		close(c.sendChanClosed)
+
+		// mark the client as shutdown
+		c.shutdownFlag.Set()
 
 		// stop the ping ticker
 		pingTicker.Stop()
@@ -203,8 +223,13 @@ func (c *Client) writePump() {
 
 // Send sends a message to the client
 func (c *Client) Send(msg interface{}, dontDrop ...bool) {
-	if c.hub.shutdownFlag {
+	if c.hub.shutdownFlag.IsSet() {
 		// hub was already shut down
+		return
+	}
+
+	if c.shutdownFlag.IsSet() {
+		// client was already shutdown
 		return
 	}
 
