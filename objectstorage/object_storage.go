@@ -918,8 +918,6 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
 
-	objectStorage.releaseExecutor.Shutdown(timedexecutor.IgnorePendingTimeouts)
-
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
@@ -933,6 +931,9 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	})
 
 	objectStorage.flushMutex.Unlock()
+
+	// shut down the executor to execute all release tasks
+	objectStorage.releaseExecutor.Shutdown(timedexecutor.IgnorePendingTimeouts)
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
