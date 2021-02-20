@@ -92,7 +92,7 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 				atomic.StorePointer(&cachedObject.releaseTimer, nil)
 
 				if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-					cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
+					cachedObject.evict()
 				} else if consumers < 0 {
 					panic("called Release() too often")
 				}
@@ -101,7 +101,7 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 			// only force release if there is no timer running, so that objects that landed in the cache through normal
 			// loading stay available
 			if atomic.LoadPointer(&cachedObject.releaseTimer) == nil {
-				cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
+				cachedObject.evict()
 			}
 		}
 	} else if consumers < 0 {
@@ -202,7 +202,7 @@ func (cachedObject *CachedObjectImpl) retain() CachedObject {
 func (cachedObject *CachedObjectImpl) storeOnCreation() {
 	if cachedObject.objectStorage.options.persistenceEnabled && cachedObject.objectStorage.options.storeOnCreation && !typeutils.IsInterfaceNil(cachedObject.value) && cachedObject.value.IsModified() && cachedObject.value.ShouldPersist() {
 		// store the object immediately
-		cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
+		cachedObject.evict()
 	}
 }
 
@@ -269,19 +269,25 @@ func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
 	}
 }
 
+// evict either releases non-persistable objects or enqueues persistable objects into the batch writer.
+func (cachedObject *CachedObjectImpl) evict() {
+	if !cachedObject.objectStorage.options.persistenceEnabled {
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
+			storableObject.SetModified(false)
+		}
+		cachedObject.BatchWriteDone()
+		return
+	}
+
+	cachedObject.objectStorage.options.batchedWriterInstance.Enqueue(cachedObject)
+}
+
 // BatchWriteObject interface methods
 
 // BatchWrite checks if the cachedObject should be persisted.
 // If all checks pass, the cachedObject is marshalled and added to the BatchedMutations.
+// Do not call this method for objects that should not be persisted.
 func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
-	objectStorage := cachedObject.objectStorage
-	if !objectStorage.options.persistenceEnabled {
-		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
-			storableObject.SetModified(false)
-		}
-
-		return
-	}
 
 	consumers := atomic.LoadInt32(&(cachedObject.consumers))
 	if consumers < 0 {
@@ -330,7 +336,7 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 	}
 
 	var marshaledValue []byte
-	if !objectStorage.options.keysOnly {
+	if !cachedObject.objectStorage.options.keysOnly {
 		marshaledValue = storableObject.ObjectStorageValue()
 	}
 
