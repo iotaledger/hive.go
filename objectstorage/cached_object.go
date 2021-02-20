@@ -4,11 +4,11 @@ import (
 	"math"
 	"sync"
 	"sync/atomic"
-	"time"
 	"unsafe"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/timedexecutor"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -34,7 +34,7 @@ type CachedObjectImpl struct {
 	batchWriteScheduled int32
 	wg                  sync.WaitGroup
 	valueMutex          syncutils.RWMutex
-	releaseTimer        unsafe.Pointer
+	scheduledTask       unsafe.Pointer
 	blindDelete         typeutils.AtomicBool
 	transactionMutex    syncutils.RWMultiMutex
 }
@@ -88,19 +88,18 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 
 	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
 		if !forceRelease && cachedObject.objectStorage.options.cacheTime != 0 {
-			atomic.StorePointer(&cachedObject.releaseTimer, unsafe.Pointer(time.AfterFunc(cachedObject.objectStorage.options.cacheTime, func() {
-				atomic.StorePointer(&cachedObject.releaseTimer, nil)
-
+			atomic.StorePointer(&cachedObject.scheduledTask, unsafe.Pointer(cachedObject.objectStorage.releaseExecutor.ExecuteAfter(func() {
+				atomic.StorePointer(&cachedObject.scheduledTask, nil)
 				if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
 					cachedObject.evict()
 				} else if consumers < 0 {
 					panic("called Release() too often")
 				}
-			})))
+			}, cachedObject.objectStorage.options.cacheTime)))
 		} else {
 			// only force release if there is no timer running, so that objects that landed in the cache through normal
 			// loading stay available
-			if atomic.LoadPointer(&cachedObject.releaseTimer) == nil {
+			if atomic.LoadPointer(&cachedObject.scheduledTask) == nil {
 				cachedObject.evict()
 			}
 		}
@@ -264,8 +263,8 @@ func (cachedObject *CachedObjectImpl) waitForInitialResult() *CachedObjectImpl {
 }
 
 func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
-	if timer := atomic.SwapPointer(&cachedObject.releaseTimer, nil); timer != nil {
-		(*(*time.Timer)(timer)).Stop()
+	if scheduledTask := atomic.SwapPointer(&cachedObject.scheduledTask, nil); scheduledTask != nil {
+		(*(*timedexecutor.ScheduledTask)(scheduledTask)).Cancel()
 	}
 }
 

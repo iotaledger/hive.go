@@ -8,6 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/timedexecutor"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -24,6 +25,7 @@ type ObjectStorage struct {
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
 	partitionsManager  *PartitionsManager
+	releaseExecutor    *timedexecutor.TimedExecutor
 
 	Events Events
 }
@@ -32,18 +34,21 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+
+	storageOptions := newOptions(store, optionalOptions)
+
 	result := &ObjectStorage{
 		store:             store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
+		releaseExecutor:   timedexecutor.New(storageOptions.releaseExecutorWorkerCount),
+		options:           storageOptions,
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
-
-	result.options = newOptions(result, optionalOptions)
 
 	return result
 }
@@ -497,13 +502,13 @@ func (objectStorage *ObjectStorage) Flush() {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
-	objectStorage.flush()
+	objectStorage.flush(false)
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.shutdown.Set()
 
-	objectStorage.flush()
+	objectStorage.flush(true)
 
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
@@ -910,8 +915,10 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 	return object
 }
 
-func (objectStorage *ObjectStorage) flush() {
+func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
+
+	objectStorage.releaseExecutor.Shutdown(timedexecutor.IgnorePendingTimeouts)
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
@@ -935,6 +942,11 @@ func (objectStorage *ObjectStorage) flush() {
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
+
+	if !shutdown {
+		// create a new release executor because the other was shut down to flush all objects
+		objectStorage.releaseExecutor = timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)
+	}
 }
 
 // iterates over all cached objects and calls the consumer function on them.
