@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -58,7 +59,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 	}
 }
 
-// LoadFile loads paramerers from a JSON or YAML file and merges them into the loaded config.
+// LoadFile loads parameters from a JSON or YAML file and merges them into the loaded config.
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
@@ -75,6 +76,35 @@ func (c *Configuration) LoadFile(filePath string) error {
 
 	if err := c.config.Load(file.Provider(filePath), parser); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// SaveFile stores the current config to a JSON or YAML file.
+func (c *Configuration) SaveFile(filePath string) error {
+
+	var parser koanf.Parser
+
+	switch filepath.Ext(filePath) {
+	case ".json":
+		parser = &JSONLowerParser{
+			prefix: "",
+			indent: "  ",
+		}
+	case ".yaml", ".yml":
+		parser = &YAMLLowerParser{}
+	default:
+		return ErrUnknownConfigFormat
+	}
+
+	data, err := c.config.Marshal(parser)
+	if err != nil {
+		return fmt.Errorf("unable to marshal config file: %w", err)
+	}
+
+	if err := ioutil.WriteFile(filePath, data, 0666); err != nil {
+		return fmt.Errorf("unable to save config file: %w", err)
 	}
 
 	return nil

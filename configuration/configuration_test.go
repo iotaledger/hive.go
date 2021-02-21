@@ -184,3 +184,25 @@ func TestMergeParameters(t *testing.T) {
 	val = config.Int("F")
 	require.EqualValues(t, 322, val)
 }
+
+func TestSaveConfigFile(t *testing.T) {
+
+	config1 := configuration.New()
+	config1.Set("test.integer", 321)
+	config1.Set("test.slice", []string{"string1", "string2", "string3"})
+
+	jsonConfFileName, _ := tempFile(t, "config*.json")
+	err := config1.SaveFile(jsonConfFileName)
+	require.NoError(t, err)
+
+	config2 := configuration.New()
+
+	err = config2.LoadFile(jsonConfFileName)
+	require.NoError(t, err)
+
+	valueInteger := config2.Int("test.integer")
+	require.EqualValues(t, 321, valueInteger)
+
+	valueSlice := config2.Strings("test.slice")
+	require.EqualValues(t, []string{"string1", "string2", "string3"}, valueSlice)
+}
