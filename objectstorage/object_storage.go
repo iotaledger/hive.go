@@ -4,10 +4,12 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/timedexecutor"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
@@ -24,6 +26,7 @@ type ObjectStorage struct {
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
 	partitionsManager  *PartitionsManager
+	releaseExecutor    unsafe.Pointer
 
 	Events Events
 }
@@ -32,18 +35,22 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+
+	storageOptions := newOptions(store, optionalOptions)
+
 	result := &ObjectStorage{
 		store:             store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
+		options:           storageOptions,
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
 
-	result.options = newOptions(result, optionalOptions)
+	atomic.StorePointer(&result.releaseExecutor, unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount)))
 
 	return result
 }
@@ -497,13 +504,13 @@ func (objectStorage *ObjectStorage) Flush() {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
-	objectStorage.flush()
+	objectStorage.flush(false)
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.shutdown.Set()
 
-	objectStorage.flush()
+	objectStorage.flush(true)
 
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
@@ -910,7 +917,7 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 	return object
 }
 
-func (objectStorage *ObjectStorage) flush() {
+func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
@@ -927,14 +934,24 @@ func (objectStorage *ObjectStorage) flush() {
 
 	objectStorage.flushMutex.Unlock()
 
+	// shut down the executor to execute all release tasks
+	if releaseExecutor := atomic.LoadPointer(&objectStorage.releaseExecutor); releaseExecutor != nil {
+		(*timedexecutor.TimedExecutor)(releaseExecutor).Shutdown(timedexecutor.IgnorePendingTimeouts)
+	}
+
 	// force release the collected objects
 	for j := 0; j < i; j++ {
 		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
-			objectStorage.options.batchedWriterInstance.Enqueue(cachedObjects[j])
+			cachedObjects[j].evict()
 		}
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
+
+	if !shutdown {
+		// create a new release executor because the other was shut down to flush all objects
+		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
+	}
 }
 
 // iterates over all cached objects and calls the consumer function on them.
@@ -1100,7 +1117,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 // StorableObjectFactory is used to address the factory method that generically creates StorableObjects. It receives the
 // key and the serialized data of the object and returns an "empty" StorableObject that just has its key set. The object
-// is then fully unmarshalled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
+// is then fully unmarshaled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
 // is anyway provided in this method already to allow the dynamic creation of different object types depending on the
 // stored data.
 type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)

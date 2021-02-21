@@ -106,6 +106,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 		var batchedMuts BatchedMutations
 
 		writtenValues := make([]BatchWriteObject, BatchWriterBatchSize)
+		batchWriterTimeoutChan := time.After(BatchWriterBatchTimeout)
 		writtenValuesCounter := 0
 	CollectValues:
 		for writtenValuesCounter < BatchWriterBatchSize {
@@ -122,7 +123,8 @@ func (bw *BatchedWriter) runBatchWriter() {
 				objectToPersist.BatchWrite(batchedMuts)
 				writtenValues[writtenValuesCounter] = objectToPersist
 				writtenValuesCounter++
-			case <-time.After(BatchWriterBatchTimeout):
+
+			case <-batchWriterTimeoutChan:
 				break CollectValues
 			}
 		}

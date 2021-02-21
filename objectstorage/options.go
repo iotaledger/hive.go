@@ -11,22 +11,24 @@ import (
 )
 
 type Options struct {
-	batchedWriterInstance *kvstore.BatchedWriter
-	cacheTime             time.Duration
-	keyPartitions         []int
-	persistenceEnabled    bool
-	keysOnly              bool
-	storeOnCreation       bool
-	leakDetectionOptions  *LeakDetectionOptions
-	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
-	delayedOptions        []func()
+	batchedWriterInstance      *kvstore.BatchedWriter
+	cacheTime                  time.Duration
+	keyPartitions              []int
+	persistenceEnabled         bool
+	keysOnly                   bool
+	storeOnCreation            bool
+	releaseExecutorWorkerCount int
+	leakDetectionOptions       *LeakDetectionOptions
+	leakDetectionWrapper       func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
+	delayedOptions             []func()
 }
 
-func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options {
+func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 	result := &Options{
-		cacheTime:          0,
-		persistenceEnabled: true,
-		delayedOptions:     make([]func(), 0),
+		cacheTime:                  0,
+		persistenceEnabled:         true,
+		releaseExecutorWorkerCount: 1,
+		delayedOptions:             make([]func(), 0),
 	}
 
 	for _, optionalOption := range optionalOptions {
@@ -38,7 +40,7 @@ func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options
 	}
 
 	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = kvstore.NewBatchedWriter(objectStorage.store)
+		result.batchedWriterInstance = kvstore.NewBatchedWriter(store)
 	}
 
 	for _, delayedOption := range result.delayedOptions {
@@ -158,6 +160,18 @@ func KeysOnly(keysOnly bool) Option {
 func StoreOnCreation(store bool) Option {
 	return func(args *Options) {
 		args.storeOnCreation = store
+	}
+}
+
+// ReleaseExecutorWorkerCount sets the number of workers that execute the
+// scheduled eviction of the objects in parallel (whenever they become due).
+func ReleaseExecutorWorkerCount(releaseExecutorWorkerCount int) Option {
+	if releaseExecutorWorkerCount < 1 {
+		panic("releaseExecutorWorkerCount must be greater or equal 1")
+	}
+
+	return func(args *Options) {
+		args.releaseExecutorWorkerCount = releaseExecutorWorkerCount
 	}
 }
 
