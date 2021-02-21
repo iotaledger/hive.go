@@ -110,6 +110,8 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 }
 
 func (cachedObject *CachedObjectImpl) delayedRelease() {
+	atomic.StorePointer(&cachedObject.scheduledTask, nil)
+
 	consumers := atomic.LoadInt32(&(cachedObject.consumers))
 	if consumers > 1 {
 		return
@@ -290,8 +292,6 @@ func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
 
 // evict either releases non-persistable objects or enqueues persistable objects into the batch writer.
 func (cachedObject *CachedObjectImpl) evict() {
-	atomic.StorePointer(&cachedObject.scheduledTask, nil)
-
 	if !cachedObject.objectStorage.options.persistenceEnabled {
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			storableObject.SetModified(false)

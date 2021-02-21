@@ -935,6 +935,8 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
+		atomic.StorePointer(&cachedObject.scheduledTask, nil)
+
 		cachedObjects[i] = cachedObject
 		i++
 
