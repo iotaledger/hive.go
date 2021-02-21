@@ -73,43 +73,54 @@ func (cachedObject *CachedObjectImpl) Key() []byte {
 // Retrieves the StorableObject, that is cached in this container.
 func (cachedObject *CachedObjectImpl) Get() (result StorableObject) {
 	cachedObject.valueMutex.RLock()
-	result = cachedObject.value
-	cachedObject.valueMutex.RUnlock()
+	defer cachedObject.valueMutex.RUnlock()
 
-	return
+	return cachedObject.value
 }
 
 // Releases the object, to be picked up by the persistence layer (as soon as all consumers are done).
 func (cachedObject *CachedObjectImpl) Release(force ...bool) {
-	var forceRelease bool
-	if len(force) >= 1 {
-		forceRelease = force[0]
+	consumers := atomic.AddInt32(&(cachedObject.consumers), -1)
+	if consumers > 1 {
+		return
 	}
-
-	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
-		if !forceRelease && cachedObject.objectStorage.options.cacheTime != 0 {
-			if releaseExecutor := atomic.LoadPointer(&cachedObject.objectStorage.releaseExecutor); releaseExecutor != nil {
-				atomic.StorePointer(&cachedObject.scheduledTask, unsafe.Pointer((*timedexecutor.TimedExecutor)(releaseExecutor).ExecuteAfter(func() {
-					atomic.StorePointer(&cachedObject.scheduledTask, nil)
-					if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-						cachedObject.evict()
-					} else if consumers < 0 {
-						panic("called Release() too often")
-					}
-				}, cachedObject.objectStorage.options.cacheTime)))
-			} else {
-				panic("releaseExecutor is nil")
-			}
-		} else {
-			// only force release if there is no timer running, so that objects that landed in the cache through normal
-			// loading stay available
-			if atomic.LoadPointer(&cachedObject.scheduledTask) == nil {
-				cachedObject.evict()
-			}
-		}
-	} else if consumers < 0 {
+	if consumers < 0 {
 		panic("called Release() too often")
 	}
+
+	if cachedObject.objectStorage.options.cacheTime == 0 || (len(force) >= 1 && force[0]) {
+		// only force release if there is no timer running, so that objects that landed in the cache through normal
+		// loading stay available
+		if atomic.LoadPointer(&cachedObject.scheduledTask) == nil {
+			cachedObject.evict()
+		}
+
+		return
+	}
+
+	atomic.StorePointer(
+		&cachedObject.scheduledTask,
+		unsafe.Pointer(
+			cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
+				cachedObject.delayedRelease,
+				cachedObject.objectStorage.options.cacheTime,
+			),
+		),
+	)
+}
+
+func (cachedObject *CachedObjectImpl) delayedRelease() {
+	atomic.StorePointer(&cachedObject.scheduledTask, nil)
+
+	consumers := atomic.LoadInt32(&(cachedObject.consumers))
+	if consumers > 1 {
+		return
+	}
+	if consumers < 0 {
+		panic("called Release() too often")
+	}
+
+	cachedObject.evict()
 }
 
 // Directly consumes the StorableObject. This method automatically Release()s the object when the callback is done.
@@ -222,40 +233,47 @@ func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool 
 
 func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.valueMutex.Lock()
+	defer cachedObject.valueMutex.Unlock()
+
 	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
 		cachedObject.value = object
 		cachedObject.blindDelete.UnSet()
-	} else {
-		cachedObject.value.SetModified(object.IsModified())
-		cachedObject.value.Persist(object.ShouldPersist())
-		cachedObject.value.Delete(object.IsDeleted())
-		cachedObject.value.Update(object)
-		cachedObject.blindDelete.UnSet()
+		return
 	}
-	cachedObject.valueMutex.Unlock()
+
+	cachedObject.value.SetModified(object.IsModified())
+	cachedObject.value.Persist(object.ShouldPersist())
+	cachedObject.value.Delete(object.IsDeleted())
+	cachedObject.value.Update(object)
+	cachedObject.blindDelete.UnSet()
 }
 
 func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {
 	cachedObject.valueMutex.RLock()
-	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
+	if !typeutils.IsInterfaceNil(cachedObject.value) && !cachedObject.value.IsDeleted() {
 		cachedObject.valueMutex.RUnlock()
-
-		cachedObject.valueMutex.Lock()
-		if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
-			if object, ok := update.(StorableObject); ok {
-				cachedObject.value = object
-				cachedObject.blindDelete.UnSet()
-			} else if updater, ok := update.(func() StorableObject); ok {
-				cachedObject.value = updater()
-				cachedObject.blindDelete.UnSet()
-			}
-
-			updated = true
-		}
-		cachedObject.valueMutex.Unlock()
-	} else {
-		cachedObject.valueMutex.RUnlock()
+		return
 	}
+
+	cachedObject.valueMutex.RUnlock()
+	cachedObject.valueMutex.Lock()
+	defer cachedObject.valueMutex.Unlock()
+
+	if !typeutils.IsInterfaceNil(cachedObject.value) && !cachedObject.value.IsDeleted() {
+		return
+	}
+
+	switch typedUpdate := update.(type) {
+	case StorableObject:
+		cachedObject.value = typedUpdate
+	case func() StorableObject:
+		cachedObject.value = typedUpdate()
+	default:
+		panic("invalid argument in call to updateEmptyResult")
+	}
+
+	cachedObject.blindDelete.UnSet()
+	updated = true
 
 	return
 }
@@ -291,7 +309,6 @@ func (cachedObject *CachedObjectImpl) evict() {
 // If all checks pass, the cachedObject is marshaled and added to the BatchedMutations.
 // Do not call this method for objects that should not be persisted.
 func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
-
 	consumers := atomic.LoadInt32(&(cachedObject.consumers))
 	if consumers < 0 {
 		panic("too many unregistered consumers of cached object")

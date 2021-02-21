@@ -515,6 +515,11 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
+// ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
+func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
+	return (*timedexecutor.TimedExecutor)(atomic.LoadPointer(&objectStorage.releaseExecutor))
+}
+
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
 	objectStorage.flushMutex.RLock()
 	defer objectStorage.flushMutex.RUnlock()
@@ -920,11 +925,17 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
 
+	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
+	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks)
+	if !shutdown {
+		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
+	}
+
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		cachedObject.cancelScheduledRelease()
+		atomic.StorePointer(&cachedObject.scheduledTask, nil)
 
 		cachedObjects[i] = cachedObject
 		i++
@@ -934,11 +945,6 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	objectStorage.flushMutex.Unlock()
 
-	// shut down the executor to execute all release tasks
-	if releaseExecutor := atomic.LoadPointer(&objectStorage.releaseExecutor); releaseExecutor != nil {
-		(*timedexecutor.TimedExecutor)(releaseExecutor).Shutdown(timedexecutor.IgnorePendingTimeouts)
-	}
-
 	// force release the collected objects
 	for j := 0; j < i; j++ {
 		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
@@ -947,11 +953,6 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	}
 
 	objectStorage.cachedObjectsEmpty.Wait()
-
-	if !shutdown {
-		// create a new release executor because the other was shut down to flush all objects
-		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
-	}
 }
 
 // iterates over all cached objects and calls the consumer function on them.
