@@ -88,14 +88,18 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 
 	if consumers := atomic.AddInt32(&(cachedObject.consumers), -1); consumers == 0 {
 		if !forceRelease && cachedObject.objectStorage.options.cacheTime != 0 {
-			atomic.StorePointer(&cachedObject.scheduledTask, unsafe.Pointer(cachedObject.objectStorage.releaseExecutor.ExecuteAfter(func() {
-				atomic.StorePointer(&cachedObject.scheduledTask, nil)
-				if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
-					cachedObject.evict()
-				} else if consumers < 0 {
-					panic("called Release() too often")
-				}
-			}, cachedObject.objectStorage.options.cacheTime)))
+			if releaseExecutor := atomic.LoadPointer(&cachedObject.objectStorage.releaseExecutor); releaseExecutor != nil {
+				atomic.StorePointer(&cachedObject.scheduledTask, unsafe.Pointer((*timedexecutor.TimedExecutor)(releaseExecutor).ExecuteAfter(func() {
+					atomic.StorePointer(&cachedObject.scheduledTask, nil)
+					if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers == 0 {
+						cachedObject.evict()
+					} else if consumers < 0 {
+						panic("called Release() too often")
+					}
+				}, cachedObject.objectStorage.options.cacheTime)))
+			} else {
+				panic("releaseExecutor is nil")
+			}
 		} else {
 			// only force release if there is no timer running, so that objects that landed in the cache through normal
 			// loading stay available
@@ -284,7 +288,7 @@ func (cachedObject *CachedObjectImpl) evict() {
 // BatchWriteObject interface methods
 
 // BatchWrite checks if the cachedObject should be persisted.
-// If all checks pass, the cachedObject is marshalled and added to the BatchedMutations.
+// If all checks pass, the cachedObject is marshaled and added to the BatchedMutations.
 // Do not call this method for objects that should not be persisted.
 func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
 

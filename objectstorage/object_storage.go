@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -25,7 +26,7 @@ type ObjectStorage struct {
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
 	partitionsManager  *PartitionsManager
-	releaseExecutor    *timedexecutor.TimedExecutor
+	releaseExecutor    unsafe.Pointer
 
 	Events Events
 }
@@ -42,13 +43,14 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
-		releaseExecutor:   timedexecutor.New(storageOptions.releaseExecutorWorkerCount),
 		options:           storageOptions,
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
+
+	atomic.StorePointer(&result.releaseExecutor, unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount)))
 
 	return result
 }
@@ -933,7 +935,9 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Unlock()
 
 	// shut down the executor to execute all release tasks
-	objectStorage.releaseExecutor.Shutdown(timedexecutor.IgnorePendingTimeouts)
+	if releaseExecutor := atomic.LoadPointer(&objectStorage.releaseExecutor); releaseExecutor != nil {
+		(*timedexecutor.TimedExecutor)(releaseExecutor).Shutdown(timedexecutor.IgnorePendingTimeouts)
+	}
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
@@ -946,7 +950,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	if !shutdown {
 		// create a new release executor because the other was shut down to flush all objects
-		objectStorage.releaseExecutor = timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)
+		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
 	}
 }
 
@@ -1113,7 +1117,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 // StorableObjectFactory is used to address the factory method that generically creates StorableObjects. It receives the
 // key and the serialized data of the object and returns an "empty" StorableObject that just has its key set. The object
-// is then fully unmarshalled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
+// is then fully unmarshaled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
 // is anyway provided in this method already to allow the dynamic creation of different object types depending on the
 // stored data.
 type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)

@@ -167,7 +167,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 			//       They all wait for a new element to arrive, then one retrieves the new elements and the other goroutines
 			//       will still see an empty tangle even if they waited.
 			if !t.IsShutdown() && waitIfEmpty {
-				return t.Poll(waitIfEmpty)
+				continue
 			}
 
 			// ... abort
@@ -201,7 +201,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 			select {
 			// abort waiting for this element and return the next one instead if it was canceled
 			case <-polledElement.cancel:
-				return t.Poll(waitIfEmpty)
+				continue
 
 			// return the result after the time is reached
 			case <-time.After(time.Until(polledElement.ScheduledTime)):
