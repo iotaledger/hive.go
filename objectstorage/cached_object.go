@@ -309,7 +309,6 @@ func (cachedObject *CachedObjectImpl) evict() {
 // If all checks pass, the cachedObject is marshaled and added to the BatchedMutations.
 // Do not call this method for objects that should not be persisted.
 func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
-
 	consumers := atomic.LoadInt32(&(cachedObject.consumers))
 	if consumers < 0 {
 		panic("too many unregistered consumers of cached object")
