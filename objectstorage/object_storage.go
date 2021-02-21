@@ -515,6 +515,10 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
+func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
+	return (*timedexecutor.TimedExecutor)(atomic.LoadPointer(&objectStorage.releaseExecutor))
+}
+
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
 	objectStorage.flushMutex.RLock()
 	defer objectStorage.flushMutex.RUnlock()
