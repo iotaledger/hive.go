@@ -81,8 +81,31 @@ func (c *Configuration) LoadFile(filePath string) error {
 	return nil
 }
 
-// SaveFile stores the current config to a JSON or YAML file.
-func (c *Configuration) SaveFile(filePath string) error {
+// StoreFile stores the current config to a JSON or YAML file.
+// ignoreSettingsAtStore will not be stored to the file.
+func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]string) error {
+
+	settings := c.config.Raw()
+	if len(ignoreSettingsAtStore) > 0 {
+		for _, ignoredSetting := range ignoreSettingsAtStore[0] {
+			parameter := settings
+			ignoredSettingSplitted := strings.Split(strings.ToLower(ignoredSetting), ".")
+			for lvl, parameterName := range ignoredSettingSplitted {
+				if lvl == len(ignoredSettingSplitted)-1 {
+					delete(parameter, parameterName)
+					continue
+				}
+
+				par, exists := parameter[parameterName]
+				if !exists {
+					// parameter not found in settings
+					break
+				}
+
+				parameter = par.(map[string]interface{})
+			}
+		}
+	}
 
 	var parser koanf.Parser
 
@@ -98,7 +121,7 @@ func (c *Configuration) SaveFile(filePath string) error {
 		return ErrUnknownConfigFormat
 	}
 
-	data, err := c.config.Marshal(parser)
+	data, err := parser.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("unable to marshal config file: %w", err)
 	}

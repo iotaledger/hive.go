@@ -190,9 +190,10 @@ func TestSaveConfigFile(t *testing.T) {
 	config1 := configuration.New()
 	config1.Set("test.integer", 321)
 	config1.Set("test.slice", []string{"string1", "string2", "string3"})
+	config1.Set("test.bool.ignore", true)
 
 	jsonConfFileName, _ := tempFile(t, "config*.json")
-	err := config1.SaveFile(jsonConfFileName)
+	err := config1.StoreFile(jsonConfFileName, []string{"test.bool.ignore"})
 	require.NoError(t, err)
 
 	config2 := configuration.New()
@@ -205,4 +206,7 @@ func TestSaveConfigFile(t *testing.T) {
 
 	valueSlice := config2.Strings("test.slice")
 	require.EqualValues(t, []string{"string1", "string2", "string3"}, valueSlice)
+
+	valueIgnoredBool := config2.Bool("test.bool.ignore")
+	require.EqualValues(t, false, valueIgnoredBool)
 }
