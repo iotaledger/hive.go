@@ -165,7 +165,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 			//
 			// Note: This can happen, if multiple goroutines are simultaneously polling elements from the queue.
 			//       They all wait for a new element to arrive, then one retrieves the new elements and the other goroutines
-			//       will still see an empty tangle even if they waited.
+			//       will still see an empty queue even if they waited.
 			if !t.IsShutdown() && waitIfEmpty {
 				continue
 			}
@@ -249,7 +249,7 @@ func (t *TimedQueue) markEmptyQueueAsWaitingForElements() {
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region QueueElement ////////////////////////////////////////////////////////////////////////////////////////////
+// region QueueElement /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // QueueElement is an element in the TimedQueue. It
 type QueueElement struct {
@@ -330,6 +330,7 @@ func (h *timedHeap) Push(x interface{}) {
 func (h *timedHeap) Pop() interface{} {
 	n := len(*h)
 	data := (*h)[n-1]
+	(*h)[n-1] = nil // avoid memory leak
 	*h = (*h)[:n-1]
 	data.index = -1
 	return data
