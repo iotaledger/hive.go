@@ -31,9 +31,7 @@ func TestQueueElement_MemLeak(t *testing.T) {
 
 	assert.Eventually(t, func() bool {
 		return atomic.LoadUint64(&executionCounter) == uint64(testCount)
-	}, 5*time.Second, 10*time.Millisecond)
-
-	time.Sleep(5 * time.Second)
+	}, 10*time.Second, 100*time.Millisecond)
 
 	memStatsEnd := memStats()
 	assert.Less(t, float64(memStatsEnd.HeapObjects), 1.1*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 10%")
