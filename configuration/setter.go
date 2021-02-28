@@ -27,7 +27,7 @@ func (c *Configuration) SetDefaultStruct(path string, value interface{}, fieldTa
 		return nil
 	}
 
-	return c.SetDefaultStruct(path, value, fieldTag, parser...)
+	return c.SetStruct(path, value, fieldTag, parser...)
 }
 
 // Set sets the value for the key (case-insensitive).
