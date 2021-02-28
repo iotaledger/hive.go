@@ -59,7 +59,9 @@ func (t *TimedExecutor) Shutdown(optionalShutdownFlags ...timedqueue.ShutdownFla
 
 	t.queue.Shutdown(shutdownFlags)
 
-	t.shutdownWG.Wait()
+	if !shutdownFlags.HasBits(CancelPendingTasks) {
+		t.shutdownWG.Wait()
+	}
 }
 
 // startBackgroundWorkers is an internal utility function that spawns the background workers that execute the queued tasks.
