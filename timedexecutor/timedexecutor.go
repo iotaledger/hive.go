@@ -59,9 +59,11 @@ func (t *TimedExecutor) Shutdown(optionalShutdownFlags ...timedqueue.ShutdownFla
 
 	t.queue.Shutdown(shutdownFlags)
 
-	if !shutdownFlags.HasBits(CancelPendingTasks) {
-		t.shutdownWG.Wait()
+	if shutdownFlags.HasBits(DontWaitForShutdown) {
+		return
 	}
+
+	t.shutdownWG.Wait()
 }
 
 // startBackgroundWorkers is an internal utility function that spawns the background workers that execute the queued tasks.
@@ -99,6 +101,10 @@ const (
 	// IgnorePendingTimeouts defines a shutdown flag, that makes the queue ignore the timeouts of the remaining queued
 	// elements. Consecutive calls to Poll will immediately return these elements.
 	IgnorePendingTimeouts = timedqueue.IgnorePendingTimeouts
+
+	// DontWaitForShutdown causes the TimedExecutor to not wait for all tasks to be executed before returning from the
+	// Shutdown method.
+	DontWaitForShutdown timedqueue.ShutdownFlag = 1 << 7
 )
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
