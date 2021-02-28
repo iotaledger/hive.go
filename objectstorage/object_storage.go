@@ -926,7 +926,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
 
 	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
-	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks)
+	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks, timedexecutor.DontWaitForShutdown)
 	if !shutdown {
 		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
 	}
