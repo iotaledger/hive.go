@@ -395,6 +395,11 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 		return
 	}
 
+	// fire the eviction callback if registered
+	if objectStorage.options.onEvictionCallback != nil {
+		objectStorage.options.onEvictionCallback(cachedObject)
+	}
+
 	// abort if the storage is not empty
 	if objectStorage.size != 0 {
 		return
