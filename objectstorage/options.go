@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/mr-tron/base58"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 type Options struct {
@@ -21,6 +22,7 @@ type Options struct {
 	leakDetectionOptions       *LeakDetectionOptions
 	leakDetectionWrapper       func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
 	delayedOptions             []func()
+	onEvictionCallback         func(cachedObject CachedObject)
 }
 
 func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
@@ -202,5 +204,12 @@ func OverrideLeakDetectionWrapper(wrapperFunc func(cachedObject *CachedObjectImp
 func PartitionKey(keyPartitions ...int) Option {
 	return func(args *Options) {
 		args.keyPartitions = keyPartitions
+	}
+}
+
+// OnEvictionCallback sets a function that is called on eviction of the object.
+func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
+	return func(args *Options) {
+		args.onEvictionCallback = cb
 	}
 }
