@@ -61,56 +61,66 @@ func GetPluginIdentifier(name string) string {
 
 // LogDebug uses fmt.Sprint to construct and log a message.
 func (p *Plugin) LogDebug(args ...interface{}) {
-	p.logger().Debug(args...)
+	p.Logger().Debug(args...)
 }
 
 // LogDebugf uses fmt.Sprintf to log a templated message.
 func (p *Plugin) LogDebugf(format string, args ...interface{}) {
-	p.logger().Debugf(format, args...)
+	p.Logger().Debugf(format, args...)
 }
 
 // LogError uses fmt.Sprint to construct and log a message.
 func (p *Plugin) LogError(args ...interface{}) {
-	p.logger().Error(args...)
+	p.Logger().Error(args...)
 }
 
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (p *Plugin) LogErrorf(format string, args ...interface{}) {
-	p.logger().Errorf(format, args...)
+	p.Logger().Errorf(format, args...)
 }
 
 // LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (p *Plugin) LogFatal(args ...interface{}) {
-	p.logger().Fatal(args...)
+	p.Logger().Fatal(args...)
 }
 
 // LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (p *Plugin) LogFatalf(format string, args ...interface{}) {
-	p.logger().Fatalf(format, args...)
+	p.Logger().Fatalf(format, args...)
 }
 
 // LogInfo uses fmt.Sprint to construct and log a message.
 func (p *Plugin) LogInfo(args ...interface{}) {
-	p.logger().Info(args...)
+	p.Logger().Info(args...)
 }
 
 // LogInfof uses fmt.Sprintf to log a templated message.
 func (p *Plugin) LogInfof(format string, args ...interface{}) {
-	p.logger().Infof(format, args...)
+	p.Logger().Infof(format, args...)
 }
 
 // LogWarn uses fmt.Sprint to construct and log a message.
 func (p *Plugin) LogWarn(args ...interface{}) {
-	p.logger().Warn(args...)
+	p.Logger().Warn(args...)
 }
 
 // LogWarnf uses fmt.Sprintf to log a templated message.
 func (p *Plugin) LogWarnf(format string, args ...interface{}) {
-	p.logger().Warnf(format, args...)
+	p.Logger().Warnf(format, args...)
 }
 
-// logger is an internal utility function that instantiates and returns a logger with the name of the plugin.
-func (p *Plugin) logger() *logger.Logger {
+// Panic uses fmt.Sprint to construct and log a message, then panics.
+func (p *Plugin) Panic(args ...interface{}) {
+	p.Logger().Panic(args...)
+}
+
+// Panicf uses fmt.Sprintf to log a templated message, then panics.
+func (p *Plugin) Panicf(template string, args ...interface{}) {
+	p.Logger().Panicf(template, args...)
+}
+
+// Logger instantiates and returns a logger with the name of the plugin.
+func (p *Plugin) Logger() *logger.Logger {
 	p.logOnce.Do(func() {
 		p.log = logger.NewLogger(p.Name)
 	})
