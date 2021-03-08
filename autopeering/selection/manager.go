@@ -40,7 +40,6 @@ type manager struct {
 	dropOnUpdate      bool      // set true to drop all neighbors when the salt is updated
 	neighborValidator Validator // potential neighbor validator
 
-	events           Events
 	useMana          bool // set true to use mana
 	manaFunc         mana.Func
 	rankedPeers      []*peer.Peer // valid peers ranked by mana
@@ -48,6 +47,7 @@ type manager struct {
 	r                int
 	ro               float64
 
+	events   Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
@@ -68,24 +68,24 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		log:               log,
 		dropOnUpdate:      opts.dropOnUpdate,
 		neighborValidator: opts.neighborValidator,
+		useMana:           opts.useMana,
+		manaFunc:          opts.manaFunc,
+		rankedPeers:       []*peer.Peer{},
+		r:                 opts.r,
+		ro:                opts.ro,
+		inbound:           NewNeighborhood(inboundNeighborSize),
+		outbound:          NewNeighborhood(outboundNeighborSize),
+		rejectionFilter:   NewFilter(),
+		dropChan:          make(chan identity.ID, queueSize),
+		requestChan:       make(chan peeringRequest, queueSize),
+		replyChan:         make(chan bool, 1),
+		closing:           make(chan struct{}),
 		events: Events{
 			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
 			OutgoingPeering: events.NewEvent(peeringCaller),
 			IncomingPeering: events.NewEvent(peeringCaller),
 			Dropped:         events.NewEvent(droppedCaller),
 		},
-		inbound:         NewNeighborhood(inboundNeighborSize),
-		outbound:        NewNeighborhood(outboundNeighborSize),
-		rejectionFilter: NewFilter(),
-		dropChan:        make(chan identity.ID, queueSize),
-		requestChan:     make(chan peeringRequest, queueSize),
-		replyChan:       make(chan bool, 1),
-		closing:         make(chan struct{}),
-		useMana:         opts.useMana,
-		manaFunc:        opts.manaFunc,
-		rankedPeers:     []*peer.Peer{},
-		r:               opts.r,
-		ro:              opts.ro,
 	}
 }
 
