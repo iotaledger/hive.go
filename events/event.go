@@ -12,8 +12,8 @@ type Event struct {
 
 func (ev *Event) Attach(closure *Closure) {
 	ev.mutex.Lock()
+	defer ev.mutex.Unlock()
 	ev.callbacks[closure.Id] = closure.Fnc
-	ev.mutex.Unlock()
 }
 
 func (ev *Event) Detach(closure *Closure) {
@@ -21,22 +21,22 @@ func (ev *Event) Detach(closure *Closure) {
 		return
 	}
 	ev.mutex.Lock()
+	defer ev.mutex.Unlock()
 	delete(ev.callbacks, closure.Id)
-	ev.mutex.Unlock()
 }
 
 func (ev *Event) Trigger(params ...interface{}) {
 	ev.mutex.RLock()
+	defer ev.mutex.RUnlock()
 	for _, handler := range ev.callbacks {
 		ev.triggerFunc(handler, params...)
 	}
-	ev.mutex.RUnlock()
 }
 
 func (ev *Event) DetachAll() {
 	ev.mutex.Lock()
+	defer ev.mutex.Unlock()
 	ev.callbacks = make(map[uintptr]interface{})
-	ev.mutex.Unlock()
 }
 
 func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {

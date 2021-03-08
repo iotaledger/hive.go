@@ -1,8 +1,8 @@
 package proto
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
+	"google.golang.org/protobuf/proto"
 )
 
 // MType is the type of message type enum.
@@ -26,14 +26,14 @@ type Message interface {
 	Type() MType
 }
 
-func (m *Ping) Name() string { return "PING" }
-func (m *Ping) Type() MType  { return MPing }
+func (x *Ping) Name() string { return "PING" }
+func (x *Ping) Type() MType  { return MPing }
 
-func (m *Pong) Name() string { return "PONG" }
-func (m *Pong) Type() MType  { return MPong }
+func (x *Pong) Name() string { return "PONG" }
+func (x *Pong) Type() MType  { return MPong }
 
-func (m *DiscoveryRequest) Name() string { return "DISCOVERY_REQUEST" }
-func (m *DiscoveryRequest) Type() MType  { return MDiscoveryRequest }
+func (x *DiscoveryRequest) Name() string { return "DISCOVERY_REQUEST" }
+func (x *DiscoveryRequest) Type() MType  { return MDiscoveryRequest }
 
-func (m *DiscoveryResponse) Name() string { return "DISCOVERY_RESPONSE" }
-func (m *DiscoveryResponse) Type() MType  { return MDiscoveryResponse }
+func (x *DiscoveryResponse) Name() string { return "DISCOVERY_RESPONSE" }
+func (x *DiscoveryResponse) Type() MType  { return MDiscoveryResponse }

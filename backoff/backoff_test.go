@@ -13,11 +13,12 @@ import (
 var errTest = errors.New("test")
 
 const (
-	intervalDelta = 10 * time.Millisecond // allow 10ms deviation to pass the test
+	intervalDelta = 100 * time.Millisecond // allowed deviation to pass the test
+	retryCount    = 5
 )
 
 func assertInterval(t assert.TestingT, expected time.Duration, actual time.Duration) bool {
-	return assert.Greater(t, actual.Microseconds(), expected.Microseconds()) &&
+	return assert.GreaterOrEqual(t, actual.Microseconds(), expected.Microseconds()) &&
 		assert.LessOrEqual(t, actual.Microseconds(), (expected+intervalDelta).Microseconds())
 }
 
@@ -40,20 +41,20 @@ func TestZeroBackOff(t *testing.T) {
 	last := time.Now()
 	err := Retry(ZeroBackOff(), func() error {
 		now := time.Now()
-		assert.LessOrEqual(t, now.Sub(last).Microseconds(), intervalDelta.Microseconds())
+		assertInterval(t, 0, now.Sub(last))
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
 		return errTest
 	})
 	assert.NoError(t, err)
-	assert.EqualValues(t, 10, count)
+	assert.EqualValues(t, retryCount, count)
 }
 
 func TestConstantBackOff(t *testing.T) {
-	const interval = 20 * time.Millisecond
+	const interval = 2 * intervalDelta
 
 	p := ConstantBackOff(interval)
 
@@ -67,19 +68,19 @@ func TestConstantBackOff(t *testing.T) {
 			assertInterval(t, interval, now.Sub(last))
 		}
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
 		return errTest
 	})
 	assert.NoError(t, err)
-	assert.EqualValues(t, 10, count)
+	assert.EqualValues(t, retryCount, count)
 }
 
 func TestExponentialBackOff(t *testing.T) {
 	const (
-		interval = 20 * time.Millisecond
+		interval = 2 * intervalDelta
 		factor   = 1.5
 	)
 
@@ -96,14 +97,14 @@ func TestExponentialBackOff(t *testing.T) {
 			assertInterval(t, expected, now.Sub(last))
 		}
 		last = now
-		if count >= 10 {
+		if count >= retryCount {
 			return nil
 		}
 		count++
 		return errTest
 	})
 	assert.NoError(t, err)
-	assert.EqualValues(t, 10, count)
+	assert.EqualValues(t, retryCount, count)
 }
 
 func TestExponentialBackOffParallel(t *testing.T) {
@@ -129,14 +130,14 @@ func TestExponentialBackOffParallel(t *testing.T) {
 				assertInterval(t, expected, now.Sub(last))
 			}
 			last = now
-			if count >= 10 {
+			if count >= retryCount {
 				return nil
 			}
 			count++
 			return errTest
 		})
 		assert.NoError(t, err)
-		assert.EqualValues(t, 10, count)
+		assert.EqualValues(t, retryCount, count)
 	}
 
 	wg.Add(parallelism)

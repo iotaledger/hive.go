@@ -9,12 +9,13 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
-	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/identity"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const graceTime = 5 * time.Millisecond
@@ -31,18 +32,12 @@ type testMessage interface {
 	Marshal() []byte
 }
 
-type Ping struct{}
-type Pong struct{}
+type Ping struct{ emptypb.Empty }
+type Pong struct{ emptypb.Empty }
 
-func (m *Ping) Reset()        { *m = Ping{} }
-func (*Ping) String() string  { return "" }
-func (*Ping) ProtoMessage()   {}
 func (*Ping) Type() MType     { return MPing }
 func (*Ping) Marshal() []byte { return append([]byte{}, byte(MPing)) }
 
-func (m *Pong) Reset()        { *m = Pong{} }
-func (*Pong) String() string  { return "" }
-func (*Pong) ProtoMessage()   {}
 func (*Pong) Type() MType     { return MPong }
 func (*Pong) Marshal() []byte { return append([]byte{}, byte(MPong)) }
 
@@ -121,11 +116,11 @@ func TestSrvEncodeDecodePing(t *testing.T) {
 	ping := new(Ping)
 	packet := s.encode(ping.Marshal())
 
-	data, identity, err := decode(packet)
+	data, id, err := decode(packet)
 	require.NoError(t, err)
 
 	msg, _ := unmarshal(data)
-	assert.Equal(t, local.LocalIdentity().Identity, identity)
+	assert.Equal(t, local.LocalIdentity().Identity, id)
 	assert.Equal(t, msg, ping)
 }
 

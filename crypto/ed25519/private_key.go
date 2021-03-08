@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mr-tron/base58"
-	"github.com/oasislabs/ed25519"
+	"github.com/oasisprotocol/ed25519"
 )
 
 // PrivateKey is the type of Ed25519 private keys.
@@ -50,4 +50,13 @@ func (privateKey PrivateKey) Bytes() []byte {
 // String returns a human readable version of the PrivateKey (base58 encoded).
 func (privateKey PrivateKey) String() string {
 	return base58.Encode(privateKey[:])
+}
+
+// Seed returns the private key seed corresponding to privateKey. It is provided for
+// interoperability with RFC 8032. RFC 8032's private keys correspond to seeds
+// in this package.
+func (privateKey PrivateKey) Seed() *Seed {
+	bytes := ed25519.PrivateKey(privateKey[:]).Seed()
+	seed := NewSeed(bytes)
+	return seed
 }

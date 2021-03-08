@@ -110,7 +110,7 @@ func (workerPool *WorkerPool) ShutdownGracefully() {
 // Internal utility function that initiates and returns the pool.
 func (workerPool *WorkerPool) get() *ants.Pool {
 	workerPool.initOnce.Do(func() {
-		if newPool, err := ants.NewPool(runtime.NumCPU()*2, ants.WithNonblocking(false)); err != nil {
+		if newPool, err := ants.NewPool(runtime.GOMAXPROCS(0), ants.WithNonblocking(false)); err != nil {
 			panic(err)
 		} else {
 			workerPool.pool = newPool

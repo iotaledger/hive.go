@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/objectstorage"
 )
 
-type TestObject struct {
+type testObject struct {
 	objectstorage.StorableObjectFlags
 	sync.Mutex
 
@@ -17,65 +17,85 @@ type TestObject struct {
 	value uint32
 }
 
-func NewTestObject(id string, value uint32) *TestObject {
-	return &TestObject{
+func newTestObject(id string, value uint32) *testObject {
+	return &testObject{
 		id:    []byte(id),
 		value: value,
 	}
 }
 
-func (testObject *TestObject) ObjectStorageKey() []byte {
-	return testObject.id
+func (t *testObject) ObjectStorageKey() []byte {
+	return t.id
 }
 
-func (testObject *TestObject) ObjectStorageValue() []byte {
+func (t *testObject) ObjectStorageValue() []byte {
 	result := make([]byte, 4)
 
-	binary.LittleEndian.PutUint32(result, testObject.value)
+	t.Lock()
+	defer t.Unlock()
 
+	binary.LittleEndian.PutUint32(result, t.value)
 	return result
 }
 
-func (testObject *TestObject) Update(object objectstorage.StorableObject) {
-	if obj, ok := object.(*TestObject); !ok {
-		panic("invalid object passed to testObject.Update()")
+func (t *testObject) Update(object objectstorage.StorableObject) {
+	if obj, ok := object.(*testObject); !ok {
+		panic("invalid testObject passed to testObject.Update()")
 	} else {
-		testObject.value = obj.value
+		t.Lock()
+		defer t.Unlock()
+
+		t.value = obj.value
 	}
 }
 
-func (testObject *TestObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int, err error) {
-	testObject.value = binary.LittleEndian.Uint32(data)
+func (t *testObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int, err error) {
+	t.Lock()
+	defer t.Unlock()
 
-	return marshalutil.UINT32_SIZE, nil
+	t.value = binary.LittleEndian.Uint32(data)
+
+	return marshalutil.Uint32Size, nil
 }
 
-// ThreeLevelObj is an object stored on a 3 partition chunked object storage.
-// ID3 corresponds to ThreeLevelObj's value.
-type ThreeLevelObj struct {
+func (t *testObject) get() uint32 {
+	t.Lock()
+	defer t.Unlock()
+	return t.value
+}
+
+func (t *testObject) set(v uint32) {
+	t.Lock()
+	defer t.Unlock()
+	t.value = v
+}
+
+// threeLevelObj is an testObject stored on a 3 partition chunked testObject storage.
+// ID3 corresponds to threeLevelObj's value.
+type threeLevelObj struct {
 	objectstorage.StorableObjectFlags
 	id  byte
 	id2 byte
 	id3 byte
 }
 
-func NewThreeLevelObj(id1 byte, id2 byte, id3Value byte) *ThreeLevelObj {
-	return &ThreeLevelObj{
+func newThreeLevelObj(id1 byte, id2 byte, id3Value byte) *threeLevelObj {
+	return &threeLevelObj{
 		id:  id1,
 		id2: id2,
 		id3: id3Value,
 	}
 }
 
-func (t ThreeLevelObj) Update(object objectstorage.StorableObject) {
-	if obj, ok := object.(*ThreeLevelObj); !ok {
-		panic("invalid object passed to ThreeLevelObj.Update()")
+func (t threeLevelObj) Update(object objectstorage.StorableObject) {
+	if obj, ok := object.(*threeLevelObj); !ok {
+		panic("invalid testObject passed to threeLevelObj.Update()")
 	} else {
 		t.id3 = obj.id3
 	}
 }
 
-func (t ThreeLevelObj) ObjectStorageKey() []byte {
+func (t threeLevelObj) ObjectStorageKey() []byte {
 	var b bytes.Buffer
 	b.WriteByte(t.id)
 	b.WriteByte(t.id2)
@@ -83,11 +103,11 @@ func (t ThreeLevelObj) ObjectStorageKey() []byte {
 	return b.Bytes()
 }
 
-func (t ThreeLevelObj) ObjectStorageValue() []byte {
+func (t threeLevelObj) ObjectStorageValue() []byte {
 	return []byte{t.id3}
 }
 
-func (t ThreeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
+func (t threeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
 	t.id3 = data[0]
 	return len(data), nil
 }

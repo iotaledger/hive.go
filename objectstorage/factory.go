@@ -1,27 +1,25 @@
 package objectstorage
 
-import (
-	"github.com/dgraph-io/badger/v2"
-)
+import "github.com/iotaledger/hive.go/kvstore"
 
 // Factory is a utility that offers an api for a more compact creation of multiple ObjectStorage instances from within
-// the same package. It will automatically build the corresponding storageId and provide the shared badger instance to
+// the same package. It will automatically configure a new KVStore instance with the corresponding realm and provide it to
 // the created ObjectStorage instances.
 type Factory struct {
-	badgerInstance *badger.DB
-	packagePrefix  byte
+	store         kvstore.KVStore
+	packagePrefix byte
 }
 
 // NewFactory creates a new Factory with the given ObjectStorage parameters.
-func NewFactory(badgerInstance *badger.DB, packagePrefix byte) *Factory {
+func NewFactory(store kvstore.KVStore, packagePrefix byte) *Factory {
 	return &Factory{
-		badgerInstance: badgerInstance,
-		packagePrefix:  packagePrefix,
+		store:         store,
+		packagePrefix: packagePrefix,
 	}
 }
 
-// New creates a new ObjectStorage with the given parameters. It combines the storage specific prefix with the package
-// prefix, to create a unique storageId for the ObjectStorage.
-func (factory *Factory) New(storagePrefix byte, objectFactory StorableObjectFromKey, optionalOptions ...Option) *ObjectStorage {
-	return New(factory.badgerInstance, []byte{factory.packagePrefix, storagePrefix}, objectFactory, optionalOptions...)
+// New creates a new ObjectStorage with the given parameters. It combines the store specific prefix with the package
+// prefix, to create a unique realm for the KVStore of the ObjectStorage.
+func (factory *Factory) New(storagePrefix byte, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+	return New(factory.store.WithRealm([]byte{factory.packagePrefix, storagePrefix}), objectFactory, optionalOptions...)
 }

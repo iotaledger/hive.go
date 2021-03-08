@@ -5,19 +5,44 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/identity"
+	"go.uber.org/atomic"
 )
 
 // mpeer represents a discovered peer with additional data.
 // The fields of Peer may not be modified.
 type mpeer struct {
-	peer.Peer
+	peer          atomic.Value
+	verifiedCount atomic.Uint32 // how often that peer has been re-verified
+	lastNewPeers  atomic.Uint32 // number of returned new peers when queried the last time
+}
 
-	verifiedCount uint // how often that peer has been reverified
-	lastNewPeers  uint // number of returned new peers when queried the last time
+// Peer returns the wrapped peer.Peer.
+func (m *mpeer) Peer() *peer.Peer {
+	return m.peer.Load().(*peer.Peer)
+}
+
+// ID returns the ID of the wrapped peer.Peer.
+func (m *mpeer) ID() identity.ID {
+	return m.Peer().ID()
+}
+
+// String returns a string representation of the peer.
+func (m *mpeer) String() string {
+	return fmt.Sprintf("{%s, verifiedCount:%d, lastNewPeers:%d}", m.Peer(), m.verifiedCount.Load(), m.lastNewPeers.Load())
+}
+
+func (m *mpeer) setPeer(p *peer.Peer) {
+	m.peer.Store(p)
+}
+
+func newMPeer(p *peer.Peer) *mpeer {
+	m := new(mpeer)
+	m.setPeer(p)
+	return m
 }
 
 func wrapPeer(p *peer.Peer) *mpeer {
-	return &mpeer{Peer: *p}
+	return newMPeer(p)
 }
 
 func wrapPeers(ps []*peer.Peer) []*mpeer {
@@ -29,7 +54,7 @@ func wrapPeers(ps []*peer.Peer) []*mpeer {
 }
 
 func unwrapPeer(p *mpeer) *peer.Peer {
-	return &p.Peer
+	return p.Peer()
 }
 
 func unwrapPeers(ps []*mpeer) []*peer.Peer {
@@ -85,7 +110,7 @@ func deletePeerByID(list []*mpeer, id identity.ID) ([]*mpeer, *mpeer) {
 			return deletePeer(list, i)
 		}
 	}
-	panic("mpeer: id not contained in list")
+	return list, nil
 }
 
 // pushPeer adds the given peer to the pack of the list.

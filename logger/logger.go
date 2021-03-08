@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/iotaledger/hive.go/configuration"
 	"github.com/iotaledger/hive.go/typeutils"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -46,15 +46,15 @@ var (
 	mu          sync.Mutex           // prevents multiple initializations at the same time
 )
 
-// InitGlobalLogger initializes the global logger from the provided viper config.
-func InitGlobalLogger(config *viper.Viper) error {
+// InitGlobalLogger initializes the global logger from the provided config.
+func InitGlobalLogger(config *configuration.Configuration) error {
 	mu.Lock()
 	defer mu.Unlock()
 
 	if initialized.IsSet() {
 		return ErrGlobalLoggerAlreadyInitialized
 	}
-	root, err := NewRootLoggerFromViper(config, level)
+	root, err := NewRootLoggerFromConfiguration(config, level)
 	if err != nil {
 		return err
 	}
@@ -64,13 +64,31 @@ func InitGlobalLogger(config *viper.Viper) error {
 	return nil
 }
 
-// NewRootLoggerFromViper creates a new root logger from the provided viper configuration.
-func NewRootLoggerFromViper(config *viper.Viper, levelOverride ...zap.AtomicLevel) (*Logger, error) {
+// NewRootLoggerFromConfiguration creates a new root logger from the provided configuration.
+func NewRootLoggerFromConfiguration(config *configuration.Configuration, levelOverride ...zap.AtomicLevel) (*Logger, error) {
 	cfg := defaultCfg
-	err := config.UnmarshalKey(ViperKey, &cfg)
-	if err != nil {
-		return nil, err
+
+	// get config values one by one
+	// config.UnmarshalKey does not recognize a configuration group when defined with pflags
+	if val := config.String(ConfigurationKeyLevel); val != "" {
+		cfg.Level = val
 	}
+	if val := config.Get(ConfigurationKeyDisableCaller); val != nil {
+		cfg.DisableCaller = val.(bool)
+	}
+	if val := config.Get(ConfigurationKeyDisableStacktrace); val != nil {
+		cfg.DisableStacktrace = val.(bool)
+	}
+	if val := config.String(ConfigurationKeyEncoding); val != "" {
+		cfg.Encoding = val
+	}
+	if val := config.Strings(ConfigurationKeyOutputPaths); len(val) > 0 {
+		cfg.OutputPaths = val
+	}
+	if val := config.Get(ConfigurationKeyDisableEvents); val != nil {
+		cfg.DisableEvents = val.(bool)
+	}
+
 	return NewRootLogger(cfg, levelOverride...)
 }
 

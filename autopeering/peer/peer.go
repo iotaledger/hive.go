@@ -1,23 +1,20 @@
 package peer
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/identity"
+	"google.golang.org/protobuf/proto"
 )
 
 // Errors in the peer package.
 var (
 	ErrNeedsPeeringService = errors.New("needs peering service")
-	ErrInvalidSignature    = errors.New("invalid signature")
 )
 
 // PublicKey is the type of Ed25519 public keys used for peers.
@@ -55,12 +52,7 @@ func (p *Peer) Services() service.Service {
 
 // String returns a string representation of the peer.
 func (p *Peer) String() string {
-	u := url.URL{
-		Scheme: "peer",
-		User:   url.User(base64.StdEncoding.EncodeToString(p.PublicKey().Bytes())),
-		Host:   p.Address().String(),
-	}
-	return u.String()
+	return fmt.Sprintf("Peer{identity:%s, publicKey:%s, host:%s}", p.ID().String(), p.PublicKey().String(), p.Address().String())
 }
 
 // SignedData is an interface wrapper around data with key and signature.

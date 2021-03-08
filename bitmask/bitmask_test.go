@@ -1,35 +1,36 @@
 package bitmask_test
 
 import (
-	"github.com/iotaledger/hive.go/bitmask"
 	"testing"
+
+	"github.com/iotaledger/hive.go/bitmask"
 )
 
 func TestBitmask(t *testing.T) {
 	var b bitmask.BitMask
 
-	if b.HasFlag(0) {
+	if b.HasBit(0) {
 		t.Error("flag at pos 0 should not be set")
 	}
-	if b.HasFlag(1) {
+	if b.HasBit(1) {
 		t.Error("flag at pos 1 should not be set")
 	}
 
-	b = b.SetFlag(0)
-	if !b.HasFlag(0) {
+	b = b.SetBit(0)
+	if !b.HasBit(0) {
 		t.Error("flag at pos 0 should be set")
 	}
-	b = b.SetFlag(1)
-	if !b.HasFlag(1) {
+	b = b.SetBit(1)
+	if !b.HasBit(1) {
 		t.Error("flag at pos 1 should be set")
 	}
 
-	b = b.ClearFlag(0)
-	if b.HasFlag(0) {
+	b = b.ClearBit(0)
+	if b.HasBit(0) {
 		t.Error("flag at pos 0 should not be set")
 	}
-	b = b.ClearFlag(1)
-	if b.HasFlag(1) {
+	b = b.ClearBit(1)
+	if b.HasBit(1) {
 		t.Error("flag at pos 1 should not be set")
 	}
 }

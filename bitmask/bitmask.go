@@ -2,25 +2,40 @@ package bitmask
 
 type BitMask byte
 
-// SetFlag sets the flag at the given position.
-func (bitmask BitMask) SetFlag(pos uint) BitMask {
-	return bitmask | (1 << pos)
+// SetBit sets the bit at the given position.
+func (bitmask BitMask) SetBit(pos uint) BitMask {
+	return bitmask.SetBits(1 << pos)
 }
 
-// ClearFlag clears the flag at the given position.
-func (bitmask BitMask) ClearFlag(pos uint) BitMask {
-	return bitmask & ^(1 << pos)
+// SetBits sets the bits in the given bitmask.
+func (bitmask BitMask) SetBits(bits BitMask) BitMask {
+	return bitmask | bits
 }
 
-// HasFlag checks whether the flag at the given position is set.
-func (bitmask BitMask) HasFlag(pos uint) bool {
-	return (bitmask&(1<<pos) > 0)
+// ClearBit clears the bit at the given position.
+func (bitmask BitMask) ClearBit(pos uint) BitMask {
+	return bitmask.ClearBits(1 << pos)
 }
 
-// ModifyFlag sets or clears the flag at the given position, given the supplied state bool.
-func (bitmask BitMask) ModifyFlag(pos uint, state bool) BitMask {
+// ClearBits clears the bits in the given bitmask.
+func (bitmask BitMask) ClearBits(bits BitMask) BitMask {
+	return bitmask & ^bits
+}
+
+// HasBit checks whether the bit at the given position is set.
+func (bitmask BitMask) HasBit(pos uint) bool {
+	return bitmask.HasBits(1 << pos)
+}
+
+// HasBits checks whether the bits in the given bitmask are set.
+func (bitmask BitMask) HasBits(bits BitMask) bool {
+	return bitmask&(bits) > 0
+}
+
+// ModifyBit sets or clears the bit at the given position, given the supplied state bool.
+func (bitmask BitMask) ModifyBit(pos uint, state bool) BitMask {
 	if state {
-		return bitmask.SetFlag(pos)
+		return bitmask.SetBit(pos)
 	}
-	return bitmask.ClearFlag(pos)
+	return bitmask.ClearBit(pos)
 }

@@ -31,32 +31,30 @@ func (m *manager) doQuery(next chan<- time.Duration) {
 	wg.Wait()
 }
 
-func (m *manager) requestWorker(p *mpeer, wg *sync.WaitGroup) {
+func (m *manager) requestWorker(mp *mpeer, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	peers, err := m.net.DiscoveryRequest(unwrapPeer(p))
-	if err != nil || len(peers) == 0 {
-		p.lastNewPeers = 0
-
+	p := unwrapPeer(mp)
+	peers, err := m.net.DiscoveryRequest(p)
+	if err != nil {
 		m.log.Debugw("query failed",
-			"id", p.ID(),
-			"addr", p.Address(),
+			"peer", mp,
 			"err", err,
 		)
+		m.deletePeer(p.ID())
 		return
 	}
 
-	var added uint
+	var added uint32
 	for _, rp := range peers {
 		if m.addDiscoveredPeer(rp) {
 			added++
 		}
 	}
-	p.lastNewPeers = added
+	mp.lastNewPeers.Store(added)
 
 	m.log.Debugw("queried",
-		"id", p.ID(),
-		"addr", p.Address(),
+		"peer", mp,
 		"#added", added,
 	)
 }
@@ -81,7 +79,7 @@ func (m *manager) peersToQuery() []*mpeer {
 		}
 		if r.Value == nil {
 			r.Value = p
-		} else if p.lastNewPeers >= r.Value.(*mpeer).lastNewPeers {
+		} else if p.lastNewPeers.Load() >= r.Value.(*mpeer).lastNewPeers.Load() {
 			r = r.Next()
 			r.Value = p
 		}

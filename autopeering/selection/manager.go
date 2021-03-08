@@ -7,6 +7,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -46,6 +47,7 @@ type manager struct {
 	r                int
 	ro               float64
 
+	events   Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
@@ -78,6 +80,12 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		requestChan:       make(chan peeringRequest, queueSize),
 		replyChan:         make(chan bool, 1),
 		closing:           make(chan struct{}),
+		events: Events{
+			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
+			OutgoingPeering: events.NewEvent(peeringCaller),
+			IncomingPeering: events.NewEvent(peeringCaller),
+			Dropped:         events.NewEvent(droppedCaller),
+		},
 	}
 }
 
@@ -264,9 +272,14 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 
 	// filter out previous rejections
 	filteredList := m.rejectionFilter.Apply(filter.Apply(distList))
+
 	if len(filteredList) == 0 {
 		return
 	}
+	// // reset rejectionFilter so that in the next call filteredList is full again
+	// if len(filteredList) < 2 {
+	// 	m.rejectionFilter.Clean()
+	// }
 
 	// select new candidate
 	candidate := m.outbound.Select(filteredList)
@@ -348,7 +361,7 @@ func (m *manager) updateSalt() {
 		"public", saltLifetime,
 		"private", saltLifetime,
 	)
-	Events.SaltUpdated.Trigger(&SaltUpdatedEvent{Self: m.getID(), Public: public, Private: private})
+	m.events.SaltUpdated.Trigger(&SaltUpdatedEvent{Public: public, Private: private})
 }
 
 func (m *manager) dropNeighborhood(nh *Neighborhood) {
@@ -367,7 +380,7 @@ func (m *manager) dropPeering(p *peer.Peer) {
 		"#out", m.outbound,
 		"#in", m.inbound,
 	)
-	Events.Dropped.Trigger(&DroppedEvent{Self: m.getID(), DroppedID: p.ID()})
+	m.events.Dropped.Trigger(&DroppedEvent{DroppedID: p.ID()})
 }
 
 func (m *manager) getConnectedFilter() *Filter {
@@ -416,7 +429,11 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		Events.OutgoingPeering.Trigger(&PeeringEvent{Self: m.getID(), Peer: p, Status: status})
+		m.events.OutgoingPeering.Trigger(&PeeringEvent{
+			Peer:     p,
+			Status:   status,
+			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes(), p).Distance,
+		})
 	} else {
 		m.log.Debugw("peering requested",
 			"direction", "in",
@@ -425,6 +442,10 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		Events.IncomingPeering.Trigger(&PeeringEvent{Self: m.getID(), Peer: p, Status: status})
+		m.events.IncomingPeering.Trigger(&PeeringEvent{
+			Peer:     p,
+			Status:   status,
+			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
+		})
 	}
 }

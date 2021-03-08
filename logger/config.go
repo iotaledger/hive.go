@@ -2,29 +2,35 @@ package logger
 
 import "go.uber.org/zap/zapcore"
 
-// ViperKey defines the key name under which the logger config is stored.
-const ViperKey = "logger"
+const (
+	ConfigurationKeyLevel             = "logger.level"
+	ConfigurationKeyDisableCaller     = "logger.disableCaller"
+	ConfigurationKeyDisableStacktrace = "logger.disableStacktrace"
+	ConfigurationKeyEncoding          = "logger.encoding"
+	ConfigurationKeyOutputPaths       = "logger.outputPaths"
+	ConfigurationKeyDisableEvents     = "logger.disableEvents"
+)
 
 // Config holds the settings to configure a root logger instance.
 type Config struct {
 	// Level is the minimum enabled logging level.
 	// The default is "info".
-	Level string `mapstructure:"level"`
+	Level string `json:"level"`
 	// DisableCaller stops annotating logs with the calling function's file name and line number.
 	// By default, all logs are annotated.
-	DisableCaller bool `mapstructure:"disableCaller"`
+	DisableCaller bool `json:"disableCaller"`
 	// DisableStacktrace disables automatic stacktrace capturing.
 	// By default, stacktraces are captured for LevelError and above in production.
-	DisableStacktrace bool `mapstructure:"disableStacktrace"`
+	DisableStacktrace bool `json:"disableStacktrace"`
 	// Encoding sets the logger's encoding. Valid values are "json" and "console".
 	// The default is "console".
-	Encoding string `mapstructure:"encoding"`
+	Encoding string `json:"encoding"`
 	// OutputPaths is a list of URLs, file paths or stdout/stderr to write logging output to.
 	// The default is ["stdout"].
-	OutputPaths []string `mapstructure:"outputPaths"`
+	OutputPaths []string `json:"outputPaths"`
 	// DisableEvents prevents log messages from being raced as events.
 	// By default, the corresponding events are triggered.
-	DisableEvents bool `mapstructure:"disableEvents"`
+	DisableEvents bool `json:"disableEvents"`
 }
 
 var defaultCfg = Config{

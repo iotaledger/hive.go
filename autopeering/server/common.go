@@ -4,8 +4,8 @@ import (
 	"crypto/sha256"
 	"net"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/iotaledger/hive.go/identity"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

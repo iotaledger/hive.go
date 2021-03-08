@@ -21,7 +21,7 @@ type StorableObject interface {
 	Persist(enabled ...bool)
 
 	// Returns "true" if this object is going to be persisted.
-	PersistenceEnabled() bool
+	ShouldPersist() bool
 
 	// Updates the object with the values of another object "in place" (so it should use a pointer receiver)
 	Update(other StorableObject)
@@ -31,7 +31,4 @@ type StorableObject interface {
 
 	// ObjectStorageValue returns the bytes, that are stored in the value part of the k/v store.
 	ObjectStorageValue() []byte
-
-	// UnmarshalStorageValue parses the value part of the k/v store.
-	UnmarshalObjectStorageValue(valueBytes []byte) (consumedBytes int, err error)
 }

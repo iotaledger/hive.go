@@ -10,9 +10,9 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/database/mapdb"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +34,7 @@ func TestMgrNoDuplicates(t *testing.T) {
 	})
 
 	mgrMap := make(map[identity.ID]*manager)
-	runTestNetwork(nNodes, mgrMap)
+	runTestNetwork(nNodes, mgrMap, nil)
 
 	for _, mgr := range mgrMap {
 		assert.NotEmpty(t, mgr.getOutNeighbors())
@@ -56,10 +56,9 @@ func TestEvents(t *testing.T) {
 		OutboundUpdateInterval: testUpdateInterval,
 	})
 
-	e, teardown := newEventMock(t)
-	defer teardown()
+	e := newEventNetwork(t)
 	mgrMap := make(map[identity.ID]*manager)
-	runTestNetwork(nNodes, mgrMap)
+	runTestNetwork(nNodes, mgrMap, e.attach)
 
 	// the events should lead to exactly the same neighbors
 	for _, mgr := range mgrMap {
@@ -79,9 +78,12 @@ func getValues(m map[identity.ID]*peer.Peer) []*peer.Peer {
 	return result
 }
 
-func runTestNetwork(n int, mgrMap map[identity.ID]*manager) {
+func runTestNetwork(n int, mgrMap map[identity.ID]*manager, hook func(*manager)) {
 	for i := 0; i < n; i++ {
-		_ = newTestManager(fmt.Sprintf("%d", i), mgrMap)
+		mgr := newTestManager(fmt.Sprintf("%d", i), mgrMap)
+		if hook != nil {
+			hook(mgr)
+		}
 	}
 	for _, mgr := range mgrMap {
 		mgr.start()
@@ -115,71 +117,64 @@ type neighbors struct {
 	out, in map[identity.ID]*peer.Peer
 }
 
-type eventMock struct {
-	t    *testing.T
-	lock sync.Mutex
-	m    map[identity.ID]neighbors
+// eventNetwork reconstructs the neighbors for the triggered events
+type eventNetwork struct {
+	sync.Mutex
+	t *testing.T
+	m map[identity.ID]neighbors
 }
 
-func newEventMock(t *testing.T) (*eventMock, func()) {
-	e := &eventMock{
+func newEventNetwork(t *testing.T) *eventNetwork {
+	return &eventNetwork{
 		t: t,
 		m: make(map[identity.ID]neighbors),
 	}
-
-	outgoingPeeringC := events.NewClosure(e.outgoingPeering)
-	incomingPeeringC := events.NewClosure(e.incomingPeering)
-	droppedC := events.NewClosure(e.dropped)
-
-	Events.OutgoingPeering.Attach(outgoingPeeringC)
-	Events.IncomingPeering.Attach(incomingPeeringC)
-	Events.Dropped.Attach(droppedC)
-
-	teardown := func() {
-		Events.OutgoingPeering.Detach(outgoingPeeringC)
-		Events.IncomingPeering.Detach(incomingPeeringC)
-		Events.Dropped.Detach(droppedC)
-	}
-	return e, teardown
 }
 
-func (e *eventMock) outgoingPeering(ev *PeeringEvent) {
+func (e *eventNetwork) attach(mgr *manager) {
+	id := mgr.getID()
+	mgr.events.OutgoingPeering.Attach(events.NewClosure(func(ev *PeeringEvent) { e.outgoingPeering(id, ev) }))
+	mgr.events.IncomingPeering.Attach(events.NewClosure(func(ev *PeeringEvent) { e.incomingPeering(id, ev) }))
+	mgr.events.Dropped.Attach(events.NewClosure(func(ev *DroppedEvent) { e.dropped(id, ev) }))
+}
+
+func (e *eventNetwork) outgoingPeering(id identity.ID, ev *PeeringEvent) {
 	if !ev.Status {
 		return
 	}
-	e.lock.Lock()
-	defer e.lock.Unlock()
-	s, ok := e.m[ev.Self]
+	e.Lock()
+	defer e.Unlock()
+	s, ok := e.m[id]
 	if !ok {
 		s = neighbors{out: make(map[identity.ID]*peer.Peer), in: make(map[identity.ID]*peer.Peer)}
-		e.m[ev.Self] = s
+		e.m[id] = s
 	}
 	assert.NotContains(e.t, s.out, ev.Peer)
 	assert.Less(e.t, len(s.out), 2)
 	s.out[ev.Peer.ID()] = ev.Peer
 }
 
-func (e *eventMock) incomingPeering(ev *PeeringEvent) {
+func (e *eventNetwork) incomingPeering(id identity.ID, ev *PeeringEvent) {
 	if !ev.Status {
 		return
 	}
-	e.lock.Lock()
-	defer e.lock.Unlock()
-	s, ok := e.m[ev.Self]
+	e.Lock()
+	defer e.Unlock()
+	s, ok := e.m[id]
 	if !ok {
 		s = neighbors{out: make(map[identity.ID]*peer.Peer), in: make(map[identity.ID]*peer.Peer)}
-		e.m[ev.Self] = s
+		e.m[id] = s
 	}
 	assert.NotContains(e.t, s.in, ev.Peer)
 	assert.Less(e.t, len(s.in), 2)
 	s.in[ev.Peer.ID()] = ev.Peer
 }
 
-func (e *eventMock) dropped(ev *DroppedEvent) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-	if assert.Contains(e.t, e.m, ev.Self) {
-		s := e.m[ev.Self]
+func (e *eventNetwork) dropped(id identity.ID, ev *DroppedEvent) {
+	e.Lock()
+	defer e.Unlock()
+	if assert.Contains(e.t, e.m, id) {
+		s := e.m[id]
 		delete(s.out, ev.DroppedID)
 		delete(s.in, ev.DroppedID)
 	}

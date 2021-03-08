@@ -1,23 +1,36 @@
 package objectstorage
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"time"
+
+	"github.com/mr-tron/base58"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 type Options struct {
-	batchedWriterInstance *BatchedWriter
-	cacheTime             time.Duration
-	keyPartitions         []int
-	persistenceEnabled    bool
-	keysOnly              bool
-	leakDetectionOptions  *LeakDetectionOptions
-	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
+	batchedWriterInstance      *kvstore.BatchedWriter
+	cacheTime                  time.Duration
+	keyPartitions              []int
+	persistenceEnabled         bool
+	keysOnly                   bool
+	storeOnCreation            bool
+	releaseExecutorWorkerCount int
+	leakDetectionOptions       *LeakDetectionOptions
+	leakDetectionWrapper       func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
+	delayedOptions             []func()
+	onEvictionCallback         func(cachedObject CachedObject)
 }
 
-func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options {
+func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 	result := &Options{
-		cacheTime:          0,
-		persistenceEnabled: true,
+		cacheTime:                  0,
+		persistenceEnabled:         true,
+		releaseExecutorWorkerCount: 1,
+		delayedOptions:             make([]func(), 0),
 	}
 
 	for _, optionalOption := range optionalOptions {
@@ -29,10 +42,18 @@ func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options
 	}
 
 	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = NewBatchedWriter(objectStorage.badgerInstance)
+		result.batchedWriterInstance = kvstore.NewBatchedWriter(store)
+	}
+
+	for _, delayedOption := range result.delayedOptions {
+		delayedOption()
 	}
 
 	return result
+}
+
+func (options *Options) delayed(callback func()) {
+	options.delayedOptions = append(options.delayedOptions, callback)
 }
 
 type Option func(*Options)
@@ -43,7 +64,83 @@ func CacheTime(duration time.Duration) Option {
 	}
 }
 
-func BatchedWriterInstance(batchedWriterInstance *BatchedWriter) Option {
+// logChannelBufferSize defines the size of the buffer used for the log writer
+const logChannelBufferSize = 10240
+
+// logEntry is a container for the
+type logEntry struct {
+	time       time.Time
+	command    kvstore.Command
+	parameters [][]byte
+}
+
+// String returns a string representation of the log entry
+func (l *logEntry) String() string {
+	result := l.time.Format("15:04:05") + " " + kvstore.CommandNames[l.command]
+	for _, parameter := range l.parameters {
+		result += " " + base58.Encode(parameter)
+	}
+
+	return result
+}
+
+// LogAccess sets up a logger that logs all calls to the underlying store in the given file. It is possible to filter
+// the logged commands by providing an optional filter flag.
+func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
+	return func(args *Options) {
+		// execute this function after the remaining options have been initialized and a BatchWriter exists
+		args.delayed(func() {
+			// open log file
+			logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			writer := bufio.NewWriter(logFile)
+			if err != nil {
+				panic(err)
+			}
+
+			// open logger channel
+			logChannel := make(chan logEntry, logChannelBufferSize)
+
+			// start background worker that writes to the log file
+			go func() {
+				for {
+					switch loggedCommand := <-logChannel; loggedCommand.command {
+					case kvstore.ShutdownCommand:
+						// write log entry
+						if _, err = writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+							panic(err)
+						}
+
+						// close channel and log file
+						err = writer.Flush()
+						if err != nil {
+							fmt.Println(err)
+						}
+						close(logChannel)
+						err = logFile.Close()
+						if err != nil {
+							fmt.Println(err)
+						}
+
+						return
+
+					default:
+						// write log entry
+						if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+							panic(err)
+						}
+					}
+				}
+			}()
+
+			// pass through calls to logger channel
+			args.batchedWriterInstance.KVStore().AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
+				logChannel <- logEntry{time.Now(), command, parameters}
+			}, commandsFilter...)
+		})
+	}
+}
+
+func BatchedWriterInstance(batchedWriterInstance *kvstore.BatchedWriter) Option {
 	return func(args *Options) {
 		args.batchedWriterInstance = batchedWriterInstance
 	}
@@ -58,6 +155,25 @@ func PersistenceEnabled(persistenceEnabled bool) Option {
 func KeysOnly(keysOnly bool) Option {
 	return func(args *Options) {
 		args.keysOnly = keysOnly
+	}
+}
+
+// StoreOnCreation writes an object directly to the persistence layer on creation.
+func StoreOnCreation(store bool) Option {
+	return func(args *Options) {
+		args.storeOnCreation = store
+	}
+}
+
+// ReleaseExecutorWorkerCount sets the number of workers that execute the
+// scheduled eviction of the objects in parallel (whenever they become due).
+func ReleaseExecutorWorkerCount(releaseExecutorWorkerCount int) Option {
+	if releaseExecutorWorkerCount < 1 {
+		panic("releaseExecutorWorkerCount must be greater or equal 1")
+	}
+
+	return func(args *Options) {
+		args.releaseExecutorWorkerCount = releaseExecutorWorkerCount
 	}
 }
 
@@ -88,5 +204,12 @@ func OverrideLeakDetectionWrapper(wrapperFunc func(cachedObject *CachedObjectImp
 func PartitionKey(keyPartitions ...int) Option {
 	return func(args *Options) {
 		args.keyPartitions = keyPartitions
+	}
+}
+
+// OnEvictionCallback sets a function that is called on eviction of the object.
+func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
+	return func(args *Options) {
+		args.onEvictionCallback = cb
 	}
 }

@@ -6,11 +6,20 @@ import (
 	"github.com/kr/text"
 )
 
+// Struct creates a string representation of the given struct details.
 func Struct(name string, fields ...*structField) string {
-	return structBuilder{
+	return (&structBuilder{
 		name:   name,
 		fields: fields,
-	}.String()
+	}).String()
+}
+
+// StructBuilder returns a builder for the struct that can dynamically be modified.
+func StructBuilder(name string, fields ...*structField) *structBuilder {
+	return &structBuilder{
+		name:   name,
+		fields: fields,
+	}
 }
 
 type structBuilder struct {
@@ -18,7 +27,12 @@ type structBuilder struct {
 	fields []*structField
 }
 
-func (stringifyStruct structBuilder) String() (result string) {
+// AddField dynamically adds a new field to the struct.
+func (stringifyStruct *structBuilder) AddField(field *structField) {
+	stringifyStruct.fields = append(stringifyStruct.fields, field)
+}
+
+func (stringifyStruct *structBuilder) String() (result string) {
 	result = stringifyStruct.name + " {\n"
 
 	for _, field := range stringifyStruct.fields {

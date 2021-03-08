@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/server"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -33,8 +34,9 @@ type manager struct {
 	replacements []*mpeer
 	masters      []*mpeer
 
-	net network
-	log *logger.Logger
+	events Events
+	net    network
+	log    *logger.Logger
 
 	wg      sync.WaitGroup
 	closing chan struct{}
@@ -45,9 +47,13 @@ func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager 
 		active:       make([]*mpeer, 0, maxManaged),
 		replacements: make([]*mpeer, 0, maxReplacements),
 		masters:      wrapPeers(masters),
-		net:          net,
-		log:          log,
-		closing:      make(chan struct{}),
+		events: Events{
+			PeerDiscovered: events.NewEvent(peerDiscovered),
+			PeerDeleted:    events.NewEvent(peerDeleted),
+		},
+		net:     net,
+		log:     log,
+		closing: make(chan struct{}),
 	}
 	m.loadInitialPeers(masters)
 
@@ -133,46 +139,54 @@ func (m *manager) doReverify(done chan<- struct{}) {
 		return // nothing can be reverified
 	}
 	m.log.Debugw("reverifying",
-		"id", p.ID(),
-		"addr", p.Address(),
+		"peer", p,
 	)
 
 	// could not verify the peer
-	if m.net.Ping(unwrapPeer(p)) != nil {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-
-		// do not remove master peers
-		if containsPeer(m.masters, p.ID()) {
-			p.verifiedCount = 0
-			// move the master peer to the front of the peer list
-			copy(m.active[1:], m.active[:len(m.active)-1])
-			m.active[0] = p
-			return
-		}
-
-		m.active, _ = deletePeerByID(m.active, p.ID())
-		m.log.Debugw("remove dead",
-			"peer", p,
-		)
-		if p.verifiedCount > 0 {
-			Events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(p)})
-		}
-
-		// add a random replacement, if available
-		if len(m.replacements) > 0 {
-			var r *mpeer
-			m.replacements, r = deletePeer(m.replacements, rand.Intn(len(m.replacements)))
-			m.active = pushPeer(m.active, r, maxManaged)
-		}
+	if m.net.Ping(p) != nil {
+		m.deletePeer(p.ID())
 		return
 	}
 
 	// no need to do anything here, as the peer is bumped when handling the pong
 }
 
+// deletePeer deletes the peer with the given ID from the list of managed peers.
+func (m *manager) deletePeer(id identity.ID) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	var mp *mpeer
+	m.active, mp = deletePeerByID(m.active, id)
+	if mp == nil {
+		return // peer no longer exists
+	}
+
+	// master peers are never removed
+	if containsPeer(m.masters, id) {
+		// reset verifiedCount and re-add them to the front of the active peers
+		mp.verifiedCount.Store(0)
+		m.active = unshiftPeer(m.active, mp, maxManaged)
+		return
+	}
+
+	m.log.Debugw("deleted",
+		"peer", mp,
+	)
+	if mp.verifiedCount.Load() > 0 {
+		m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(mp)})
+	}
+
+	// add a random replacement, if available
+	if len(m.replacements) > 0 {
+		var r *mpeer
+		m.replacements, r = deletePeer(m.replacements, rand.Intn(len(m.replacements)))
+		m.active = pushPeer(m.active, r, maxManaged)
+	}
+}
+
 // peerToReverify returns the oldest peer, or nil if empty.
-func (m *manager) peerToReverify() *mpeer {
+func (m *manager) peerToReverify() *peer.Peer {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -180,7 +194,7 @@ func (m *manager) peerToReverify() *mpeer {
 		return nil
 	}
 	// the last peer is the oldest
-	return m.active[len(m.active)-1]
+	return unwrapPeer(m.active[len(m.active)-1])
 }
 
 // updatePeer moves the peer with the given ID to the front of the list of managed peers.
@@ -192,14 +206,11 @@ func (m *manager) updatePeer(update *peer.Peer) uint {
 			if i > 0 {
 				//  move i-th peer to the front
 				copy(m.active[1:], m.active[:i])
+				m.active[0] = p
 			}
-			// replace first mpeer with a wrap of the updated peer
-			m.active[0] = &mpeer{
-				Peer:          *update,
-				verifiedCount: p.verifiedCount + 1,
-				lastNewPeers:  p.lastNewPeers,
-			}
-			return p.verifiedCount + 1
+			// update the wrapped peer and verifiedCount
+			p.setPeer(update)
+			return uint(p.verifiedCount.Inc())
 		}
 	}
 	return 0
@@ -245,7 +256,7 @@ func (m *manager) addDiscoveredPeer(p *peer.Peer) bool {
 		"peer", p,
 	)
 
-	mp := wrapPeer(p)
+	mp := newMPeer(p)
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
 	}
@@ -274,19 +285,19 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	if v := m.updatePeer(p); v > 0 {
 		// trigger the event only for the first time the peer is updated
 		if v == 1 {
-			Events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+			m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
 		}
 		return false
 	}
 
-	mp := wrapPeer(p)
-	mp.verifiedCount = 1
+	mp := newMPeer(p)
+	mp.verifiedCount.Inc()
 
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
 	}
 	// trigger the event only when the peer is added to active
-	Events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+	m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
 
 	// new nodes are added to the front
 	m.active = unshiftPeer(m.active, mp, maxManaged)
@@ -314,7 +325,7 @@ func (m *manager) randomPeers(n int, minVerified uint) []*mpeer {
 		}
 
 		p := m.active[i]
-		if p.verifiedCount < minVerified {
+		if uint(p.verifiedCount.Load()) < minVerified {
 			continue
 		}
 		peers = append(peers, p)
@@ -330,7 +341,7 @@ func (m *manager) verifiedPeers() []*mpeer {
 
 	peers := make([]*mpeer, 0, len(m.active))
 	for _, mp := range m.active {
-		if mp.verifiedCount == 0 {
+		if mp.verifiedCount.Load() == 0 {
 			continue
 		}
 		peers = append(peers, mp)

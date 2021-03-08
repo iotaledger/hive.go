@@ -9,7 +9,7 @@ import (
 
 var (
 	// plugins
-	plugins         = make(map[string]int)
+	plugins         = make(map[string]*Plugin)
 	DisabledPlugins = make(map[string]bool)
 	EnabledPlugins  = make(map[string]bool)
 )
@@ -124,16 +124,19 @@ func (node *Node) Run() {
 	node.Logger.Info("Shutdown complete!")
 }
 
-func AddPlugin(name string, status int) {
+func AddPlugin(plugin *Plugin) {
+	name := plugin.Name
+	status := plugin.Status
+
 	if _, exists := plugins[name]; exists {
 		panic("duplicate plugin - \"" + name + "\" was defined already")
 	}
 
-	plugins[name] = status
+	plugins[name] = plugin
 
 	Events.AddPlugin.Trigger(name, status)
 }
 
-func GetPlugins() map[string]int {
+func GetPlugins() map[string]*Plugin {
 	return plugins
 }

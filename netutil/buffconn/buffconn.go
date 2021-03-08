@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	// MaxMessageSize is the maximum message size in bytes.
-	MaxMessageSize = 4096
 	// IOTimeout specifies the timeout for sending and receiving multi packet messages.
 	IOTimeout = 4 * time.Second
 
@@ -40,13 +38,14 @@ type BufferedConnection struct {
 	conn                 net.Conn
 	incomingHeaderBuffer []byte
 	closeOnce            sync.Once
+	maxMessageSize       int
 
-	bytesRead    *atomic.Uint32
-	bytesWritten *atomic.Uint32
+	bytesRead    *atomic.Uint64
+	bytesWritten *atomic.Uint64
 }
 
 // NewBufferedConnection creates a new BufferedConnection from a net.Conn.
-func NewBufferedConnection(conn net.Conn) *BufferedConnection {
+func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnection {
 	return &BufferedConnection{
 		Events: BufferedConnectionEvents{
 			ReceiveMessage: events.NewEvent(events.ByteSliceCaller),
@@ -54,8 +53,9 @@ func NewBufferedConnection(conn net.Conn) *BufferedConnection {
 		},
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
-		bytesRead:            atomic.NewUint32(0),
-		bytesWritten:         atomic.NewUint32(0),
+		maxMessageSize:       maxMessageSize,
+		bytesRead:            atomic.NewUint64(0),
+		bytesWritten:         atomic.NewUint64(0),
 	}
 }
 
@@ -81,12 +81,12 @@ func (c *BufferedConnection) RemoteAddr() net.Addr {
 }
 
 // BytesRead returns the total number of bytes read.
-func (c *BufferedConnection) BytesRead() uint32 {
+func (c *BufferedConnection) BytesRead() uint64 {
 	return c.bytesRead.Load()
 }
 
 // BytesWritten returns the total number of bytes written.
-func (c *BufferedConnection) BytesWritten() uint32 {
+func (c *BufferedConnection) BytesWritten() uint64 {
 	return c.bytesWritten.Load()
 }
 
@@ -94,7 +94,7 @@ func (c *BufferedConnection) BytesWritten() uint32 {
 // If a complete message has been received and ReceiveMessage event is triggered with its complete payload.
 // If read leads to an error, the loop will be stopped and that error returned.
 func (c *BufferedConnection) Read() error {
-	buffer := make([]byte, MaxMessageSize)
+	buffer := make([]byte, c.maxMessageSize)
 
 	for {
 		n, err := c.readMessage(buffer)
@@ -113,7 +113,7 @@ func (c *BufferedConnection) Read() error {
 // written, Write will keep trying until the full message is delivered, or the
 // connection is broken.
 func (c *BufferedConnection) Write(msg []byte) (int, error) {
-	if l := len(msg); l > MaxMessageSize {
+	if l := len(msg); l > c.maxMessageSize {
 		panic(fmt.Sprintf("invalid message length: %d", l))
 	}
 
@@ -127,7 +127,7 @@ func (c *BufferedConnection) Write(msg []byte) (int, error) {
 	for bytesWritten := 0; bytesWritten < toWrite; {
 		n, err := c.conn.Write(buffer[bytesWritten:])
 		bytesWritten += n
-		c.bytesWritten.Add(uint32(n))
+		c.bytesWritten.Add(uint64(n))
 		if err != nil {
 			return bytesWritten, err
 		}
@@ -140,7 +140,7 @@ func (c *BufferedConnection) read(buffer []byte) (int, error) {
 	for bytesRead := 0; bytesRead < toRead; {
 		n, err := c.conn.Read(buffer[bytesRead:])
 		bytesRead += n
-		c.bytesRead.Add(uint32(n))
+		c.bytesRead.Add(uint64(n))
 		if err != nil {
 			return bytesRead, err
 		}
@@ -157,7 +157,7 @@ func (c *BufferedConnection) readMessage(buffer []byte) (int, error) {
 		return 0, err
 	}
 
-	msgLength, err := parseHeader(c.incomingHeaderBuffer)
+	msgLength, err := c.parseHeader()
 	if err != nil {
 		return 0, err
 	}
@@ -171,20 +171,20 @@ func (c *BufferedConnection) readMessage(buffer []byte) (int, error) {
 	return c.read(buffer[:msgLength])
 }
 
+func (c *BufferedConnection) parseHeader() (int, error) {
+	if len(c.incomingHeaderBuffer) != headerSize {
+		return 0, ErrInvalidHeader
+	}
+	msgLength := int(binary.BigEndian.Uint32(c.incomingHeaderBuffer))
+	if msgLength > c.maxMessageSize {
+		return 0, ErrInvalidHeader
+	}
+	return msgLength, nil
+}
+
 func newHeader(msgLength int) []byte {
 	// the header only consists of the message length
 	header := make([]byte, headerSize)
 	binary.BigEndian.PutUint32(header, uint32(msgLength))
 	return header
-}
-
-func parseHeader(header []byte) (int, error) {
-	if len(header) != headerSize {
-		return 0, ErrInvalidHeader
-	}
-	msgLength := int(binary.BigEndian.Uint32(header))
-	if msgLength > MaxMessageSize {
-		return 0, ErrInvalidHeader
-	}
-	return msgLength, nil
 }
