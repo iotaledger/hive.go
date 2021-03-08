@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/logger"
 )
 
 const (
@@ -15,11 +16,13 @@ const (
 type Callback = func(plugin *Plugin)
 
 type Plugin struct {
-	Node   *Node
-	Name   string
-	Status int
-	Events pluginEvents
-	wg     *sync.WaitGroup
+	Node    *Node
+	Name    string
+	Status  int
+	Events  pluginEvents
+	log     *logger.Logger
+	logOnce sync.Once
+	wg      *sync.WaitGroup
 }
 
 // Creates a new plugin with the given name, default status and callbacks.
@@ -54,4 +57,63 @@ func NewPlugin(name string, status int, callbacks ...Callback) *Plugin {
 
 func GetPluginIdentifier(name string) string {
 	return strings.ToLower(strings.Replace(name, " ", "", -1))
+}
+
+// LogDebug uses fmt.Sprint to construct and log a message.
+func (p *Plugin) LogDebug(args ...interface{}) {
+	p.logger().Debug(args...)
+}
+
+// LogDebugf uses fmt.Sprintf to log a templated message.
+func (p *Plugin) LogDebugf(format string, args ...interface{}) {
+	p.logger().Debugf(format, args...)
+}
+
+// LogError uses fmt.Sprint to construct and log a message.
+func (p *Plugin) LogError(args ...interface{}) {
+	p.logger().Error(args...)
+}
+
+// LogErrorf uses fmt.Sprintf to log a templated message.
+func (p *Plugin) LogErrorf(format string, args ...interface{}) {
+	p.logger().Errorf(format, args...)
+}
+
+// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (p *Plugin) LogFatal(args ...interface{}) {
+	p.logger().Fatal(args...)
+}
+
+// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (p *Plugin) LogFatalf(format string, args ...interface{}) {
+	p.logger().Fatalf(format, args...)
+}
+
+// LogInfo uses fmt.Sprint to construct and log a message.
+func (p *Plugin) LogInfo(args ...interface{}) {
+	p.logger().Info(args...)
+}
+
+// LogInfof uses fmt.Sprintf to log a templated message.
+func (p *Plugin) LogInfof(format string, args ...interface{}) {
+	p.logger().Infof(format, args...)
+}
+
+// LogWarn uses fmt.Sprint to construct and log a message.
+func (p *Plugin) LogWarn(args ...interface{}) {
+	p.logger().Warn(args...)
+}
+
+// LogWarnf uses fmt.Sprintf to log a templated message.
+func (p *Plugin) LogWarnf(format string, args ...interface{}) {
+	p.logger().Warnf(format, args...)
+}
+
+// logger is an internal utility function that instantiates and returns a logger with the name of the plugin.
+func (p *Plugin) logger() *logger.Logger {
+	p.logOnce.Do(func() {
+		p.log = logger.NewLogger(p.Name)
+	})
+
+	return p.log
 }
