@@ -16,7 +16,7 @@ func (f Func) Eval(identity *identity.Identity) uint64 { return f(identity) }
 // Identity is a map between mana value and identities with that mana value.
 type Identity map[uint64][]*identity.Identity
 
-// NewIdentity returns the mana-identitties map.
+// NewIdentity returns the mana-identities map.
 func NewIdentity(identities []*identity.Identity, f Func) Identity {
 	manaRank := make(Identity)
 	for _, identity := range identities {
@@ -251,7 +251,7 @@ func filter(target int, set []uint64, r int, mode int) []uint64 {
 	}
 }
 
-// Total returns the total mana of the given identitites.
+// Total returns the total mana of the given identities.
 func Total(f Func, identities []*identity.Identity) (total uint64) {
 	for _, identity := range identities {
 		total += f(identity)

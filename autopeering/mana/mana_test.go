@@ -2,7 +2,6 @@ package mana
 
 import (
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
@@ -40,23 +39,6 @@ func newTestMana(identities []*identity.Identity) (m map[*identity.Identity]uint
 		m[p] = uint64(i)
 	}
 	return m
-}
-
-func newZipfMana(identities []*identity.Identity, zipf float64) (m map[*identity.Identity]uint64) {
-	m = make(map[*identity.Identity]uint64, len(identities))
-	scalingFactor := math.Pow(10, 10)
-	for i, p := range identities {
-		m[p] = uint64(math.Pow(float64(i+1), -zipf) * scalingFactor)
-	}
-	return m
-}
-
-type sameManaFunc Func
-
-var sameMana sameManaFunc
-
-func (f sameManaFunc) Eval(identity *identity.Identity) uint64 {
-	return 1
 }
 
 type manaFunc Func
