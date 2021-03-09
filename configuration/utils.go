@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"encoding/csv"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -228,6 +229,20 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Uint64Var(valueField.Addr().Interface().(*uint64), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+		case []string:
+			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
+				parsedValue, err := csv.NewReader(strings.NewReader(tagDefaultValue)).Read()
+				if err != nil {
+					panic(err)
+				}
+				defaultValue = parsedValue
+			}
+
+			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
+				pflag.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
+			} else {
+				pflag.StringSliceVar(valueField.Addr().Interface().(*[]string), name, defaultValue, typeField.Tag.Get("usage"))
 			}
 		default:
 			BindParameters(valueField.Addr().Interface(), name)
