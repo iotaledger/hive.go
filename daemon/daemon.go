@@ -111,17 +111,21 @@ type worker struct {
 	shutdownSignal chan struct{}
 }
 
-// GetRunningBackgroundWorkers gets the running background workers.
+// GetRunningBackgroundWorkers gets the running background workers sorted by their priority.
 func (d *OrderedDaemon) GetRunningBackgroundWorkers() []string {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
 	result := make([]string, 0)
-	for name, worker := range d.workers {
-		if !worker.running.IsSet() {
+	for _, name := range d.shutdownOrderWorker {
+		if !d.workers[name].running.IsSet() {
 			continue
 		}
 		result = append(result, name)
+	}
+
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
 	}
 
 	return result
