@@ -16,7 +16,8 @@ type TimedQueue struct {
 	heap      timedHeap
 	heapMutex sync.RWMutex
 
-	waitForNewElements sync.WaitGroup
+	waitForNewElements      sync.WaitGroup
+	waitForNewElementsMutex sync.Mutex
 
 	shutdownSignal chan byte
 	isShutdown     bool
@@ -145,72 +146,76 @@ func (t *TimedQueue) IsShutdown() bool {
 // Poll returns the first value of this queue. It waits for the scheduled time before returning and is therefore
 // blocking. It returns nil if the queue is empty.
 func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
-	// optionally wait for new elements before continuing
-	if waitIfEmpty {
-		t.waitForNewElements.Wait()
-	}
-
-	// acquire locks
-	t.heapMutex.Lock()
-
-	// if the queue is empty after waiting ...
-	if len(t.heap) == 0 {
-		t.heapMutex.Unlock()
-
-		// ... wait again (if the queue was not shutdown, yet and we wanted to wait)
-		//
-		// Note: This can happen, if multiple goroutines are simultaneously polling elements from the queue.
-		//       They all wait for a new element to arrive, then one retrieves the new elements and the other goroutines
-		//       will still see an empty tangle even if they waited.
-		if !t.IsShutdown() && waitIfEmpty {
-			return t.Poll(waitIfEmpty)
+	for {
+		// optionally wait for new elements before continuing
+		if waitIfEmpty {
+			t.waitForNewElementsMutex.Lock()
+			t.waitForNewElements.Wait()
+			t.waitForNewElementsMutex.Unlock()
 		}
 
-		// ... abort
-		return nil
-	}
+		// acquire locks
+		t.heapMutex.Lock()
 
-	// retrieve first element
-	polledElement := heap.Remove(&t.heap, 0).(*QueueElement)
+		// if the queue is empty after waiting ...
+		if len(t.heap) == 0 {
+			t.heapMutex.Unlock()
 
-	// update waiting for new elements wait group if necessary
-	t.markEmptyQueueAsWaitingForElements()
+			// ... wait again (if the queue was not shutdown, yet and we wanted to wait)
+			//
+			// Note: This can happen, if multiple goroutines are simultaneously polling elements from the queue.
+			//       They all wait for a new element to arrive, then one retrieves the new elements and the other goroutines
+			//       will still see an empty queue even if they waited.
+			if !t.IsShutdown() && waitIfEmpty {
+				continue
+			}
 
-	// release locks
-	t.heapMutex.Unlock()
-
-	// wait for the return value to become due
-	select {
-	// react if the queue was shutdown while waiting
-	case <-t.shutdownSignal:
-		// abort if the pending elements are supposed to be canceled
-		if t.shutdownFlags.HasBits(CancelPendingElements) {
+			// ... abort
 			return nil
 		}
 
-		// immediately return the value if the pending timeouts are supposed to be ignored
-		if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
-			return polledElement.Value
-		}
+		// retrieve first element
+		polledElement := heap.Remove(&t.heap, 0).(*QueueElement)
+
+		// update waiting for new elements wait group if necessary
+		t.markEmptyQueueAsWaitingForElements()
+
+		// release locks
+		t.heapMutex.Unlock()
 
 		// wait for the return value to become due
 		select {
+		// react if the queue was shutdown while waiting
+		case <-t.shutdownSignal:
+			// abort if the pending elements are supposed to be canceled
+			if t.shutdownFlags.HasBits(CancelPendingElements) {
+				return nil
+			}
+
+			// immediately return the value if the pending timeouts are supposed to be ignored
+			if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
+				return polledElement.Value
+			}
+
+			// wait for the return value to become due
+			select {
+			// abort waiting for this element and return the next one instead if it was canceled
+			case <-polledElement.cancel:
+				continue
+
+			// return the result after the time is reached
+			case <-time.After(time.Until(polledElement.ScheduledTime)):
+				return polledElement.Value
+			}
+
 		// abort waiting for this element and return the next one instead if it was canceled
 		case <-polledElement.cancel:
-			return t.Poll(waitIfEmpty)
+			continue
 
 		// return the result after the time is reached
 		case <-time.After(time.Until(polledElement.ScheduledTime)):
 			return polledElement.Value
 		}
-
-	// abort waiting for this element and return the next one instead if it was canceled
-	case <-polledElement.cancel:
-		return t.Poll(waitIfEmpty)
-
-	// return the result after the time is reached
-	case <-time.After(time.Until(polledElement.ScheduledTime)):
-		return polledElement.Value
 	}
 }
 
@@ -234,7 +239,9 @@ func (t *TimedQueue) markEmptyQueueAsWaitingForElements() {
 	if len(t.heap) == 0 {
 		t.shutdownMutex.Lock()
 		if !t.isShutdown {
+			t.waitForNewElementsMutex.Lock()
 			t.waitForNewElements.Add(1)
+			t.waitForNewElementsMutex.Unlock()
 		}
 		t.shutdownMutex.Unlock()
 	}
@@ -242,7 +249,7 @@ func (t *TimedQueue) markEmptyQueueAsWaitingForElements() {
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region QueueElement ////////////////////////////////////////////////////////////////////////////////////////////
+// region QueueElement /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // QueueElement is an element in the TimedQueue. It
 type QueueElement struct {
@@ -323,6 +330,7 @@ func (h *timedHeap) Push(x interface{}) {
 func (h *timedHeap) Pop() interface{} {
 	n := len(*h)
 	data := (*h)[n-1]
+	(*h)[n-1] = nil // avoid memory leak
 	*h = (*h)[:n-1]
 	data.index = -1
 	return data

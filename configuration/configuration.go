@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -58,7 +59,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 	}
 }
 
-// LoadFile loads paramerers from a JSON or YAML file and merges them into the loaded config.
+// LoadFile loads parameters from a JSON or YAML file and merges them into the loaded config.
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
@@ -75,6 +76,58 @@ func (c *Configuration) LoadFile(filePath string) error {
 
 	if err := c.config.Load(file.Provider(filePath), parser); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// StoreFile stores the current config to a JSON or YAML file.
+// ignoreSettingsAtStore will not be stored to the file.
+func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]string) error {
+
+	settings := c.config.Raw()
+	if len(ignoreSettingsAtStore) > 0 {
+		for _, ignoredSetting := range ignoreSettingsAtStore[0] {
+			parameter := settings
+			ignoredSettingSplitted := strings.Split(strings.ToLower(ignoredSetting), ".")
+			for lvl, parameterName := range ignoredSettingSplitted {
+				if lvl == len(ignoredSettingSplitted)-1 {
+					delete(parameter, parameterName)
+					continue
+				}
+
+				par, exists := parameter[parameterName]
+				if !exists {
+					// parameter not found in settings
+					break
+				}
+
+				parameter = par.(map[string]interface{})
+			}
+		}
+	}
+
+	var parser koanf.Parser
+
+	switch filepath.Ext(filePath) {
+	case ".json":
+		parser = &JSONLowerParser{
+			prefix: "",
+			indent: "  ",
+		}
+	case ".yaml", ".yml":
+		parser = &YAMLLowerParser{}
+	default:
+		return ErrUnknownConfigFormat
+	}
+
+	data, err := parser.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("unable to marshal config file: %w", err)
+	}
+
+	if err := ioutil.WriteFile(filePath, data, 0666); err != nil {
+		return fmt.Errorf("unable to save config file: %w", err)
 	}
 
 	return nil

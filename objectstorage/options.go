@@ -6,27 +6,31 @@ import (
 	"os"
 	"time"
 
-	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/mr-tron/base58"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 type Options struct {
-	batchedWriterInstance *kvstore.BatchedWriter
-	cacheTime             time.Duration
-	keyPartitions         []int
-	persistenceEnabled    bool
-	keysOnly              bool
-	storeOnCreation       bool
-	leakDetectionOptions  *LeakDetectionOptions
-	leakDetectionWrapper  func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
-	delayedOptions        []func()
+	batchedWriterInstance      *kvstore.BatchedWriter
+	cacheTime                  time.Duration
+	keyPartitions              []int
+	persistenceEnabled         bool
+	keysOnly                   bool
+	storeOnCreation            bool
+	releaseExecutorWorkerCount int
+	leakDetectionOptions       *LeakDetectionOptions
+	leakDetectionWrapper       func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
+	delayedOptions             []func()
+	onEvictionCallback         func(cachedObject CachedObject)
 }
 
-func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options {
+func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 	result := &Options{
-		cacheTime:          0,
-		persistenceEnabled: true,
-		delayedOptions:     make([]func(), 0),
+		cacheTime:                  0,
+		persistenceEnabled:         true,
+		releaseExecutorWorkerCount: 1,
+		delayedOptions:             make([]func(), 0),
 	}
 
 	for _, optionalOption := range optionalOptions {
@@ -38,7 +42,7 @@ func newOptions(objectStorage *ObjectStorage, optionalOptions []Option) *Options
 	}
 
 	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = kvstore.NewBatchedWriter(objectStorage.store)
+		result.batchedWriterInstance = kvstore.NewBatchedWriter(store)
 	}
 
 	for _, delayedOption := range result.delayedOptions {
@@ -167,6 +171,18 @@ func StoreOnCreation(store bool) Option {
 	}
 }
 
+// ReleaseExecutorWorkerCount sets the number of workers that execute the
+// scheduled eviction of the objects in parallel (whenever they become due).
+func ReleaseExecutorWorkerCount(releaseExecutorWorkerCount int) Option {
+	if releaseExecutorWorkerCount < 1 {
+		panic("releaseExecutorWorkerCount must be greater or equal 1")
+	}
+
+	return func(args *Options) {
+		args.releaseExecutorWorkerCount = releaseExecutorWorkerCount
+	}
+}
+
 func LeakDetectionEnabled(leakDetectionEnabled bool, options ...LeakDetectionOptions) Option {
 	return func(args *Options) {
 		if leakDetectionEnabled {
@@ -194,5 +210,12 @@ func OverrideLeakDetectionWrapper(wrapperFunc func(cachedObject *CachedObjectImp
 func PartitionKey(keyPartitions ...int) Option {
 	return func(args *Options) {
 		args.keyPartitions = keyPartitions
+	}
+}
+
+// OnEvictionCallback sets a function that is called on eviction of the object.
+func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
+	return func(args *Options) {
+		args.onEvictionCallback = cb
 	}
 }

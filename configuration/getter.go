@@ -160,7 +160,7 @@ func (c *Configuration) MapKeys(path string) []string {
 }
 
 // Unmarshal unmarshals a given key path into the given struct using
-// the mapstructure lib. If no path is specified, the whole map is unmarshalled.
+// the mapstructure lib. If no path is specified, the whole map is unmarshaled.
 // `koanf` is the struct field tag used to match field names. To customize,
 // use UnmarshalWithConf(). It uses the mitchellh/mapstructure package.
 func (c *Configuration) Unmarshal(path string, o interface{}) error {

@@ -33,7 +33,10 @@ func mapToLowerKeys(m map[string]interface{}) {
 
 // JSONLowerParser implements a JSON parser.
 // all config keys are lower cased.
-type JSONLowerParser struct{}
+type JSONLowerParser struct {
+	prefix string
+	indent string
+}
 
 // Unmarshal parses the given JSON bytes.
 func (p *JSONLowerParser) Unmarshal(b []byte) (map[string]interface{}, error) {
@@ -49,7 +52,7 @@ func (p *JSONLowerParser) Unmarshal(b []byte) (map[string]interface{}, error) {
 
 // Marshal marshals the given config map to JSON bytes.
 func (p *JSONLowerParser) Marshal(o map[string]interface{}) ([]byte, error) {
-	return json.Marshal(o)
+	return json.MarshalIndent(o, p.prefix, p.indent)
 }
 
 // YAMLLowerParser implements a YAML parser.
