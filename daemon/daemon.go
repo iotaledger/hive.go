@@ -163,7 +163,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	defer d.lock.Unlock()
 
 	if _, workerExistsAlready := d.workers[name]; workerExistsAlready {
-		return xerrors.Errorf("tried to overwrite existing background worker (%s): %w", ErrDuplicateBackgroundWorker)
+		return xerrors.Errorf("tried to overwrite existing background worker (%s): %w", name, ErrDuplicateBackgroundWorker)
 	}
 
 	var shutdownOrder int
