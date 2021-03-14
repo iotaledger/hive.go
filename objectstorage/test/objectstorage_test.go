@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/async"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
@@ -21,8 +24,6 @@ import (
 	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -446,7 +447,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, false)
+	})
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -460,7 +461,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte(""))
+	}, objectstorage.WithPrefix([]byte("")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -474,7 +475,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("1"))
+	}, objectstorage.WithPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -487,7 +488,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("12"))
+	}, objectstorage.WithPrefix([]byte("12")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -916,7 +917,7 @@ func TestForEachWithPrefix(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("1"))
+	}, objectstorage.WithPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -959,7 +960,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, false, []byte("1"))
+	}, objectstorage.WithPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -1002,7 +1003,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, true, []byte("1"))
+	}, objectstorage.WithPrefix([]byte("1")), objectstorage.WithSkipCache(true))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
