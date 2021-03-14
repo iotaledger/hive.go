@@ -20,6 +20,7 @@ func TestBindParameters(t *testing.T) {
 		Nested1 struct {
 			Key string `name:"bird" shorthand:"b" default:"bird" usage:"nestedKey bird"`
 		} `name:"renamedNested"`
+		Batman []string `default:"a,b" usage:"robin"`
 	}{
 		// assign default value outside of tag
 		TestField: 13,
@@ -51,4 +52,9 @@ func TestBindParameters(t *testing.T) {
 	assert.Equal(t, "nestedKey bird", birdFlag.Usage)
 	assert.Equal(t, "bird", birdFlag.DefValue)
 	assert.Equal(t, "b", birdFlag.Shorthand)
+
+	batmanFlag := flag.Lookup("configuration.batman")
+	assert.Equal(t, "robin", batmanFlag.Usage)
+	assert.Equal(t, []string{"a", "b"}, parameters.Batman)
+	assert.Equal(t, "", batmanFlag.Shorthand)
 }
