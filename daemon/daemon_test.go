@@ -180,11 +180,11 @@ func TestReRun(t *testing.T) {
 	time.Sleep(graceTime)
 
 	var wasStarted typeutils.AtomicBool
-	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	require.Error(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		wasStarted.Set()
 		<-shutdownSignal
 	}))
 
 	d.ShutdownAndWait()
-	assert.True(t, wasStarted.IsSet())
+	assert.False(t, wasStarted.IsSet())
 }
