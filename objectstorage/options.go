@@ -213,3 +213,51 @@ func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
 		args.onEvictionCallback = cb
 	}
 }
+
+// the default options used for object storage iteration.
+var defaultIteratorOptions = []IteratorOption{
+	WithSkipCache(false),
+	WithSkipStorage(false),
+	WithPrefix(kvstore.EmptyPrefix),
+}
+
+// IteratorOption is a function setting an iterator option.
+type IteratorOption func(opts *IteratorOptions)
+
+// IteratorOptions define options for iterations in the object storage.
+type IteratorOptions struct {
+	// whether to skip the elements in the cache.
+	skipCache bool
+	// whether to skip the elements in the storage.
+	skipStorage bool
+	// an optional prefix to iterate a subset of elements.
+	optionalPrefix []byte
+}
+
+// applies the given IteratorOption.
+func (o *IteratorOptions) apply(opts ...IteratorOption) {
+	for _, opt := range opts {
+		opt(o)
+	}
+}
+
+// WithSkipCache is used to skip the elements in the cache.
+func WithSkipCache(skipCache bool) IteratorOption {
+	return func(opts *IteratorOptions) {
+		opts.skipCache = skipCache
+	}
+}
+
+// WithSkipStorage is used to skip the elements in the storage.
+func WithSkipStorage(skipStorage bool) IteratorOption {
+	return func(opts *IteratorOptions) {
+		opts.skipStorage = skipStorage
+	}
+}
+
+// WithPrefix is used to iterate a subset of elements with a defined prefix.
+func WithPrefix(prefix []byte) IteratorOption {
+	return func(opts *IteratorOptions) {
+		opts.optionalPrefix = prefix
+	}
+}
