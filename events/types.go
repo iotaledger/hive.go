@@ -1,11 +1,15 @@
 package events
 
-func CallbackCaller(handler interface{}, params ...interface{}) {
+func VoidCaller(handler interface{}, params ...interface{}) {
 	handler.(func())()
 }
 
 func ErrorCaller(handler interface{}, params ...interface{}) {
 	handler.(func(error))(params[0].(error))
+}
+
+func BoolCaller(handler interface{}, params ...interface{}) {
+	handler.(func(bool))(params[0].(bool))
 }
 
 func IntCaller(handler interface{}, params ...interface{}) {

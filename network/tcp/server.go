@@ -67,8 +67,8 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 func NewServer() *TCPServer {
 	return &TCPServer{
 		Events: tcpServerEvents{
-			Start:    events.NewEvent(events.CallbackCaller),
-			Shutdown: events.NewEvent(events.CallbackCaller),
+			Start:    events.NewEvent(events.VoidCaller),
+			Shutdown: events.NewEvent(events.VoidCaller),
 			Connect:  events.NewEvent(network.ManagedConnectionCaller),
 			Error:    events.NewEvent(events.ErrorCaller),
 		},

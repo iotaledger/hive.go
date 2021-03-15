@@ -27,7 +27,7 @@ func NewManagedConnection(conn net.Conn) *ManagedConnection {
 		Conn: conn,
 		Events: ManagedConnectionEvents{
 			ReceiveData: events.NewEvent(events.ByteSliceCaller),
-			Close:       events.NewEvent(events.CallbackCaller),
+			Close:       events.NewEvent(events.VoidCaller),
 			Error:       events.NewEvent(events.ErrorCaller),
 		},
 	}
