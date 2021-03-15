@@ -61,8 +61,8 @@ func NewServer(receiveBufferSize int) *UDPServer {
 	return &UDPServer{
 		ReceiveBufferSize: receiveBufferSize,
 		Events: udpServerEvents{
-			Start:       events.NewEvent(events.CallbackCaller),
-			Shutdown:    events.NewEvent(events.CallbackCaller),
+			Start:       events.NewEvent(events.VoidCaller),
+			Shutdown:    events.NewEvent(events.VoidCaller),
 			ReceiveData: events.NewEvent(udpAddrAndDataCaller),
 			Error:       events.NewEvent(events.ErrorCaller),
 		},
