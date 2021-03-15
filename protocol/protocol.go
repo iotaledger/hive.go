@@ -47,7 +47,7 @@ func New(r *message.Registry) *Protocol {
 			continue
 		}
 		receiveHandlers[i] = events.NewEvent(events.ByteSliceCaller)
-		sentHandlers[i] = events.NewEvent(events.CallbackCaller)
+		sentHandlers[i] = events.NewEvent(events.VoidCaller)
 	}
 
 	protocol := &Protocol{

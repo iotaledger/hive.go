@@ -1,6 +1,6 @@
 package events
 
-func CallbackCaller(handler interface{}, params ...interface{}) {
+func VoidCaller(handler interface{}, params ...interface{}) {
 	handler.(func())()
 }
 
