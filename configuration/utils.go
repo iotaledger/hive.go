@@ -12,6 +12,15 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// boundParameters keeps track of all parameters that were bound using the BindParameters function.
+var boundParameters = make(map[string]*BoundParameter)
+
+// BoundParameter stores the pointer and the type of values that were bound using the BindParameters function.
+type BoundParameter struct {
+	boundPointer interface{}
+	boundType    string
+}
+
 // BindParameters is a utility function that allows to define and bind a set of parameters in a single step by using a
 // struct as the registry and definition for the created configuration parameters. It parses the relevant information
 // from the struct using reflection and optionally provided information in the tags of its fields.
@@ -60,6 +69,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.BoolVar(valueField.Addr().Interface().(*bool), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "bool",
+			}
 		case time.Duration:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if parsedDuration, err := time.ParseDuration(tagDefaultValue); err != nil {
@@ -74,6 +88,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.DurationVar(valueField.Addr().Interface().(*time.Duration), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "time.Duration",
+			}
 		case float32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -85,6 +104,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Float32VarP(valueField.Addr().Interface().(*float32), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Float32Var(valueField.Addr().Interface().(*float32), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "float32",
 			}
 		case float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -98,6 +122,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.Float64Var(valueField.Addr().Interface().(*float64), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "float64",
+			}
 		case int:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -109,6 +138,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.IntVarP(valueField.Addr().Interface().(*int), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.IntVar(valueField.Addr().Interface().(*int), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "int",
 			}
 		case int8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -122,6 +156,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.Int8Var(valueField.Addr().Interface().(*int8), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "int8",
+			}
 		case int16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -133,6 +172,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Int16VarP(valueField.Addr().Interface().(*int16), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Int16Var(valueField.Addr().Interface().(*int16), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "int16",
 			}
 		case int32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -146,6 +190,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.Int32Var(valueField.Addr().Interface().(*int32), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "int32",
+			}
 		case int64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -157,6 +206,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Int64VarP(valueField.Addr().Interface().(*int64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Int64Var(valueField.Addr().Interface().(*int64), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "int64",
 			}
 		case string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -170,6 +224,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.StringVar(valueField.Addr().Interface().(*string), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "string",
+			}
 		case uint:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -181,6 +240,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.UintVarP(valueField.Addr().Interface().(*uint), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.UintVar(valueField.Addr().Interface().(*uint), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "uint",
 			}
 		case uint8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -194,6 +258,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.Uint8Var(valueField.Addr().Interface().(*uint8), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "uint8",
+			}
 		case uint16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -205,6 +274,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Uint16VarP(valueField.Addr().Interface().(*uint16), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Uint16Var(valueField.Addr().Interface().(*uint16), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "uint16",
 			}
 		case uint32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -218,6 +292,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.Uint32Var(valueField.Addr().Interface().(*uint32), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "uint32",
+			}
 		case uint64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -229,6 +308,11 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 				pflag.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
 			} else {
 				pflag.Uint64Var(valueField.Addr().Interface().(*uint64), name, defaultValue, typeField.Tag.Get("usage"))
+			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "uint64",
 			}
 		case []string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -244,8 +328,54 @@ func BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
 			} else {
 				pflag.StringSliceVar(valueField.Addr().Interface().(*[]string), name, defaultValue, typeField.Tag.Get("usage"))
 			}
+
+			boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    "[]string",
+			}
 		default:
 			BindParameters(valueField.Addr().Interface(), name)
+		}
+	}
+}
+
+// UpdateBoundParameters updates parameters that were bound using the BindParameters method with the current values in
+// the configuration.
+func UpdateBoundParameters(configuration *Configuration) {
+	for parameterName, boundParameter := range boundParameters {
+		switch boundParameter.boundType {
+		case "bool":
+			*(boundParameter.boundPointer.(*bool)) = configuration.Bool(parameterName)
+		case "time.Duration":
+			*(boundParameter.boundPointer.(*time.Duration)) = configuration.Duration(parameterName)
+		case "float32":
+			*(boundParameter.boundPointer.(*float32)) = float32(configuration.Float64(parameterName))
+		case "float64":
+			*(boundParameter.boundPointer.(*float64)) = configuration.Float64(parameterName)
+		case "int":
+			*(boundParameter.boundPointer.(*int)) = configuration.Int(parameterName)
+		case "int8":
+			*(boundParameter.boundPointer.(*int8)) = int8(configuration.Int(parameterName))
+		case "int16":
+			*(boundParameter.boundPointer.(*int16)) = int16(configuration.Int(parameterName))
+		case "int32":
+			*(boundParameter.boundPointer.(*int32)) = int32(configuration.Int(parameterName))
+		case "int64":
+			*(boundParameter.boundPointer.(*int64)) = configuration.Int64(parameterName)
+		case "string":
+			*(boundParameter.boundPointer.(*string)) = configuration.String(parameterName)
+		case "uint":
+			*(boundParameter.boundPointer.(*uint)) = uint(configuration.Int(parameterName))
+		case "uint8":
+			*(boundParameter.boundPointer.(*uint8)) = uint8(configuration.Int(parameterName))
+		case "uint16":
+			*(boundParameter.boundPointer.(*uint16)) = uint16(configuration.Int(parameterName))
+		case "uint32":
+			*(boundParameter.boundPointer.(*uint32)) = uint32(configuration.Int(parameterName))
+		case "uint64":
+			*(boundParameter.boundPointer.(*uint64)) = uint64(configuration.Int64(parameterName))
+		case "[]string":
+			*(boundParameter.boundPointer.(*[]string)) = configuration.Strings(parameterName)
 		}
 	}
 }
