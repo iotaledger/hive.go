@@ -10,7 +10,7 @@ import (
 
 func TestUpdateBoundParameters(t *testing.T) {
 	var parameters = struct {
-		TestField int64 `shorthand:"t" default:"13" usage:"you can do stuff with this parameter"`
+		TestField int64 `shorthand:"q" default:"13" usage:"you can do stuff with this parameter"`
 	}{}
 
 	BindParameters(&parameters, "test")
