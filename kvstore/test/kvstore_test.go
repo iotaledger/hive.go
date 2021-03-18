@@ -63,7 +63,7 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) kvstor
 	case "rocksdb":
 		dir, err := ioutil.TempDir("", "database.rocksdb")
 		require.NoError(t, err, "used db: %s", dbImplementation)
-		db, err := rocksdb.CreateDB(dir, nil, nil, nil, nil)
+		db, err := rocksdb.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		return rocksdb.New(db).WithRealm(realm)
 
