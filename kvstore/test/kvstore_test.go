@@ -3,9 +3,12 @@ package test
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"testing"
+
+	"github.com/iotaledger/hive.go/kvstore/debug"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
@@ -55,6 +58,17 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) kvstor
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		return pebble.New(db).WithRealm(realm)
+
+	case "debug":
+		return debug.New(mapdb.NewMapDB(), func(command debug.Command, parameters ...[]byte) {
+			s := []string{
+				debug.CommandNames[command],
+			}
+			for _, p := range parameters {
+				s = append(s, string(p))
+			}
+			fmt.Println(s)
+		}).WithRealm(realm)
 	}
 
 	panic("unknown database")
