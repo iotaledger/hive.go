@@ -39,7 +39,7 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 	storageOptions := newOptions(store, optionalOptions)
 
 	result := &ObjectStorage{
-		store:             store,
+		store:             storageOptions.store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
