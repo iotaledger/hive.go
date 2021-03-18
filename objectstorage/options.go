@@ -42,9 +42,7 @@ func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 		result.leakDetectionWrapper = newLeakDetectionWrapperImpl
 	}
 
-	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = kvstore.NewBatchedWriter(result.store)
-	}
+	result.batchedWriterInstance = kvstore.NewBatchedWriter(result.store)
 
 	return result
 }
@@ -127,12 +125,6 @@ func LogAccess(fileName string, commandsFilter ...debug.Command) Option {
 		args.store = debug.New(args.store, func(command debug.Command, parameters ...[]byte) {
 			logChannel <- logEntry{time.Now(), command, parameters}
 		}, commandsFilter...)
-	}
-}
-
-func BatchedWriterInstance(batchedWriterInstance *kvstore.BatchedWriter) Option {
-	return func(args *Options) {
-		args.batchedWriterInstance = batchedWriterInstance
 	}
 }
 
