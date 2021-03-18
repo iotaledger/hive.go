@@ -49,7 +49,7 @@ func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnectio
 	return &BufferedConnection{
 		Events: BufferedConnectionEvents{
 			ReceiveMessage: events.NewEvent(events.ByteSliceCaller),
-			Close:          events.NewEvent(events.CallbackCaller),
+			Close:          events.NewEvent(events.VoidCaller),
 		},
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
