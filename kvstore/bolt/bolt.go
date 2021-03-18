@@ -17,10 +17,8 @@ const (
 
 // boltStore implements the KVStore interface around a BoltDB instance.
 type boltStore struct {
-	instance                     *bbolt.DB
-	bucket                       []byte
-	accessCallback               kvstore.AccessCallback
-	accessCallbackCommandsFilter kvstore.Command
+	instance *bbolt.DB
+	bucket   []byte
 }
 
 // New creates a new KVStore with the underlying BoltDB.
@@ -28,22 +26,6 @@ func New(db *bbolt.DB) kvstore.KVStore {
 	return &boltStore{
 		instance: db,
 	}
-}
-
-// AccessCallback configures the store to pass all requests to the KVStore to the given callback.
-// This can for example be used for debugging and to examine what the KVStore is doing.
-func (s *boltStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
-	var accessCallbackCommandsFilter kvstore.Command
-	if len(commandsFilter) == 0 {
-		accessCallbackCommandsFilter = kvstore.AllCommands
-	} else {
-		for _, filterCommand := range commandsFilter {
-			accessCallbackCommandsFilter |= filterCommand
-		}
-	}
-
-	s.accessCallback = callback
-	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
 func (s *boltStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
@@ -62,9 +44,6 @@ func (s *boltStore) Realm() kvstore.Realm {
 
 // Shutdown marks the store as shutdown.
 func (s *boltStore) Shutdown() {
-	if s.accessCallback != nil {
-		s.accessCallback(kvstore.ShutdownCommand)
-	}
 }
 
 func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
@@ -102,18 +81,10 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 }
 
 func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
-		s.accessCallback(kvstore.IterateCommand, prefix)
-	}
-
 	return s.iterate(prefix, true, kvConsumerFunc)
 }
 
 func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
-		s.accessCallback(kvstore.IterateKeysCommand, prefix)
-	}
-
 	// same as with values but we simply don't copy them
 	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
@@ -121,10 +92,6 @@ func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.I
 }
 
 func (s *boltStore) Clear() error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
-		s.accessCallback(kvstore.ClearCommand)
-	}
-
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		if tx.Bucket(s.Realm()) == nil {
 			return nil
@@ -134,10 +101,6 @@ func (s *boltStore) Clear() error {
 }
 
 func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
-		s.accessCallback(kvstore.GetCommand, key)
-	}
-
 	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
@@ -159,10 +122,6 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
-		s.accessCallback(kvstore.SetCommand, key, value)
-	}
-
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(s.Realm())
 		if err != nil {
@@ -173,10 +132,6 @@ func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (s *boltStore) Has(key kvstore.Key) (bool, error) {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
-		s.accessCallback(kvstore.HasCommand, key)
-	}
-
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
@@ -190,10 +145,6 @@ func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *boltStore) Delete(key kvstore.Key) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
-		s.accessCallback(kvstore.DeleteCommand, key)
-	}
-
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -207,10 +158,6 @@ func (s *boltStore) Delete(key kvstore.Key) error {
 }
 
 func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
-		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
-	}
-
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -260,10 +207,6 @@ type batchedMutations struct {
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
-	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
-		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
-	}
-
 	stringKey := byteutils.ConcatBytesToString(key)
 
 	b.Lock()
@@ -276,10 +219,6 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
-	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
-		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
-	}
-
 	stringKey := byteutils.ConcatBytesToString(key)
 
 	b.Lock()
