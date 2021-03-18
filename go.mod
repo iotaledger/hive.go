@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/knadh/koanf v0.15.0
 	github.com/kr/text v0.2.0
+	github.com/linxGnu/grocksdb v1.6.32
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210201150809-58be049e4f78
 	github.com/panjf2000/ants/v2 v2.4.3

@@ -8,18 +8,19 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/iotaledger/hive.go/kvstore/debug"
+	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
+	"github.com/iotaledger/hive.go/kvstore/debug"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/kvstore/pebble"
-	"github.com/stretchr/testify/require"
+	"github.com/iotaledger/hive.go/kvstore/rocksdb"
 )
 
 var (
-	dbImplementations = []string{"badger", "bolt", "mapDB", "pebble"}
+	dbImplementations = []string{"badger", "bolt", "mapDB", "pebble", "rocksdb"}
 
 	testEntries = []*struct {
 		kvstore.Key
@@ -58,6 +59,13 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) kvstor
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		return pebble.New(db).WithRealm(realm)
+
+	case "rocksdb":
+		dir, err := ioutil.TempDir("", "database.rocksdb")
+		require.NoError(t, err, "used db: %s", dbImplementation)
+		db, err := rocksdb.CreateDB(dir, nil, nil, nil, nil)
+		require.NoError(t, err, "used db: %s", dbImplementation)
+		return rocksdb.New(db).WithRealm(realm)
 
 	case "debug":
 		return debug.New(mapdb.NewMapDB(), func(command debug.Command, parameters ...[]byte) {
