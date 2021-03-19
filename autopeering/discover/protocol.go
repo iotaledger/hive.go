@@ -146,6 +146,10 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 		return false, nil
 	}
 
+	if p.mgr.pingFilter.blacklist(fromAddr.String()) {
+		return false, nil
+	}
+
 	switch pb.MType(data[0]) {
 	// Ping
 	case pb.MPing:
