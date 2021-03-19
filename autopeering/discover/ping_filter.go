@@ -55,10 +55,13 @@ func (p *pingFilter) validPing(peer string, pingTime time.Time) bool {
 		return true
 	}
 
-	peerLastPing.counter++
-	p.lastPing[peer] = peerLastPing
+	valid := pingTime.Sub(peerLastPing.t) > server.PacketExpiration
+	if !valid {
+		peerLastPing.counter++
+		p.lastPing[peer] = peerLastPing
+	}
 
-	return pingTime.Sub(peerLastPing.t) > server.PacketExpiration
+	return valid
 }
 
 func (p *pingFilter) blacklist(peer string) bool {
