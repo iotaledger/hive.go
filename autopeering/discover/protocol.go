@@ -365,7 +365,6 @@ func newDiscoveryResponse(reqData []byte, list []*peer.Peer) *pb.DiscoveryRespon
 // ------ Message Handlers ------
 
 func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
-	p.log.Info("---------------VALIDATING PING --------------")
 	// check version number
 	if m.GetVersion() != p.version {
 		p.log.Debugw("invalid message",
