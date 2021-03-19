@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	packetExpiration = 20 * time.Second
+	// PacketExpiration defines the TTL of each packet.
+	PacketExpiration = 20 * time.Second
 )
 
 // Protocol provides a basis for server protocols handling incoming messages.
@@ -30,5 +31,5 @@ func (p *Protocol) SendExpectingReply(dstAddr *net.UDPAddr, toID identity.ID, da
 
 // IsExpired checks whether the given UNIX time stamp is too far in the past.
 func (p *Protocol) IsExpired(ts int64) bool {
-	return time.Since(time.Unix(ts, 0)) >= packetExpiration
+	return time.Since(time.Unix(ts, 0)) >= PacketExpiration
 }

@@ -365,6 +365,7 @@ func newDiscoveryResponse(reqData []byte, list []*peer.Peer) *pb.DiscoveryRespon
 // ------ Message Handlers ------
 
 func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
+	p.log.Info("---------------VALIDATING PING --------------")
 	// check version number
 	if m.GetVersion() != p.version {
 		p.log.Debugw("invalid message",
@@ -409,6 +410,16 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 		return false
 	}
 	// ignore dst_addr and dst_port for now
+
+	if !p.mgr.pingFilter.validPing(fromAddr.String(), time.Unix(m.GetTimestamp(), 0)) {
+		p.log.Debugw("invalid message",
+			"type", m.Name(),
+			"from_addr", fromAddr,
+		)
+		return false
+	}
+
+	p.mgr.pingFilter.update(fromAddr.String(), time.Unix(m.GetTimestamp(), 0))
 
 	p.log.Debugw("valid message",
 		"type", m.Name(),
