@@ -12,8 +12,8 @@ const (
 type RocksDB struct {
 }
 
-// NewRocksDB creates a new RocksDB instance.
-func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
+// CreateDB creates a new RocksDB instance.
+func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 	panic(panicMissingRocksDB)
 }
 

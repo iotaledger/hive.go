@@ -36,7 +36,7 @@ func (s *rocksDBStore) Realm() []byte {
 	return s.dbPrefix
 }
 
-// builds a key usable for the pebble instance using the realm and the given prefix.
+// builds a key usable using the realm and the given prefix.
 func (s *rocksDBStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
 }

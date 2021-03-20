@@ -17,7 +17,7 @@ type RocksDB struct {
 }
 
 // CreateDB creates a new RocksDB instance.
-func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
+func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 	if err := checkDir(directory); err != nil {
 		return nil, fmt.Errorf("could not check directory: %w", err)
@@ -65,8 +65,8 @@ func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 	}, nil
 }
 
-func dbOptions(optionalOptions []RocksDBOption) *RocksDBOptions {
-	result := &RocksDBOptions{}
+func dbOptions(optionalOptions []Option) *Options {
+	result := &Options{}
 
 	for _, optionalOption := range optionalOptions {
 		optionalOption(result)
