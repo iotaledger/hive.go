@@ -7,16 +7,34 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/iotaledger/hive.go/cerrors"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
+	"golang.org/x/xerrors"
 )
 
+// IDLength defines the length of an ID.
+const IDLength = sha256.Size
+
 // ID is a unique identifier for each peer.
-type ID [sha256.Size]byte
+type ID [IDLength]byte
 
 // NewID computes the ID corresponding to the given public key.
 func NewID(key ed25519.PublicKey) ID {
 	return sha256.Sum256(key.Bytes())
+}
+
+// IDFromMarshalUtil unmarshals an ID using a MarshalUtil (for easier unmarshaling).
+func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) {
+	idBytes, err := marshalUtil.ReadBytes(IDLength)
+	if err != nil {
+		err = xerrors.Errorf("failed to parse ID (%v): %w", err, cerrors.ErrParseBytesFailed)
+		return
+	}
+
+	copy(id[:], idBytes)
+	return
 }
 
 // Bytes returns the byte slice representation of the ID
