@@ -65,10 +65,12 @@ func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 	}, nil
 }
 
+// Flush the database.
 func (r *RocksDB) Flush() error {
 	return r.db.Flush(r.fo)
 }
 
+// Close the database.
 func (r *RocksDB) Close() error {
 	r.db.Close()
 	return nil

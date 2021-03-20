@@ -19,10 +19,10 @@ func UseCompression(compression bool) RocksDBOption {
 	}
 }
 
-// IncreaseParallelism sets opts.IncreaseParallelism(thread_count)
-func IncreaseParallelism(thread_count int) RocksDBOption {
+// IncreaseParallelism sets opts.IncreaseParallelism(threadCount)
+func IncreaseParallelism(threadCount int) RocksDBOption {
 	return func(args *RocksDBOptions) {
-		args.parallelism = thread_count
+		args.parallelism = threadCount
 	}
 }
 
