@@ -31,6 +31,10 @@ func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 		opts.SetCompression(grocksdb.ZSTDCompression)
 	}
 
+	if dbOpts.parallelism > 0 {
+		opts.IncreaseParallelism(dbOpts.parallelism)
+	}
+
 	for _, str := range dbOpts.custom {
 		var err error
 		opts, err = grocksdb.GetOptionsFromString(opts, str)

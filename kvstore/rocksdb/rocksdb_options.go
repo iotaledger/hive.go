@@ -5,6 +5,7 @@ type RocksDBOptions struct {
 	fillCache   bool
 	sync        bool
 	custom      []string
+	parallelism int
 }
 
 type RocksDBOption func(*RocksDBOptions)
@@ -13,6 +14,13 @@ type RocksDBOption func(*RocksDBOptions)
 func UseCompression(compression bool) RocksDBOption {
 	return func(args *RocksDBOptions) {
 		args.compression = compression
+	}
+}
+
+// IncreaseParallelism sets opts.IncreaseParallelism(thread_count)
+func IncreaseParallelism(thread_count int) RocksDBOption {
+	return func(args *RocksDBOptions) {
+		args.parallelism = thread_count
 	}
 }
 
