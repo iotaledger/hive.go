@@ -16,7 +16,7 @@ type RocksDB struct {
 	fo *grocksdb.FlushOptions
 }
 
-// NewRocksDB creates a new RocksDB instance.
+// CreateDB creates a new RocksDB instance.
 func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 
 	if err := checkDir(directory); err != nil {
@@ -63,6 +63,15 @@ func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 		wo: wo,
 		fo: fo,
 	}, nil
+}
+
+func dbOptions(optionalOptions []RocksDBOption) *RocksDBOptions {
+	result := &RocksDBOptions{}
+
+	for _, optionalOption := range optionalOptions {
+		optionalOption(result)
+	}
+	return result
 }
 
 // Flush the database.

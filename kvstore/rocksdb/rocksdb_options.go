@@ -46,12 +46,3 @@ func Custom(options []string) RocksDBOption {
 		args.custom = options
 	}
 }
-
-func dbOptions(optionalOptions []RocksDBOption) *RocksDBOptions {
-	result := &RocksDBOptions{}
-
-	for _, optionalOption := range optionalOptions {
-		optionalOption(result)
-	}
-	return result
-}
