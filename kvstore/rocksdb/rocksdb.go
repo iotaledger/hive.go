@@ -108,6 +108,7 @@ func (s *rocksDBStore) Set(key kvstore.Key, value kvstore.Value) error {
 
 func (s *rocksDBStore) Has(key kvstore.Key) (bool, error) {
 	v, err := s.instance.db.Get(s.instance.ro, byteutils.ConcatBytes(s.dbPrefix, key))
+	defer v.Free()
 	if err != nil {
 		return false, err
 	}
@@ -132,6 +133,7 @@ func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	for ; it.ValidForPrefix(keyPrefix); it.Next() {
 		key := it.Key()
 		writeBatch.Delete(key.Data())
+		key.Free()
 	}
 
 	return s.instance.db.Write(s.instance.wo, writeBatch)
