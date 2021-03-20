@@ -20,8 +20,6 @@ import (
 )
 
 var (
-	dbImplementations = []string{"badger", "bolt", "mapDB", "pebble", "rocksdb"}
-
 	testEntries = []*struct {
 		kvstore.Key
 		kvstore.Value

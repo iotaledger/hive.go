@@ -1,3 +1,5 @@
+// +build rocksdb
+
 package rocksdb
 
 import (
@@ -11,44 +13,6 @@ type RocksDB struct {
 	ro *grocksdb.ReadOptions
 	wo *grocksdb.WriteOptions
 	fo *grocksdb.FlushOptions
-}
-
-type RocksDBOptions struct {
-	compression bool
-	fillCache   bool
-	sync        bool
-}
-
-type RocksDBOption func(*RocksDBOptions)
-
-// UseCompression sets opts.SetCompression(grocksdb.ZSTDCompression)
-func UseCompression(compression bool) RocksDBOption {
-	return func(args *RocksDBOptions) {
-		args.compression = compression
-	}
-}
-
-// ReadFillCache sets the opts.SetFillCache ReadOption
-func ReadFillCache(fillCache bool) RocksDBOption {
-	return func(args *RocksDBOptions) {
-		args.fillCache = fillCache
-	}
-}
-
-// WriteSync sets the opts.SetSync WriteOption
-func WriteSync(sync bool) RocksDBOption {
-	return func(args *RocksDBOptions) {
-		args.sync = sync
-	}
-}
-
-func dbOptions(optionalOptions []RocksDBOption) *RocksDBOptions {
-	result := &RocksDBOptions{}
-
-	for _, optionalOption := range optionalOptions {
-		optionalOption(result)
-	}
-	return result
 }
 
 // NewRocksDB creates a new RocksDB instance.
@@ -65,6 +29,14 @@ func CreateDB(directory string, options ...RocksDBOption) (*RocksDB, error) {
 	opts.SetCompression(grocksdb.NoCompression)
 	if dbOpts.compression {
 		opts.SetCompression(grocksdb.ZSTDCompression)
+	}
+
+	for _, str := range dbOpts.custom {
+		var err error
+		opts, err = grocksdb.GetOptionsFromString(opts, str)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ro := grocksdb.NewDefaultReadOptions()
