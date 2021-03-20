@@ -1,5 +1,6 @@
 package rocksdb
 
+// RocksDBOptions holds the options used to instantiate the underlying grocksdb.DB
 type RocksDBOptions struct {
 	compression bool
 	fillCache   bool
@@ -8,6 +9,7 @@ type RocksDBOptions struct {
 	parallelism int
 }
 
+// RocksDBOption is one of the RocksDBOptions
 type RocksDBOption func(*RocksDBOptions)
 
 // UseCompression sets opts.SetCompression(grocksdb.ZSTDCompression)
