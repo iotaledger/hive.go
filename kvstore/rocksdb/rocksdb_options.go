@@ -5,8 +5,9 @@ type Options struct {
 	compression bool
 	fillCache   bool
 	sync        bool
-	custom      []string
+	disableWAL  bool
 	parallelism int
+	custom      []string
 }
 
 // Option is one of the Options
@@ -37,6 +38,13 @@ func ReadFillCache(fillCache bool) Option {
 func WriteSync(sync bool) Option {
 	return func(args *Options) {
 		args.sync = sync
+	}
+}
+
+// WriteDisableWAL sets the opts.DisableWAL WriteOption
+func WriteDisableWAL(value bool) Option {
+	return func(args *Options) {
+		args.disableWAL = value
 	}
 }
 

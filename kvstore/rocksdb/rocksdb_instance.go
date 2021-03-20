@@ -49,6 +49,7 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 	wo := grocksdb.NewDefaultWriteOptions()
 	wo.SetSync(dbOpts.sync)
+	wo.DisableWAL(dbOpts.disableWAL)
 
 	fo := grocksdb.NewDefaultFlushOptions()
 
@@ -66,7 +67,13 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 }
 
 func dbOptions(optionalOptions []Option) *Options {
-	result := &Options{}
+	result := &Options{
+		compression: false,
+		fillCache:   false,
+		sync:        false,
+		disableWAL:  true,
+		parallelism: 0,
+	}
 
 	for _, optionalOption := range optionalOptions {
 		optionalOption(result)
