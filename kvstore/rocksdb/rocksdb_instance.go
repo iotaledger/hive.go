@@ -8,6 +8,7 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
+// RocksDB holds the underlying grocksdb.DB instance and options
 type RocksDB struct {
 	db *grocksdb.DB
 	ro *grocksdb.ReadOptions
