@@ -196,11 +196,49 @@ func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
 	}
 }
 
+// the default options used for object storage Contains calls.
+var defaultReadOptions = []ReadOption{
+	WithReadSkipCache(false),
+	WithReadSkipStorage(false),
+}
+
+// ReadOption is a function setting a read option.
+type ReadOption func(opts *ReadOptions)
+
+// ReadOptions define options for Contains calls in the object storage.
+type ReadOptions struct {
+	// whether to skip the elements in the cache.
+	skipCache bool
+	// whether to skip the elements in the storage.
+	skipStorage bool
+}
+
+// applies the given ReadOption.
+func (o *ReadOptions) apply(opts ...ReadOption) {
+	for _, opt := range opts {
+		opt(o)
+	}
+}
+
+// WithReadSkipCache is used to skip the elements in the cache.
+func WithReadSkipCache(skipCache bool) ReadOption {
+	return func(opts *ReadOptions) {
+		opts.skipCache = skipCache
+	}
+}
+
+// WithReadSkipStorage is used to skip the elements in the storage.
+func WithReadSkipStorage(skipStorage bool) ReadOption {
+	return func(opts *ReadOptions) {
+		opts.skipStorage = skipStorage
+	}
+}
+
 // the default options used for object storage iteration.
 var defaultIteratorOptions = []IteratorOption{
-	WithSkipCache(false),
-	WithSkipStorage(false),
-	WithPrefix(kvstore.EmptyPrefix),
+	WithIteratorSkipCache(false),
+	WithIteratorSkipStorage(false),
+	WithIteratorPrefix(kvstore.EmptyPrefix),
 }
 
 // IteratorOption is a function setting an iterator option.
@@ -223,22 +261,22 @@ func (o *IteratorOptions) apply(opts ...IteratorOption) {
 	}
 }
 
-// WithSkipCache is used to skip the elements in the cache.
-func WithSkipCache(skipCache bool) IteratorOption {
+// WithIteratorSkipCache is used to skip the elements in the cache.
+func WithIteratorSkipCache(skipCache bool) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.skipCache = skipCache
 	}
 }
 
-// WithSkipStorage is used to skip the elements in the storage.
-func WithSkipStorage(skipStorage bool) IteratorOption {
+// WithIteratorSkipStorage is used to skip the elements in the storage.
+func WithIteratorSkipStorage(skipStorage bool) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.skipStorage = skipStorage
 	}
 }
 
-// WithPrefix is used to iterate a subset of elements with a defined prefix.
-func WithPrefix(prefix []byte) IteratorOption {
+// WithIteratorPrefix is used to iterate a subset of elements with a defined prefix.
+func WithIteratorPrefix(prefix []byte) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.optionalPrefix = prefix
 	}
