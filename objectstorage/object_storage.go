@@ -127,20 +127,27 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
-func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
+func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) (result bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
-		result = cachedObject.waitForInitialResult().Exists()
+	opts := &ReadOptions{}
+	opts.apply(defaultReadOptions...)
+	opts.apply(options...)
 
-		cachedObject.Release()
-	} else {
-		result = objectStorage.ObjectExistsInStore(key)
+	if !opts.skipCache {
+		if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
+			defer cachedObject.Release()
+			return cachedObject.waitForInitialResult().Exists()
+		}
 	}
 
-	return
+	if !opts.skipStorage {
+		return objectStorage.ObjectExistsInStore(key)
+	}
+
+	return false
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
