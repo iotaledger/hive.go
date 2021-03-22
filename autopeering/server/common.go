@@ -31,6 +31,11 @@ type Sender interface {
 	SendExpectingReply(toAddr *net.UDPAddr, toID identity.ID, data []byte, replyType MType, callback func(Message) bool) <-chan error
 }
 
+type Blacklister interface {
+	AddToBlacklist(string)
+	PeerBlacklisted(peer string) bool
+}
+
 // A Handler reacts to an incoming message.
 type Handler interface {
 	// HandleMessage is called for each incoming message.

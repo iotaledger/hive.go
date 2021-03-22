@@ -15,7 +15,16 @@ const (
 
 // Protocol provides a basis for server protocols handling incoming messages.
 type Protocol struct {
-	Sender Sender // interface to send own requests
+	Sender      Sender // interface to send own requests
+	Blacklister Blacklister
+}
+
+func (p *Protocol) AddToBlacklist(peer string) {
+	p.Blacklister.AddToBlacklist(peer)
+}
+
+func (p *Protocol) PeerBlacklisted(peer string) bool {
+	return p.Blacklister.PeerBlacklisted(peer)
 }
 
 // Send sends the data to the given peer.

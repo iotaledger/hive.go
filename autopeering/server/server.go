@@ -45,6 +45,8 @@ type Server struct {
 	closeOnce sync.Once
 	wg        sync.WaitGroup
 
+	blacklist *blacklist
+
 	addReplyMatcher chan *replyMatcher
 	replyReceived   chan reply
 	closing         chan struct{} // if this channel gets closed all pending waits should terminate
@@ -92,6 +94,7 @@ func Serve(local *peer.Local, conn NetConn, log *logger.Logger, h ...Handler) *S
 		addReplyMatcher: make(chan *replyMatcher),
 		replyReceived:   make(chan reply),
 		closing:         make(chan struct{}),
+		blacklist:       newBlacklist(),
 	}
 
 	srv.wg.Add(2)
@@ -123,6 +126,14 @@ func (s *Server) Local() *peer.Local {
 // LocalAddr returns the address of the local peer in string form.
 func (s *Server) LocalAddr() *net.UDPAddr {
 	return s.conn.LocalAddr().(*net.UDPAddr)
+}
+
+func (s *Server) AddToBlacklist(peer string) {
+	s.blacklist.Add(peer)
+}
+
+func (s *Server) PeerBlacklisted(peer string) bool {
+	return s.blacklist.Load(peer)
 }
 
 // Send sends a message to the given address
@@ -293,6 +304,13 @@ func (s *Server) readLoop() {
 			s.log.Debugw("bad packet", "from", fromAddr, "err", err)
 			continue
 		}
+
+		// filter blacklisted IPs
+		if s.blacklist.Load(fromAddr.String()) {
+			s.log.Info("FILTERING STUFFFFFFFF ----------------------")
+			continue
+		}
+
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
 			s.log.Debugw("failed to handle packet", "from", fromAddr, "err", err)
 		}

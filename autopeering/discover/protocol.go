@@ -147,6 +147,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	}
 
 	if p.mgr.pingFilter.blacklist(fromAddr.String()) {
+		p.Blacklister.AddToBlacklist(fromAddr.String())
 		return false, nil
 	}
 
