@@ -307,7 +307,7 @@ func (s *Server) readLoop() {
 
 		// filter blacklisted IPs
 		if s.blacklist.Load(fromAddr.String()) {
-			s.log.Info("FILTERING STUFFFFFFFF ----------------------")
+			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
 			continue
 		}
 
