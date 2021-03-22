@@ -29,3 +29,14 @@ func (r *RocksDB) Close() error {
 func New(db *RocksDB) kvstore.KVStore {
 	panic(panicMissingRocksDB)
 }
+
+// GetProperty returns the value of a database property.
+func (r *RocksDB) GetProperty(name string) string {
+	panic(panicMissingRocksDB)
+}
+
+// GetIntProperty similar to "GetProperty", but only works for a subset of properties whose
+// return value is an integer. Return the value by integer.
+func (r *RocksDB) GetIntProperty(name string) (uint64, bool) {
+	panic(panicMissingRocksDB)
+}
