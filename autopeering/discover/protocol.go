@@ -70,8 +70,9 @@ func New(local *peer.Local, version uint32, networkID uint32, opts ...Option) *P
 }
 
 // Start starts the actual peer discovery over the provided Sender.
-func (p *Protocol) Start(s server.Sender) {
+func (p *Protocol) Start(s server.Sender, b server.Blacklister) {
 	p.Protocol.Sender = s
+	p.Protocol.Blacklister = b
 	p.mgr.start()
 	p.log.Debug("discover started")
 	p.running.Set()
