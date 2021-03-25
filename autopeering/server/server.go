@@ -133,7 +133,7 @@ func (s *Server) AddToBlacklist(peer string) {
 }
 
 func (s *Server) PeerBlacklisted(peer string) bool {
-	return s.blacklist.Load(peer)
+	return s.blacklist.PeerExist(peer)
 }
 
 // Send sends a message to the given address
@@ -306,10 +306,10 @@ func (s *Server) readLoop() {
 		}
 
 		// filter blacklisted IPs
-		s.log.Infof("%s", fromAddr.String())
-		s.log.Infof("%v", s.blacklist.Load(fromAddr.String()))
+		s.log.Infof("incomming ip address: %s", fromAddr.String())
+		s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 
-		if s.blacklist.Load(fromAddr.String()) {
+		if s.blacklist.PeerExist(fromAddr.String()) {
 			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
 			continue
 		}

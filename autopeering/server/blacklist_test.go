@@ -126,8 +126,8 @@ func Test_blacklist_Load(t *testing.T) {
 				list:    tt.fields.list,
 				RWMutex: tt.fields.RWMutex,
 			}
-			if got := b.Load(tt.args.peer); got != tt.want {
-				t.Errorf("Load() = %v, want %v", got, tt.want)
+			if got := b.PeerExist(tt.args.peer); got != tt.want {
+				t.Errorf("PeerExist() = %v, want %v", got, tt.want)
 			}
 		})
 	}

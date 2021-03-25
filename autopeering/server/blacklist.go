@@ -1,6 +1,8 @@
 package server
 
-import "sync"
+import (
+	"sync"
+)
 
 type blacklist struct {
 	list map[string]bool
@@ -25,13 +27,19 @@ func (b *blacklist) Add(peer string) bool {
 	return false
 }
 
-func (b *blacklist) Load(peer string) bool {
+func (b *blacklist) PeerExist(peer string) bool {
 	b.RLock()
 	defer b.RUnlock()
 
-	if _, exist := b.list[peer]; !exist {
-		return false
+	if peer != "" {
+		_, existence := b.list[peer]
+		return existence
 	}
+	return false
 
-	return true
+	//if _, exist := b.list[peer]; !exist {
+	//	return false
+	//}
+	//
+	//return true
 }
