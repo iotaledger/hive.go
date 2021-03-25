@@ -13,11 +13,16 @@ func newBlacklist() *blacklist {
 	}
 }
 
-func (b *blacklist) Add(peer string) {
+func (b *blacklist) Add(peer string) bool {
 	b.Lock()
 	defer b.Unlock()
 
-	b.list[peer] = true
+	if peer != "" {
+		b.list[peer] = true
+		return true
+	}
+
+	return false
 }
 
 func (b *blacklist) Load(peer string) bool {

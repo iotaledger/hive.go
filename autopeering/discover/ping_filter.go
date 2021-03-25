@@ -67,6 +67,8 @@ func (p *pingFilter) validPing(peer string, pingTime time.Time) bool {
 func (p *pingFilter) blacklist(peer string) bool {
 	p.RLock()
 	defer p.RUnlock()
-
-	return p.lastPing[peer].counter > blacklistThreshold
+	if peer != "" {
+		return p.lastPing[peer].counter > blacklistThreshold
+	}
+	return false
 }

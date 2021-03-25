@@ -389,7 +389,8 @@ func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, mast
 	prot := New(local, 0, 0, Logger(log), MasterPeers(masters))
 
 	srv := server.Serve(local, conn, log, prot)
-	prot.Start(srv)
+
+	prot.Start(srv, srv)
 
 	teardown := func() {
 		srv.Close()
