@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	blacklistThreshold = 5
+	blacklistThreshold = 20
 )
 
 // pingFilter is the mapping of a peer and the time of its last ping packet.
