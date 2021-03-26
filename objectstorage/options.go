@@ -9,9 +9,11 @@ import (
 	"github.com/mr-tron/base58"
 
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/debug"
 )
 
 type Options struct {
+	store                      kvstore.KVStore
 	batchedWriterInstance      *kvstore.BatchedWriter
 	cacheTime                  time.Duration
 	keyPartitions              []int
@@ -21,16 +23,15 @@ type Options struct {
 	releaseExecutorWorkerCount int
 	leakDetectionOptions       *LeakDetectionOptions
 	leakDetectionWrapper       func(cachedObject *CachedObjectImpl) LeakDetectionWrapper
-	delayedOptions             []func()
 	onEvictionCallback         func(cachedObject CachedObject)
 }
 
 func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 	result := &Options{
+		store:                      store,
 		cacheTime:                  0,
 		persistenceEnabled:         true,
 		releaseExecutorWorkerCount: 1,
-		delayedOptions:             make([]func(), 0),
 	}
 
 	for _, optionalOption := range optionalOptions {
@@ -41,19 +42,9 @@ func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 		result.leakDetectionWrapper = newLeakDetectionWrapperImpl
 	}
 
-	if result.batchedWriterInstance == nil {
-		result.batchedWriterInstance = kvstore.NewBatchedWriter(store)
-	}
-
-	for _, delayedOption := range result.delayedOptions {
-		delayedOption()
-	}
+	result.batchedWriterInstance = kvstore.NewBatchedWriter(result.store)
 
 	return result
-}
-
-func (options *Options) delayed(callback func()) {
-	options.delayedOptions = append(options.delayedOptions, callback)
 }
 
 type Option func(*Options)
@@ -70,13 +61,13 @@ const logChannelBufferSize = 10240
 // logEntry is a container for the
 type logEntry struct {
 	time       time.Time
-	command    kvstore.Command
+	command    debug.Command
 	parameters [][]byte
 }
 
 // String returns a string representation of the log entry
 func (l *logEntry) String() string {
-	result := l.time.Format("15:04:05") + " " + kvstore.CommandNames[l.command]
+	result := l.time.Format("15:04:05") + " " + debug.CommandNames[l.command]
 	for _, parameter := range l.parameters {
 		result += " " + base58.Encode(parameter)
 	}
@@ -86,63 +77,54 @@ func (l *logEntry) String() string {
 
 // LogAccess sets up a logger that logs all calls to the underlying store in the given file. It is possible to filter
 // the logged commands by providing an optional filter flag.
-func LogAccess(fileName string, commandsFilter ...kvstore.Command) Option {
+func LogAccess(fileName string, commandsFilter ...debug.Command) Option {
 	return func(args *Options) {
-		// execute this function after the remaining options have been initialized and a BatchWriter exists
-		args.delayed(func() {
-			// open log file
-			logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			writer := bufio.NewWriter(logFile)
-			if err != nil {
-				panic(err)
-			}
+		// open log file
+		logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		writer := bufio.NewWriter(logFile)
+		if err != nil {
+			panic(err)
+		}
 
-			// open logger channel
-			logChannel := make(chan logEntry, logChannelBufferSize)
+		// open logger channel
+		logChannel := make(chan logEntry, logChannelBufferSize)
 
-			// start background worker that writes to the log file
-			go func() {
-				for {
-					switch loggedCommand := <-logChannel; loggedCommand.command {
-					case kvstore.ShutdownCommand:
-						// write log entry
-						if _, err = writer.WriteString(loggedCommand.String() + "\n"); err != nil {
-							panic(err)
-						}
+		// start background worker that writes to the log file
+		go func() {
+			for {
+				switch loggedCommand := <-logChannel; loggedCommand.command {
+				case debug.ShutdownCommand:
+					// write log entry
+					if _, err = writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+						panic(err)
+					}
 
-						// close channel and log file
-						err = writer.Flush()
-						if err != nil {
-							fmt.Println(err)
-						}
-						close(logChannel)
-						err = logFile.Close()
-						if err != nil {
-							fmt.Println(err)
-						}
+					// close channel and log file
+					err = writer.Flush()
+					if err != nil {
+						fmt.Println(err)
+					}
+					close(logChannel)
+					err = logFile.Close()
+					if err != nil {
+						fmt.Println(err)
+					}
 
-						return
+					return
 
-					default:
-						// write log entry
-						if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
-							panic(err)
-						}
+				default:
+					// write log entry
+					if _, err := writer.WriteString(loggedCommand.String() + "\n"); err != nil {
+						panic(err)
 					}
 				}
-			}()
+			}
+		}()
 
-			// pass through calls to logger channel
-			args.batchedWriterInstance.KVStore().AccessCallback(func(command kvstore.Command, parameters ...[]byte) {
-				logChannel <- logEntry{time.Now(), command, parameters}
-			}, commandsFilter...)
-		})
-	}
-}
-
-func BatchedWriterInstance(batchedWriterInstance *kvstore.BatchedWriter) Option {
-	return func(args *Options) {
-		args.batchedWriterInstance = batchedWriterInstance
+		// Wrap the KVStore with a debug one and pass through calls to logger channel
+		args.store = debug.New(args.store, func(command debug.Command, parameters ...[]byte) {
+			logChannel <- logEntry{time.Now(), command, parameters}
+		}, commandsFilter...)
 	}
 }
 
@@ -214,11 +196,49 @@ func OnEvictionCallback(cb func(cachedObject CachedObject)) Option {
 	}
 }
 
+// the default options used for object storage Contains calls.
+var defaultReadOptions = []ReadOption{
+	WithReadSkipCache(false),
+	WithReadSkipStorage(false),
+}
+
+// ReadOption is a function setting a read option.
+type ReadOption func(opts *ReadOptions)
+
+// ReadOptions define options for Contains calls in the object storage.
+type ReadOptions struct {
+	// whether to skip the elements in the cache.
+	skipCache bool
+	// whether to skip the elements in the storage.
+	skipStorage bool
+}
+
+// applies the given ReadOption.
+func (o *ReadOptions) apply(opts ...ReadOption) {
+	for _, opt := range opts {
+		opt(o)
+	}
+}
+
+// WithReadSkipCache is used to skip the elements in the cache.
+func WithReadSkipCache(skipCache bool) ReadOption {
+	return func(opts *ReadOptions) {
+		opts.skipCache = skipCache
+	}
+}
+
+// WithReadSkipStorage is used to skip the elements in the storage.
+func WithReadSkipStorage(skipStorage bool) ReadOption {
+	return func(opts *ReadOptions) {
+		opts.skipStorage = skipStorage
+	}
+}
+
 // the default options used for object storage iteration.
 var defaultIteratorOptions = []IteratorOption{
-	WithSkipCache(false),
-	WithSkipStorage(false),
-	WithPrefix(kvstore.EmptyPrefix),
+	WithIteratorSkipCache(false),
+	WithIteratorSkipStorage(false),
+	WithIteratorPrefix(kvstore.EmptyPrefix),
 }
 
 // IteratorOption is a function setting an iterator option.
@@ -241,22 +261,22 @@ func (o *IteratorOptions) apply(opts ...IteratorOption) {
 	}
 }
 
-// WithSkipCache is used to skip the elements in the cache.
-func WithSkipCache(skipCache bool) IteratorOption {
+// WithIteratorSkipCache is used to skip the elements in the cache.
+func WithIteratorSkipCache(skipCache bool) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.skipCache = skipCache
 	}
 }
 
-// WithSkipStorage is used to skip the elements in the storage.
-func WithSkipStorage(skipStorage bool) IteratorOption {
+// WithIteratorSkipStorage is used to skip the elements in the storage.
+func WithIteratorSkipStorage(skipStorage bool) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.skipStorage = skipStorage
 	}
 }
 
-// WithPrefix is used to iterate a subset of elements with a defined prefix.
-func WithPrefix(prefix []byte) IteratorOption {
+// WithIteratorPrefix is used to iterate a subset of elements with a defined prefix.
+func WithIteratorPrefix(prefix []byte) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.optionalPrefix = prefix
 	}

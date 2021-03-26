@@ -461,7 +461,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, objectstorage.WithPrefix([]byte("")))
+	}, objectstorage.WithIteratorPrefix([]byte("")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -475,7 +475,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, objectstorage.WithPrefix([]byte("1")))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -488,7 +488,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, objectstorage.WithPrefix([]byte("12")))
+	}, objectstorage.WithIteratorPrefix([]byte("12")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -917,7 +917,7 @@ func TestForEachWithPrefix(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, objectstorage.WithPrefix([]byte("1")))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -960,7 +960,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, objectstorage.WithPrefix([]byte("1")))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -1003,7 +1003,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, objectstorage.WithPrefix([]byte("1")), objectstorage.WithSkipCache(true))
+	}, objectstorage.WithIteratorPrefix([]byte("1")), objectstorage.WithIteratorSkipCache(true))
 
 	assert.Equal(t, 0, len(expectedKeys))
 

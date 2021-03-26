@@ -16,7 +16,6 @@ import (
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
-	store              kvstore.KVStore
 	objectFactory      StorableObjectFactory
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
@@ -39,7 +38,6 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 	storageOptions := newOptions(store, optionalOptions)
 
 	result := &ObjectStorage{
-		store:             store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
@@ -129,20 +127,27 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
-func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
+func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) (result bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
-		result = cachedObject.waitForInitialResult().Exists()
+	opts := &ReadOptions{}
+	opts.apply(defaultReadOptions...)
+	opts.apply(options...)
 
-		cachedObject.Release()
-	} else {
-		result = objectStorage.ObjectExistsInStore(key)
+	if !opts.skipCache {
+		if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
+			defer cachedObject.Release()
+			return cachedObject.waitForInitialResult().Exists()
+		}
 	}
 
-	return
+	if !opts.skipStorage {
+		return objectStorage.ObjectExistsInStore(key)
+	}
+
+	return false
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
@@ -411,13 +416,13 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	if objectStorage.options.keysOnly {
-		_ = objectStorage.store.IterateKeys(opts.optionalPrefix, func(key kvstore.Key) bool {
+		_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix, func(key kvstore.Key) bool {
 			return consumeFunc(key, []byte{})
 		})
 		return
 	}
 
-	_ = objectStorage.store.Iterate(opts.optionalPrefix, consumeFunc)
+	_ = objectStorage.options.store.Iterate(opts.optionalPrefix, consumeFunc)
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
@@ -461,7 +466,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		return
 	}
 
-	_ = objectStorage.store.IterateKeys(opts.optionalPrefix,
+	_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix,
 		func(key kvstore.Key) bool {
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
@@ -492,7 +497,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	})
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.store.Clear(); err != nil {
+	if err := objectStorage.options.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
 		return err
@@ -843,7 +848,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	}
 
 	if objectStorage.options.keysOnly {
-		contains, err := objectStorage.store.Has(key)
+		contains, err := objectStorage.options.store.Has(key)
 		if err != nil {
 			// No need to check for kvstore.ErrKeyNotFound here
 			panic(err)
@@ -862,7 +867,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	}
 
 	var marshaledData []byte
-	value, err := objectStorage.store.Get(key)
+	value, err := objectStorage.options.store.Get(key)
 	if err != nil {
 		if errors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil
@@ -883,7 +888,7 @@ func (objectStorage *ObjectStorage) DeleteEntryFromStore(key []byte) {
 		return
 	}
 
-	if err := objectStorage.store.Delete(key); err != nil {
+	if err := objectStorage.options.store.Delete(key); err != nil {
 		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
@@ -896,7 +901,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
 		return
 	}
 
-	batchedMuts := objectStorage.store.Batched()
+	batchedMuts := objectStorage.options.store.Batched()
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
@@ -914,7 +919,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 		return false
 	}
 
-	has, err := objectStorage.store.Has(key)
+	has, err := objectStorage.options.store.Has(key)
 	if err != nil {
 		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
