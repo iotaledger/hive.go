@@ -47,8 +47,7 @@ type Server struct {
 
 	blacklist *blacklist
 
-	// TODO()
-	rateLimit RateLimit
+	leakyBucketLimit *LeakyBucketLimit
 
 	addReplyMatcher chan *replyMatcher
 	replyReceived   chan reply
@@ -98,6 +97,7 @@ func Serve(local *peer.Local, conn NetConn, log *logger.Logger, h ...Handler) *S
 		replyReceived:   make(chan reply),
 		closing:         make(chan struct{}),
 		blacklist:       newBlacklist(),
+		leakyBucketLimit: newLeakyBucket(),
 	}
 
 	srv.wg.Add(2)
@@ -284,13 +284,13 @@ func (s *Server) readLoop() {
 	defer s.wg.Done()
 
 	buffer := make([]byte, MaxPacketSize)
+
 	// Traffic shaping using leaky bucket rate limiting
-	//rateLimiter := s.rateLimit.NewRateLimit()
-	leakyBucketLimiter := s.rateLimit.NewLeakyBucket()
 	prev := time.Now()
+
 	for {
 		// take new leaky bucket limiter
-		now := s.rateLimit.TakeLeakyBucket(leakyBucketLimiter)
+		now := s.leakyBucketLimit.lB.Take()
 		// Adding log to find the start of the leaky bucket
 		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
 		prev = now
