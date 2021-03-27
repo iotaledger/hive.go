@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	MaximumPacketPerSecond = 3 // per second
+	MaximumPacketPerSecond = 1 // per second
 )
 
 type LeakyBucketLimit struct {
