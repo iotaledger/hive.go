@@ -3,6 +3,7 @@ package selection
 import (
 	"time"
 
+	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -28,6 +29,10 @@ type options struct {
 	log               *logger.Logger // Logger
 	dropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
 	neighborValidator Validator      // potential neighbor validator
+	useMana           bool
+	manaFunc          mana.Func
+	r                 int
+	ro                float64
 }
 
 // An Option configures the peer selection.
@@ -58,6 +63,34 @@ func DropOnUpdate(dropOnUpdate bool) Option {
 func NeighborValidator(neighborValidator Validator) Option {
 	return optionFunc(func(opts *options) {
 		opts.neighborValidator = neighborValidator
+	})
+}
+
+// UseMana sets the Option to use mana
+func UseMana(useMana bool) Option {
+	return optionFunc(func(opts *options) {
+		opts.useMana = useMana
+	})
+}
+
+// ManaFunc sets the Option of the mana function to use
+func ManaFunc(manaFunc mana.Func) Option {
+	return optionFunc(func(opts *options) {
+		opts.manaFunc = manaFunc
+	})
+}
+
+// R sets the Option for R
+func R(r int) Option {
+	return optionFunc(func(opts *options) {
+		opts.r = r
+	})
+}
+
+// Ro sets the Option for Ro
+func Ro(ro float64) Option {
+	return optionFunc(func(opts *options) {
+		opts.ro = ro
 	})
 }
 
