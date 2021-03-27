@@ -226,3 +226,67 @@ func TestUnexpectedPong(t *testing.T) {
 
 	srvA.Send(srvB.LocalAddr(), new(Pong).Marshal())
 }
+
+//func TestServer_AddToBlacklist(t *testing.T) {
+//	type fields struct {
+//		local           *peer.Local
+//		conn            NetConn
+//		handlers        []Handler
+//		log             *logger.Logger
+//		network         string
+//		closeOnce       sync.Once
+//		wg              sync.WaitGroup
+//		blacklist       *blacklist
+//		throttling      *throttling
+//		addReplyMatcher chan *replyMatcher
+//		replyReceived   chan reply
+//		closing         chan struct{}
+//	}
+//	type args struct {
+//		peer string
+//	}
+//
+//	n := &mocks.NetConn{}
+//
+//	tests := []struct {
+//		name   string
+//		fields fields
+//		args   args
+//	}{
+//		{
+//			name: "test_test_server_addtoblacklist_1",
+//			fields: fields{
+//				local:           &peer.Local{},
+//				conn:            n,
+//				handlers:        nil,
+//				log:             nil,
+//				network:         "",
+//				closeOnce:       sync.Once{},
+//				wg:              sync.WaitGroup{},
+//				blacklist:       nil,
+//				throttling:      nil,
+//				addReplyMatcher: nil,
+//				replyReceived:   nil,
+//				closing:         nil,
+//			},
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			s := &Server{
+//				local:           tt.fields.local,
+//				conn:            tt.fields.conn,
+//				handlers:        tt.fields.handlers,
+//				log:             tt.fields.log,
+//				network:         tt.fields.network,
+//				closeOnce:       tt.fields.closeOnce,
+//				wg:              tt.fields.wg,
+//				blacklist:       tt.fields.blacklist,
+//				throttling:      tt.fields.throttling,
+//				addReplyMatcher: tt.fields.addReplyMatcher,
+//				replyReceived:   tt.fields.replyReceived,
+//				closing:         tt.fields.closing,
+//			}
+//		})
+//	}
+//}

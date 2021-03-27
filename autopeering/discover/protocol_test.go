@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"github.com/iotaledger/hive.go/typeutils"
 	"net"
 	"sync"
 	"testing"
@@ -401,4 +402,117 @@ func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, mast
 
 func getPeer(p *Protocol) *peer.Peer {
 	return p.local().Peer
+}
+
+func createFromAddr() *net.UDPAddr {
+	ip := net.ParseIP("192.168.1.4")
+	return &net.UDPAddr{
+		IP:   ip,
+		Port: 1500,
+		Zone: "",
+	}
+}
+
+func TestProtocol_HandleMessage(t *testing.T) {
+	type fields struct {
+		Protocol  server.Protocol
+		loc       *peer.Local
+		version   uint32
+		netID     uint32
+		log       *logger.Logger
+		mgr       *manager
+		running   *typeutils.AtomicBool
+		closeOnce sync.Once
+	}
+	type args struct {
+		s        *server.Server
+		fromAddr *net.UDPAddr
+		from     *identity.Identity
+		data     []byte
+	}
+	connA := servertest.NewConn()
+	defer connA.Close()
+	protA, closeA := newTestProtocol("A", connA, log)
+	defer closeA()
+	p1 := getPeer(protA)
+	p1.PublicKey()
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "test_protocol_handlemessage_1",
+			fields: fields{
+				Protocol:  server.Protocol{},
+				loc:       &peer.Local{},
+				version:   0,
+				netID:     19,
+				log:       &logger.Logger{},
+				mgr:       &manager{},
+				running:   typeutils.NewAtomicBool(),
+				closeOnce: sync.Once{},
+			},
+			args: args{
+				s:        &server.Server{},
+				fromAddr: createFromAddr(),
+				from:     p1.Identity,
+				data:     nil,
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Protocol{
+				Protocol:  tt.fields.Protocol,
+				loc:       tt.fields.loc,
+				version:   tt.fields.version,
+				netID:     tt.fields.netID,
+				log:       tt.fields.log,
+				mgr:       tt.fields.mgr,
+				running:   tt.fields.running,
+				closeOnce: tt.fields.closeOnce,
+			}
+			got, err := p.HandleMessage(tt.args.s, tt.args.fromAddr, tt.args.from, tt.args.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HandleMessage() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("HandleMessage() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkProtocol_HandleMessage(b *testing.B) {
+	connA := servertest.NewConn()
+	defer connA.Close()
+	protA, closeA := newTestProtocol("A", connA, log)
+	defer closeA()
+	p1 := getPeer(protA)
+	p1.PublicKey()
+
+	s := &server.Server{}
+	fromAddr := createFromAddr()
+
+	p := &Protocol{
+		Protocol:  server.Protocol{},
+		loc:       &peer.Local{},
+		version:   0,
+		netID:     19,
+		log:       &logger.Logger{},
+		mgr:       &manager{},
+		running:   typeutils.NewAtomicBool(),
+		closeOnce: sync.Once{},
+	}
+
+	for n := 0; n < b.N; n++ {
+		p.HandleMessage(s, fromAddr, p1.Identity, nil)
+	}
 }
