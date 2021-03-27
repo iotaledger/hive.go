@@ -291,6 +291,9 @@ func (s *Server) readLoop() {
 	for {
 		// take new leaky bucket limiter
 		now := s.rateLimit.TakeLeakyBucket(leakyBucketLimiter)
+		// Adding log to find the start of the leaky bucket
+		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
+		prev = now
 
 		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
@@ -335,9 +338,6 @@ func (s *Server) readLoop() {
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
 			s.log.Debugw("failed to handle packet", "from", fromAddr, "err", err)
 		}
-
-		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
-		prev = now
 	}
 }
 
