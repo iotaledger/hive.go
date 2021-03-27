@@ -47,6 +47,9 @@ type Server struct {
 
 	blacklist *blacklist
 
+	// TODO()
+	rateLimit RateLimit
+
 	addReplyMatcher chan *replyMatcher
 	replyReceived   chan reply
 	closing         chan struct{} // if this channel gets closed all pending waits should terminate
@@ -281,7 +284,14 @@ func (s *Server) readLoop() {
 	defer s.wg.Done()
 
 	buffer := make([]byte, MaxPacketSize)
+	// Traffic shaping using leaky bucket rate limiting
+	//rateLimiter := s.rateLimit.NewRateLimit()
+	leakyBucketLimiter := s.rateLimit.NewLeakyBucket()
+	prev := time.Now()
 	for {
+		// take new leaky bucket limiter
+		now := s.rateLimit.TakeLeakyBucket(leakyBucketLimiter)
+
 		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
 			// ignore temporary read errors.
@@ -309,11 +319,14 @@ func (s *Server) readLoop() {
 		s.log.Infof("incomming ip address: %s", fromAddr.String())
 		s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 
+		// We have added this scope to check if the attacker is being blocked or not
 		//if fromAddr.String() == "172.30.0.5:1500" {
 		//	s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
 		//	continue
 		//}
 
+		// This scope checks if the IP address
+		// is in the blacklist. If yes, we drop it!
 		if s.blacklist.PeerExist(fromAddr.String()) {
 			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
 			continue
@@ -322,6 +335,9 @@ func (s *Server) readLoop() {
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
 			s.log.Debugw("failed to handle packet", "from", fromAddr, "err", err)
 		}
+
+		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
+		prev = now
 	}
 }
 
