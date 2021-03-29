@@ -319,9 +319,8 @@ func (s *Server) readLoop() {
 		}
 
 		// filter blacklisted IPs
-		s.log.Infof("incomming ip address: %s", fromAddr.String())
-		s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
-
+		//s.log.Infof("incomming ip address: %s", fromAddr.String())
+		//s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 		// check the existence of the IP in our blacklist
 		if s.blacklist.PeerExist(fromAddr.String()) {
 			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
