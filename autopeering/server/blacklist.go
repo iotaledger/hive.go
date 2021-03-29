@@ -27,6 +27,7 @@ func (b *blacklist) Add(peer string) bool {
 	return false
 }
 
+// PeerExist
 func (b *blacklist) PeerExist(peer string) bool {
 	b.RLock()
 	defer b.RUnlock()
@@ -35,11 +36,6 @@ func (b *blacklist) PeerExist(peer string) bool {
 		_, existence := b.list[peer]
 		return existence
 	}
-	return false
 
-	//if _, exist := b.list[peer]; !exist {
-	//	return false
-	//}
-	//
-	//return true
+	return false
 }

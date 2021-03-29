@@ -322,14 +322,7 @@ func (s *Server) readLoop() {
 		s.log.Infof("incomming ip address: %s", fromAddr.String())
 		s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 
-		// We have added this scope to check if the attacker is being blocked or not
-		//if fromAddr.String() == "172.30.0.5:1500" {
-		//	s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
-		//	continue
-		//}
-
-		// This scope checks if the IP address
-		// is in the blacklist. If yes, we drop it!
+		// check the existence of the IP in our blacklist
 		if s.blacklist.PeerExist(fromAddr.String()) {
 			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
 			continue

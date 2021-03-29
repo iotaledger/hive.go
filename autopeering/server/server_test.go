@@ -227,65 +227,48 @@ func TestUnexpectedPong(t *testing.T) {
 	srvA.Send(srvB.LocalAddr(), new(Pong).Marshal())
 }
 
-//func TestServer_AddToBlacklist(t *testing.T) {
-//	type fields struct {
-//		local           *peer.Local
-//		conn            NetConn
-//		handlers        []Handler
-//		log             *logger.Logger
-//		network         string
-//		closeOnce       sync.Once
-//		wg              sync.WaitGroup
-//		blacklist       *blacklist
-//		throttling      *throttling
-//		addReplyMatcher chan *replyMatcher
-//		replyReceived   chan reply
-//		closing         chan struct{}
-//	}
+//
+//func TestServe(t *testing.T) {
 //	type args struct {
-//		peer string
+//		local *peer.Local
+//		conn  NetConn
+//		log   *logger.Logger
+//		h     []Handler
 //	}
 //
-//	n := &mocks.NetConn{}
+//	n := servertest.NewConn()
+//
+//	srvA, closeA := newTestServer(t, "A", n)
+//	defer closeA()
+//
+//	services := service.New()
+//	services.Update(service.PeeringKey, "udp", 8000)
+//	local, err := peer.NewLocal(net.IPv4zero, services, newTestDB(t))
+//	require.NoError(t, err)
 //
 //	tests := []struct {
-//		name   string
-//		fields fields
-//		args   args
+//		name string
+//		args args
+//		want *Server
 //	}{
 //		{
-//			name: "test_test_server_addtoblacklist_1",
-//			fields: fields{
-//				local:           &peer.Local{},
-//				conn:            n,
-//				handlers:        nil,
-//				log:             nil,
-//				network:         "",
-//				closeOnce:       sync.Once{},
-//				wg:              sync.WaitGroup{},
-//				blacklist:       nil,
-//				throttling:      nil,
-//				addReplyMatcher: nil,
-//				replyReceived:   nil,
-//				closing:         nil,
+//			name: "test_serve_1",
+//			args: args{
+//				local: local,
+//				conn: n,
+//				log:   log,
+//				h:     []Handler{},
 //			},
+//			want: srvA,
 //		},
 //	}
+//	// got &{0xc0000b0820 0xc0000ac090 [] 0xc0000ac080 udp {0 {0 0}} {{} [0 0 2]} 0xc0000de620 0xc0000bc3d8 0xc00008e720 0xc00008e780 0xc00008e7e0}
+//	// want &{0xc0000b06e0 0xc0000ac090 [] 0xc0000ac098 udp {0 {0 0}} {{} [0 0 2]} 0xc0000de540 0xc0000bc378 0xc00008e4e0 0xc00008e540 0xc00008e5a0}
+//
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			s := &Server{
-//				local:           tt.fields.local,
-//				conn:            tt.fields.conn,
-//				handlers:        tt.fields.handlers,
-//				log:             tt.fields.log,
-//				network:         tt.fields.network,
-//				closeOnce:       tt.fields.closeOnce,
-//				wg:              tt.fields.wg,
-//				blacklist:       tt.fields.blacklist,
-//				throttling:      tt.fields.throttling,
-//				addReplyMatcher: tt.fields.addReplyMatcher,
-//				replyReceived:   tt.fields.replyReceived,
-//				closing:         tt.fields.closing,
+//			if got := Serve(tt.args.local, tt.args.conn, tt.args.log, tt.args.h...); !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("Serve() = %v, want %v", got, tt.want)
 //			}
 //		})
 //	}
