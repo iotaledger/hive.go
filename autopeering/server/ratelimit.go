@@ -20,49 +20,34 @@ type TrafficShaping interface {
 	RateLimit() time.Time
 }
 
-type throttling struct {
-	leakyBucketLimit
-	tokenBucketLimit
+type throttlingService struct {
+	strategy Strategy
+	limiter interface{}
 }
 
-type leakyBucketLimit struct {
-	ratelimit.Limiter
+// RateLimit take new leaky bucket
+func (t *throttlingService) RateLimit() time.Time {
+	return t.limiter.(ratelimit.Limiter).Take()
 }
 
-type tokenBucketLimit struct{}
-
-func newLeakyBucket() *throttling {
-	return &throttling{
-		leakyBucketLimit{
-			Limiter: ratelimit.New(MaximumPacketPerSecond),
-		},
-		tokenBucketLimit{},
-	}
+func newLeakyBucketLimiter() ratelimit.Limiter {
+	limiter := ratelimit.New(MaximumPacketPerSecond)
+	return limiter
 }
 
-func newTokenBucket() *throttling {
-	return &throttling{
-		leakyBucketLimit{},
-		tokenBucketLimit{},
-	}
-}
-
-func newThrottling(s Strategy) *throttling {
-	switch s {
-	case LeakyBucket:
-		return newLeakyBucket()
-	case TokenBucket:
-		return newTokenBucket()
-	default:
-		return newLeakyBucket()
-	}
-}
-
-func (l *leakyBucketLimit) RateLimit() time.Time {
-	return l.Take()
-}
-
-func (l *tokenBucketLimit) RateLimit() time.Time {
+func newTokenBucketLimiter() interface{} {
 	// TODO()
-	return time.Now()
+	return nil
+}
+
+// NewService inits new throttling service
+func NewService(strategy Strategy) TrafficShaping {
+	ts := new(throttlingService)
+	ts.strategy = strategy
+	if strategy == LeakyBucket {
+		ts.limiter = newLeakyBucketLimiter()
+	} else if strategy == TokenBucket {
+		ts.limiter = newTokenBucketLimiter()
+	}
+	return ts
 }
