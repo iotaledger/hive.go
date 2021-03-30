@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MaximumPacketPerSecond = 100 // per second
+	MaximumPacketPerSecond = 3 // per second
 )
 
 const (
