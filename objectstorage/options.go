@@ -239,6 +239,7 @@ var defaultIteratorOptions = []IteratorOption{
 	WithIteratorSkipCache(false),
 	WithIteratorSkipStorage(false),
 	WithIteratorPrefix(kvstore.EmptyPrefix),
+	WithIteratorMaxIterations(0),
 }
 
 // IteratorOption is a function setting an iterator option.
@@ -252,6 +253,8 @@ type IteratorOptions struct {
 	skipStorage bool
 	// an optional prefix to iterate a subset of elements.
 	optionalPrefix []byte
+	// used to stop the iteration after a certain amount of iterations.
+	maxIterations int
 }
 
 // applies the given IteratorOption.
@@ -279,5 +282,13 @@ func WithIteratorSkipStorage(skipStorage bool) IteratorOption {
 func WithIteratorPrefix(prefix []byte) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.optionalPrefix = prefix
+	}
+}
+
+// WithIteratorMaxIterations is used to stop the iteration after a certain amount of iterations.
+// 0 disables the limit.
+func WithIteratorMaxIterations(maxIterations int) IteratorOption {
+	return func(opts *IteratorOptions) {
+		opts.maxIterations = maxIterations
 	}
 }
