@@ -56,6 +56,24 @@ func (t *ThresholdMap) Get(key interface{}) (value interface{}, exists bool) {
 	return
 }
 
+// Floor returns the largest key that is <= the given key (and a boolean value indicating if it exists).
+func (t *ThresholdMap) Floor(key interface{}) (floor interface{}, exists bool) {
+	if node := t.tree.Floor(key); node != nil {
+		return node.Key(), true
+	}
+
+	return nil, false
+}
+
+// Ceiling returns the smallest key that is >= the given key (and a boolean value indicating if it exists).
+func (t *ThresholdMap) Ceiling(key interface{}) (floor interface{}, exists bool) {
+	if node := t.tree.Ceiling(key); node != nil {
+		return node.Key(), true
+	}
+
+	return nil, false
+}
+
 // Delete removes a threshold from the map.
 func (t *ThresholdMap) Delete(key interface{}) (element *Element, success bool) {
 	node, success := t.tree.Delete(key)
