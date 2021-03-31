@@ -353,11 +353,18 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
 	}
 
+	iterations := 0
 	var seenElements map[string]types.Empty
 	if !opts.skipCache {
 		if len(opts.optionalPrefix) == 0 {
 			// iterate over all cached elements
 			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					cachedObject.Release(true)
+					return false
+				}
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -366,6 +373,12 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		} else {
 			// iterate over cached elements via their key partition
 			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					cachedObject.Release(true)
+					return false
+				}
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -379,6 +392,12 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	consumeFunc := func(key kvstore.Key, value kvstore.Value) bool {
+		iterations++
+		if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+			// stop if maximum amount of iterations reached
+			return false
+		}
+
 		if _, elementSeen := seenElements[string(key)]; elementSeen {
 			return true
 		}
@@ -439,12 +458,18 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
 	}
 
+	iterations := 0
 	var seenElements map[string]types.Empty
 	if !opts.skipCache {
 		if len(opts.optionalPrefix) == 0 {
 			// iterate over all cached elements
 			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
 				cachedObject.Release(true)
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					return false
+				}
 				return consumer(key)
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -454,6 +479,11 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 			// iterate over cached elements via their key partition
 			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 				cachedObject.Release(true)
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					return false
+				}
 				return consumer(key)
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -468,6 +498,12 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 
 	_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix,
 		func(key kvstore.Key) bool {
+			iterations++
+			if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+				// stop if maximum amount of iterations reached
+				return false
+			}
+
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
 			}
