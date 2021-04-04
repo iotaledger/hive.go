@@ -47,7 +47,7 @@ func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey P
 		err = xerrors.Errorf("failed to read PublicKey bytes (%v): %w", err, ErrParseBytesFailed)
 		return
 	}
-
+	publicKey.Point = blsSuite.G2().Point()
 	if err = publicKey.Point.UnmarshalBinary(bytes); err != nil {
 		err = xerrors.Errorf("failed to unmarshal PublicKey (%v): %w", err, ErrParseBytesFailed)
 		return
