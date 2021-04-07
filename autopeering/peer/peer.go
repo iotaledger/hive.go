@@ -131,17 +131,18 @@ func Unmarshal(data []byte) (*Peer, error) {
 }
 
 type peerJSON struct {
-	PublicKey []byte          `json:"publicKey"`
+	PublicKey string          `json:"publicKey"`
 	IP        net.IP          `json:"ip"`
 	Services  *service.Record `json:"services"`
 }
 
+// UnmarshalJSON de-serializes given json data into a Peer struct.
 func (p *Peer) UnmarshalJSON(b []byte) error {
 	pj := &peerJSON{}
 	if err := json.Unmarshal(b, pj); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
-	publicKey, _, err := ed25519.PublicKeyFromBytes(pj.PublicKey)
+	publicKey, err := ed25519.PublicKeyFromString(pj.PublicKey)
 	if err != nil {
 		return xerrors.Errorf("can't parse public key: %w", err)
 	}
@@ -153,9 +154,10 @@ func (p *Peer) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON serializes Peer into json data.
 func (p *Peer) MarshalJSON() ([]byte, error) {
 	pj := &peerJSON{
-		PublicKey: p.PublicKey().Bytes(),
+		PublicKey: p.PublicKey().String(),
 		IP:        p.ip,
 		Services:  p.services,
 	}

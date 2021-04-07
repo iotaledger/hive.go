@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/xerrors"
+
 	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
@@ -11,6 +13,16 @@ import (
 
 // PublicKey is the type of Ed25519 public keys.
 type PublicKey [PublicKeySize]byte
+
+// PublicKeyFromString parses give string with base58 encoding and returns a PublicKey.
+func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
+	b, err := base58.Decode(s)
+	if err != nil {
+		return publicKey, xerrors.Errorf("failed to parse public key from bas58 string")
+	}
+	publicKey, _, err = PublicKeyFromBytes(b)
+	return publicKey, err
+}
 
 // PublicKeyFromBytes creates a PublicKey from the given bytes.
 func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
