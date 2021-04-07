@@ -52,8 +52,6 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 
 	// acquire locks
 	t.heapMutex.Lock()
-	defer t.heapMutex.Unlock()
-	defer t.waitCond.Signal()
 
 	// add new element
 	addedElement = &QueueElement{
@@ -64,6 +62,12 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 		index:         0,
 	}
 	heap.Push(&t.heap, addedElement)
+
+	// release locks
+	t.heapMutex.Unlock()
+
+	// signal waiting goroutine to wake up
+	t.waitCond.Signal()
 
 	return
 }
