@@ -18,7 +18,7 @@ type PublicKey [PublicKeySize]byte
 func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 	b, err := base58.Decode(s)
 	if err != nil {
-		return publicKey, xerrors.Errorf("failed to parse public key from bas58 string")
+		return publicKey, xerrors.Errorf("failed to parse public key %s from base58 string: %w", s, err)
 	}
 	publicKey, _, err = PublicKeyFromBytes(b)
 	return publicKey, err
