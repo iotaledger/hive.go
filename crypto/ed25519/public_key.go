@@ -14,7 +14,7 @@ import (
 // PublicKey is the type of Ed25519 public keys.
 type PublicKey [PublicKeySize]byte
 
-// PublicKeyFromString parses give string with base58 encoding and returns a PublicKey.
+// PublicKeyFromString parses the given string with base58 encoding and returns a PublicKey.
 func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 	b, err := base58.Decode(s)
 	if err != nil {
