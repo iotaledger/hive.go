@@ -136,7 +136,7 @@ type peerJSON struct {
 	Services  *service.Record `json:"services"`
 }
 
-// UnmarshalJSON de-serializes given json data into a Peer struct.
+// UnmarshalJSON deserializes given json data into a Peer struct.
 func (p *Peer) UnmarshalJSON(b []byte) error {
 	pj := &peerJSON{}
 	if err := json.Unmarshal(b, pj); err != nil {
