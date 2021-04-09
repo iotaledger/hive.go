@@ -116,6 +116,7 @@ type endpointJSON struct {
 	Port    int    `json:"port"`
 }
 
+// UnmarshalJSON deserializes JSON data into Record struct.
 func (s *Record) UnmarshalJSON(b []byte) error {
 	m := map[string]endpointJSON{}
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -129,6 +130,7 @@ func (s *Record) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON serializes Record struct into JSON data.
 func (s *Record) MarshalJSON() ([]byte, error) {
 	m := make(map[string]endpointJSON, len(s.m))
 	for service, addr := range s.m {
