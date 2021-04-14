@@ -12,6 +12,7 @@ type Event struct {
 	mutex           syncutils.RWMutex
 }
 
+// AttachBefore allows to register a Closure that is executed before the Event triggers.
 func (ev *Event) AttachBefore(closure *Closure) {
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
@@ -30,6 +31,7 @@ func (ev *Event) Attach(closure *Closure) {
 	ev.callbacks[closure.Id] = closure.Fnc
 }
 
+// AttachAfter allows to register a Closure that is executed after the Event triggered.
 func (ev *Event) AttachAfter(closure *Closure) {
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
