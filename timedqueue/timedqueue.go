@@ -152,6 +152,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 		// wait for elements to be queued
 		for len(t.heap) == 0 {
 			if !waitIfEmpty || t.IsShutdown() {
+				t.heapMutex.Unlock()
 				return nil
 			}
 
