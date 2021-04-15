@@ -57,7 +57,7 @@ func TestThresholdEvent(t *testing.T) {
 	thresholdEvent.Set(identifierType(1), 0.90)
 	eventHandler.AssertExpectations()
 
-	unmarshaledEvent, _, err := FromMarshalUtil(marshalutil.New(thresholdEvent.Bytes()), options...)
+	unmarshaledEvent, err := FromMarshalUtil(marshalutil.New(thresholdEvent.Bytes()), options...)
 	assert.NoError(t, err)
 	unmarshaledEvent.Attach(events.NewClosure(eventHandler.Trigger))
 
