@@ -335,10 +335,10 @@ func (s *Server) readLoop() {
 		//s.log.Infof("incomming ip address: %s", fromAddr.String())
 		//s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 		// check the existence of the IP in our blacklist
-		if s.blacklist.PeerExist(fromAddr.String()) {
-			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
-			continue
-		}
+		//if s.blacklist.PeerExist(fromAddr.String()) {
+		//	s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
+		//	continue
+		//}
 
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
 			s.log.Debugw("failed to handle packet", "from", fromAddr, "err", err)
