@@ -15,7 +15,7 @@ import (
 // region TestThresholdEvent ///////////////////////////////////////////////////////////////////////////////////////////
 
 func TestThresholdEvent(t *testing.T) {
-	options := []Option{
+	options := []ThresholdEventOption{
 		WithThresholds(0.2, 0.4, 0.8),
 		WithCallbackTypeCaster(func(handler interface{}, identifier interface{}, newLevel int, transition ThresholdEventTransition) {
 			handler.(func(id identifierType, newLevel int, transition ThresholdEventTransition))(identifier.(identifierType), newLevel, transition)
@@ -28,31 +28,31 @@ func TestThresholdEvent(t *testing.T) {
 	thresholdEvent := NewThresholdEvent(options...)
 	thresholdEvent.Attach(NewClosure(eventHandler.Trigger))
 
-	eventHandler.Expect(identifierType(1), 1, LevelIncreased)
+	eventHandler.Expect(identifierType(1), 1, ThresholdLevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.2)
 	eventHandler.AssertExpectations()
 
 	thresholdEvent.Set(identifierType(1), 0.21)
 	eventHandler.AssertExpectations()
 
-	eventHandler.Expect(identifierType(1), 2, LevelIncreased)
+	eventHandler.Expect(identifierType(1), 2, ThresholdLevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.41)
 	eventHandler.AssertExpectations()
 
-	eventHandler.Expect(identifierType(1), 1, LevelDecreased)
+	eventHandler.Expect(identifierType(1), 1, ThresholdLevelDecreased)
 	thresholdEvent.Set(identifierType(1), 0.38)
 	eventHandler.AssertExpectations()
 
-	eventHandler.Expect(identifierType(1), 0, LevelDecreased)
+	eventHandler.Expect(identifierType(1), 0, ThresholdLevelDecreased)
 	thresholdEvent.Set(identifierType(1), 0.19)
 	eventHandler.AssertExpectations()
 
-	eventHandler.Expect(identifierType(1), 1, LevelIncreased)
+	eventHandler.Expect(identifierType(1), 1, ThresholdLevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.38)
 	eventHandler.AssertExpectations()
 
-	eventHandler.Expect(identifierType(1), 2, LevelIncreased)
-	eventHandler.Expect(identifierType(1), 3, LevelIncreased)
+	eventHandler.Expect(identifierType(1), 2, ThresholdLevelIncreased)
+	eventHandler.Expect(identifierType(1), 3, ThresholdLevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.90)
 	eventHandler.AssertExpectations()
 
@@ -60,9 +60,9 @@ func TestThresholdEvent(t *testing.T) {
 	assert.NoError(t, err)
 	unmarshaledEvent.Attach(NewClosure(eventHandler.Trigger))
 
-	eventHandler.Expect(identifierType(1), 2, LevelDecreased)
-	eventHandler.Expect(identifierType(1), 1, LevelDecreased)
-	eventHandler.Expect(identifierType(1), 0, LevelDecreased)
+	eventHandler.Expect(identifierType(1), 2, ThresholdLevelDecreased)
+	eventHandler.Expect(identifierType(1), 1, ThresholdLevelDecreased)
+	eventHandler.Expect(identifierType(1), 0, ThresholdLevelDecreased)
 	unmarshaledEvent.Set(identifierType(1), 0.1)
 	eventHandler.AssertExpectations()
 }
