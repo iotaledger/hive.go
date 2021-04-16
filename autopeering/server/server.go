@@ -3,7 +3,6 @@ package server
 import (
 	"container/list"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -288,25 +287,14 @@ func (s *Server) readLoop() {
 	buffer := make([]byte, MaxPacketSize)
 
 	// Traffic shaping using leaky bucket rate limiting
-	//prev := time.Now()
-	mem := &runtime.MemStats{}
+	prev := time.Now()
 
 	for {
-
-		cpu := runtime.NumCPU()
-		s.log.Infof("CPU: %v", cpu)
-
-		rot := runtime.NumGoroutine()
-		s.log.Infof("Goroutine: %v", rot)
-
-		runtime.ReadMemStats(mem)
-		s.log.Infof("Memory: %v", mem.Alloc)
-
 		// take new leaky bucket limiter
-		//now := s.throttling.RateLimit()
+		now := s.throttling.RateLimit()
 		// Adding log to find the start of the leaky bucket
-		//s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
-		//prev = now
+		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
+		prev = now
 
 		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
@@ -335,10 +323,10 @@ func (s *Server) readLoop() {
 		//s.log.Infof("incomming ip address: %s", fromAddr.String())
 		//s.log.Infof("Should we filter it? %v", s.blacklist.PeerExist(fromAddr.String()))
 		// check the existence of the IP in our blacklist
-		//if s.blacklist.PeerExist(fromAddr.String()) {
-		//	s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
-		//	continue
-		//}
+		if s.blacklist.PeerExist(fromAddr.String()) {
+			s.log.Infof("FILTERING %s ----------------------", fromAddr.String())
+			continue
+		}
 
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
 			s.log.Debugw("failed to handle packet", "from", fromAddr, "err", err)
