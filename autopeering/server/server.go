@@ -288,7 +288,7 @@ func (s *Server) readLoop() {
 	buffer := make([]byte, MaxPacketSize)
 
 	// Traffic shaping using leaky bucket rate limiting
-	prev := time.Now()
+	//prev := time.Now()
 	mem := &runtime.MemStats{}
 
 	for {
@@ -303,10 +303,10 @@ func (s *Server) readLoop() {
 		s.log.Infof("Memory: %v", mem.Alloc)
 
 		// take new leaky bucket limiter
-		now := s.throttling.RateLimit()
+		//now := s.throttling.RateLimit()
 		// Adding log to find the start of the leaky bucket
-		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
-		prev = now
+		//s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
+		//prev = now
 
 		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
