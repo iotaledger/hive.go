@@ -294,13 +294,13 @@ func (s *Server) readLoop() {
 	for {
 
 		cpu := runtime.NumCPU()
-		s.log.Infof("CPU:", cpu)
+		s.log.Infof("CPU: %v", cpu)
 
 		rot := runtime.NumGoroutine()
-		s.log.Infof("Goroutine:", rot)
+		s.log.Infof("Goroutine: %v", rot)
 
 		runtime.ReadMemStats(mem)
-		s.log.Infof("Memory:", mem.Alloc)
+		s.log.Infof("Memory: %v", mem.Alloc)
 
 		// take new leaky bucket limiter
 		now := s.throttling.RateLimit()
