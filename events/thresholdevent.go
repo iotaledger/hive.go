@@ -20,17 +20,17 @@ type ThresholdEvent struct {
 	thresholds         *thresholdmap.ThresholdMap
 	currentLevels      map[interface{}]int
 	currentLevelsMutex sync.Mutex
-	configuration      *Configuration
+	configuration      *ThresholdEventConfiguration
 
 	*Event
 }
 
 // NewThresholdEvent is the constructor for the ThresholdEvent.
-func NewThresholdEvent(options ...Option) (thresholdEvent *ThresholdEvent) {
+func NewThresholdEvent(options ...ThresholdEventOption) (thresholdEvent *ThresholdEvent) {
 	thresholdEvent = &ThresholdEvent{
 		currentLevels: make(map[interface{}]int),
 		thresholds:    thresholdmap.New(thresholdmap.LowerThresholdMode),
-		configuration: NewConfiguration(options...),
+		configuration: NewThresholdEventConfiguration(options...),
 	}
 
 	if thresholdEvent.configuration.Thresholds == nil {
@@ -49,7 +49,7 @@ func NewThresholdEvent(options ...Option) (thresholdEvent *ThresholdEvent) {
 }
 
 // ThresholdEventFromBytes unmarshals a collection of BranchIDs from a sequence of bytes.
-func ThresholdEventFromBytes(bytes []byte, options ...Option) (thresholdEvent *ThresholdEvent, consumedBytes int, err error) {
+func ThresholdEventFromBytes(bytes []byte, options ...ThresholdEventOption) (thresholdEvent *ThresholdEvent, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if thresholdEvent, err = ThresholdEventFromMarshalUtil(marshalUtil, options...); err != nil {
 		err = xerrors.Errorf("failed to parse ThresholdEvent from MarshalUtil: %w", err)
@@ -61,11 +61,11 @@ func ThresholdEventFromBytes(bytes []byte, options ...Option) (thresholdEvent *T
 }
 
 // ThresholdEventFromMarshalUtil unmarshals a ThresholdEvent using a MarshalUtil (for easier unmarshaling).
-func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...Option) (thresholdEvent *ThresholdEvent, err error) {
+func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...ThresholdEventOption) (thresholdEvent *ThresholdEvent, err error) {
 	thresholdEvent = &ThresholdEvent{
 		currentLevels: make(map[interface{}]int),
 		thresholds:    thresholdmap.New(thresholdmap.LowerThresholdMode),
-		configuration: NewConfiguration(options...),
+		configuration: NewThresholdEventConfiguration(options...),
 	}
 
 	if thresholdEvent.configuration.Thresholds == nil {
@@ -173,13 +173,13 @@ func (t *ThresholdEvent) level(value float64) (level int, levelReached bool) {
 // trigger triggers the embedded Event with the correct parameters.
 func (t *ThresholdEvent) trigger(branchID interface{}, oldLevel, newLevel int) (transition ThresholdEventTransition) {
 	if newLevel >= oldLevel {
-		transition = LevelIncreased
+		transition = ThresholdLevelIncreased
 
 		for i := oldLevel + 1; i <= newLevel; i++ {
 			t.Event.Trigger(branchID, i, transition)
 		}
 	} else {
-		transition = LevelDecreased
+		transition = ThresholdLevelDecreased
 
 		for i := oldLevel - 1; i >= newLevel; i-- {
 			t.Event.Trigger(branchID, i, transition)
@@ -196,18 +196,18 @@ func (t *ThresholdEvent) registerThreshold(threshold float64, level int) {
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region Configuration ////////////////////////////////////////////////////////////////////////////////////////////////
+// region ThresholdEventConfiguration //////////////////////////////////////////////////////////////////////////////////
 
-// Configuration represents a collection of optional parameters that are used by the ThresholdEvent.
-type Configuration struct {
+// ThresholdEventConfiguration represents a collection of optional parameters that are used by the ThresholdEvent.
+type ThresholdEventConfiguration struct {
 	Thresholds         []float64
 	CallbackTypecaster ThresholdEventCallbackTypecaster
 	IdentifierParser   ThresholdEventIdentifierParser
 }
 
-// NewConfiguration creates a Configuration from the given Options.
-func NewConfiguration(options ...Option) (configuration *Configuration) {
-	configuration = &Configuration{
+// NewThresholdEventConfiguration creates a ThresholdEventConfiguration from the given Options.
+func NewThresholdEventConfiguration(options ...ThresholdEventOption) (configuration *ThresholdEventConfiguration) {
+	configuration = &ThresholdEventConfiguration{
 		Thresholds: make([]float64, 0),
 		CallbackTypecaster: func(handler interface{}, identifier interface{}, newLevel int, transition ThresholdEventTransition) {
 			handler.(func(identifier interface{}, newLevel int, transition ThresholdEventTransition))(identifier, newLevel, transition)
@@ -220,26 +220,26 @@ func NewConfiguration(options ...Option) (configuration *Configuration) {
 	return configuration
 }
 
-// Option is the type of the optional parameters of the ThresholdEvent.
-type Option func(*Configuration)
+// ThresholdEventOption is the type of the optional parameters of the ThresholdEvent.
+type ThresholdEventOption func(*ThresholdEventConfiguration)
 
 // WithThresholds sets the thresholds that are supposed to be used for the Triggers.
-func WithThresholds(thresholds ...float64) Option {
-	return func(options *Configuration) {
+func WithThresholds(thresholds ...float64) ThresholdEventOption {
+	return func(options *ThresholdEventConfiguration) {
 		options.Thresholds = thresholds
 	}
 }
 
 // WithIdentifierParser sets the parser for the ThresholdEventIdentifier that is used to identify different entities.
-func WithIdentifierParser(identifierParser ThresholdEventIdentifierParser) Option {
-	return func(configuration *Configuration) {
+func WithIdentifierParser(identifierParser ThresholdEventIdentifierParser) ThresholdEventOption {
+	return func(configuration *ThresholdEventConfiguration) {
 		configuration.IdentifierParser = identifierParser
 	}
 }
 
 // WithCallbackTypeCaster sets the method that is used to type cast the called callbacks to their correct types.
-func WithCallbackTypeCaster(callbackTypeCaster ThresholdEventCallbackTypecaster) Option {
-	return func(configuration *Configuration) {
+func WithCallbackTypeCaster(callbackTypeCaster ThresholdEventCallbackTypecaster) ThresholdEventOption {
+	return func(configuration *ThresholdEventConfiguration) {
 		configuration.CallbackTypecaster = callbackTypeCaster
 	}
 }
@@ -253,23 +253,25 @@ func WithCallbackTypeCaster(callbackTypeCaster ThresholdEventCallbackTypecaster)
 type ThresholdEventTransition int
 
 const (
-	// LevelMaintained indicates that the reached threshold did not change.
-	LevelMaintained ThresholdEventTransition = 0
+	// ThresholdLevelMaintained indicates that the reached threshold did not change.
+	ThresholdLevelMaintained ThresholdEventTransition = 0
 
-	// LevelIncreased indicates that the new value is larger than the passed threshold.
-	LevelIncreased ThresholdEventTransition = 1
+	// ThresholdLevelIncreased indicates that the new value is larger than the passed threshold.
+	ThresholdLevelIncreased ThresholdEventTransition = 1
 
-	// LevelDecreased indicates that the new value is smaller than the passed threshold.
-	LevelDecreased ThresholdEventTransition = -1
+	// ThresholdLevelDecreased indicates that the new value is smaller than the passed threshold.
+	ThresholdLevelDecreased ThresholdEventTransition = -1
 )
 
 // String returns a human readable version of the ThresholdEventTransition.
 func (t ThresholdEventTransition) String() string {
 	switch t {
-	case 1:
-		return "LevelIncreased"
-	case -1:
-		return "LevelDecreased"
+	case ThresholdLevelMaintained:
+		return "ThresholdLevelMaintained"
+	case ThresholdLevelIncreased:
+		return "ThresholdLevelIncreased"
+	case ThresholdLevelDecreased:
+		return "ThresholdLevelDecreased"
 	default:
 		panic(fmt.Sprintf("invalid ThresholdEventTransition (%d)", int(t)))
 	}
