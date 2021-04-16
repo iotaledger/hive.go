@@ -1,4 +1,4 @@
-package thresholdevent
+package events
 
 import (
 	"sync/atomic"
@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/cerrors"
-	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
@@ -18,16 +17,16 @@ import (
 func TestThresholdEvent(t *testing.T) {
 	options := []Option{
 		WithThresholds(0.2, 0.4, 0.8),
-		WithCallbackTypeCaster(func(handler interface{}, identifier interface{}, newLevel int, transition LevelTransition) {
-			handler.(func(id identifierType, newLevel int, transition LevelTransition))(identifier.(identifierType), newLevel, transition)
+		WithCallbackTypeCaster(func(handler interface{}, identifier interface{}, newLevel int, transition ThresholdEventTransition) {
+			handler.(func(id identifierType, newLevel int, transition ThresholdEventTransition))(identifier.(identifierType), newLevel, transition)
 		}),
 		WithIdentifierParser(identifierTypeFromMarshalUtil),
 	}
 
 	eventHandler := newMockedEventHandler(t)
 
-	thresholdEvent := New(options...)
-	thresholdEvent.Attach(events.NewClosure(eventHandler.Trigger))
+	thresholdEvent := NewThresholdEvent(options...)
+	thresholdEvent.Attach(NewClosure(eventHandler.Trigger))
 
 	eventHandler.Expect(identifierType(1), 1, LevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.2)
@@ -57,9 +56,9 @@ func TestThresholdEvent(t *testing.T) {
 	thresholdEvent.Set(identifierType(1), 0.90)
 	eventHandler.AssertExpectations()
 
-	unmarshaledEvent, err := FromMarshalUtil(marshalutil.New(thresholdEvent.Bytes()), options...)
+	unmarshaledEvent, err := ThresholdEventFromMarshalUtil(marshalutil.New(thresholdEvent.Bytes()), options...)
 	assert.NoError(t, err)
-	unmarshaledEvent.Attach(events.NewClosure(eventHandler.Trigger))
+	unmarshaledEvent.Attach(NewClosure(eventHandler.Trigger))
 
 	eventHandler.Expect(identifierType(1), 2, LevelDecreased)
 	eventHandler.Expect(identifierType(1), 1, LevelDecreased)
@@ -88,7 +87,7 @@ func newMockedEventHandler(t *testing.T) *mockedEventHandler {
 	return result
 }
 
-func (e *mockedEventHandler) Trigger(identifier identifierType, newLevel int, transition LevelTransition) {
+func (e *mockedEventHandler) Trigger(identifier identifierType, newLevel int, transition ThresholdEventTransition) {
 	e.Called(identifier, newLevel, transition)
 
 	atomic.AddUint64(&e.observedTriggers, 1)
