@@ -123,7 +123,7 @@ func FromObjectStorage(key []byte, data []byte) (branch objectstorage.StorableOb
 }
 
 // Set updates the value associated with the given identifier and triggers the Event if necessary.
-func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) {
+func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) (newLevel int, transition LevelTransition) {
 	t.currentLevelsMutex.Lock()
 	defer t.currentLevelsMutex.Unlock()
 
@@ -132,7 +132,7 @@ func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) {
 		if currentLevel, exists := t.currentLevels[identifier]; exists {
 			delete(t.currentLevels, identifier)
 
-			t.trigger(identifier, currentLevel, newLevel)
+			transition = t.trigger(identifier, currentLevel, newLevel)
 		}
 
 		return
@@ -145,7 +145,17 @@ func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) {
 
 	t.currentLevels[identifier] = newLevel
 
-	t.trigger(identifier, currentLevel, newLevel)
+	transition = t.trigger(identifier, currentLevel, newLevel)
+
+	return
+}
+
+// Level returns the current level of the reached threshold for the given identity.
+func (t *ThresholdEvent) Level(identifier Identifier) (level int) {
+	t.currentLevelsMutex.Lock()
+	defer t.currentLevelsMutex.Unlock()
+
+	return t.currentLevels[identifier]
 }
 
 // Bytes returns a marshaled version of the ThresholdEvent.
@@ -192,16 +202,22 @@ func (t *ThresholdEvent) level(value float64) (level int, levelReached bool) {
 }
 
 // trigger triggers the embedded Event with the correct parameters.
-func (t *ThresholdEvent) trigger(branchID interface{}, oldLevel, newLevel int) {
+func (t *ThresholdEvent) trigger(branchID interface{}, oldLevel, newLevel int) (transition LevelTransition) {
 	if newLevel >= oldLevel {
+		transition = LevelIncreased
+
 		for i := oldLevel + 1; i <= newLevel; i++ {
-			t.Event.Trigger(branchID, i, LevelIncreased)
+			t.Event.Trigger(branchID, i, transition)
 		}
 	} else {
+		transition = LevelDecreased
+
 		for i := oldLevel - 1; i >= newLevel; i-- {
-			t.Event.Trigger(branchID, i, LevelDecreased)
+			t.Event.Trigger(branchID, i, transition)
 		}
 	}
+
+	return
 }
 
 // registerThreshold create a new threshold in the internal ThresholdMap.
@@ -278,6 +294,9 @@ func WithCallbackTypeCaster(callbackTypeCaster CallbackTypecaster) Option {
 type LevelTransition int
 
 const (
+	// LevelMaintained indicates that the reached threshold did not change.
+	LevelMaintained LevelTransition = 0
+
 	// LevelIncreased indicates that the new value is larger than the passed threshold.
 	LevelIncreased LevelTransition = 1
 
