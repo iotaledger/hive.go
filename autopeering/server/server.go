@@ -3,6 +3,7 @@ package server
 import (
 	"container/list"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -288,8 +289,19 @@ func (s *Server) readLoop() {
 
 	// Traffic shaping using leaky bucket rate limiting
 	prev := time.Now()
+	mem := &runtime.MemStats{}
 
 	for {
+
+		cpu := runtime.NumCPU()
+		s.log.Infof("CPU:", cpu)
+
+		rot := runtime.NumGoroutine()
+		s.log.Infof("Goroutine:", rot)
+
+		runtime.ReadMemStats(mem)
+		s.log.Infof("Memory:", mem.Alloc)
+
 		// take new leaky bucket limiter
 		now := s.throttling.RateLimit()
 		// Adding log to find the start of the leaky bucket
