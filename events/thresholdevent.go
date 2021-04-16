@@ -1,4 +1,4 @@
-package thresholdevent
+package events
 
 import (
 	"fmt"
@@ -6,12 +6,9 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/cerrors"
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
-	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/marshalutil"
-	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 // region ThresholdEvent ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -25,12 +22,11 @@ type ThresholdEvent struct {
 	currentLevelsMutex sync.Mutex
 	configuration      *Configuration
 
-	*events.Event
-	objectstorage.StorableObjectFlags
+	*Event
 }
 
-// New is the constructor for the ThresholdEvent.
-func New(options ...Option) (thresholdEvent *ThresholdEvent) {
+// NewThresholdEvent is the constructor for the ThresholdEvent.
+func NewThresholdEvent(options ...Option) (thresholdEvent *ThresholdEvent) {
 	thresholdEvent = &ThresholdEvent{
 		currentLevels: make(map[interface{}]int),
 		thresholds:    thresholdmap.New(thresholdmap.LowerThresholdMode),
@@ -38,24 +34,24 @@ func New(options ...Option) (thresholdEvent *ThresholdEvent) {
 	}
 
 	if thresholdEvent.configuration.Thresholds == nil {
-		panic("missing WithThresholds option when calling New")
+		panic("missing WithThresholds option when calling NewThresholdEvent")
 	}
 
 	for i, threshold := range thresholdEvent.configuration.Thresholds {
 		thresholdEvent.registerThreshold(threshold, i+1)
 	}
 
-	thresholdEvent.Event = events.NewEvent(func(handler interface{}, params ...interface{}) {
-		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(LevelTransition))
+	thresholdEvent.Event = NewEvent(func(handler interface{}, params ...interface{}) {
+		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(ThresholdEventTransition))
 	})
 
 	return
 }
 
-// FromBytes unmarshals a collection of BranchIDs from a sequence of bytes.
-func FromBytes(bytes []byte, options ...Option) (thresholdEvent *ThresholdEvent, consumedBytes int, err error) {
+// ThresholdEventFromBytes unmarshals a collection of BranchIDs from a sequence of bytes.
+func ThresholdEventFromBytes(bytes []byte, options ...Option) (thresholdEvent *ThresholdEvent, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
-	if thresholdEvent, err = FromMarshalUtil(marshalUtil, options...); err != nil {
+	if thresholdEvent, err = ThresholdEventFromMarshalUtil(marshalUtil, options...); err != nil {
 		err = xerrors.Errorf("failed to parse ThresholdEvent from MarshalUtil: %w", err)
 		return
 	}
@@ -64,8 +60,8 @@ func FromBytes(bytes []byte, options ...Option) (thresholdEvent *ThresholdEvent,
 	return
 }
 
-// FromMarshalUtil unmarshals a ThresholdEvent using a MarshalUtil (for easier unmarshaling).
-func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...Option) (thresholdEvent *ThresholdEvent, err error) {
+// ThresholdEventFromMarshalUtil unmarshals a ThresholdEvent using a MarshalUtil (for easier unmarshaling).
+func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...Option) (thresholdEvent *ThresholdEvent, err error) {
 	thresholdEvent = &ThresholdEvent{
 		currentLevels: make(map[interface{}]int),
 		thresholds:    thresholdmap.New(thresholdmap.LowerThresholdMode),
@@ -73,18 +69,18 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...Option) (t
 	}
 
 	if thresholdEvent.configuration.Thresholds == nil {
-		panic("missing WithThresholds option when calling FromMarshalUtil")
+		panic("missing WithThresholds option when calling ThresholdEventFromMarshalUtil")
 	}
 	if thresholdEvent.configuration.IdentifierParser == nil {
-		panic("missing WithIdentifierParser option when calling FromMarshalUtil")
+		panic("missing WithIdentifierParser option when calling ThresholdEventFromMarshalUtil")
 	}
 
 	for i, threshold := range thresholdEvent.configuration.Thresholds {
 		thresholdEvent.registerThreshold(threshold, i+1)
 	}
 
-	thresholdEvent.Event = events.NewEvent(func(handler interface{}, params ...interface{}) {
-		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(LevelTransition))
+	thresholdEvent.Event = NewEvent(func(handler interface{}, params ...interface{}) {
+		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(ThresholdEventTransition))
 	})
 
 	levelCount, err := marshalUtil.ReadUint64()
@@ -112,18 +108,8 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...Option) (t
 	return
 }
 
-// FromObjectStorage restores a ThresholdEvent that was stored in the object storage.
-func FromObjectStorage(key []byte, data []byte) (branch objectstorage.StorableObject, err error) {
-	if branch, _, err = FromBytes(byteutils.ConcatBytes(key, data)); err != nil {
-		err = xerrors.Errorf("failed to parse ThresholdEvent from bytes: %w", err)
-		return
-	}
-
-	return
-}
-
 // Set updates the value associated with the given identifier and triggers the Event if necessary.
-func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) (newLevel int, transition LevelTransition) {
+func (t *ThresholdEvent) Set(identifier ThresholdEventIdentifier, newValue float64) (newLevel int, transition ThresholdEventTransition) {
 	t.currentLevelsMutex.Lock()
 	defer t.currentLevelsMutex.Unlock()
 
@@ -151,7 +137,7 @@ func (t *ThresholdEvent) Set(identifier Identifier, newValue float64) (newLevel 
 }
 
 // Level returns the current level of the reached threshold for the given identity.
-func (t *ThresholdEvent) Level(identifier Identifier) (level int) {
+func (t *ThresholdEvent) Level(identifier ThresholdEventIdentifier) (level int) {
 	t.currentLevelsMutex.Lock()
 	defer t.currentLevelsMutex.Unlock()
 
@@ -160,23 +146,6 @@ func (t *ThresholdEvent) Level(identifier Identifier) (level int) {
 
 // Bytes returns a marshaled version of the ThresholdEvent.
 func (t *ThresholdEvent) Bytes() []byte {
-	return byteutils.ConcatBytes(t.ObjectStorageKey(), t.ObjectStorageValue())
-}
-
-// Update is disabled and panics if it ever gets called - it is required to match the StorableObject interface.
-func (t *ThresholdEvent) Update(objectstorage.StorableObject) {
-	panic("updates disabled")
-}
-
-// ObjectStorageKey returns the key that is used to store the object in the database. It is required to match the
-// StorableObject interface.
-func (t *ThresholdEvent) ObjectStorageKey() []byte {
-	return t.configuration.ObjectStorageKey
-}
-
-// ObjectStorageValue marshals the ConflictBranch into a sequence of bytes that are used as the value part in the
-// object storage.
-func (t *ThresholdEvent) ObjectStorageValue() []byte {
 	t.currentLevelsMutex.Lock()
 	defer t.currentLevelsMutex.Unlock()
 
@@ -202,7 +171,7 @@ func (t *ThresholdEvent) level(value float64) (level int, levelReached bool) {
 }
 
 // trigger triggers the embedded Event with the correct parameters.
-func (t *ThresholdEvent) trigger(branchID interface{}, oldLevel, newLevel int) (transition LevelTransition) {
+func (t *ThresholdEvent) trigger(branchID interface{}, oldLevel, newLevel int) (transition ThresholdEventTransition) {
 	if newLevel >= oldLevel {
 		transition = LevelIncreased
 
@@ -225,9 +194,6 @@ func (t *ThresholdEvent) registerThreshold(threshold float64, level int) {
 	t.thresholds.Set(threshold, level)
 }
 
-// code contract (make sure the struct implements all required methods)
-var _ objectstorage.StorableObject = &ThresholdEvent{}
-
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region Configuration ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -235,17 +201,16 @@ var _ objectstorage.StorableObject = &ThresholdEvent{}
 // Configuration represents a collection of optional parameters that are used by the ThresholdEvent.
 type Configuration struct {
 	Thresholds         []float64
-	CallbackTypecaster CallbackTypecaster
-	IdentifierParser   IdentifierParser
-	ObjectStorageKey   []byte
+	CallbackTypecaster ThresholdEventCallbackTypecaster
+	IdentifierParser   ThresholdEventIdentifierParser
 }
 
 // NewConfiguration creates a Configuration from the given Options.
 func NewConfiguration(options ...Option) (configuration *Configuration) {
 	configuration = &Configuration{
 		Thresholds: make([]float64, 0),
-		CallbackTypecaster: func(handler interface{}, identifier interface{}, newLevel int, transition LevelTransition) {
-			handler.(func(identifier interface{}, newLevel int, transition LevelTransition))(identifier, newLevel, transition)
+		CallbackTypecaster: func(handler interface{}, identifier interface{}, newLevel int, transition ThresholdEventTransition) {
+			handler.(func(identifier interface{}, newLevel int, transition ThresholdEventTransition))(identifier, newLevel, transition)
 		},
 	}
 	for _, option := range options {
@@ -258,13 +223,6 @@ func NewConfiguration(options ...Option) (configuration *Configuration) {
 // Option is the type of the optional parameters of the ThresholdEvent.
 type Option func(*Configuration)
 
-// WithObjectStorageKey sets the object storage key that is used for persisting the ThresholdEvent.
-func WithObjectStorageKey(key []byte) Option {
-	return func(configuration *Configuration) {
-		configuration.ObjectStorageKey = key
-	}
-}
-
 // WithThresholds sets the thresholds that are supposed to be used for the Triggers.
 func WithThresholds(thresholds ...float64) Option {
 	return func(options *Configuration) {
@@ -272,15 +230,15 @@ func WithThresholds(thresholds ...float64) Option {
 	}
 }
 
-// WithIdentifierParser sets the parser for the Identifier that is used to identify different entities.
-func WithIdentifierParser(identifierParser IdentifierParser) Option {
+// WithIdentifierParser sets the parser for the ThresholdEventIdentifier that is used to identify different entities.
+func WithIdentifierParser(identifierParser ThresholdEventIdentifierParser) Option {
 	return func(configuration *Configuration) {
 		configuration.IdentifierParser = identifierParser
 	}
 }
 
 // WithCallbackTypeCaster sets the method that is used to type cast the called callbacks to their correct types.
-func WithCallbackTypeCaster(callbackTypeCaster CallbackTypecaster) Option {
+func WithCallbackTypeCaster(callbackTypeCaster ThresholdEventCallbackTypecaster) Option {
 	return func(configuration *Configuration) {
 		configuration.CallbackTypecaster = callbackTypeCaster
 	}
@@ -288,31 +246,32 @@ func WithCallbackTypeCaster(callbackTypeCaster CallbackTypecaster) Option {
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region LevelTransition //////////////////////////////////////////////////////////////////////////////////////////////
+// region ThresholdEventTransition /////////////////////////////////////////////////////////////////////////////////////
 
-// LevelTransition is the type of the values that are used to indicate in which direction a threshold was passed.
-type LevelTransition int
+// ThresholdEventTransition is the type of the values that are used to indicate in which direction a threshold was
+// passed.
+type ThresholdEventTransition int
 
 const (
 	// LevelMaintained indicates that the reached threshold did not change.
-	LevelMaintained LevelTransition = 0
+	LevelMaintained ThresholdEventTransition = 0
 
 	// LevelIncreased indicates that the new value is larger than the passed threshold.
-	LevelIncreased LevelTransition = 1
+	LevelIncreased ThresholdEventTransition = 1
 
 	// LevelDecreased indicates that the new value is smaller than the passed threshold.
-	LevelDecreased LevelTransition = -1
+	LevelDecreased ThresholdEventTransition = -1
 )
 
-// String returns a human readable version of the LevelTransition.
-func (t LevelTransition) String() string {
+// String returns a human readable version of the ThresholdEventTransition.
+func (t ThresholdEventTransition) String() string {
 	switch t {
 	case 1:
 		return "LevelIncreased"
 	case -1:
 		return "LevelDecreased"
 	default:
-		panic(fmt.Sprintf("invalid LevelTransition (%d)", int(t)))
+		panic(fmt.Sprintf("invalid ThresholdEventTransition (%d)", int(t)))
 	}
 }
 
@@ -320,14 +279,15 @@ func (t LevelTransition) String() string {
 
 // region Types & Interfaces ///////////////////////////////////////////////////////////////////////////////////////////
 
-// Identifier is the type that is used to address the identifiers of the entities whose values we are tracking.
-type Identifier marshalutil.SimpleBinaryMarshaler
+// ThresholdEventIdentifier is the type that is used to address the identifiers of the entities whose values we are
+// tracking.
+type ThresholdEventIdentifier marshalutil.SimpleBinaryMarshaler
 
-// CallbackTypecaster defines the signature of the function that is used to convert the parameters to the types expected
-// by the callbacks.
-type CallbackTypecaster func(handler interface{}, identifier interface{}, newLevel int, transition LevelTransition)
+// ThresholdEventCallbackTypecaster defines the signature of the function that is used to convert the parameters to the
+// types expected by the callbacks.
+type ThresholdEventCallbackTypecaster func(handler interface{}, identifier interface{}, newLevel int, transition ThresholdEventTransition)
 
-// IdentifierParser defines the signature of the function that is used to parse the Identifiers.
-type IdentifierParser func(marshalUtil *marshalutil.MarshalUtil) (identifier interface{}, err error)
+// ThresholdEventIdentifierParser defines the signature of the function that is used to parse the Identifiers.
+type ThresholdEventIdentifierParser func(marshalUtil *marshalutil.MarshalUtil) (identifier interface{}, err error)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
