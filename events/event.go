@@ -6,9 +6,9 @@ import (
 
 type Event struct {
 	triggerFunc     func(handler interface{}, params ...interface{})
-	beforeCallbacks map[uintptr]interface{}
-	callbacks       map[uintptr]interface{}
-	afterCallbacks  map[uintptr]interface{}
+	beforeCallbacks map[uint64]interface{}
+	callbacks       map[uint64]interface{}
+	afterCallbacks  map[uint64]interface{}
 	mutex           syncutils.RWMutex
 }
 
@@ -17,18 +17,18 @@ func (ev *Event) AttachBefore(closure *Closure) {
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
 	if ev.beforeCallbacks == nil {
-		ev.beforeCallbacks = make(map[uintptr]interface{})
+		ev.beforeCallbacks = make(map[uint64]interface{})
 	}
-	ev.beforeCallbacks[closure.Id] = closure.Fnc
+	ev.beforeCallbacks[closure.ID] = closure.Fnc
 }
 
 func (ev *Event) Attach(closure *Closure) {
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
 	if ev.callbacks == nil {
-		ev.callbacks = make(map[uintptr]interface{})
+		ev.callbacks = make(map[uint64]interface{})
 	}
-	ev.callbacks[closure.Id] = closure.Fnc
+	ev.callbacks[closure.ID] = closure.Fnc
 }
 
 // AttachAfter allows to register a Closure that is executed after the Event triggered.
@@ -36,9 +36,9 @@ func (ev *Event) AttachAfter(closure *Closure) {
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
 	if ev.afterCallbacks == nil {
-		ev.afterCallbacks = make(map[uintptr]interface{})
+		ev.afterCallbacks = make(map[uint64]interface{})
 	}
-	ev.afterCallbacks[closure.Id] = closure.Fnc
+	ev.afterCallbacks[closure.ID] = closure.Fnc
 }
 
 func (ev *Event) Detach(closure *Closure) {
@@ -47,15 +47,15 @@ func (ev *Event) Detach(closure *Closure) {
 	}
 	ev.mutex.Lock()
 	defer ev.mutex.Unlock()
-	delete(ev.beforeCallbacks, closure.Id)
+	delete(ev.beforeCallbacks, closure.ID)
 	if len(ev.beforeCallbacks) == 0 {
 		ev.beforeCallbacks = nil
 	}
-	delete(ev.callbacks, closure.Id)
+	delete(ev.callbacks, closure.ID)
 	if len(ev.callbacks) == 0 {
 		ev.callbacks = nil
 	}
-	delete(ev.afterCallbacks, closure.Id)
+	delete(ev.afterCallbacks, closure.ID)
 	if len(ev.afterCallbacks) == 0 {
 		ev.afterCallbacks = nil
 	}

@@ -1,18 +1,21 @@
 package events
 
-import "reflect"
+import (
+	"sync/atomic"
+)
+
+var idCounter uint64
 
 type Closure struct {
-	Id  uintptr
+	ID  uint64
 	Fnc interface{}
 }
 
 func NewClosure(f interface{}) *Closure {
 	closure := &Closure{
+		ID:  atomic.AddUint64(&idCounter, 1),
 		Fnc: f,
 	}
-
-	closure.Id = reflect.ValueOf(closure).Pointer()
 
 	return closure
 }
