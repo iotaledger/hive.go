@@ -91,6 +91,17 @@ func (orderedMap *OrderedMap) ForEach(consumer func(key, value interface{}) bool
 	return true
 }
 
+// Clear removes all elements from the OrderedMap.
+func (orderedMap *OrderedMap) Clear() {
+	orderedMap.mutex.Lock()
+	defer orderedMap.mutex.Unlock()
+
+	orderedMap.head = nil
+	orderedMap.tail = nil
+	orderedMap.size = 0
+	orderedMap.dictionary = make(map[interface{}]*Element)
+}
+
 // Delete deletes the given key (and related value) from the orderedMap.
 // It returns false if the key is not found.
 func (orderedMap *OrderedMap) Delete(key interface{}) bool {

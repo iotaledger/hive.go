@@ -1,96 +1,83 @@
 package events
 
 import (
+	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type Event struct {
 	triggerFunc     func(handler interface{}, params ...interface{})
-	beforeCallbacks map[uint64]interface{}
-	callbacks       map[uint64]interface{}
-	afterCallbacks  map[uint64]interface{}
+	beforeCallbacks *orderedmap.OrderedMap
+	callbacks       *orderedmap.OrderedMap
+	afterCallbacks  *orderedmap.OrderedMap
 	mutex           syncutils.RWMutex
+}
+
+func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {
+	return &Event{
+		triggerFunc:     triggerFunc,
+		beforeCallbacks: orderedmap.New(),
+		callbacks:       orderedmap.New(),
+		afterCallbacks:  orderedmap.New(),
+	}
 }
 
 // AttachBefore allows to register a Closure that is executed before the Event triggers.
 func (ev *Event) AttachBefore(closure *Closure) {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	if ev.beforeCallbacks == nil {
-		ev.beforeCallbacks = make(map[uint64]interface{})
+	if closure == nil {
+		return
 	}
-	ev.beforeCallbacks[closure.ID] = closure.Fnc
+
+	ev.beforeCallbacks.Set(closure.ID, closure.Fnc)
 }
 
 func (ev *Event) Attach(closure *Closure) {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	if ev.callbacks == nil {
-		ev.callbacks = make(map[uint64]interface{})
+	if closure == nil {
+		return
 	}
-	ev.callbacks[closure.ID] = closure.Fnc
+
+	ev.callbacks.Set(closure.ID, closure.Fnc)
 }
 
 // AttachAfter allows to register a Closure that is executed after the Event triggered.
 func (ev *Event) AttachAfter(closure *Closure) {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	if ev.afterCallbacks == nil {
-		ev.afterCallbacks = make(map[uint64]interface{})
+	if closure == nil {
+		return
 	}
-	ev.afterCallbacks[closure.ID] = closure.Fnc
+
+	ev.afterCallbacks.Set(closure.ID, closure.Fnc)
 }
 
 func (ev *Event) Detach(closure *Closure) {
 	if closure == nil {
 		return
 	}
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	delete(ev.beforeCallbacks, closure.ID)
-	if len(ev.beforeCallbacks) == 0 {
-		ev.beforeCallbacks = nil
-	}
-	delete(ev.callbacks, closure.ID)
-	if len(ev.callbacks) == 0 {
-		ev.callbacks = nil
-	}
-	delete(ev.afterCallbacks, closure.ID)
-	if len(ev.afterCallbacks) == 0 {
-		ev.afterCallbacks = nil
-	}
+
+	ev.beforeCallbacks.Delete(closure.ID)
+	ev.callbacks.Delete(closure.ID)
+	ev.afterCallbacks.Delete(closure.ID)
 }
 
 func (ev *Event) Trigger(params ...interface{}) {
-	ev.mutex.RLock()
-	defer ev.mutex.RUnlock()
-	if ev.beforeCallbacks != nil {
-		for _, handler := range ev.beforeCallbacks {
-			ev.triggerFunc(handler, params...)
-		}
-	}
-	if ev.callbacks != nil {
-		for _, handler := range ev.callbacks {
-			ev.triggerFunc(handler, params...)
-		}
-	}
-	if ev.afterCallbacks != nil {
-		for _, handler := range ev.afterCallbacks {
-			ev.triggerFunc(handler, params...)
-		}
-	}
+	ev.beforeCallbacks.ForEach(func(_, handler interface{}) bool {
+		ev.triggerFunc(handler, params...)
+
+		return true
+	})
+	ev.callbacks.ForEach(func(_, handler interface{}) bool {
+		ev.triggerFunc(handler, params...)
+
+		return true
+	})
+	ev.afterCallbacks.ForEach(func(_, handler interface{}) bool {
+		ev.triggerFunc(handler, params...)
+
+		return true
+	})
 }
 
 func (ev *Event) DetachAll() {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	ev.beforeCallbacks = nil
-	ev.callbacks = nil
-	ev.afterCallbacks = nil
-}
-
-func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {
-	return &Event{
-		triggerFunc: triggerFunc,
-	}
+	ev.beforeCallbacks.Clear()
+	ev.callbacks.Clear()
+	ev.afterCallbacks.Clear()
 }
