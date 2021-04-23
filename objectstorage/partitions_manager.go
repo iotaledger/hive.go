@@ -101,3 +101,20 @@ func (partitionsManager *PartitionsManager) Retain(keysToRetain []string) {
 	partitionsManager.childPartitions[partitionKey] = newChildPartition
 	newChildPartition.Retain(keysToRetain[1:])
 }
+
+// FreeMemory copies the content of the internal maps to newly created maps.
+// This is necessary, otherwise the GC is not able to free the memory used by the old maps.
+// "delete" doesn't shrink the maximum memory used by the map, since it only marks the entry as deleted.
+func (partitionsManager *PartitionsManager) FreeMemory() {
+	partitionsManager.mutex.Lock()
+	defer partitionsManager.mutex.Unlock()
+
+	childPartitions := make(map[string]*PartitionsManager)
+	for key, childPartition := range partitionsManager.childPartitions {
+		childPartitions[key] = childPartition
+		if childPartition != nil {
+			childPartition.FreeMemory()
+		}
+	}
+	partitionsManager.childPartitions = childPartitions
+}
