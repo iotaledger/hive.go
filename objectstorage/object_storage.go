@@ -566,6 +566,51 @@ func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
 }
 
+// FreeMemory copies the content of the internal maps to newly created maps.
+// This is necessary, otherwise the GC is not able to free the memory used by the old maps.
+// "delete" doesn't shrink the maximum memory used by the map, since it only marks the entry as deleted.
+func (objectStorage *ObjectStorage) FreeMemory() {
+	objectStorage.flushMutex.RLock()
+	defer objectStorage.flushMutex.RUnlock()
+	objectStorage.cacheMutex.Lock()
+	defer objectStorage.cacheMutex.Unlock()
+
+	// recursively free memory in partitions manager
+	if objectStorage.partitionsManager != nil {
+		objectStorage.partitionsManager.FreeMemory()
+	}
+
+	var deepIterateCacheAndFreeMemory func(sourceMap map[string]interface{}) map[string]interface{}
+	deepIterateCacheAndFreeMemory = func(sourceMap map[string]interface{}) map[string]interface{} {
+		objectsFound := make(map[string]interface{})
+		partitionsFound := make(map[string]map[string]interface{})
+
+		for key, value := range sourceMap {
+			if _, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
+				// object level reached
+				objectsFound[key] = value
+			} else {
+				// partition found
+				partitionsFound[key] = value.(map[string]interface{})
+			}
+		}
+
+		if len(partitionsFound) > 0 {
+			// partitioned cache
+			partitions := make(map[string]interface{})
+			for key, partition := range partitionsFound {
+				// recursively call for every partition
+				partitions[key] = deepIterateCacheAndFreeMemory(partition)
+			}
+			return partitions
+		}
+
+		return objectsFound
+	}
+
+	objectStorage.cachedObjects = deepIterateCacheAndFreeMemory(objectStorage.cachedObjects)
+}
+
 // ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
 func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
 	return (*timedexecutor.TimedExecutor)(atomic.LoadPointer(&objectStorage.releaseExecutor))
@@ -587,9 +632,9 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 
 func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
 	objectKey := string(key)
-	currentMap := objectStorage.cachedObjects
-
 	objectStorage.cacheMutex.RLock()
+
+	currentMap := objectStorage.cachedObjects
 	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
 		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
