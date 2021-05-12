@@ -184,7 +184,7 @@ func TestTransaction(t *testing.T) {
 	// execute first Transaction with identifier 1
 	wg.Add(1)
 	go func() {
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 
 			time.Sleep(200 * time.Millisecond)
@@ -201,7 +201,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1)
@@ -215,7 +215,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1, 2)
@@ -229,7 +229,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, false)
 		}, 2)
@@ -243,7 +243,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1)
@@ -254,7 +254,7 @@ func TestTransaction(t *testing.T) {
 	// run RTransaction with a new identifier and keep track of its execution order
 	wg.Add(1)
 	go func() {
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 
 			time.Sleep(200 * time.Millisecond)
@@ -271,7 +271,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, rTransactionFinished, false)
 		}, 4)
@@ -285,7 +285,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, rTransactionFinished, true)
 		}, 4)
