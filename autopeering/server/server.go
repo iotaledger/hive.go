@@ -2,6 +2,8 @@ package server
 
 import (
 	"container/list"
+	"context"
+	"golang.org/x/time/rate"
 	"net"
 	"strings"
 	"sync"
@@ -289,7 +291,15 @@ func (s *Server) readLoop() {
 	// Traffic shaping using leaky bucket rate limiting
 	prev := time.Now()
 
+	limiter := rate.NewLimiter(rate.Every(time.Millisecond*100), 20)
 	for {
+		if !limiter.Allow() {
+			continue
+		}
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*2)
+
+		limiter.WaitN(ctx, 20)
+
 		// take new leaky bucket limiter
 		now := s.throttling.RateLimit()
 		// Adding log to find the start of the leaky bucket
