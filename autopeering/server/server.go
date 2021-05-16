@@ -2,7 +2,6 @@ package server
 
 import (
 	"container/list"
-	"golang.org/x/time/rate"
 	"net"
 	"strings"
 	"sync"
@@ -288,18 +287,18 @@ func (s *Server) readLoop() {
 	buffer := make([]byte, MaxPacketSize)
 
 	// Traffic shaping using leaky bucket rate limiting
-	//prev := time.Now()
+	prev := time.Now()
 
 	for {
 		// take new leaky bucket limiter
-		//now := s.throttling.RateLimit()
+		now := s.throttling.RateLimit()
 		// Adding log to find the start of the leaky bucket
-		//s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
-		//prev = now
-		limiter := rate.NewLimiter(rate.Every(time.Millisecond*1000), 100)
-		if !limiter.Allow() {
-			continue
-		}
+		s.log.Infof("LEAKY BUCKET %s ----------------------", now.Sub(prev))
+		prev = now
+		//limiter := rate.NewLimiter(rate.Every(time.Millisecond*1000), 100)
+		//if !limiter.Allow() {
+		//	continue
+		//}
 		n, fromAddr, err := s.conn.ReadFromUDP(buffer)
 		if netutil.IsTemporaryError(err) {
 			// ignore temporary read errors.
