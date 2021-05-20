@@ -4,6 +4,8 @@ import (
 	"sync"
 )
 
+// region MultiMutex ///////////////////////////////////////////////////////////////////////////////////////////////////
+
 type MultiMutex struct {
 	locks     map[interface{}]empty
 	locksCond *sync.Cond
@@ -17,6 +19,16 @@ func NewMultiMutex() *MultiMutex {
 			L: &sync.Mutex{},
 		},
 	}
+}
+
+// LockEntity locks all locks that are required for the given LockEntity.
+func (mutex *MultiMutex) LockEntity(entity LockableEntity) {
+	mutex.Lock(entity.Locks()...)
+}
+
+// UnlockEntity unlocks all locks that are required for the given LockEntity.
+func (mutex *MultiMutex) UnlockEntity(entity LockableEntity) {
+	mutex.Unlock(entity.Locks()...)
 }
 
 func (mutex *MultiMutex) Lock(identifiers ...interface{}) {
@@ -61,3 +73,15 @@ func (mutex *MultiMutex) Unlock(identifiers ...interface{}) {
 	mutex.locksCond.L.Unlock()
 	mutex.locksCond.Broadcast()
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region LockableEntity ///////////////////////////////////////////////////////////////////////////////////////////////
+
+// LockableEntity is an interface that allows to lock (and unlock) entities that are generating complex locks.
+type LockableEntity interface {
+	// Locks returns the locks that the entity needs to lock.
+	Locks() (locks []interface{})
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
