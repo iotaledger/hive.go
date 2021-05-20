@@ -2,7 +2,6 @@ package events
 
 import (
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
-	"github.com/iotaledger/hive.go/syncutils"
 )
 
 // Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.
@@ -11,7 +10,6 @@ type Event struct {
 	beforeCallbacks *orderedmap.OrderedMap
 	callbacks       *orderedmap.OrderedMap
 	afterCallbacks  *orderedmap.OrderedMap
-	mutex           syncutils.RWMutex
 }
 
 // NewEvent is the constructor of an Event.
