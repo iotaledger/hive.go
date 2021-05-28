@@ -91,10 +91,12 @@ func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
 	return
 }
 
+// MarshalJSON serializes public key to JSON as base58 encoded string.
 func (publicKey PublicKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(publicKey.String())
 }
 
+// UnmarshalJSON parses public key from JSON in base58 encoding.
 func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
