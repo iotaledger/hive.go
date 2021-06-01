@@ -13,6 +13,7 @@ import (
 
 // mapDB is a simple implementation of KVStore using a map.
 type mapDB struct {
+	sync.Mutex
 	m     *syncedKVMap
 	realm []byte
 }
@@ -50,11 +51,17 @@ func (s *mapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.Itera
 }
 
 func (s *mapDB) Clear() error {
+	s.Lock()
+	defer s.Unlock()
+
 	s.m.deletePrefix(s.realm)
 	return nil
 }
 
 func (s *mapDB) Get(key kvstore.Key) (kvstore.Value, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	value, contains := s.m.get(byteutils.ConcatBytes(s.realm, key))
 	if !contains {
 		return nil, kvstore.ErrKeyNotFound
@@ -63,21 +70,41 @@ func (s *mapDB) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *mapDB) Set(key kvstore.Key, value kvstore.Value) error {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.set(key, value)
+}
+
+func (s *mapDB) set(key kvstore.Key, value kvstore.Value) error {
 	s.m.set(byteutils.ConcatBytes(s.realm, key), value)
 	return nil
 }
 
 func (s *mapDB) Has(key kvstore.Key) (bool, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	contains := s.m.has(byteutils.ConcatBytes(s.realm, key))
 	return contains, nil
 }
 
 func (s *mapDB) Delete(key kvstore.Key) error {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.delete(key)
+}
+
+func (s *mapDB) delete(key kvstore.Key) error {
 	s.m.delete(byteutils.ConcatBytes(s.realm, key))
 	return nil
 }
 
 func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	s.Lock()
+	defer s.Unlock()
+
 	s.m.deletePrefix(byteutils.ConcatBytes(s.realm, prefix))
 	return nil
 }
@@ -148,17 +175,19 @@ func (b *batchedMutations) Cancel() {
 
 func (b *batchedMutations) Commit() error {
 	b.Lock()
+	b.kvStore.Lock()
+	defer b.kvStore.Unlock()
 	defer b.Unlock()
 
 	for key, value := range b.setOperations {
-		err := b.kvStore.Set([]byte(key), value)
+		err := b.kvStore.set([]byte(key), value)
 		if err != nil {
 			return err
 		}
 	}
 
 	for key := range b.deleteOperations {
-		err := b.kvStore.Delete([]byte(key))
+		err := b.kvStore.delete([]byte(key))
 		if err != nil {
 			return err
 		}
