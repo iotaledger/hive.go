@@ -13,7 +13,7 @@ import (
 
 // mapDB is a simple implementation of KVStore using a map.
 type mapDB struct {
-	sync.Mutex
+	sync.RWMutex
 	m     *syncedKVMap
 	realm []byte
 }
@@ -59,8 +59,8 @@ func (s *mapDB) Clear() error {
 }
 
 func (s *mapDB) Get(key kvstore.Key) (kvstore.Value, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	value, contains := s.m.get(byteutils.ConcatBytes(s.realm, key))
 	if !contains {
@@ -82,8 +82,8 @@ func (s *mapDB) set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (s *mapDB) Has(key kvstore.Key) (bool, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	contains := s.m.has(byteutils.ConcatBytes(s.realm, key))
 	return contains, nil
