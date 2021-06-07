@@ -52,11 +52,11 @@ func (workerPool *NonBlockingQueueWorkerPool) Submit(f func()) bool {
 	} else {
 		if antsErr == nil {
 			return true
-		} else {
-			workerPool.tasksWg.Done()
-
-			return workerPool.queue.Offer(f)
 		}
+
+		workerPool.tasksWg.Done()
+
+		return workerPool.queue.Offer(f)
 	}
 }
 
