@@ -3,6 +3,7 @@ package objectstorage
 import (
 	"bufio"
 	"fmt"
+	"github.com/labstack/gommon/log"
 	"os"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/debug"
+)
+
+var (
+	overrideCacheTime = -1
 )
 
 type Options struct {
@@ -27,9 +32,16 @@ type Options struct {
 }
 
 func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
+	var cacheTime time.Duration
+	if overrideCacheTime < 0 {
+		cacheTime = 0
+	} else {
+		cacheTime = time.Duration(overrideCacheTime)
+	}
+
 	result := &Options{
 		store:                      store,
-		cacheTime:                  0,
+		cacheTime:                  cacheTime,
 		persistenceEnabled:         true,
 		releaseExecutorWorkerCount: 1,
 	}
@@ -49,9 +61,13 @@ func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 
 type Option func(*Options)
 
+//CacheTime sets the caching time.
+//Note that if overrideCacheTime is 0 or more, it will override whatever one puts in the duration
 func CacheTime(duration time.Duration) Option {
 	return func(args *Options) {
-		args.cacheTime = duration
+		if overrideCacheTime < 0 {
+			args.cacheTime = time.Duration(overrideCacheTime) * time.Second
+		}
 	}
 }
 
@@ -290,5 +306,14 @@ func WithIteratorPrefix(prefix []byte) IteratorOption {
 func WithIteratorMaxIterations(maxIterations int) IteratorOption {
 	return func(opts *IteratorOptions) {
 		opts.maxIterations = maxIterations
+	}
+}
+
+// SetCacheOverride forces to override cache default settings with new cache waiting time.
+// -1 means nothing gets overriden
+func SetCacheOverride(cacheTimeSec int) {
+	overrideCacheTime = cacheTimeSec
+	if cacheTimeSec >= 0 {
+		log.Warnf("Cache wait time is being overriden with %d", cacheTimeSec)
 	}
 }
