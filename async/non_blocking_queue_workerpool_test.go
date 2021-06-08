@@ -31,6 +31,7 @@ func TestNonBlockingQueue_Queuing(t *testing.T) {
 	assert.False(t, wp.Submit(slowFunc))
 	assert.False(t, wp.Submit(slowFunc))
 
+	assert.False(t, enqueuedAndExecuted)
 	wp.tasksWg.Wait()
 	assert.True(t, enqueuedAndExecuted)
 }
