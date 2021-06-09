@@ -11,6 +11,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
+// NonBlockingQueuedWorkerPool implements a non-blocking goroutine pool backed by a queue.
 type NonBlockingQueuedWorkerPool struct {
 	workerFnc func(Task)
 	options   *Options
@@ -25,6 +26,7 @@ type NonBlockingQueuedWorkerPool struct {
 	tasksWg sync.WaitGroup
 }
 
+// NewNonBlockingQueuedWorkerPool creates and starts a new worker pool for the supplied function, with the supplied options.
 func NewNonBlockingQueuedWorkerPool(workerFnc func(Task), optionalOptions ...Option) (result *NonBlockingQueuedWorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
@@ -84,15 +86,18 @@ func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
 			return true
 		}
 
-		// Queue cannot accomodate more tasks, dropping
+		// Queue cannot accommodate more tasks, dropping
 		return false
 	}
 }
 
+// Submit is an alias for TrySubmit
 func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan interface{}, bool) {
 	return wp.TrySubmit(params...)
 }
 
+// TrySubmit submits a task to this pool (it drops the task if not enough workers are available).
+// It returns a channel to obtain the task result, and a boolean if the task was successfully submitted to the queue.
 func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result chan interface{}, added bool) {
 	wp.mutex.Lock()
 	defer wp.mutex.Unlock()
@@ -118,6 +123,7 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 	return result, true
 }
 
+// Stop closes this pool. If FlushTasksAtShutdown was set, it allows currently running and pending tasks to complete.
 func (wp *NonBlockingQueuedWorkerPool) Stop() {
 	wp.shutdownOnce.Do(func() {
 		wp.shutdown.Set()
@@ -141,15 +147,18 @@ func (wp *NonBlockingQueuedWorkerPool) Stop() {
 	})
 }
 
+// StopAndWait closes the pool and waits for tasks to complete.
 func (wp *NonBlockingQueuedWorkerPool) StopAndWait() {
 	wp.Stop()
 	wp.tasksWg.Wait()
 }
 
+// GetWorkerCount gets the configured worker count.
 func (wp *NonBlockingQueuedWorkerPool) GetWorkerCount() int {
 	return wp.options.WorkerCount
 }
 
+// GetPendingQueueSize gets the current amount of pending tasks in the queue.
 func (wp *NonBlockingQueuedWorkerPool) GetPendingQueueSize() int {
 	return wp.queue.Size()
 }
