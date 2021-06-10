@@ -185,8 +185,6 @@ func TestNonBlockingQueue_Flushing(t *testing.T) {
 	assert.False(t, added)
 
 	wp.StopAndWait()
-	if addedEnqueued {
-		res := <-enqueuedAndExecuted
-		assert.True(t, res.(bool))
-	}
+
+	assert.True(t, (<-enqueuedAndExecuted).(bool))
 }
