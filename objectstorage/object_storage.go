@@ -223,6 +223,51 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	return objectExistsInStore
 }
 
+// DeleteIfPresentAndReturn deletes an element and returns it. If the element does not exist then the return value is
+// nil.
+func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) StorableObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
+	deleteExistingEntry := func(cachedObject *CachedObjectImpl) StorableObject {
+		cachedObject.wg.Wait()
+
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
+			if !storableObject.IsDeleted() {
+				storableObject.Delete()
+				cachedObject.Release(true)
+
+				return storableObject
+			}
+
+		}
+		cachedObject.Release(true)
+
+		return nil
+	}
+
+	cachedObject, cacheHit := objectStorage.accessCache(key, false)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	cachedObject, cacheHit = objectStorage.accessCache(key, true)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	storableObject := objectStorage.LoadObjectFromStore(key)
+	if !typeutils.IsInterfaceNil(storableObject) {
+		storableObject.Delete()
+	}
+
+	cachedObject.publishResult(nil)
+	cachedObject.Release(true)
+
+	return storableObject
+}
+
 // Performs a "blind delete", where we do not check the objects existence.
 // blindDelete is used to delete without accessing the value log.
 func (objectStorage *ObjectStorage) Delete(key []byte) {
