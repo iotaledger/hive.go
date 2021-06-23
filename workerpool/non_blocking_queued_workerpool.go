@@ -13,8 +13,8 @@ import (
 
 // NonBlockingQueuedWorkerPool implements a non-blocking goroutine pool backed by a queue.
 type NonBlockingQueuedWorkerPool struct {
-	workerFnc func(Task)
-	options   *Options
+	workerFunc func(Task)
+	options    *Options
 
 	pool         *ants.PoolWithFunc
 	queue        *queue.Queue
@@ -27,23 +27,17 @@ type NonBlockingQueuedWorkerPool struct {
 }
 
 // NewNonBlockingQueuedWorkerPool creates and starts a new worker pool for the supplied function, with the supplied options.
-func NewNonBlockingQueuedWorkerPool(workerFnc func(Task), optionalOptions ...Option) (result *NonBlockingQueuedWorkerPool) {
+func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Option) (result *NonBlockingQueuedWorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
 	result = &NonBlockingQueuedWorkerPool{
-		workerFnc: workerFnc,
-		options:   options,
+		workerFunc: workerFunc,
+		options:    options,
 	}
 
 	workerCount := options.WorkerCount
 
-	// Each finishing task will need to submit the next, capacity needs to be at least 2.
-	// Since this setting might default on the amount of processors, let's not return an error or panic,
-	// but increase the pool capacity just enough.
-	if workerCount == 1 {
-		workerCount = 2
-	}
-	if newPool, err := ants.NewPoolWithFunc(workerCount, result.workerFcnWrapper, ants.WithNonblocking(true)); err != nil {
+	if newPool, err := ants.NewPoolWithFunc(workerCount, result.workerFuncWrapper, ants.WithNonblocking(true)); err != nil {
 		panic(err)
 	} else {
 		result.running.Set()
@@ -54,24 +48,28 @@ func NewNonBlockingQueuedWorkerPool(workerFnc func(Task), optionalOptions ...Opt
 	return
 }
 
-func (wp *NonBlockingQueuedWorkerPool) workerFcnWrapper(t interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("recovered from panic in WorkerPool: %s %s", r, debug.Stack())
-		}
+func (wp *NonBlockingQueuedWorkerPool) workerFuncWrapper(t interface{}) {
+	// always execute at least 1 task: the one that was invoked via wp.pool.Invoke
+	taskAvailable := true
+	for taskAvailable {
+		// wrap into inner function to continue execution with worker even if there's a panic
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("recovered from panic in WorkerPool: %s %s", r, debug.Stack())
+				}
 
-		// To guarantee that something polled from the queue makes into the pool
-		wp.mutex.Lock()
-		defer wp.mutex.Unlock()
+				wp.tasksWg.Done()
+			}()
 
-		wp.tasksWg.Done()
+			wp.workerFunc(t.(Task))
+		}()
 
-		if queuedTask, someInQueue := wp.queue.Poll(); someInQueue {
-			wp.doSubmit(queuedTask.(Task))
-		}
-	}()
-
-	wp.workerFnc(t.(Task))
+		// reuse worker as long as there are tasks in the queue
+		wp.mutex.RLock()
+		t, taskAvailable = wp.queue.Poll()
+		wp.mutex.RUnlock()
+	}
 }
 
 func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
@@ -96,23 +94,21 @@ func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan inter
 	return wp.TrySubmit(params...)
 }
 
-// TrySubmit submits a task to this pool (it drops the task if not enough workers are available).
+// TrySubmit submits a task to this pool (it drops the task if not enough workers are available and the queue is full).
 // It returns a channel to obtain the task result, and a boolean if the task was successfully submitted to the queue.
 func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result chan interface{}, added bool) {
-	wp.mutex.Lock()
-	defer wp.mutex.Unlock()
-
 	if wp.shutdown.IsSet() {
 		return nil, false
 	}
 
 	result = make(chan interface{}, 1)
-
 	t := Task{
 		params:     params,
 		resultChan: result,
 	}
 
+	wp.mutex.Lock()
+	defer wp.mutex.Unlock()
 	if !wp.doSubmit(t) {
 		close(result)
 		return nil, false
