@@ -35,9 +35,8 @@ func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Op
 		options:    options,
 	}
 
-	workerCount := options.WorkerCount
 
-	if newPool, err := ants.NewPoolWithFunc(workerCount, result.workerFuncWrapper, ants.WithNonblocking(true)); err != nil {
+	if newPool, err := ants.NewPoolWithFunc(options.WorkerCount, result.workerFuncWrapper, ants.WithNonblocking(true)); err != nil {
 		panic(err)
 	} else {
 		result.running.Set()
