@@ -7,7 +7,6 @@ import (
 
 	"github.com/iotaledger/hive.go/datastructure/queue"
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -18,12 +17,11 @@ type NonBlockingQueuedWorkerPool struct {
 
 	pool         *ants.PoolWithFunc
 	queue        *queue.Queue
-	shutdown     typeutils.AtomicBool
-	running      typeutils.AtomicBool
+	shutdown     bool
 	shutdownOnce sync.Once
 
-	mutex   syncutils.RWMutex
-	tasksWg sync.WaitGroup
+	shutdownMutex syncutils.RWMutex
+	tasksWg       sync.WaitGroup
 }
 
 // NewNonBlockingQueuedWorkerPool creates and starts a new worker pool for the supplied function, with the supplied options.
@@ -35,11 +33,9 @@ func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Op
 		options:    options,
 	}
 
-
 	if newPool, err := ants.NewPoolWithFunc(options.WorkerCount, result.workerFuncWrapper, ants.WithNonblocking(true)); err != nil {
 		panic(err)
 	} else {
-		result.running.Set()
 		result.pool = newPool
 		result.queue = queue.New(options.QueueSize)
 	}
@@ -65,9 +61,7 @@ func (wp *NonBlockingQueuedWorkerPool) workerFuncWrapper(t interface{}) {
 		}()
 
 		// reuse worker as long as there are tasks in the queue
-		wp.mutex.RLock()
 		t, taskAvailable = wp.queue.Poll()
-		wp.mutex.RUnlock()
 	}
 }
 
@@ -96,7 +90,10 @@ func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan inter
 // TrySubmit submits a task to this pool (it drops the task if not enough workers are available and the queue is full).
 // It returns a channel to obtain the task result, and a boolean if the task was successfully submitted to the queue.
 func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result chan interface{}, added bool) {
-	if wp.shutdown.IsSet() {
+	wp.shutdownMutex.RLock()
+	defer wp.shutdownMutex.RUnlock()
+
+	if wp.shutdown {
 		return nil, false
 	}
 
@@ -106,14 +103,12 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 		resultChan: result,
 	}
 
-	wp.mutex.Lock()
-	defer wp.mutex.Unlock()
+	wp.tasksWg.Add(1)
 	if !wp.doSubmit(t) {
+		wp.tasksWg.Done()
 		close(result)
 		return nil, false
 	}
-
-	wp.tasksWg.Add(1)
 
 	return result, true
 }
@@ -121,7 +116,9 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 // Stop closes this pool. If FlushTasksAtShutdown was set, it allows currently running and pending tasks to complete.
 func (wp *NonBlockingQueuedWorkerPool) Stop() {
 	wp.shutdownOnce.Do(func() {
-		wp.shutdown.Set()
+		wp.shutdownMutex.Lock()
+		defer wp.shutdownMutex.Unlock()
+		wp.shutdown = true
 
 		if wp.pool != nil {
 			go func() {

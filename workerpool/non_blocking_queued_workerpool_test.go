@@ -2,6 +2,7 @@ package workerpool
 
 import (
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 
 func slowFunc(t Task) {
 	time.Sleep(50 * time.Millisecond)
+	t.Return(true)
+}
+
+func fastFunc(t Task) {
 	t.Return(true)
 }
 
@@ -137,6 +142,25 @@ func TestNonBlockingQueue_QueueDropping(t *testing.T) {
 	if addedEnqueued {
 		assert.True(t, (<-enqueuedAndExecuted).(bool))
 	}
+}
+
+func TestNonBlockingQueue_Concurrency(t *testing.T) {
+	goroutines := 10000
+	capacity := 10
+	numTasks := 100
+	wp := NewNonBlockingQueuedWorkerPool(fastFunc, WorkerCount(capacity), QueueSize(capacity*numTasks), FlushTasksAtShutdown(true))
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for k := 0; k < numTasks; k++ {
+				wp.Submit()
+			}
+		}()
+	}
+	wg.Wait()
+	wp.StopAndWait()
 }
 
 func TestNonBlockingQueue_NoFlushing(t *testing.T) {
