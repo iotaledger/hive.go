@@ -145,7 +145,7 @@ func TestNonBlockingQueue_QueueDropping(t *testing.T) {
 }
 
 func TestNonBlockingQueue_Concurrency(t *testing.T) {
-	goroutines := 100000
+	goroutines := 10000
 	capacity := 10
 	numTasks := 100
 	wp := NewNonBlockingQueuedWorkerPool(fastFunc, WorkerCount(capacity), QueueSize(capacity*numTasks), FlushTasksAtShutdown(true))
