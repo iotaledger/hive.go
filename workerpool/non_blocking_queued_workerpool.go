@@ -7,7 +7,6 @@ import (
 
 	"github.com/iotaledger/hive.go/datastructure/queue"
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -18,8 +17,7 @@ type NonBlockingQueuedWorkerPool struct {
 
 	pool         *ants.PoolWithFunc
 	queue        *queue.Queue
-	shutdown     typeutils.AtomicBool
-	running      typeutils.AtomicBool
+	shutdown     bool
 	shutdownOnce sync.Once
 
 	shutdownMutex syncutils.RWMutex
@@ -38,7 +36,6 @@ func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Op
 	if newPool, err := ants.NewPoolWithFunc(options.WorkerCount, result.workerFuncWrapper, ants.WithNonblocking(true)); err != nil {
 		panic(err)
 	} else {
-		result.running.Set()
 		result.pool = newPool
 		result.queue = queue.New(options.QueueSize)
 	}
@@ -96,7 +93,7 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 	wp.shutdownMutex.RLock()
 	defer wp.shutdownMutex.RUnlock()
 
-	if wp.shutdown.IsSet() {
+	if wp.shutdown {
 		return nil, false
 	}
 
@@ -121,7 +118,7 @@ func (wp *NonBlockingQueuedWorkerPool) Stop() {
 	wp.shutdownOnce.Do(func() {
 		wp.shutdownMutex.Lock()
 		defer wp.shutdownMutex.Unlock()
-		wp.shutdown.Set()
+		wp.shutdown = true
 
 		if wp.pool != nil {
 			go func() {
