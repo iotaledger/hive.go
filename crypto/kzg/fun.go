@@ -20,6 +20,7 @@ func (sd *TrustedSetup) CommitToVector(vect *[D]kyber.Scalar) kyber.Point {
 }
 
 // CommitToValueAtIndex returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
+// This isthe proof sent to verifier
 func (sd *TrustedSetup) CommitToValueAtIndex(vect *[D]kyber.Scalar, index int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	if vect[index] == nil {
@@ -39,6 +40,8 @@ func (sd *TrustedSetup) CommitToValueAtIndex(vect *[D]kyber.Scalar, index int) k
 }
 
 // CommitAll return commit to the whole vector and to each of values of it
+// Generate commitment to the vector and proofs to all values.
+// Expensive. Usually used only in tests
 func (sd *TrustedSetup) CommitAll(vect *[D]kyber.Scalar) (kyber.Point, *[D]kyber.Point) {
 	retC := sd.CommitToVector(vect)
 	retPi := new([D]kyber.Point)
@@ -66,6 +69,7 @@ func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) b
 
 // EvalPoly evaluates polynomial given in evaluation (Lagrange) form by vect
 // at the point z using barycentric formula
+// Normally used only in tests
 func (sd *TrustedSetup) EvalPoly(vect *[D]kyber.Scalar, z kyber.Scalar) kyber.Scalar {
 	ret := sd.Suite.G1().Scalar().Zero()
 	elem := sd.Suite.G1().Scalar()

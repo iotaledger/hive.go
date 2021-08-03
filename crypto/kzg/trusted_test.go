@@ -82,3 +82,45 @@ func TestValidate2(t *testing.T) {
 		}
 	}
 }
+
+func TestValidate1Load(t *testing.T) {
+	suite := bn256.NewSuite()
+	tr, err := TrustedSetupFromFile(suite, "example.setup")
+	require.NoError(t, err)
+
+	vect := new([D]kyber.Scalar)
+	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
+	c := tr.CommitToVector(vect)
+	t.Logf("C = %s", c)
+	c, pi := tr.CommitAll(vect)
+	require.True(t, tr.Verify(c, pi[0], vect[0], 0))
+}
+
+func TestValidate2Load(t *testing.T) {
+	suite := bn256.NewSuite()
+	tr, err := TrustedSetupFromFile(suite, "example.setup")
+	require.NoError(t, err)
+
+	vect := new([D]kyber.Scalar)
+	for i := range vect {
+		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
+	}
+	c := tr.CommitToVector(vect)
+	t.Logf("C = %s", c)
+	c, pi := tr.CommitAll(vect)
+	for i := range vect {
+		require.True(t, tr.Verify(c, pi[i], vect[i], i))
+	}
+	v := tr.Suite.G1().Scalar()
+	for i := range vect {
+		v.SetInt64(int64(i + 1))
+		require.False(t, tr.Verify(c, pi[i], v, i))
+	}
+	rnd := random.New()
+	for k := 0; k < 100; k++ {
+		v.Pick(rnd)
+		for i := range vect {
+			require.False(t, tr.Verify(c, pi[i], v, i))
+		}
+	}
+}
