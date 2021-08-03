@@ -1,11 +1,22 @@
 package syncutils
 
+import (
+	"github.com/iotaledger/hive.go/datastructure/set"
+)
+
 type MultiMutexLockBuilder struct {
-	locks []interface{}
+	locks           []interface{}
+	seenIdentifiers set.Set
 }
 
 func (lockBuilder *MultiMutexLockBuilder) AddLock(identifier interface{}) *MultiMutexLockBuilder {
-	lockBuilder.locks = append(lockBuilder.locks, identifier)
+	if lockBuilder.seenIdentifiers == nil {
+		lockBuilder.seenIdentifiers = set.New()
+	}
+
+	if lockBuilder.seenIdentifiers.Add(identifier) {
+		lockBuilder.locks = append(lockBuilder.locks, identifier)
+	}
 
 	return lockBuilder
 }

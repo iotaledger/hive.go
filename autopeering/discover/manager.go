@@ -29,10 +29,11 @@ type network interface {
 }
 
 type manager struct {
+	masters []*mpeer
+
 	mutex        sync.Mutex // protects active and replacement
 	active       []*mpeer
 	replacements []*mpeer
-	masters      []*mpeer
 
 	events Events
 	net    network
@@ -43,10 +44,10 @@ type manager struct {
 }
 
 func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager {
-	m := &manager{
+	return &manager{
+		masters:      wrapPeers(masters),
 		active:       make([]*mpeer, 0, maxManaged),
 		replacements: make([]*mpeer, 0, maxReplacements),
-		masters:      wrapPeers(masters),
 		events: Events{
 			PeerDiscovered: events.NewEvent(peerDiscovered),
 			PeerDeleted:    events.NewEvent(peerDeleted),
@@ -55,12 +56,11 @@ func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager 
 		log:     log,
 		closing: make(chan struct{}),
 	}
-	m.loadInitialPeers(masters)
-
-	return m
 }
 
 func (m *manager) start() {
+	m.loadInitialPeers()
+
 	m.wg.Add(1)
 	go m.loop()
 }
@@ -224,7 +224,7 @@ func (m *manager) addReplacement(p *mpeer) bool {
 	return true
 }
 
-func (m *manager) loadInitialPeers(masters []*peer.Peer) {
+func (m *manager) loadInitialPeers() {
 	var peers []*peer.Peer
 
 	db := m.net.local().Database()
@@ -232,7 +232,7 @@ func (m *manager) loadInitialPeers(masters []*peer.Peer) {
 		peers = db.SeedPeers()
 	}
 
-	peers = append(peers, masters...)
+	peers = append(peers, unwrapPeers(m.masters)...)
 	for _, p := range peers {
 		m.addDiscoveredPeer(p)
 	}

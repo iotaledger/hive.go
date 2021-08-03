@@ -75,14 +75,21 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 }
 
 func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool) {
+	// take a snapshot of the current elements
 	s.RLock()
-	defer s.RUnlock()
+	copiedElements := make(map[string]struct{})
 	prefix := byteutils.ConcatBytesToString(realm, keyPrefix)
 	for key := range s.m {
 		if strings.HasPrefix(key, prefix) {
-			if !consume([]byte(key)[len(realm):]) {
-				break
-			}
+			copiedElements[key] = struct{}{}
+		}
+	}
+	s.RUnlock()
+
+	// iterate through found elements
+	for key := range copiedElements {
+		if !consume([]byte(key)[len(realm):]) {
+			break
 		}
 	}
 }

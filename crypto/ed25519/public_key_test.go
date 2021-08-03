@@ -1,6 +1,7 @@
 package ed25519
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,4 +33,24 @@ func TestPublicKey_VerifySignature(t *testing.T) {
 	sig := privateKey.Sign(data)
 
 	assert.True(t, publicKey.VerifySignature(data, sig))
+}
+
+func TestPublicKey_MarshalJSON(t *testing.T) {
+	pk, err := PublicKeyFromString("CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3")
+	require.NoError(t, err)
+	b, err := json.Marshal(pk)
+	require.NoError(t, err)
+	got := string(b)
+	assert.Equal(t, `"CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3"`, got)
+}
+
+func TestPublicKey_UnmarshalJSON(t *testing.T) {
+	jsonData := `"CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3"`
+	var got PublicKey
+	err := json.Unmarshal([]byte(jsonData), &got)
+	require.NoError(t, err)
+
+	expected, err := PublicKeyFromString("CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3")
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
 }

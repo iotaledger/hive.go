@@ -20,6 +20,44 @@ func New() *OrderedMap {
 	}
 }
 
+// Head returns the first map entry.
+func (orderedMap *OrderedMap) Head() (key, value interface{}, exists bool) {
+	orderedMap.mutex.RLock()
+	defer orderedMap.mutex.RUnlock()
+
+	if exists = orderedMap.head != nil; !exists {
+		return
+	}
+	key = orderedMap.head.key
+	value = orderedMap.head.value
+
+	return
+}
+
+// Tail returns the last map entry.
+func (orderedMap *OrderedMap) Tail() (key, value interface{}, exists bool) {
+	orderedMap.mutex.RLock()
+	defer orderedMap.mutex.RUnlock()
+
+	if exists = orderedMap.tail != nil; !exists {
+		return
+	}
+	key = orderedMap.tail.key
+	value = orderedMap.tail.value
+
+	return
+}
+
+// Has returns if an entry with the given key exists.
+func (orderedMap *OrderedMap) Has(key interface{}) (has bool) {
+	orderedMap.mutex.RLock()
+	defer orderedMap.mutex.RUnlock()
+
+	_, has = orderedMap.dictionary[key]
+
+	return
+}
+
 // Get returns the value mapped to the given key if exists.
 func (orderedMap *OrderedMap) Get(key interface{}) (interface{}, bool) {
 	orderedMap.mutex.RLock()
@@ -30,7 +68,6 @@ func (orderedMap *OrderedMap) Get(key interface{}) (interface{}, bool) {
 		return nil, false
 	}
 	return orderedMapElement.value, true
-
 }
 
 // Set adds a key-value pair to the orderedMap. It returns false if the same pair already exists.
@@ -89,6 +126,37 @@ func (orderedMap *OrderedMap) ForEach(consumer func(key, value interface{}) bool
 	}
 
 	return true
+}
+
+// ForEachReverse iterates through the orderedMap in reverse order and calls the consumer function for every element.
+// The iteration can be aborted by returning false in the consumer.
+func (orderedMap *OrderedMap) ForEachReverse(consumer func(key, value interface{}) bool) bool {
+	orderedMap.mutex.RLock()
+	currentEntry := orderedMap.tail
+	orderedMap.mutex.RUnlock()
+
+	for currentEntry != nil {
+		if !consumer(currentEntry.key, currentEntry.value) {
+			return false
+		}
+
+		orderedMap.mutex.RLock()
+		currentEntry = currentEntry.prev
+		orderedMap.mutex.RUnlock()
+	}
+
+	return true
+}
+
+// Clear removes all elements from the OrderedMap.
+func (orderedMap *OrderedMap) Clear() {
+	orderedMap.mutex.Lock()
+	defer orderedMap.mutex.Unlock()
+
+	orderedMap.head = nil
+	orderedMap.tail = nil
+	orderedMap.size = 0
+	orderedMap.dictionary = make(map[interface{}]*Element)
 }
 
 // Delete deletes the given key (and related value) from the orderedMap.

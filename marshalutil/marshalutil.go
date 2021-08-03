@@ -105,6 +105,12 @@ func (util *MarshalUtil) Bytes(clone ...bool) []byte {
 	return util.bytes[:util.size]
 }
 
+// DoneReading checks if there are any bytes left to read.
+func (util *MarshalUtil) DoneReading() (bool, error) {
+	_, err := util.checkReadCapacity(0)
+	return util.ReadOffset() == util.size, err
+}
+
 // checkReadCapacity checks if the internal buffer has enough bytes left to successfully read the given length.
 func (util *MarshalUtil) checkReadCapacity(length int) (readEndOffset int, err error) {
 	readEndOffset = util.readOffset + length

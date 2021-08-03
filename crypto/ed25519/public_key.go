@@ -1,8 +1,11 @@
 package ed25519
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+
+	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
@@ -11,6 +14,16 @@ import (
 
 // PublicKey is the type of Ed25519 public keys.
 type PublicKey [PublicKeySize]byte
+
+// PublicKeyFromString parses the given string with base58 encoding and returns a PublicKey.
+func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
+	b, err := base58.Decode(s)
+	if err != nil {
+		return publicKey, xerrors.Errorf("failed to parse public key %s from base58 string: %w", s, err)
+	}
+	publicKey, _, err = PublicKeyFromBytes(b)
+	return publicKey, err
+}
 
 // PublicKeyFromBytes creates a PublicKey from the given bytes.
 func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
@@ -76,4 +89,23 @@ func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
 	copy(publicKey[:], bytes[:])
 
 	return
+}
+
+// MarshalJSON serializes public key to JSON as base58 encoded string.
+func (publicKey PublicKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(publicKey.String())
+}
+
+// UnmarshalJSON parses public key from JSON in base58 encoding.
+func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	pk, err := PublicKeyFromString(s)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key from JSON: %w", err)
+	}
+	*publicKey = pk
+	return nil
 }
