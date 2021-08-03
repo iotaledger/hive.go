@@ -39,6 +39,19 @@ func (sd *TrustedSetup) CommitToValueAtIndex(vect *[D]kyber.Scalar, index int) k
 	return ret
 }
 
+// Verify verifies KZG proof that polynomial f committed with C has f(rou<atIndex>) = v
+// c is commitment to the polynomial
+// pi is commitment to the value point (proof)
+// value is the value of the polynomial
+// adIndex is index of the root of unity where polynomial is expected to have value = v
+func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) bool {
+	p1 := sd.Suite.Pair(pi, sd.Diff2[atIndex])
+	e := sd.Suite.G1().Point().Mul(v, nil)
+	e.Sub(c, e)
+	p2 := sd.Suite.Pair(e, sd.Suite.G2().Point().Base())
+	return p1.Equal(p2)
+}
+
 // CommitAll return commit to the whole vector and to each of values of it
 // Generate commitment to the vector and proofs to all values.
 // Expensive. Usually used only in tests
@@ -52,19 +65,6 @@ func (sd *TrustedSetup) CommitAll(vect *[D]kyber.Scalar) (kyber.Point, *[D]kyber
 		retPi[i] = sd.CommitToValueAtIndex(vect, i)
 	}
 	return retC, retPi
-}
-
-// Verify verifies KZG proof that polynomial f committed with C has f(rou<atIndex>) = v
-// c is commitment to the polynomial
-// pi is commitment to the value point (proof)
-// value is the value of the polynomial
-// adIndex is index of the root of unity where polynomial is expected to have value = v
-func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) bool {
-	p1 := sd.Suite.Pair(pi, sd.Diff2[atIndex])
-	e := sd.Suite.G1().Point().Mul(v, nil)
-	e.Sub(c, e)
-	p2 := sd.Suite.Pair(e, sd.Suite.G2().Point().Base())
-	return p1.Equal(p2)
 }
 
 // EvalPoly evaluates polynomial given in evaluation (Lagrange) form by vect

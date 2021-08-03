@@ -22,7 +22,8 @@ func powerSimple(suite *bn256.Suite, x kyber.Scalar, n int, setTo ...kyber.Scala
 	return ret
 }
 
-// powerBig x^n where n is any big.Int. O(log2(n)) complexity
+// powerBig x^n on the field where n is any big.Int
+// apparently it uses exponentiation by squaring: https://en.wikipedia.org/wiki/Exponentiation_by_squaring
 func powerBig(suite *bn256.Suite, x kyber.Scalar, n *big.Int) kyber.Scalar {
 	if n.Cmp(big0) == 0 {
 		return suite.G1().Scalar().One()
@@ -62,6 +63,8 @@ func isRootOfUnity(suite *bn256.Suite, rootOfUnity kyber.Scalar) bool {
 }
 
 // generateRootOfUnity generates random scalar s and returns s^((fieldOrder-1)/D)
+// It is a root of unity with property rou^D == 1, however it is not necessarily a primitive root of unity.
+// The primitive root of unity must satisfy rou^N != 1 for any N=1..D-1
 func generateRootOfUnity(suite *bn256.Suite) kyber.Scalar {
 	for {
 		s := suite.G1().Scalar().Pick(random.New())
@@ -72,7 +75,7 @@ func generateRootOfUnity(suite *bn256.Suite) kyber.Scalar {
 	}
 }
 
-// GenRootOfUnityPrimitive generates random roots of unity until all its powers are long enough
+// GenRootOfUnityPrimitive generates random roots of unity until all its powers are long enough thus excluding also 1
 func GenRootOfUnityPrimitive(suite *bn256.Suite) (kyber.Scalar, *[D]kyber.Scalar) {
 	repeat := true
 	var rou kyber.Scalar
