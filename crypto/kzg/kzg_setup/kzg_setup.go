@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"syscall"
@@ -12,7 +13,7 @@ import (
 	"github.com/iotaledger/hive.go/crypto/kzg"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const minSeed = 20
@@ -27,7 +28,7 @@ func main() {
 	var err error
 	for {
 		fmt.Printf("please enter seed > %d symbols and press ENTER (CTRL-C to exit) > ", minSeed)
-		seed, err = terminal.ReadPassword(int(syscall.Stdin))
+		seed, err = term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			fmt.Printf("\nerror: %v\n", err)
 			continue
@@ -58,7 +59,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err = os.WriteFile(os.Args[1], tr.Bytes(), 0600); err != nil {
+	if err = ioutil.WriteFile(os.Args[1], tr.Bytes(), 0600); err != nil {
 		panic(err)
 	}
 	fmt.Printf("success. The trusted setup has been generated and saved into the file '%s'\n", os.Args[1])

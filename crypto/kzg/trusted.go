@@ -2,12 +2,12 @@ package kzg
 
 import (
 	"bytes"
-	"golang.org/x/xerrors"
 	"io"
-	"os"
+	"io/ioutil"
 
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
+	"golang.org/x/xerrors"
 )
 
 // TrustedSetup is a trusted setup for KZG calculations with degree D.
@@ -82,13 +82,14 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 
 // TrustedSetupFromFile restores trusted setup from file
 func TrustedSetupFromFile(suite *bn256.Suite, fname string) (*TrustedSetup, error) {
-	data, err := os.ReadFile(fname)
+	data, err := ioutil.ReadFile(fname)
 	if err != nil {
 		return nil, err
 	}
 	return TrustedSetupFromBytes(suite, data)
 }
 
+// Bytes marshals the trusted setup
 func (sd *TrustedSetup) Bytes() []byte {
 	var buf bytes.Buffer
 	if err := sd.write(&buf); err != nil {
