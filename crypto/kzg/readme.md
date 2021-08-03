@@ -23,5 +23,3 @@ generated (not secret) primitive root of unity for the field.
 Some more readings:
 
 * [Kate Commitments: A Primer](https://hackmd.io/@tompocock/Hk2A7BD6U)
-
-
