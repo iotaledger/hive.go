@@ -1,10 +1,11 @@
 package kzg
 
 import (
+	"math/big"
+
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/kyber/v3/util/random"
-	"math/big"
 )
 
 // powerSimple x^n, linear multiplication

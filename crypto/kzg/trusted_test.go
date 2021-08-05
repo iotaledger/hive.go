@@ -2,12 +2,13 @@ package kzg
 
 import (
 	"encoding/hex"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/kyber/v3/util/random"
 	"golang.org/x/crypto/blake2b"
-	"testing"
 )
 
 func TestGenLen(t *testing.T) {

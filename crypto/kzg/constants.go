@@ -11,7 +11,7 @@ import (
 const (
 	// D = 2**LOGD = 16 is an optimal factor of (fieldOrder-1)
 	D = 2 * 2 * 2 * 2
-	// just 4 to remember we only need 4 bits for the index in the vector elements
+	// LOGD just = 4 to remember we only need 4 bits for the index in the vector elements
 	LOGD = 4
 	// a constant to check consistency: orderMinus1DivDStr = (fieldOrder-1)/D
 	orderMinus1DivDStr = "4062534355977912733299777421397494108910650378368986649367566435565260424998"
