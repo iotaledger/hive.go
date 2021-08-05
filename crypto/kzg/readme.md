@@ -2,7 +2,7 @@
 Package KZG implements functions needed for _Kate-Zaverucha-Goldberg_ polynomial commitments,
 also known as KZG, KZG10 and **Kate commitments**.
 
-The KZG commitments are needed to calculate vector committments for the implementation
+The KZG commitments are needed to calculate vector commitments for the implementation
 of `verkle trees`, a more efficient variation of a classic Merkle trees.
 
 See:
@@ -12,13 +12,19 @@ See:
 The implementation uses [DEDIS Advanced Crypto Library for Go Kyber v3](https://github.com/dedis/kyber)
 and its `BN256` bilinear pairing suite as cryptographic primitives.
 
-The implementation assumes fixed degree of polynomials D = 16. It follows guidelines:
+It follows guidelines:
 * [KZG polynomial commitments](https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html) by Dankrad Feist
 * [PCS multiproofs using random evaluation](https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html) Dankrad Feist
 
-However, this implementation uses proprietary structure of the trusted setup.
-The implemented trusted setup contains different values on G1 curve which are precomputed from the secret scalar and
-generated (not secret) primitive root of unity for the field.
+This implementation uses proprietary structure of the trusted setup, not mentioned in the article above.
+The implemented trusted setup contains a number of constant values on G1 curve which are precomputed
+from the secret scalar and generated primitive root of unity for the field.
+
+The implementation assumes fixed degree of polynomials D = 16. It corresponds to the hexary _verkle trie_.
+
+The math of the implementation is described in this [HackMD document](https://hackmd.io/JM7BDAugQyuJgW66K-OX7A).
+
+
 
 Some more readings:
 

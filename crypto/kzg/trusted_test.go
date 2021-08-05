@@ -29,6 +29,9 @@ func TestGenD(t *testing.T) {
 	data := tr.Bytes()
 	t.Logf("trusted setup size: %d", len(data))
 
+	err = tr.check()
+	require.NoError(t, err)
+
 	trBack, err := TrustedSetupFromBytes(suite, data)
 	require.NoError(t, err)
 
@@ -46,7 +49,7 @@ func TestValidate1(t *testing.T) {
 
 	vect := new([D]kyber.Scalar)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
-	c := tr.CommitToVector(vect)
+	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
 	c, pi := tr.CommitAll(vect)
 	require.True(t, tr.Verify(c, pi[0], vect[0], 0))
@@ -63,7 +66,7 @@ func TestValidate2(t *testing.T) {
 	for i := range vect {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
-	c := tr.CommitToVector(vect)
+	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
 	c, pi := tr.CommitAll(vect)
 	for i := range vect {
@@ -90,7 +93,7 @@ func TestValidate1Load(t *testing.T) {
 
 	vect := new([D]kyber.Scalar)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
-	c := tr.CommitToVector(vect)
+	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
 	c, pi := tr.CommitAll(vect)
 	require.True(t, tr.Verify(c, pi[0], vect[0], 0))
@@ -105,7 +108,7 @@ func TestValidate2Load(t *testing.T) {
 	for i := range vect {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
-	c := tr.CommitToVector(vect)
+	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
 	c, pi := tr.CommitAll(vect)
 	for i := range vect {

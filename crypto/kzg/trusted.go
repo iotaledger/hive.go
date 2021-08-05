@@ -19,12 +19,12 @@ import (
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element
 type TrustedSetup struct {
 	Suite               *bn256.Suite
-	RootOfUnity         kyber.Scalar      // rou: a primitive root of unity of the field
-	RootOfUnityPowers   [D]kyber.Scalar   // rou<i> =  rou^i. rou<0> == 1, row<1> =  rou
-	Diff2               [D]kyber.Point    // [secret-rou<i>]2
-	DiffInv             [D]kyber.Point    // [1/(s-rou<i>)]1
-	LagrangePolysCommit [D]kyber.Point    // [l<i>(secret)]1
-	PiMatrix            [D][D]kyber.Point // [l<i>(s)/(s-rou<j>)]1
+	RootOfUnity         kyber.Scalar      // omega: a primitive root of unity of the field.
+	RootOfUnityPowers   [D]kyber.Scalar   // omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
+	LagrangePolysCommit [D]kyber.Point    // TLi = [l<i>(secret)]1
+	Diff2               [D]kyber.Point    // TPi = [secret-omega<i>]2
+	DiffInv             [D]kyber.Point    // TDi = [1/(s-omega<i>)]1
+	PiMatrix            [D][D]kyber.Point // TLD<i,j> = [l<i>(s)/(s-omega<j>)]1
 	// util constants
 	ZeroG1 kyber.Scalar
 	OneG1  kyber.Scalar
@@ -68,6 +68,9 @@ func TrustedSetupFromSecret(suite *bn256.Suite, rootOfUnity, secret kyber.Scalar
 	if err := ret.generate(rootOfUnity, secret); err != nil {
 		return nil, err
 	}
+	if err := ret.check(); err != nil {
+		return nil, err
+	}
 	return ret, nil
 }
 
@@ -75,6 +78,9 @@ func TrustedSetupFromSecret(suite *bn256.Suite, rootOfUnity, secret kyber.Scalar
 func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, error) {
 	ret := newTrustedSetup(suite)
 	if err := ret.read(bytes.NewReader(data)); err != nil {
+		return nil, err
+	}
+	if err := ret.check(); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -86,7 +92,14 @@ func TrustedSetupFromFile(suite *bn256.Suite, fname string) (*TrustedSetup, erro
 	if err != nil {
 		return nil, err
 	}
-	return TrustedSetupFromBytes(suite, data)
+	ret, err := TrustedSetupFromBytes(suite, data)
+	if err != nil {
+		return nil, err
+	}
+	if err = ret.check(); err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 // Bytes marshals the trusted setup
@@ -96,6 +109,27 @@ func (sd *TrustedSetup) Bytes() []byte {
 		panic(err)
 	}
 	return buf.Bytes()
+}
+
+// check checks consistency of constant on curve by checking pairing constraints
+func (sd *TrustedSetup) check() error {
+	oneGT := sd.Suite.GT().Point()
+	oneGT.Mul(sd.OneG1, nil)
+	H := sd.Suite.G2().Point().Base()
+	for i := range sd.Diff2 {
+		left := sd.Suite.Pair(sd.DiffInv[i], sd.Diff2[i])
+		if !left.Equal(oneGT) {
+			return xerrors.Errorf("wrong constant TP[%d] or TD[%d] (Diff2, DiffInv)", i, i)
+		}
+		for j := range sd.PiMatrix[i] {
+			left = sd.Suite.Pair(sd.PiMatrix[i][j], sd.Diff2[j])
+			right := sd.Suite.Pair(sd.LagrangePolysCommit[i], H)
+			if !left.Equal(right) {
+				return xerrors.Errorf("wrong constant TLP[%d][%d] (PiMatrix)", i, j)
+			}
+		}
+	}
+	return nil
 }
 
 // generate fills up the TrustedSetup based on its root of unity and provided secret
@@ -111,7 +145,7 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 			return errNonPrimitiveROU
 		}
 	}
-	// generate [secret-rou<i>]2
+	// generate [secret-omega<i>]2
 	e2 := sd.Suite.G2().Scalar()
 	for i := range sd.Diff2 {
 		e2.Sub(secret, sd.RootOfUnityPowers[i])
@@ -122,7 +156,7 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 	for i := range sd.DiffInv {
 		e1.Sub(secret, sd.RootOfUnityPowers[i])
 		e1.Inv(e1)
-		sd.DiffInv[i].Mul(e1, nil) // = [1/(secret-rou<i>)]1
+		sd.DiffInv[i].Mul(e1, nil) // = [1/(secret-omega<i>)]1
 	}
 
 	for i := range sd.LagrangePolysCommit {
@@ -138,7 +172,7 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 	return nil
 }
 
-// evalLagrangeValue calculates li(X) = [prod<j=0,D-1;j!=i>((X-rou^j)/(rou^i-rou^j)]1
+// evalLagrangeValue calculates li(X) = [prod<j=0,D-1;j!=i>((X-omega^j)/(omega^i-omega^j)]1
 func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 	ret := sd.Suite.G1().Scalar().One()
 	numer := sd.Suite.G1().Scalar()
@@ -156,6 +190,7 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 	return ret
 }
 
+// write marshal
 func (sd *TrustedSetup) write(w io.Writer) error {
 	if _, err := sd.RootOfUnity.MarshalTo(w); err != nil {
 		return err
@@ -185,6 +220,7 @@ func (sd *TrustedSetup) write(w io.Writer) error {
 	return nil
 }
 
+// read unmarshal
 func (sd *TrustedSetup) read(r io.Reader) error {
 	if _, err := sd.RootOfUnity.UnmarshalFrom(r); err != nil {
 		return err

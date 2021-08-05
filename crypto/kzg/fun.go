@@ -2,11 +2,11 @@ package kzg
 
 import "go.dedis.ch/kyber/v3"
 
-// CommitToVector commits to vector vect[0], ...., vect[D-1]
+// Commit commits to vector vect[0], ...., vect[D-1]
 // it is [f(s)]1 where f is polynomial  in evaluation (Lagrange) form,
 // i.e. with f(rou[i]) = vect[i], i = 0..D-1
 // vect[k] == nil equivalent to 0
-func (sd *TrustedSetup) CommitToVector(vect *[D]kyber.Scalar) kyber.Point {
+func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	elem := sd.Suite.G1().Point()
 	for i, e := range vect {
@@ -19,9 +19,9 @@ func (sd *TrustedSetup) CommitToVector(vect *[D]kyber.Scalar) kyber.Point {
 	return ret
 }
 
-// CommitToValueAtIndex returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
+// Prove returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
 // This isthe proof sent to verifier
-func (sd *TrustedSetup) CommitToValueAtIndex(vect *[D]kyber.Scalar, index int) kyber.Point {
+func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, index int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	if vect[index] == nil {
 		return ret
@@ -56,18 +56,18 @@ func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) b
 // Generate commitment to the vector and proofs to all values.
 // Expensive. Usually used only in tests
 func (sd *TrustedSetup) CommitAll(vect *[D]kyber.Scalar) (kyber.Point, *[D]kyber.Point) {
-	retC := sd.CommitToVector(vect)
+	retC := sd.Commit(vect)
 	retPi := new([D]kyber.Point)
 	for i := range vect {
 		if vect[i] == nil {
 			continue
 		}
-		retPi[i] = sd.CommitToValueAtIndex(vect, i)
+		retPi[i] = sd.Prove(vect, i)
 	}
 	return retC, retPi
 }
 
-// EvalPoly evaluates polynomial given in evaluation (Lagrange) form by vect
+// EvalPoly evaluates polynomial in evaluation (Lagrange) form by vect
 // at the point z using barycentric formula
 // Normally used only in tests
 func (sd *TrustedSetup) EvalPoly(vect *[D]kyber.Scalar, z kyber.Scalar) kyber.Scalar {
