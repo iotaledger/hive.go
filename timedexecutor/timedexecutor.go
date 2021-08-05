@@ -12,19 +12,24 @@ import (
 // TimedExecutor defines a scheduler that executes tasks in the background at a given time. It does not spawn any
 // additional goroutines for each task and executes the tasks sequentially (in each worker).
 type TimedExecutor struct {
-	workerCount int
-	queue       *timedqueue.TimedQueue
-	shutdownWG  sync.WaitGroup
+	workerCount  int
+	maxQueueSize int
+	queue        *timedqueue.TimedQueue
+	shutdownWG   sync.WaitGroup
 }
 
 // New is the constructor for a TimedExecutor that creates a scheduler with a given number of workers that execute the
 // scheduled tasks in parallel (whenever they become due).
-func New(workerCount int) (timedExecutor *TimedExecutor) {
+func New(workerCount int, opts ...Option) (timedExecutor *TimedExecutor) {
 	timedExecutor = &TimedExecutor{
 		workerCount: workerCount,
-		queue:       timedqueue.New(),
 	}
 
+	for _, opt := range opts {
+		opt(timedExecutor)
+	}
+
+	timedExecutor.queue = timedqueue.New(timedqueue.WithMaxSize(timedExecutor.maxQueueSize))
 	timedExecutor.startBackgroundWorkers()
 
 	return
@@ -106,5 +111,19 @@ const (
 	// Shutdown method.
 	DontWaitForShutdown timedqueue.ShutdownFlag = 1 << 7
 )
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Option //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Option is the type for functional options of the TimedExecutor.
+type Option func(t *TimedExecutor)
+
+// WithMaxQueueSize is an Option for the TimedExecutor that allows to specify a maxSize of the underlying queue.
+func WithMaxQueueSize(maxSize int) Option {
+	return func(t *TimedExecutor) {
+		t.maxQueueSize = maxSize
+	}
+}
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
