@@ -18,6 +18,8 @@ type TimedQueue struct {
 
 	waitCond *sync.Cond
 
+	maxSize int
+
 	shutdownSignal chan byte
 	isShutdown     bool
 	shutdownFlags  ShutdownFlag
@@ -25,11 +27,15 @@ type TimedQueue struct {
 }
 
 // New is the constructor for the TimedQueue.
-func New() (queue *TimedQueue) {
+func New(opts ...Option) (queue *TimedQueue) {
 	queue = &TimedQueue{
 		shutdownSignal: make(chan byte),
 	}
 	queue.waitCond = sync.NewCond(&queue.heapMutex)
+
+	for _, opt := range opts {
+		opt(queue)
+	}
 
 	return
 }
@@ -62,6 +68,13 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 		index:         0,
 	}
 	heap.Push(&t.heap, addedElement)
+
+	if t.maxSize > 0 {
+		// heap is bigger than maxSize now; remove the last element (furthest in the future).
+		if size := t.heap.Len(); size > t.maxSize {
+			heap.Remove(&t.heap, size-1)
+		}
+	}
 
 	// release locks
 	t.heapMutex.Unlock()
@@ -303,5 +316,19 @@ func (h *timedHeap) Pop() interface{} {
 
 // interface contract (allow the compiler to check if the implementation has all of the required methods).
 var _ heap.Interface = &timedHeap{}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Option //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Option is the type for functional options of the TimedQueue.
+type Option func(queue *TimedQueue)
+
+// WithMaxSize is an Option for the TimedQueue that allows to specify a maxSize of the queue.
+func WithMaxSize(maxSize int) Option {
+	return func(queue *TimedQueue) {
+		queue.maxSize = maxSize
+	}
+}
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
