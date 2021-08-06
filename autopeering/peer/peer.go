@@ -1,9 +1,12 @@
 package peer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+
+	"golang.org/x/xerrors"
 
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
@@ -125,4 +128,38 @@ func Unmarshal(data []byte) (*Peer, error) {
 		return nil, err
 	}
 	return FromProto(s)
+}
+
+type peerJSON struct {
+	PublicKey string          `json:"publicKey"`
+	IP        net.IP          `json:"ip"`
+	Services  *service.Record `json:"services"`
+}
+
+// UnmarshalJSON deserializes given json data into a Peer struct.
+func (p *Peer) UnmarshalJSON(b []byte) error {
+	pj := &peerJSON{}
+	if err := json.Unmarshal(b, pj); err != nil {
+		return xerrors.Errorf("%w", err)
+	}
+	publicKey, err := ed25519.PublicKeyFromString(pj.PublicKey)
+	if err != nil {
+		return xerrors.Errorf("can't parse public key: %w", err)
+	}
+	id := identity.New(publicKey)
+	if pj.Services.Get(service.PeeringKey) == nil {
+		return xerrors.Errorf("invalid services json: %w", ErrNeedsPeeringService)
+	}
+	*p = *NewPeer(id, pj.IP, pj.Services)
+	return nil
+}
+
+// MarshalJSON serializes Peer into json data.
+func (p *Peer) MarshalJSON() ([]byte, error) {
+	pj := &peerJSON{
+		PublicKey: p.PublicKey().String(),
+		IP:        p.ip,
+		Services:  p.services,
+	}
+	return json.Marshal(pj)
 }

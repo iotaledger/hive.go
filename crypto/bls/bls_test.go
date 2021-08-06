@@ -41,3 +41,13 @@ func TestSingleSignature(t *testing.T) {
 	assert.True(t, signature.IsValid(dataToSign))
 	assert.False(t, signature.IsValid([]byte("some other data")))
 }
+
+func TestMarshalPublicKey(t *testing.T) {
+	privateKey := PrivateKeyFromRandomness()
+	pubKey := privateKey.PublicKey()
+
+	pubKeyBytes := pubKey.Bytes()
+	pubKeyBack, _, err := PublicKeyFromBytes(pubKeyBytes)
+	require.NoError(t, err)
+	require.EqualValues(t, pubKeyBytes, pubKeyBack.Bytes())
+}

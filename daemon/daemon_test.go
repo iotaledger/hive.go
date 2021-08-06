@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/daemon"
-	"github.com/iotaledger/hive.go/typeutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/daemon"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // graceTime for go routines to start
@@ -174,11 +175,22 @@ func TestReRun(t *testing.T) {
 	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		<-terminate
 	}))
+
+	// should throw an error if another worker with the same name is added before the daemon is started
+	require.Error(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+	}))
 	d.Start()
+
+	// should throw an error if another worker with the same name is still running
+	require.Error(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+		<-shutdownSignal
+	}))
 
 	terminate <- struct{}{}
 	time.Sleep(graceTime)
 
+	// should throw no error because the daemon was terminated and can be reused now
 	var wasStarted typeutils.AtomicBool
 	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
 		wasStarted.Set()

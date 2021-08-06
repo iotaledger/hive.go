@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
@@ -39,6 +40,13 @@ type manager struct {
 	dropOnUpdate      bool      // set true to drop all neighbors when the salt is updated
 	neighborValidator Validator // potential neighbor validator
 
+	useMana          bool // set true to use mana
+	manaFunc         mana.Func
+	rankedPeers      []*peer.Peer // valid peers ranked by mana
+	rankedPeersMutex sync.RWMutex
+	r                int
+	ro               float64
+
 	events   Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
@@ -60,19 +68,24 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		log:               log,
 		dropOnUpdate:      opts.dropOnUpdate,
 		neighborValidator: opts.neighborValidator,
+		useMana:           opts.useMana,
+		manaFunc:          opts.manaFunc,
+		rankedPeers:       []*peer.Peer{},
+		r:                 opts.r,
+		ro:                opts.ro,
+		inbound:           NewNeighborhood(inboundNeighborSize),
+		outbound:          NewNeighborhood(outboundNeighborSize),
+		rejectionFilter:   NewFilter(),
+		dropChan:          make(chan identity.ID, queueSize),
+		requestChan:       make(chan peeringRequest, queueSize),
+		replyChan:         make(chan bool, 1),
+		closing:           make(chan struct{}),
 		events: Events{
 			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
 			OutgoingPeering: events.NewEvent(peeringCaller),
 			IncomingPeering: events.NewEvent(peeringCaller),
 			Dropped:         events.NewEvent(droppedCaller),
 		},
-		inbound:         NewNeighborhood(inboundNeighborSize),
-		outbound:        NewNeighborhood(outboundNeighborSize),
-		rejectionFilter: NewFilter(),
-		dropChan:        make(chan identity.ID, queueSize),
-		requestChan:     make(chan peeringRequest, queueSize),
-		replyChan:       make(chan bool, 1),
-		closing:         make(chan struct{}),
 	}
 }
 
@@ -220,8 +233,36 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	var result peer.PeerDistance
 	defer func() { resultChan <- result }() // assure that a result is always sent to the channel
 
+	knownPeers := m.getPeersToConnect()
+
+	if m.useMana {
+		// extract identities from known peers
+		identities := []*identity.Identity{}
+		peerMap := make(map[*identity.Identity]*peer.Peer)
+
+		for _, peer := range knownPeers {
+			identities = append(identities, peer.Identity)
+			peerMap[peer.Identity] = peer
+		}
+
+		// rank known peers by mana
+		manaRank := mana.RankByVariableRange(m.manaFunc, m.net.local().Identity, identities, m.r, m.ro)
+
+		// retrieve peers from identities
+		m.rankedPeersMutex.Lock()
+		m.rankedPeers = []*peer.Peer{}
+		for _, identity := range manaRank {
+			m.rankedPeers = append(m.rankedPeers, peerMap[identity])
+		}
+		m.rankedPeersMutex.Unlock()
+
+		m.rankedPeersMutex.RLock()
+		knownPeers = m.rankedPeers
+		m.rankedPeersMutex.RUnlock()
+	}
+
 	// sort verified peers by distance
-	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), m.getPeersToConnect())
+	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), knownPeers)
 
 	// filter out current neighbors
 	filter := m.getConnectedFilter()
@@ -232,10 +273,13 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	// filter out previous rejections
 	filteredList := m.rejectionFilter.Apply(filter.Apply(distList))
 
-	// reset rejectionFilter so that in the next call filteredList is full again
-	if len(filteredList) < 2 {
-		m.rejectionFilter.Clean()
+	if len(filteredList) == 0 {
+		return
 	}
+	// // reset rejectionFilter so that in the next call filteredList is full again
+	// if len(filteredList) < 2 {
+	// 	m.rejectionFilter.Clean()
+	// }
 
 	// select new candidate
 	candidate := m.outbound.Select(filteredList)
@@ -353,6 +397,23 @@ func (m *manager) isValidNeighbor(p *peer.Peer) bool {
 	if m.getID() == p.ID() {
 		return false
 	}
+
+	// do not connect if request comes from outside of manaRank
+	if m.useMana {
+		exist := false
+		m.rankedPeersMutex.RLock()
+		for _, peer := range m.rankedPeers {
+			if p.ID() == peer.ID() {
+				exist = true
+				break
+			}
+		}
+		m.rankedPeersMutex.RUnlock()
+		if !exist {
+			return false
+		}
+	}
+
 	if m.neighborValidator == nil {
 		return true
 	}

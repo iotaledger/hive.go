@@ -14,8 +14,6 @@ import (
 type pebbleStore struct {
 	instance                     *pebble.DB
 	dbPrefix                     []byte
-	accessCallback               kvstore.AccessCallback
-	accessCallbackCommandsFilter kvstore.Command
 }
 
 // New creates a new KVStore with the underlying pebbleDB.
@@ -23,22 +21,6 @@ func New(db *pebble.DB) kvstore.KVStore {
 	return &pebbleStore{
 		instance: db,
 	}
-}
-
-// AccessCallback configures the store to pass all requests to the KVStore to the given callback.
-// This can for example be used for debugging and to examine what the KVStore is doing.
-func (s *pebbleStore) AccessCallback(callback kvstore.AccessCallback, commandsFilter ...kvstore.Command) {
-	var accessCallbackCommandsFilter kvstore.Command
-	if len(commandsFilter) == 0 {
-		accessCallbackCommandsFilter = kvstore.AllCommands
-	} else {
-		for _, filterCommand := range commandsFilter {
-			accessCallbackCommandsFilter |= filterCommand
-		}
-	}
-
-	s.accessCallback = callback
-	s.accessCallbackCommandsFilter = accessCallbackCommandsFilter
 }
 
 func (s *pebbleStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
@@ -59,9 +41,6 @@ func (s *pebbleStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 
 // Shutdown marks the store as shutdown.
 func (s *pebbleStore) Shutdown() {
-	if s.accessCallback != nil {
-		s.accessCallback(kvstore.ShutdownCommand)
-	}
 }
 
 func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
@@ -88,10 +67,6 @@ func keyUpperBound(b []byte) []byte {
 }
 
 func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateCommand) {
-		s.accessCallback(kvstore.IterateCommand, prefix)
-	}
-
 	start, end := s.getIterBounds(prefix)
 
 	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
@@ -107,10 +82,6 @@ func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 }
 
 func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.IterateKeysCommand) {
-		s.accessCallback(kvstore.IterateKeysCommand, prefix)
-	}
-
 	start, end := s.getIterBounds(prefix)
 
 	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
@@ -126,18 +97,10 @@ func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 }
 
 func (s *pebbleStore) Clear() error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.ClearCommand) {
-		s.accessCallback(kvstore.ClearCommand)
-	}
-
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.GetCommand) {
-		s.accessCallback(kvstore.GetCommand, key)
-	}
-
 	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 
 	if err != nil {
@@ -157,18 +120,10 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *pebbleStore) Set(key kvstore.Key, value kvstore.Value) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
-		s.accessCallback(kvstore.SetCommand, key, value)
-	}
-
 	return s.instance.Set(byteutils.ConcatBytes(s.dbPrefix, key), value, pebble.NoSync)
 }
 
 func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.HasCommand) {
-		s.accessCallback(kvstore.HasCommand, key)
-	}
-
 	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 	if err == pebble.ErrNotFound {
 		return false, nil
@@ -186,18 +141,10 @@ func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *pebbleStore) Delete(key kvstore.Key) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
-		s.accessCallback(kvstore.DeleteCommand, key)
-	}
-
 	return s.instance.Delete(byteutils.ConcatBytes(s.dbPrefix, key), pebble.NoSync)
 }
 
 func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
-	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(kvstore.DeletePrefixCommand) {
-		s.accessCallback(kvstore.DeletePrefixCommand, prefix)
-	}
-
 	start, end := s.getIterBounds(prefix)
 
 	if start == nil {
@@ -249,10 +196,6 @@ type batchedMutations struct {
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
-	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.SetCommand) {
-		b.kvStore.accessCallback(kvstore.SetCommand, key, value)
-	}
-
 	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
 
 	b.operationsMutex.Lock()
@@ -265,10 +208,6 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (b *batchedMutations) Delete(key kvstore.Key) error {
-	if b.kvStore.accessCallback != nil && b.kvStore.accessCallbackCommandsFilter.HasBits(kvstore.DeleteCommand) {
-		b.kvStore.accessCallback(kvstore.DeleteCommand, key)
-	}
-
 	stringKey := byteutils.ConcatBytesToString(b.dbPrefix, key)
 
 	b.operationsMutex.Lock()

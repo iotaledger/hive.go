@@ -1,7 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+
+	"golang.org/x/xerrors"
 
 	pb "github.com/iotaledger/hive.go/autopeering/peer/service/proto"
 	"google.golang.org/protobuf/proto"
@@ -106,6 +109,37 @@ func (s *Record) ToProto() *pb.ServiceMap {
 	return &pb.ServiceMap{
 		Map: services,
 	}
+}
+
+type endpointJSON struct {
+	Network string `json:"network"`
+	Port    int    `json:"port"`
+}
+
+// UnmarshalJSON deserializes JSON data into Record struct.
+func (s *Record) UnmarshalJSON(b []byte) error {
+	m := map[string]endpointJSON{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return xerrors.Errorf("failed to parse services map: %w", err)
+	}
+	services := New()
+	for service, addr := range m {
+		services.m[service] = endpoint{network: addr.Network, port: addr.Port}
+	}
+	*s = *services
+	return nil
+}
+
+// MarshalJSON serializes Record struct into JSON data.
+func (s *Record) MarshalJSON() ([]byte, error) {
+	m := make(map[string]endpointJSON, len(s.m))
+	for service, addr := range s.m {
+		m[service] = endpointJSON{
+			Network: addr.network,
+			Port:    addr.port,
+		}
+	}
+	return json.Marshal(m)
 }
 
 // Marshal serializes a given Peer (p) into a slice of bytes.

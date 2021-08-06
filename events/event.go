@@ -1,47 +1,87 @@
 package events
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 )
 
+// Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.
 type Event struct {
-	triggerFunc func(handler interface{}, params ...interface{})
-	callbacks   map[uintptr]interface{}
-	mutex       syncutils.RWMutex
+	triggerFunc     func(handler interface{}, params ...interface{})
+	beforeCallbacks *orderedmap.OrderedMap
+	callbacks       *orderedmap.OrderedMap
+	afterCallbacks  *orderedmap.OrderedMap
 }
 
+// NewEvent is the constructor of an Event.
+func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {
+	return &Event{
+		triggerFunc:     triggerFunc,
+		beforeCallbacks: orderedmap.New(),
+		callbacks:       orderedmap.New(),
+		afterCallbacks:  orderedmap.New(),
+	}
+}
+
+// AttachBefore allows to register a Closure that is executed before the Event triggers.
+func (ev *Event) AttachBefore(closure *Closure) {
+	if closure == nil {
+		return
+	}
+
+	ev.beforeCallbacks.Set(closure.ID, closure.Fnc)
+}
+
+// Attach allows to register a Closure that is executed when the Event triggers.
 func (ev *Event) Attach(closure *Closure) {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	ev.callbacks[closure.Id] = closure.Fnc
+	if closure == nil {
+		return
+	}
+
+	ev.callbacks.Set(closure.ID, closure.Fnc)
 }
 
+// AttachAfter allows to register a Closure that is executed after the Event triggered.
+func (ev *Event) AttachAfter(closure *Closure) {
+	if closure == nil {
+		return
+	}
+
+	ev.afterCallbacks.Set(closure.ID, closure.Fnc)
+}
+
+// Detach allows to unregister a Closure that was previously registered.
 func (ev *Event) Detach(closure *Closure) {
 	if closure == nil {
 		return
 	}
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	delete(ev.callbacks, closure.Id)
+
+	ev.beforeCallbacks.Delete(closure.ID)
+	ev.callbacks.Delete(closure.ID)
+	ev.afterCallbacks.Delete(closure.ID)
 }
 
+// Trigger calls the registered callbacks with the given parameters.
 func (ev *Event) Trigger(params ...interface{}) {
-	ev.mutex.RLock()
-	defer ev.mutex.RUnlock()
-	for _, handler := range ev.callbacks {
+	ev.beforeCallbacks.ForEach(func(_, handler interface{}) bool {
 		ev.triggerFunc(handler, params...)
-	}
+
+		return true
+	})
+	ev.callbacks.ForEach(func(_, handler interface{}) bool {
+		ev.triggerFunc(handler, params...)
+
+		return true
+	})
+	ev.afterCallbacks.ForEach(func(_, handler interface{}) bool {
+		ev.triggerFunc(handler, params...)
+
+		return true
+	})
 }
 
+// DetachAll removes all registered callbacks.
 func (ev *Event) DetachAll() {
-	ev.mutex.Lock()
-	defer ev.mutex.Unlock()
-	ev.callbacks = make(map[uintptr]interface{})
-}
-
-func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Event {
-	return &Event{
-		triggerFunc: triggerFunc,
-		callbacks:   make(map[uintptr]interface{}),
-	}
+	ev.beforeCallbacks.Clear()
+	ev.callbacks.Clear()
+	ev.afterCallbacks.Clear()
 }

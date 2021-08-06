@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"encoding/json"
 	"net"
 	"testing"
 
@@ -59,6 +60,32 @@ func TestMarshalUnmarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, p, got)
+}
+
+func TestMarshalUnmarshalJSON(t *testing.T) {
+	p := newTestPeer("test")
+
+	data, err := json.Marshal(p)
+	require.NoError(t, err)
+
+	got := &Peer{}
+	err = json.Unmarshal(data, got)
+	require.NoError(t, err)
+
+	assert.Equal(t, p, got)
+}
+
+func TestMarshalUnmarshalJSONSlice(t *testing.T) {
+	peers := []*Peer{newTestPeer("test2"), newTestPeer("test2"), newTestPeer("test2")}
+
+	data, err := json.Marshal(peers)
+	require.NoError(t, err)
+
+	var got []*Peer
+	err = json.Unmarshal(data, &got)
+	require.NoError(t, err)
+
+	assert.Equal(t, peers, got)
 }
 
 func TestRecoverKeyFromSignedData(t *testing.T) {

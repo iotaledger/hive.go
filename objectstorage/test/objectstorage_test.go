@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/async"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
@@ -21,8 +24,6 @@ import (
 	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -183,7 +184,7 @@ func TestTransaction(t *testing.T) {
 	// execute first Transaction with identifier 1
 	wg.Add(1)
 	go func() {
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 
 			time.Sleep(200 * time.Millisecond)
@@ -200,7 +201,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1)
@@ -214,7 +215,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1, 2)
@@ -228,7 +229,7 @@ func TestTransaction(t *testing.T) {
 		// make the Transaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, false)
 		}, 2)
@@ -242,7 +243,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, firstTransactionFinished, true)
 		}, 1)
@@ -253,7 +254,7 @@ func TestTransaction(t *testing.T) {
 	// run RTransaction with a new identifier and keep track of its execution order
 	wg.Add(1)
 	go func() {
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 
 			time.Sleep(200 * time.Millisecond)
@@ -270,7 +271,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.RTransaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().RTransaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, rTransactionFinished, false)
 		}, 4)
@@ -284,7 +285,7 @@ func TestTransaction(t *testing.T) {
 		// make the RTransaction start slightly later but while the first one is still running
 		time.Sleep(100 * time.Millisecond)
 
-		cachedObject.Transaction(func(object objectstorage.StorableObject) {
+		cachedObject.Retain().Transaction(func(object objectstorage.StorableObject) {
 			assert.Equal(t, object, nil)
 			assert.Equal(t, rTransactionFinished, true)
 		}, 4)
@@ -446,7 +447,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, false)
+	})
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -460,7 +461,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte(""))
+	}, objectstorage.WithIteratorPrefix([]byte("")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -474,7 +475,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("1"))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -487,7 +488,7 @@ func TestPrefixIteration(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("12"))
+	}, objectstorage.WithIteratorPrefix([]byte("12")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -916,7 +917,7 @@ func TestForEachWithPrefix(t *testing.T) {
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
 		return true
-	}, []byte("1"))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -959,7 +960,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, false, []byte("1"))
+	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
 	assert.Equal(t, 0, len(expectedKeys))
 
@@ -1002,7 +1003,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		return true
-	}, true, []byte("1"))
+	}, objectstorage.WithIteratorPrefix([]byte("1")), objectstorage.WithIteratorSkipCache(true))
 
 	assert.Equal(t, 0, len(expectedKeys))
 

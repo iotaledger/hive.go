@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
@@ -36,7 +37,10 @@ type Hub struct {
 	shutdownSignal chan struct{}
 
 	// indicates that the websocket hub was shut down
-	shutdownFlag bool
+	shutdownFlag *typeutils.AtomicBool
+
+	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
+	clientReadLimit int64
 }
 
 // message is a message that is sent to the broadcast channel.
@@ -45,7 +49,7 @@ type message struct {
 	dontDrop bool
 }
 
-func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int) *Hub {
+func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
 	return &Hub{
 		logger:                logger,
 		upgrader:              upgrader,
@@ -55,12 +59,14 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
 		shutdownSignal:        make(chan struct{}),
+		shutdownFlag:          typeutils.NewAtomicBool(),
+		clientReadLimit:       clientReadLimit,
 	}
 }
 
 // BroadcastMsg sends a message to all clients.
 func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
-	if h.shutdownFlag {
+	if h.shutdownFlag.IsSet() {
 		// hub was already shut down
 		return
 	}
@@ -87,26 +93,42 @@ func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
 	}
 }
 
+func (h *Hub) removeClient(client *Client) {
+	delete(h.clients, client)
+	close(client.ExitSignal)
+
+	// wait until writePump and checkPong finished
+	client.shutdownWaitGroup.Wait()
+
+	// drain the send channel
+drainLoop:
+	for {
+		select {
+		case <-client.sendChan:
+		default:
+			break drainLoop
+		}
+	}
+
+	// We do not call "close(client.sendChan)" because we have multiple senders.
+	//
+	// As written at https://go101.org/article/channel-closing.html
+	// A channel will be eventually garbage collected if no goroutines reference it any more,
+	// whether it is closed or not.
+	// So the gracefulness of closing a channel here is not to close the channel.
+}
+
 // Run starts the hub.
 func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 
 	for {
 		select {
 		case <-shutdownSignal:
-			h.shutdownFlag = true
+			h.shutdownFlag.Set()
 			close(h.shutdownSignal)
 
 			for client := range h.clients {
-				delete(h.clients, client)
-				close(client.ExitSignal)
-
-				// wait until writePump and checkPong finished
-				client.shutdownWaitGroup.Wait()
-
-				if client.ReceiveChan != nil {
-					close(client.ReceiveChan)
-				}
-				close(client.sendChan)
+				h.removeClient(client)
 			}
 			return
 
@@ -132,16 +154,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.ExitSignal)
-
-				// wait until writePump and checkPong finished
-				client.shutdownWaitGroup.Wait()
-
-				if client.ReceiveChan != nil {
-					close(client.ReceiveChan)
-				}
-				close(client.sendChan)
+				h.removeClient(client)
 				h.logger.Infof("Removed websocket client")
 			}
 
@@ -188,7 +201,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
 func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
-	if h.shutdownFlag {
+	if h.shutdownFlag.IsSet() {
 		// hub was already shut down
 		return
 	}
@@ -213,6 +226,8 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 		sendChan:       make(chan interface{}, h.clientSendChannelSize),
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
+		shutdownFlag:   typeutils.NewAtomicBool(),
+		readLimit:      h.clientReadLimit,
 	}
 
 	if onCreate != nil {

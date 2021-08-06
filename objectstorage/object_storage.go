@@ -4,17 +4,18 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/timedexecutor"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
-	store              kvstore.KVStore
 	objectFactory      StorableObjectFactory
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
@@ -24,6 +25,7 @@ type ObjectStorage struct {
 	cachedObjectsEmpty sync.WaitGroup
 	shutdown           typeutils.AtomicBool
 	partitionsManager  *PartitionsManager
+	releaseExecutor    unsafe.Pointer
 
 	Events Events
 }
@@ -32,18 +34,21 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
+
+	storageOptions := newOptions(store, optionalOptions)
+
 	result := &ObjectStorage{
-		store:             store,
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
+		options:           storageOptions,
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
 
-	result.options = newOptions(result, optionalOptions)
+	atomic.StorePointer(&result.releaseExecutor, unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount)))
 
 	return result
 }
@@ -122,20 +127,27 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	return wrapCachedObject(cachedObject.waitForInitialResult(), 0)
 }
 
-func (objectStorage *ObjectStorage) Contains(key []byte) (result bool) {
+func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) (result bool) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
-		result = cachedObject.waitForInitialResult().Exists()
+	opts := &ReadOptions{}
+	opts.apply(defaultReadOptions...)
+	opts.apply(options...)
 
-		cachedObject.Release()
-	} else {
-		result = objectStorage.ObjectExistsInStore(key)
+	if !opts.skipCache {
+		if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
+			defer cachedObject.Release()
+			return cachedObject.waitForInitialResult().Exists()
+		}
 	}
 
-	return
+	if !opts.skipStorage {
+		return objectStorage.ObjectExistsInStore(key)
+	}
+
+	return false
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
@@ -209,6 +221,51 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 	cachedObject.Release(true)
 
 	return objectExistsInStore
+}
+
+// DeleteIfPresentAndReturn deletes an element and returns it. If the element does not exist then the return value is
+// nil.
+func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) StorableObject {
+	if objectStorage.shutdown.IsSet() {
+		panic("trying to access shutdown object storage")
+	}
+
+	deleteExistingEntry := func(cachedObject *CachedObjectImpl) StorableObject {
+		cachedObject.wg.Wait()
+
+		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
+			if !storableObject.IsDeleted() {
+				storableObject.Delete()
+				cachedObject.Release(true)
+
+				return storableObject
+			}
+
+		}
+		cachedObject.Release(true)
+
+		return nil
+	}
+
+	cachedObject, cacheHit := objectStorage.accessCache(key, false)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	cachedObject, cacheHit = objectStorage.accessCache(key, true)
+	if cacheHit {
+		return deleteExistingEntry(cachedObject)
+	}
+
+	storableObject := objectStorage.LoadObjectFromStore(key)
+	if !typeutils.IsInterfaceNil(storableObject) {
+		storableObject.Delete()
+	}
+
+	cachedObject.publishResult(nil)
+	cachedObject.Release(true)
+
+	return storableObject
 }
 
 // Performs a "blind delete", where we do not check the objects existence.
@@ -328,37 +385,64 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 }
 
 // ForEach calls the consumer function on every object residing within the cache and the underlying persistence layer.
-func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject CachedObject) bool, optionalPrefix ...[]byte) {
+func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject CachedObject) bool, options ...IteratorOption) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
+	opts := &IteratorOptions{}
+	opts.apply(defaultIteratorOptions...)
+	opts.apply(options...)
+
+	if objectStorage.options.keyPartitions == nil && len(opts.optionalPrefix) > 0 {
 		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
 	}
 
+	iterations := 0
 	var seenElements map[string]types.Empty
-	var keyPrefix = kvstore.EmptyPrefix
-	if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
-		// iterate over all cached elements
-		if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
-			return consumer(key, wrapCachedObject(cachedObject, 0))
-		}); seenElements == nil {
-			// Iteration was aborted
-			return
-		}
-	} else {
-		keyPrefix = optionalPrefix[0]
-		// iterate over cached elements via their key partition
-		if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
-			return consumer(key, wrapCachedObject(cachedObject, 0))
-		}, keyPrefix); seenElements == nil {
-			// Iteration was aborted
-			return
+	if !opts.skipCache {
+		if len(opts.optionalPrefix) == 0 {
+			// iterate over all cached elements
+			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					cachedObject.Release(true)
+					return false
+				}
+				return consumer(key, wrapCachedObject(cachedObject, 0))
+			}); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
+		} else {
+			// iterate over cached elements via their key partition
+			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					cachedObject.Release(true)
+					return false
+				}
+				return consumer(key, wrapCachedObject(cachedObject, 0))
+			}, opts.optionalPrefix); seenElements == nil {
+				// Iteration was aborted
+				return
+			}
 		}
 	}
 
+	if opts.skipStorage {
+		return
+	}
+
 	consumeFunc := func(key kvstore.Key, value kvstore.Value) bool {
+		iterations++
+		if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+			// stop if maximum amount of iterations reached
+			return false
+		}
+
 		if _, elementSeen := seenElements[string(key)]; elementSeen {
 			return true
 		}
@@ -396,56 +480,75 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	}
 
 	if objectStorage.options.keysOnly {
-		_ = objectStorage.store.IterateKeys(keyPrefix, func(key kvstore.Key) bool {
+		_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix, func(key kvstore.Key) bool {
 			return consumeFunc(key, []byte{})
 		})
 		return
 	}
 
-	_ = objectStorage.store.Iterate(keyPrefix, consumeFunc)
+	_ = objectStorage.options.store.Iterate(opts.optionalPrefix, consumeFunc)
 }
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
-func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) bool, skipCache bool, optionalPrefix ...[]byte) {
+func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) bool, options ...IteratorOption) {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
 
-	if objectStorage.options.keyPartitions == nil && len(optionalPrefix) >= 1 {
+	opts := &IteratorOptions{}
+	opts.apply(defaultIteratorOptions...)
+	opts.apply(options...)
+
+	if objectStorage.options.keyPartitions == nil && len(opts.optionalPrefix) > 0 {
 		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
 	}
 
+	iterations := 0
 	var seenElements map[string]types.Empty
-	var keyPrefix = kvstore.EmptyPrefix
-	if !skipCache {
-		if len(optionalPrefix) == 0 || len(optionalPrefix[0]) == 0 {
+	if !opts.skipCache {
+		if len(opts.optionalPrefix) == 0 {
 			// iterate over all cached elements
 			if seenElements = objectStorage.forEachCachedElement(func(key []byte, cachedObject *CachedObjectImpl) bool {
+				iterations++
 				cachedObject.Release(true)
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					return false
+				}
 				return consumer(key)
 			}); seenElements == nil {
 				// Iteration was aborted
 				return
 			}
 		} else {
-			keyPrefix = optionalPrefix[0]
 			// iterate over cached elements via their key partition
 			if seenElements = objectStorage.forEachCachedElementWithPrefix(func(key []byte, cachedObject *CachedObjectImpl) bool {
 				cachedObject.Release(true)
+				iterations++
+				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+					// stop if maximum amount of iterations reached
+					return false
+				}
 				return consumer(key)
-			}, keyPrefix); seenElements == nil {
+			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
 				return
 			}
 		}
 	}
 
-	if len(optionalPrefix) > 0 {
-		keyPrefix = optionalPrefix[0]
+	if opts.skipStorage {
+		return
 	}
 
-	_ = objectStorage.store.IterateKeys(keyPrefix,
+	_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix,
 		func(key kvstore.Key) bool {
+			iterations++
+			if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
+				// stop if maximum amount of iterations reached
+				return false
+			}
+
 			if _, elementSeen := seenElements[string(key)]; elementSeen {
 				return true
 			}
@@ -475,7 +578,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	})
 
 	objectStorage.cacheMutex.Lock()
-	if err := objectStorage.store.Clear(); err != nil {
+	if err := objectStorage.options.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
 		return err
@@ -497,15 +600,65 @@ func (objectStorage *ObjectStorage) Flush() {
 	if objectStorage.shutdown.IsSet() {
 		panic("trying to access shutdown object storage")
 	}
-	objectStorage.flush()
+	objectStorage.flush(false)
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
 	objectStorage.shutdown.Set()
 
-	objectStorage.flush()
+	objectStorage.flush(true)
 
 	objectStorage.options.batchedWriterInstance.StopBatchWriter()
+}
+
+// FreeMemory copies the content of the internal maps to newly created maps.
+// This is necessary, otherwise the GC is not able to free the memory used by the old maps.
+// "delete" doesn't shrink the maximum memory used by the map, since it only marks the entry as deleted.
+func (objectStorage *ObjectStorage) FreeMemory() {
+	objectStorage.flushMutex.RLock()
+	defer objectStorage.flushMutex.RUnlock()
+	objectStorage.cacheMutex.Lock()
+	defer objectStorage.cacheMutex.Unlock()
+
+	// recursively free memory in partitions manager
+	if objectStorage.partitionsManager != nil {
+		objectStorage.partitionsManager.FreeMemory()
+	}
+
+	var deepIterateCacheAndFreeMemory func(sourceMap map[string]interface{}) map[string]interface{}
+	deepIterateCacheAndFreeMemory = func(sourceMap map[string]interface{}) map[string]interface{} {
+		objectsFound := make(map[string]interface{})
+		partitionsFound := make(map[string]map[string]interface{})
+
+		for key, value := range sourceMap {
+			if _, cachedObjectReached := value.(*CachedObjectImpl); cachedObjectReached {
+				// object level reached
+				objectsFound[key] = value
+			} else {
+				// partition found
+				partitionsFound[key] = value.(map[string]interface{})
+			}
+		}
+
+		if len(partitionsFound) > 0 {
+			// partitioned cache
+			partitions := make(map[string]interface{})
+			for key, partition := range partitionsFound {
+				// recursively call for every partition
+				partitions[key] = deepIterateCacheAndFreeMemory(partition)
+			}
+			return partitions
+		}
+
+		return objectsFound
+	}
+
+	objectStorage.cachedObjects = deepIterateCacheAndFreeMemory(objectStorage.cachedObjects)
+}
+
+// ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
+func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
+	return (*timedexecutor.TimedExecutor)(atomic.LoadPointer(&objectStorage.releaseExecutor))
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
@@ -524,9 +677,9 @@ func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedO
 
 func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
 	objectKey := string(key)
-	currentMap := objectStorage.cachedObjects
-
 	objectStorage.cacheMutex.RLock()
+
+	currentMap := objectStorage.cachedObjects
 	if alreadyCachedObject, cachedObjectExists := currentMap[objectKey]; cachedObjectExists {
 		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
@@ -821,7 +974,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	}
 
 	if objectStorage.options.keysOnly {
-		contains, err := objectStorage.store.Has(key)
+		contains, err := objectStorage.options.store.Has(key)
 		if err != nil {
 			// No need to check for kvstore.ErrKeyNotFound here
 			panic(err)
@@ -840,7 +993,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	}
 
 	var marshaledData []byte
-	value, err := objectStorage.store.Get(key)
+	value, err := objectStorage.options.store.Get(key)
 	if err != nil {
 		if errors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil
@@ -861,7 +1014,7 @@ func (objectStorage *ObjectStorage) DeleteEntryFromStore(key []byte) {
 		return
 	}
 
-	if err := objectStorage.store.Delete(key); err != nil {
+	if err := objectStorage.options.store.Delete(key); err != nil {
 		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
@@ -874,7 +1027,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
 		return
 	}
 
-	batchedMuts := objectStorage.store.Batched()
+	batchedMuts := objectStorage.options.store.Batched()
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
@@ -892,7 +1045,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 		return false
 	}
 
-	has, err := objectStorage.store.Has(key)
+	has, err := objectStorage.options.store.Has(key)
 	if err != nil {
 		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
@@ -910,14 +1063,20 @@ func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) Sto
 	return object
 }
 
-func (objectStorage *ObjectStorage) flush() {
+func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
+
+	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
+	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks, timedexecutor.DontWaitForShutdown)
+	if !shutdown {
+		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
+	}
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		cachedObject.cancelScheduledRelease()
+		atomic.StorePointer(&cachedObject.scheduledTask, nil)
 
 		cachedObjects[i] = cachedObject
 		i++
@@ -930,7 +1089,7 @@ func (objectStorage *ObjectStorage) flush() {
 	// force release the collected objects
 	for j := 0; j < i; j++ {
 		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
-			objectStorage.options.batchedWriterInstance.Enqueue(cachedObjects[j])
+			cachedObjects[j].evict()
 		}
 	}
 
@@ -1100,7 +1259,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 
 // StorableObjectFactory is used to address the factory method that generically creates StorableObjects. It receives the
 // key and the serialized data of the object and returns an "empty" StorableObject that just has its key set. The object
-// is then fully unmarshalled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
+// is then fully unmarshaled by the ObjectStorage which calls the UnmarshalObjectStorageValue with the data. The data
 // is anyway provided in this method already to allow the dynamic creation of different object types depending on the
 // stored data.
 type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)
