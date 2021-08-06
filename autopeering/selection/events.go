@@ -33,6 +33,7 @@ type PeeringEvent struct {
 
 // DroppedEvent bundles the information sent in Dropped events.
 type DroppedEvent struct {
+	Peer      *peer.Peer
 	DroppedID identity.ID // ID of the peer that gets dropped.
 }
 
