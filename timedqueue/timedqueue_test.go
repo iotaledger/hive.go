@@ -3,6 +3,7 @@ package timedqueue
 import (
 	"runtime"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -48,121 +49,129 @@ func memStats() *runtime.MemStats {
 }
 
 func TestTimedQueue(t *testing.T) {
-	timedQ := New()
-	popCount := 0
+	const elementsCount = 10
+
+	tq := New()
+	defer tq.Shutdown()
 
 	// prepare a list to insert
 	var elements []time.Time
-	now := time.Now().Add(15 * time.Second)
-	for i := 0; i < 10; i++ {
+	now := time.Now().Add(5 * time.Second)
+
+	for i := 0; i < elementsCount; i++ {
 		elements = append(elements, now.Add(time.Duration(i)*time.Second))
+		tq.Add(i, elements[i])
 	}
 
-	// insert elements to timedQs
-	for i := 0; i < 10; i++ {
-		timedQ.Add(i, elements[i])
-	}
-	assert.Equal(t, len(elements), timedQ.Size())
+	assert.Equal(t, len(elements), tq.Size())
 
 	// wait and Poll all elements, check the popped time is correct.
+	consumed := 0
 	for {
-		topElement := timedQ.Poll(false).(int)
-		popTime := time.Now()
-		assert.True(t, (popTime.Sub(elements[topElement]) < time.Duration(1*time.Millisecond)))
-		popCount++
+		topElement := tq.Poll(false).(int)
 
-		if timedQ.Size() == 0 {
+		// make sure elements are ready at their specified time.
+		assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)
+		consumed++
+
+		if tq.Size() == 0 {
 			break
 		}
 	}
 
-	assert.Equal(t, 0, timedQ.Size())
-	assert.Equal(t, len(elements), popCount)
-	timedQ.Shutdown()
+	// check that we consumed all elements
+	assert.Equal(t, len(elements), consumed)
 }
 
 func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
-	timedQ := New()
-	end := make(chan struct{})
-	popCount := 0
+	const elementsCount = 10
+
+	tq := New()
+	defer tq.Shutdown()
+
+	consumed := 0
 
 	// prepare a list to insert
 	var elements []time.Time
-	now := time.Now().Add(15 * time.Second)
-	for i := 0; i < 10; i++ {
+	now := time.Now().Add(5 * time.Second)
+	for i := 0; i < elementsCount; i++ {
 		elements = append(elements, now.Add(time.Duration(i)*time.Second))
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for {
-			topElement := timedQ.Poll(true).(int)
-			popTime := time.Now()
-			assert.True(t, (popTime.Sub(elements[topElement]) < time.Duration(1*time.Millisecond)))
-			popCount++
+			topElement := tq.Poll(true).(int)
 
-			if timedQ.Size() == 0 {
-				close(end)
+			// make sure elements are ready at their specified time.
+			assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)
+			consumed++
+
+			if tq.Size() == 0 {
+				wg.Done()
 				break
 			}
 		}
 	}()
 
-	// let timedQ reader to wait for a second
-	time.Sleep(time.Duration(1 * time.Second))
+	// let worker wait for a second
+	time.Sleep(1 * time.Second)
 
-	// insert elements to timedQ
+	// insert elements to tq
 	for i := 0; i < 10; i++ {
-		timedQ.Add(i, elements[i])
+		tq.Add(i, elements[i])
 	}
-	assert.Equal(t, len(elements), timedQ.Size())
+	assert.Equal(t, len(elements), tq.Size())
 
 	// wait all element is clear
-	<-end
-	assert.Equal(t, 0, timedQ.Size())
-	assert.Equal(t, len(elements), popCount)
-	timedQ.Shutdown()
+	wg.Wait()
+	assert.Equal(t, 0, tq.Size())
+	assert.Equal(t, len(elements), consumed)
 }
 
 func TestTimedQueueCancel(t *testing.T) {
-	timedQ := New()
-	end := make(chan struct{})
-	popCount := 0
+	const elementsCount = 10
+
+	tq := New()
+	defer tq.Shutdown()
+
+	consumed := 0
 
 	// prepare a list to insert
 	var elements []time.Time
-	now := time.Now().Add(15 * time.Second)
-	for i := 0; i < 10; i++ {
-		elements = append(elements, now.Add(time.Duration(i)*time.Second))
-	}
+	var queueElements []*QueueElement
 
+	now := time.Now().Add(5 * time.Second)
+	for i := 0; i < elementsCount; i++ {
+		elements = append(elements, now.Add(time.Duration(i)*time.Second))
+		queueElements = append(queueElements, tq.Add(i, elements[i]))
+	}
+	assert.Equal(t, len(elements), tq.Size())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		for {
-			topElement := timedQ.Poll(false).(int)
-			popTime := time.Now()
-			assert.True(t, (popTime.Sub(elements[topElement]) < time.Duration(1*time.Millisecond)))
-			popCount++
+			topElement := tq.Poll(true).(int)
 
-			if timedQ.Size() == 0 {
-				close(end)
+			// make sure elements are ready at their specified time.
+			assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)
+			consumed++
+
+			if tq.Size() == 0 {
+				wg.Done()
 				break
 			}
 		}
 	}()
 
-	// insert elements to timedQ
-	var timeElements []*QueueElement
-	for i := 0; i < 10; i++ {
-		timeElements = append(timeElements, timedQ.Add(i, elements[i]))
-	}
-	assert.Equal(t, len(elements), timedQ.Size())
-
 	// cancel the first and the last element
-	timeElements[0].Cancel()
-	timeElements[len(elements)-1].Cancel()
+	queueElements[0].Cancel()
+	queueElements[len(elements)-1].Cancel()
 
 	// wait all element is clear
-	<-end
-	assert.Equal(t, 0, timedQ.Size())
-	assert.Equal(t, len(elements)-2, popCount)
-	timedQ.Shutdown()
+	wg.Wait()
+	assert.Equal(t, 0, tq.Size())
+	assert.Equal(t, len(elements)-2, consumed)
 }
