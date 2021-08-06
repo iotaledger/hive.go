@@ -380,12 +380,12 @@ func (m *manager) dropPeering(p *peer.Peer) {
 		"#out", m.outbound,
 		"#in", m.inbound,
 	)
-	m.events.Dropped.Trigger(&DroppedEvent{DroppedID: p.ID()})
+	m.events.Dropped.Trigger(&DroppedEvent{Peer: p, DroppedID: p.ID()})
 }
 
 func (m *manager) getConnectedFilter() *Filter {
 	filter := NewFilter()
-	filter.AddPeer(m.getID())              //set filter for oneself
+	filter.AddPeer(m.getID())              // set filter for oneself
 	filter.AddPeers(m.inbound.GetPeers())  // set filter for inbound neighbors
 	filter.AddPeers(m.outbound.GetPeers()) // set filter for outbound neighbors
 	return filter
