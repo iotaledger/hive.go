@@ -1,6 +1,7 @@
 package ed25519
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -88,4 +89,23 @@ func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
 	copy(publicKey[:], bytes[:])
 
 	return
+}
+
+// MarshalJSON serializes public key to JSON as base58 encoded string.
+func (publicKey PublicKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(publicKey.String())
+}
+
+// UnmarshalJSON parses public key from JSON in base58 encoding.
+func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	pk, err := PublicKeyFromString(s)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key from JSON: %w", err)
+	}
+	*publicKey = pk
+	return nil
 }
