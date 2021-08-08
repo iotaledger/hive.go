@@ -40,3 +40,36 @@ func memStats() *runtime.MemStats {
 
 	return &memStats
 }
+
+func TestTimedExecutor(t *testing.T) {
+	const workerCount = 4
+	const elementsCount = 10
+
+	timedExecutor := New(workerCount)
+	defer timedExecutor.Shutdown()
+
+	assert.Equal(t, workerCount, timedExecutor.WorkerCount())
+
+	// prepare a list of functions to schedule
+	elements := make(map[time.Time]func())
+	var expected, actual []int
+	now := time.Now().Add(5 * time.Second)
+
+	for i := 0; i < elementsCount; i++ {
+		i := i // ensure closure context
+		elements[now.Add(time.Duration(i)*time.Second)] = func() {
+			actual = append(actual, i)
+		}
+		expected = append(expected, i)
+	}
+
+	// insert functions to timedExecutor
+	for et, f := range elements {
+		timedExecutor.ExecuteAt(f, et)
+	}
+	assert.Equal(t, len(elements), timedExecutor.Size())
+
+	assert.Eventually(t, func() bool { return len(actual) == len(expected) }, 30*time.Second, 100*time.Millisecond)
+	assert.Equal(t, 0, timedExecutor.Size())
+	assert.ElementsMatch(t, expected, actual)
+}
