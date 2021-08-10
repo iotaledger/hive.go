@@ -18,23 +18,22 @@ import (
 // [x]1 means a projection of scalar x to the G1 curve. [x]1 = xG, where G is the generating element
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element
 type TrustedSetup struct {
-	Suite               *bn256.Suite
-	RootOfUnity         kyber.Scalar      // omega: a primitive root of unity of the field.
-	RootOfUnityPowers   [D]kyber.Scalar   // omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
-	LagrangePolysCommit [D]kyber.Point    // TLi = [l<i>(secret)]1
-	Diff2               [D]kyber.Point    // TPi = [secret-omega<i>]2
-	DiffInv             [D]kyber.Point    // TDi = [1/(s-omega<i>)]1
-	PiMatrix            [D][D]kyber.Point // TLD<i,j> = [l<i>(s)/(s-omega<j>)]1
-	// util constants
+	Suite             *bn256.Suite
+	RootOfUnity       kyber.Scalar    // omega: a primitive root of unity of the field.
+	RootOfUnityPowers [D]kyber.Scalar // omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
+	LagrangeBasis     [D]kyber.Point  // TLi = [l<i>(secret)]1
+	Diff2             [D]kyber.Point
+	// auxiliar precalculated values
+	TA     [D][D]kyber.Scalar
 	ZeroG1 kyber.Scalar
 	OneG1  kyber.Scalar
 	DG1    kyber.Scalar
 }
 
 var (
-	errWrongSecret     = xerrors.New("wrong secret")
-	errNotROU          = xerrors.New("not a root of unity")
-	errNonPrimitiveROU = xerrors.New("root of unity must be primitive")
+	errWrongSecret = xerrors.New("wrong secret")
+	errNotROU      = xerrors.New("not a root of unity")
+	errWrongROU    = xerrors.New("wrong root of unity")
 )
 
 func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
@@ -50,11 +49,12 @@ func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
 		ret.RootOfUnityPowers[i] = suite.G1().Scalar()
 	}
 	for i := 0; i < D; i++ {
-		ret.LagrangePolysCommit[i] = suite.G1().Point()
-		ret.DiffInv[i] = suite.G1().Point()
+		ret.LagrangeBasis[i] = suite.G1().Point()
 		ret.Diff2[i] = suite.G2().Point()
 		for j := 0; j < D; j++ {
-			ret.PiMatrix[i][j] = suite.G1().Point()
+			if i != j {
+				ret.TA[i][j] = suite.G1().Scalar()
+			}
 		}
 	}
 	return ret
@@ -68,7 +68,7 @@ func TrustedSetupFromSecret(suite *bn256.Suite, rootOfUnity, secret kyber.Scalar
 	if err := ret.generate(rootOfUnity, secret); err != nil {
 		return nil, err
 	}
-	if err := ret.check(); err != nil {
+	if err := ret.precalcAux(); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -80,7 +80,7 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 	if err := ret.read(bytes.NewReader(data)); err != nil {
 		return nil, err
 	}
-	if err := ret.check(); err != nil {
+	if err := ret.precalcAux(); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -96,9 +96,6 @@ func TrustedSetupFromFile(suite *bn256.Suite, fname string) (*TrustedSetup, erro
 	if err != nil {
 		return nil, err
 	}
-	if err = ret.check(); err != nil {
-		return nil, err
-	}
 	return ret, nil
 }
 
@@ -111,65 +108,70 @@ func (sd *TrustedSetup) Bytes() []byte {
 	return buf.Bytes()
 }
 
-// check checks consistency of constant on curve by checking pairing constraints
-func (sd *TrustedSetup) check() error {
-	oneGT := sd.Suite.GT().Point()
-	oneGT.Mul(sd.OneG1, nil)
-	H := sd.Suite.G2().Point().Base()
-	for i := range sd.Diff2 {
-		left := sd.Suite.Pair(sd.DiffInv[i], sd.Diff2[i])
-		if !left.Equal(oneGT) {
-			return xerrors.Errorf("wrong constant TP[%d] or TD[%d] (Diff2, DiffInv)", i, i)
-		}
-		for j := range sd.PiMatrix[i] {
-			left = sd.Suite.Pair(sd.PiMatrix[i][j], sd.Diff2[j])
-			right := sd.Suite.Pair(sd.LagrangePolysCommit[i], H)
-			if !left.Equal(right) {
-				return xerrors.Errorf("wrong constant TLP[%d][%d] (PiMatrix)", i, j)
-			}
-		}
-	}
-	return nil
-}
-
-// generate fills up the TrustedSetup based on its root of unity and provided secret
+// generate creates a new TrustedSetup based on its root of unity and provided secret
 func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
-	sd.RootOfUnity.Set(rootOfUnity)
-	// check if secret is not equal to any power of root of unity
-	for i := range sd.RootOfUnityPowers {
-		if secret.Equal(sd.RootOfUnityPowers[i]) {
-			return errWrongSecret
-		}
-		powerSimple(sd.Suite, sd.RootOfUnity, i, sd.RootOfUnityPowers[i])
-		if i > 0 && sd.RootOfUnityPowers[i].Equal(sd.OneG1) {
-			return errNonPrimitiveROU
-		}
+	if len(secret.String()) < 50 {
+		return errWrongSecret
 	}
-	// generate [secret-omega<i>]2
+	sd.RootOfUnity.Set(rootOfUnity)
+	if err := sd.precalcRootsOfUnity(secret); err != nil {
+		return err
+	}
+	// calculate Lagrange basis: [l_i(s)]1
+	for i := range sd.LagrangeBasis {
+		l := sd.evalLagrangeValue(i, secret)
+		sd.LagrangeBasis[i].Mul(l, nil) // [l_i(secret)]1
+	}
+	// calculate [secret-rou^i]2
 	e2 := sd.Suite.G2().Scalar()
 	for i := range sd.Diff2 {
 		e2.Sub(secret, sd.RootOfUnityPowers[i])
 		sd.Diff2[i].Mul(e2, nil)
 	}
-	// Pre-calculate auxiliary values on the curve
-	e1 := sd.Suite.G1().Scalar()
-	for i := range sd.DiffInv {
-		e1.Sub(secret, sd.RootOfUnityPowers[i])
-		e1.Inv(e1)
-		sd.DiffInv[i].Mul(e1, nil) // = [1/(secret-omega<i>)]1
-	}
+	return nil
+}
 
-	for i := range sd.LagrangePolysCommit {
-		l := sd.evalLagrangeValue(i, secret)
-		sd.LagrangePolysCommit[i].Mul(l, nil) // [l<i>(secret)]1
-		for j := range sd.PiMatrix[i] {
-			e1.Sub(secret, sd.RootOfUnityPowers[j])
-			e1.Inv(e1)
-			e1.Mul(l, e1)
-			sd.PiMatrix[i][j].Mul(e1, nil)
+// precalcRootsOfUnity calculates powers up to D-1 of roots of unity
+func (sd *TrustedSetup) precalcRootsOfUnity(secret kyber.Scalar) error {
+	for i := range sd.RootOfUnityPowers {
+		powerSimple(sd.Suite, sd.RootOfUnity, i, sd.RootOfUnityPowers[i])
+		if sd.RootOfUnityPowers[i].Equal(secret) {
+			return errWrongSecret
+		}
+		if i > 0 && sd.RootOfUnityPowers[i].Equal(sd.OneG1) {
+			return errWrongROU
 		}
 	}
 	return nil
+}
+
+func (sd *TrustedSetup) precalcAux() error {
+	e := sd.Suite.G1().Scalar()
+	for m := range sd.TA {
+		for j := range sd.TA {
+			if m == j {
+				continue
+			}
+			sd.TA[m][j].Div(sd.aprime(m), sd.aprime(j))
+			e.Sub(sd.RootOfUnityPowers[m], sd.RootOfUnityPowers[j])
+			sd.TA[m][j].Div(sd.TA[m][j], e)
+		}
+	}
+	return nil
+}
+
+// aprime return A'(\omega^k)
+func (sd *TrustedSetup) aprime(k int) kyber.Scalar {
+	ret := sd.Suite.G1().Scalar().One()
+	e := sd.Suite.G1().Scalar()
+	for j := range sd.RootOfUnityPowers {
+		if k == j {
+			continue
+		}
+		e.Sub(sd.RootOfUnityPowers[k], sd.RootOfUnityPowers[j])
+		ret.Mul(ret, e)
+	}
+	return ret
 }
 
 // evalLagrangeValue calculates li(X) = [prod<j=0,D-1;j!=i>((X-omega^j)/(omega^i-omega^j)]1
@@ -195,26 +197,14 @@ func (sd *TrustedSetup) write(w io.Writer) error {
 	if _, err := sd.RootOfUnity.MarshalTo(w); err != nil {
 		return err
 	}
+	for i := range sd.LagrangeBasis {
+		if _, err := sd.LagrangeBasis[i].MarshalTo(w); err != nil {
+			return err
+		}
+	}
 	for i := range sd.Diff2 {
 		if _, err := sd.Diff2[i].MarshalTo(w); err != nil {
 			return err
-		}
-	}
-	for i := range sd.LagrangePolysCommit {
-		if _, err := sd.LagrangePolysCommit[i].MarshalTo(w); err != nil {
-			return err
-		}
-	}
-	for i := range sd.DiffInv {
-		if _, err := sd.DiffInv[i].MarshalTo(w); err != nil {
-			return err
-		}
-	}
-	for i := range sd.PiMatrix {
-		for j := range sd.PiMatrix[i] {
-			if _, err := sd.PiMatrix[i][j].MarshalTo(w); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -228,34 +218,14 @@ func (sd *TrustedSetup) read(r io.Reader) error {
 	if !isRootOfUnity(sd.Suite, sd.RootOfUnity) {
 		return errNotROU
 	}
-	// calculate powers
-	for i := range sd.RootOfUnityPowers {
-		powerSimple(sd.Suite, sd.RootOfUnity, i, sd.RootOfUnityPowers[i])
-		if i > 0 && sd.RootOfUnityPowers[i].Equal(sd.OneG1) {
-			// should not be 1
-			return errNonPrimitiveROU
+	for i := range sd.LagrangeBasis {
+		if _, err := sd.LagrangeBasis[i].UnmarshalFrom(r); err != nil {
+			return err
 		}
 	}
 	for i := range sd.Diff2 {
 		if _, err := sd.Diff2[i].UnmarshalFrom(r); err != nil {
 			return err
-		}
-	}
-	for i := range sd.LagrangePolysCommit {
-		if _, err := sd.LagrangePolysCommit[i].UnmarshalFrom(r); err != nil {
-			return err
-		}
-	}
-	for i := range sd.DiffInv {
-		if _, err := sd.DiffInv[i].UnmarshalFrom(r); err != nil {
-			return err
-		}
-	}
-	for i := range sd.PiMatrix {
-		for j := range sd.PiMatrix[i] {
-			if _, err := sd.PiMatrix[i][j].UnmarshalFrom(r); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

@@ -13,7 +13,7 @@ func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
 		if e == nil {
 			continue
 		}
-		elem.Mul(e, sd.LagrangePolysCommit[i])
+		elem.Mul(e, sd.LagrangeBasis[i])
 		ret.Add(ret, elem)
 	}
 	return ret
@@ -21,9 +21,9 @@ func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
 
 // Prove returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
 // This isthe proof sent to verifier
-func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, index int) kyber.Point {
+func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
-	if vect[index] == nil {
+	if vect[i] == nil {
 		return ret
 	}
 	e := sd.Suite.G1().Point()
@@ -31,11 +31,27 @@ func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, index int) kyber.Point {
 		if vect[j] == nil {
 			continue
 		}
-		e.Mul(vect[j], sd.PiMatrix[j][index])
+		e.Mul(sd.q(vect, i, j), sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}
-	e.Mul(vect[index], sd.DiffInv[index])
-	ret.Sub(ret, e)
+	return ret
+}
+
+func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int) kyber.Scalar {
+	ret := sd.Suite.G1().Scalar()
+	if i != m {
+		ret.Sub(sd.RootOfUnityPowers[m], sd.RootOfUnityPowers[i])
+		ret.Div(vect[m], ret)
+	} else {
+		e := sd.Suite.G1().Scalar()
+		for j := range sd.RootOfUnityPowers {
+			if j == m {
+				continue
+			}
+			e.Mul(vect[j], sd.TA[m][j])
+			ret.Add(ret, e)
+		}
+	}
 	return ret
 }
 
@@ -65,31 +81,4 @@ func (sd *TrustedSetup) CommitAll(vect *[D]kyber.Scalar) (kyber.Point, *[D]kyber
 		retPi[i] = sd.Prove(vect, i)
 	}
 	return retC, retPi
-}
-
-// EvalPoly evaluates polynomial in evaluation (Lagrange) form by vect
-// at the point z using barycentric formula
-// Normally used only in tests
-func (sd *TrustedSetup) EvalPoly(vect *[D]kyber.Scalar, z kyber.Scalar) kyber.Scalar {
-	ret := sd.Suite.G1().Scalar().Zero()
-	elem := sd.Suite.G1().Scalar()
-	denom := sd.Suite.G1().Scalar()
-	for i := range vect {
-		if vect[i] == nil {
-			continue
-		}
-		denom.Sub(z, sd.RootOfUnityPowers[i])
-		if denom.Equal(sd.ZeroG1) {
-			// to prevent division by 0 at the root of unity
-			ret.Set(vect[i])
-			return ret
-		}
-		elem.Div(sd.RootOfUnityPowers[i], denom)
-		elem.Mul(vect[i], elem)
-		ret.Add(ret, elem)
-	}
-	elem = power2n(sd.Suite, z, LOGD)
-	elem.Sub(elem, sd.OneG1)
-	ret.Div(elem, sd.DG1)
-	return ret
 }

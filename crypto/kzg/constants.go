@@ -9,13 +9,27 @@ import (
 // constants are used in KZG trusted setup
 
 const (
-	// D = 2**LOGD = 16 is an optimal factor of (fieldOrder-1)
-	D = 2 * 2 * 2 * 2
-	// LOGD just = 4 to remember we only need 4 bits for the index in the vector elements
-	LOGD = 4
+	// factor of order-1
+	FACTOR = 5743
+	// D = 257 we will be building 257-ary verkle trie. Each node commits to up to 257 values
+	// The indices 0..255 are children, index 256 corresponds to the terminal value if present
+	D = 257
 	// a constant to check consistency: orderMinus1DivDStr = (fieldOrder-1)/D
 	orderMinus1DivDStr = "4062534355977912733299777421397494108910650378368986649367566435565260424998"
 )
+
+// check consistency of constants
+func init() {
+	if D > FACTOR {
+		panic("D > FACTOR")
+	}
+	c, _ := new(big.Int).SetString(orderMinus1DivDStr, 10)
+	orderMinus1DivD.Sub(fieldOrder, big1)
+	orderMinus1DivD.Div(orderMinus1DivD, bigD)
+	if c.Cmp(orderMinus1DivD) != 0 {
+		panic("inconsistent constants")
+	}
+}
 
 var (
 	// from kyber library
@@ -29,13 +43,3 @@ var (
 	big2            = new(big.Int).SetInt64(2)
 	bigD            = new(big.Int).SetInt64(D)
 )
-
-// check consistency of constants
-func init() {
-	c, _ := new(big.Int).SetString(orderMinus1DivDStr, 10)
-	orderMinus1DivD.Sub(fieldOrder, big1)
-	orderMinus1DivD.Div(orderMinus1DivD, bigD)
-	if c.Cmp(orderMinus1DivD) != 0 {
-		panic("inconsistent constants")
-	}
-}
