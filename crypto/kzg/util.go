@@ -51,7 +51,7 @@ func powerBig(suite *bn256.Suite, x kyber.Scalar, n *big.Int) kyber.Scalar {
 
 // isRootOfUnity checks if scalar is a root of unity
 func isRootOfUnity(suite *bn256.Suite, rootOfUnity kyber.Scalar) bool {
-	return powerBig(suite, rootOfUnity, bigD).Equal(suite.G1().Scalar().One())
+	return powerBig(suite, rootOfUnity, bigFactor).Equal(suite.G1().Scalar().One())
 }
 
 // generateRootOfUnity generates random scalar s and returns s^((fieldOrder-1)/D)
@@ -59,18 +59,18 @@ func isRootOfUnity(suite *bn256.Suite, rootOfUnity kyber.Scalar) bool {
 // The primitive root of unity must satisfy rou^N != 1 for any N=1..D-1
 func generateRootOfUnity(suite *bn256.Suite) kyber.Scalar {
 	for {
-		s := suite.G1().Scalar().Pick(random.New())
-		ret := powerBig(suite, s, orderMinus1DivD)
+		candidate := suite.G1().Scalar().Pick(random.New())
+		ret := powerBig(suite, candidate, orderMinus1DivFactor)
 		if len(ret.String()) >= 64 {
 			return ret
 		}
 	}
 }
 
-// GenRootOfUnityPrimitive generates random roots of unity until all its powers
+// GenRootOfUnityQuasiPrimitive generates random roots of unity based on FACTOR until all its powers
 // up to D-1 are long enough thus excluding also 1.
-// Note that the generated root of unity may not be primitive
-func GenRootOfUnityPrimitive(suite *bn256.Suite) (kyber.Scalar, *[D]kyber.Scalar) {
+// Note that the generated root of unity may not be primitive wrt FACTOR
+func GenRootOfUnityQuasiPrimitive(suite *bn256.Suite) (kyber.Scalar, *[D]kyber.Scalar) {
 	repeat := true
 	var rou kyber.Scalar
 	retPowers := new([D]kyber.Scalar)

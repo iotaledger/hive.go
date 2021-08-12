@@ -11,6 +11,13 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+func TestCalc(t *testing.T) {
+	orderMinus1DivFactor.Sub(fieldOrder, big1)
+	orderMinus1DivFactor.Div(orderMinus1DivFactor, bigFactor)
+	t.Logf("orderMinus1DivFactor = %s", orderMinus1DivFactor.String())
+
+}
+
 func TestGenLen(t *testing.T) {
 	suite := bn256.NewSuite()
 	t.Logf("G1().Scalarlen: %d", suite.G1().ScalarLen())
@@ -23,15 +30,12 @@ func TestGenLen(t *testing.T) {
 
 func TestGenD(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, rou, secret)
 	require.NoError(t, err)
 	data := tr.Bytes()
 	t.Logf("trusted setup size: %d", len(data))
-
-	err = tr.check()
-	require.NoError(t, err)
 
 	trBack, err := TrustedSetupFromBytes(suite, data)
 	require.NoError(t, err)
@@ -43,7 +47,7 @@ func TestGenD(t *testing.T) {
 
 func TestValidate1(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, rou, secret)
 	require.NoError(t, err)
@@ -58,7 +62,7 @@ func TestValidate1(t *testing.T) {
 
 func TestValidate2(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, rou, secret)
 	require.NoError(t, err)

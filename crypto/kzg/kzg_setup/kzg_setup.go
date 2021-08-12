@@ -53,7 +53,7 @@ func main() {
 	s := suite.G1().Scalar()
 	s.SetBytes(h[:])
 	h = [32]byte{} // destroy secret
-	rou, _ := kzg.GenRootOfUnityPrimitive(suite)
+	rou, _ := kzg.GenRootOfUnityQuasiPrimitive(suite)
 	tr, err := kzg.TrustedSetupFromSecret(suite, rou, s)
 	s.Zero() // // destroy secret
 	if err != nil {

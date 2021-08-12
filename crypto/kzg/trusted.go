@@ -23,8 +23,7 @@ type TrustedSetup struct {
 	RootOfUnityPowers [D]kyber.Scalar // omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
 	LagrangeBasis     [D]kyber.Point  // TLi = [l<i>(secret)]1
 	Diff2             [D]kyber.Point
-	// auxiliar precalculated values
-	TA     [D][D]kyber.Scalar
+	// auxiliar values
 	ZeroG1 kyber.Scalar
 	OneG1  kyber.Scalar
 	DG1    kyber.Scalar
@@ -51,11 +50,6 @@ func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
 	for i := 0; i < D; i++ {
 		ret.LagrangeBasis[i] = suite.G1().Point()
 		ret.Diff2[i] = suite.G2().Point()
-		for j := 0; j < D; j++ {
-			if i != j {
-				ret.TA[i][j] = suite.G1().Scalar()
-			}
-		}
 	}
 	return ret
 }
