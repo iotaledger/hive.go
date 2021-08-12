@@ -31,26 +31,30 @@ func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
 		if vect[j] == nil {
 			continue
 		}
-		e.Mul(sd.q(vect, i, j), sd.LagrangeBasis[j])
+		qij := sd.q(vect, i, j)
+		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}
 	return ret
 }
 
 func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int) kyber.Scalar {
-	ret := sd.Suite.G1().Scalar()
+	ret := sd.Suite.G1().Scalar().Zero()
 	if i != m {
-		ret.Sub(sd.RootOfUnityPowers[m], sd.RootOfUnityPowers[i])
+		ret.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
 		ret.Div(vect[m], ret)
 	} else {
 		e := sd.Suite.G1().Scalar()
-		for j := range sd.RootOfUnityPowers {
-			if j == m {
+		for j := range sd.OmegaPowers {
+			if vect[j] == nil || j == m {
 				continue
 			}
-			e.Mul(vect[j], sd.TA[m][j])
+			e.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
+			e.Div(sd.OmegaPowers[j], e)
+			e.Mul(vect[j], e)
 			ret.Add(ret, e)
 		}
+		ret.Div(ret, sd.OmegaPowers[m])
 	}
 	return ret
 }

@@ -20,7 +20,7 @@ This implementation uses proprietary structure of the trusted setup, not mention
 The implemented trusted setup contains a number of constant values on G1 curve which are precomputed
 from the secret scalar and generated primitive root of unity for the field.
 
-The implementation assumes fixed degree of polynomials D = 16. It corresponds to the hexary _verkle trie_.
+The implementation assumes maximum lengths of vectors `D` = 257. It corresponds to the 257-ary _verkle trie_.
 
 The math of the implementation is described in this [HackMD document](https://hackmd.io/JM7BDAugQyuJgW66K-OX7A).
 

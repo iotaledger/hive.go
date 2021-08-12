@@ -2,6 +2,7 @@ package kzg
 
 import (
 	"encoding/hex"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,14 +12,18 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func TestCalc(t *testing.T) {
-	orderMinus1DivFactor.Sub(fieldOrder, big1)
-	orderMinus1DivFactor.Div(orderMinus1DivFactor, bigFactor)
-	t.Logf("orderMinus1DivFactor = %s", orderMinus1DivFactor.String())
+func TestConst(t *testing.T) {
+	t.Logf("FACTOR = %d", FACTOR)
+	t.Logf("D = %d", D)
+	t.Logf("fieldOrder = %d", fieldOrder)
+	orderMinus1 := new(big.Int)
+	orderMinus1.Sub(fieldOrder, big1)
+	orderMinus1DivFactor.Div(orderMinus1, bigFactor)
+	t.Logf("(fieldOrder-1)/FACTOR = %d", orderMinus1DivFactor)
+	mod := new(big.Int)
+	mod.Mod(orderMinus1, bigFactor)
+	t.Logf("(fieldOrder-1)%%FACTOR = %d", mod)
 
-}
-
-func TestGenLen(t *testing.T) {
 	suite := bn256.NewSuite()
 	t.Logf("G1().Scalarlen: %d", suite.G1().ScalarLen())
 	t.Logf("G1().Pointllen: %d", suite.G1().PointLen())
@@ -28,9 +33,10 @@ func TestGenLen(t *testing.T) {
 	t.Logf("GT().Pointllen: %d", suite.GT().PointLen())
 }
 
-func TestGenD(t *testing.T) {
+func TestGenerate(t *testing.T) {
 	suite := bn256.NewSuite()
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, rou, secret)
 	require.NoError(t, err)
@@ -48,6 +54,7 @@ func TestGenD(t *testing.T) {
 func TestValidate1(t *testing.T) {
 	suite := bn256.NewSuite()
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, rou, secret)
 	require.NoError(t, err)

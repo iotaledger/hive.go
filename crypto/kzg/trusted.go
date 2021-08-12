@@ -18,12 +18,12 @@ import (
 // [x]1 means a projection of scalar x to the G1 curve. [x]1 = xG, where G is the generating element
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element
 type TrustedSetup struct {
-	Suite             *bn256.Suite
-	RootOfUnity       kyber.Scalar    // omega: a primitive root of unity of the field.
-	RootOfUnityPowers [D]kyber.Scalar // omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
-	LagrangeBasis     [D]kyber.Point  // TLi = [l<i>(secret)]1
-	Diff2             [D]kyber.Point
-	// auxiliar values
+	Suite         *bn256.Suite
+	Omega         kyber.Scalar    // persistent. omega: a primitive root of unity of the field.
+	OmegaPowers   [D]kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
+	LagrangeBasis [D]kyber.Point  // persistent. TLi = [l<i>(secret)]1
+	Diff2         [D]kyber.Point  // persistent
+	// auxiliary values
 	ZeroG1 kyber.Scalar
 	OneG1  kyber.Scalar
 	DG1    kyber.Scalar
@@ -35,19 +35,20 @@ var (
 	errWrongROU    = xerrors.New("wrong root of unity")
 )
 
+// newTrustedSetup creates and initializes new structure
 func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
 	ret := &TrustedSetup{
-		Suite:       suite,
-		RootOfUnity: suite.G1().Scalar(),
+		Suite: suite,
+		Omega: suite.G1().Scalar(),
 		// util
 		ZeroG1: suite.G1().Scalar().Zero(),
 		OneG1:  suite.G1().Scalar().One(),
 		DG1:    suite.G1().Scalar().SetInt64(D),
 	}
-	for i := range ret.RootOfUnityPowers {
-		ret.RootOfUnityPowers[i] = suite.G1().Scalar()
+	for i := range ret.OmegaPowers {
+		ret.OmegaPowers[i] = suite.G1().Scalar()
 	}
-	for i := 0; i < D; i++ {
+	for i := range ret.LagrangeBasis {
 		ret.LagrangeBasis[i] = suite.G1().Point()
 		ret.Diff2[i] = suite.G2().Point()
 	}
@@ -62,9 +63,6 @@ func TrustedSetupFromSecret(suite *bn256.Suite, rootOfUnity, secret kyber.Scalar
 	if err := ret.generate(rootOfUnity, secret); err != nil {
 		return nil, err
 	}
-	if err := ret.precalcAux(); err != nil {
-		return nil, err
-	}
 	return ret, nil
 }
 
@@ -74,8 +72,11 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 	if err := ret.read(bytes.NewReader(data)); err != nil {
 		return nil, err
 	}
-	if err := ret.precalcAux(); err != nil {
-		return nil, err
+	for i := range ret.OmegaPowers {
+		powerSimple(ret.Suite, ret.Omega, i, ret.OmegaPowers[i])
+		if i > 0 && ret.OmegaPowers[i].Equal(ret.OneG1) {
+			return nil, errWrongROU
+		}
 	}
 	return ret, nil
 }
@@ -107,9 +108,15 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 	if len(secret.String()) < 50 {
 		return errWrongSecret
 	}
-	sd.RootOfUnity.Set(rootOfUnity)
-	if err := sd.precalcRootsOfUnity(secret); err != nil {
-		return err
+	sd.Omega.Set(rootOfUnity)
+	for i := range sd.OmegaPowers {
+		powerSimple(sd.Suite, sd.Omega, i, sd.OmegaPowers[i])
+		if sd.OmegaPowers[i].Equal(secret) {
+			return errWrongSecret
+		}
+		if i > 0 && sd.OmegaPowers[i].Equal(sd.OneG1) {
+			return errWrongROU
+		}
 	}
 	// calculate Lagrange basis: [l_i(s)]1
 	for i := range sd.LagrangeBasis {
@@ -119,53 +126,10 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 	// calculate [secret-rou^i]2
 	e2 := sd.Suite.G2().Scalar()
 	for i := range sd.Diff2 {
-		e2.Sub(secret, sd.RootOfUnityPowers[i])
+		e2.Sub(secret, sd.OmegaPowers[i])
 		sd.Diff2[i].Mul(e2, nil)
 	}
 	return nil
-}
-
-// precalcRootsOfUnity calculates powers up to D-1 of roots of unity
-func (sd *TrustedSetup) precalcRootsOfUnity(secret kyber.Scalar) error {
-	for i := range sd.RootOfUnityPowers {
-		powerSimple(sd.Suite, sd.RootOfUnity, i, sd.RootOfUnityPowers[i])
-		if sd.RootOfUnityPowers[i].Equal(secret) {
-			return errWrongSecret
-		}
-		if i > 0 && sd.RootOfUnityPowers[i].Equal(sd.OneG1) {
-			return errWrongROU
-		}
-	}
-	return nil
-}
-
-func (sd *TrustedSetup) precalcAux() error {
-	e := sd.Suite.G1().Scalar()
-	for m := range sd.TA {
-		for j := range sd.TA {
-			if m == j {
-				continue
-			}
-			sd.TA[m][j].Div(sd.aprime(m), sd.aprime(j))
-			e.Sub(sd.RootOfUnityPowers[m], sd.RootOfUnityPowers[j])
-			sd.TA[m][j].Div(sd.TA[m][j], e)
-		}
-	}
-	return nil
-}
-
-// aprime return A'(\omega^k)
-func (sd *TrustedSetup) aprime(k int) kyber.Scalar {
-	ret := sd.Suite.G1().Scalar().One()
-	e := sd.Suite.G1().Scalar()
-	for j := range sd.RootOfUnityPowers {
-		if k == j {
-			continue
-		}
-		e.Sub(sd.RootOfUnityPowers[k], sd.RootOfUnityPowers[j])
-		ret.Mul(ret, e)
-	}
-	return ret
 }
 
 // evalLagrangeValue calculates li(X) = [prod<j=0,D-1;j!=i>((X-omega^j)/(omega^i-omega^j)]1
@@ -178,8 +142,8 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 		if j == i {
 			continue
 		}
-		numer.Sub(v, sd.RootOfUnityPowers[j])
-		denom.Sub(sd.RootOfUnityPowers[i], sd.RootOfUnityPowers[j])
+		numer.Sub(v, sd.OmegaPowers[j])
+		denom.Sub(sd.OmegaPowers[i], sd.OmegaPowers[j])
 		elem.Div(numer, denom)
 		ret.Mul(ret, elem)
 	}
@@ -188,7 +152,7 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 
 // write marshal
 func (sd *TrustedSetup) write(w io.Writer) error {
-	if _, err := sd.RootOfUnity.MarshalTo(w); err != nil {
+	if _, err := sd.Omega.MarshalTo(w); err != nil {
 		return err
 	}
 	for i := range sd.LagrangeBasis {
@@ -206,10 +170,10 @@ func (sd *TrustedSetup) write(w io.Writer) error {
 
 // read unmarshal
 func (sd *TrustedSetup) read(r io.Reader) error {
-	if _, err := sd.RootOfUnity.UnmarshalFrom(r); err != nil {
+	if _, err := sd.Omega.UnmarshalFrom(r); err != nil {
 		return err
 	}
-	if !isRootOfUnity(sd.Suite, sd.RootOfUnity) {
+	if !isRootOfUnity(sd.Suite, sd.Omega) {
 		return errNotROU
 	}
 	for i := range sd.LagrangeBasis {
