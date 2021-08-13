@@ -1,6 +1,8 @@
 package kzg
 
-import "go.dedis.ch/kyber/v3"
+import (
+	"go.dedis.ch/kyber/v3"
+)
 
 // Commit commits to vector vect[0], ...., vect[D-1]
 // it is [f(s)]1 where f is polynomial  in evaluation (Lagrange) form,
@@ -23,40 +25,64 @@ func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
 // This isthe proof sent to verifier
 func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
-	if vect[i] == nil {
-		return ret
-	}
 	e := sd.Suite.G1().Point()
-	for j := range vect {
-		if vect[j] == nil {
-			continue
-		}
-		qij := sd.q(vect, i, j)
+	qij := sd.Suite.G1().Scalar()
+	for j := range sd.OmegaPowers {
+		sd.q(vect, i, j, qij)
+		//fmt.Printf("q[%d][%d] = %s\n", i, j, qij.String())
 		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}
 	return ret
 }
 
-func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int) kyber.Scalar {
-	ret := sd.Suite.G1().Scalar().Zero()
-	if i != m {
-		ret.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
-		ret.Div(vect[m], ret)
-	} else {
-		e := sd.Suite.G1().Scalar()
-		for j := range sd.OmegaPowers {
-			if vect[j] == nil || j == m {
-				continue
-			}
-			e.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
-			e.Div(sd.OmegaPowers[j], e)
-			e.Mul(vect[j], e)
-			ret.Add(ret, e)
-		}
-		ret.Div(ret, sd.OmegaPowers[m])
+func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
+	if vect[i] == nil && vect[m] == nil {
+		ret.Zero()
+		return
 	}
-	return ret
+	numer := sd.Suite.G1().Scalar()
+	denom := sd.Suite.G1().Scalar()
+	if i != m {
+		sd.diff(vect, m, i, numer)
+		if numer.Equal(sd.ZeroG1) {
+			ret.Zero()
+			return
+		}
+		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
+		ret.Div(numer, denom)
+		return
+	}
+	// i == m
+	ret.Zero()
+	for j := range vect {
+		if j == m {
+			continue
+		}
+		sd.diff(vect, m, i, numer)
+		if numer.Equal(sd.ZeroG1) {
+			continue
+		}
+		numer.Mul(numer, sd.OmegaPowers[j])
+		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
+		denom.Mul(denom, sd.OmegaPowers[m])
+		numer.Div(numer, denom)
+		ret.Add(ret, numer)
+	}
+}
+
+func (sd *TrustedSetup) diff(vect *[D]kyber.Scalar, i, j int, ret kyber.Scalar) {
+	switch {
+	case vect[i] == nil && vect[j] == nil:
+		ret.Zero()
+		return
+	case vect[i] != nil && vect[j] == nil:
+		ret.Set(vect[i])
+	case vect[i] == nil && vect[j] != nil:
+		ret.Neg(vect[j])
+	default:
+		ret.Sub(vect[i], vect[j])
+	}
 }
 
 // Verify verifies KZG proof that polynomial f committed with C has f(rou<atIndex>) = v

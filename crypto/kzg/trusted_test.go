@@ -51,6 +51,28 @@ func TestGenerate(t *testing.T) {
 	t.Logf("hash = %s", hex.EncodeToString(h[:]))
 }
 
+func TestValidate0(t *testing.T) {
+	suite := bn256.NewSuite()
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	t.Logf("omega = %s", rou.String())
+	secret := suite.G1().Scalar().Pick(random.New())
+	tr, err := TrustedSetupFromSecret(suite, rou, secret)
+	require.NoError(t, err)
+
+	vect := new([D]kyber.Scalar)
+	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
+	c := tr.Commit(vect)
+
+	t.Logf("C = %s", c)
+	pi0 := tr.Prove(vect, 0)
+	pi1 := tr.Prove(vect, 1)
+	t.Logf("Pi[%d] = %s", 0, pi0)
+	t.Logf("Pi[%d] = %s", 1, pi1)
+
+	require.True(t, tr.Verify(c, pi0, vect[0], 0))
+	require.True(t, tr.Verify(c, pi1, tr.ZeroG1, 1))
+}
+
 func TestValidate1(t *testing.T) {
 	suite := bn256.NewSuite()
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
