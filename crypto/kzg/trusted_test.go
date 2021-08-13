@@ -66,8 +66,8 @@ func TestValidate0(t *testing.T) {
 	t.Logf("C = %s", c)
 	pi0 := tr.Prove(vect, 0)
 	pi1 := tr.Prove(vect, 1)
-	t.Logf("Pi[%d] = %s", 0, pi0)
-	t.Logf("Pi[%d] = %s", 1, pi1)
+	t.Logf("Pi[0] = %s", pi0)
+	t.Logf("Pi[1] = %s", pi1)
 
 	require.True(t, tr.Verify(c, pi0, vect[0], 0))
 	require.True(t, tr.Verify(c, pi1, tr.ZeroG1, 1))

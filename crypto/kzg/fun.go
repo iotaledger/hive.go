@@ -59,7 +59,7 @@ func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
 		if j == m {
 			continue
 		}
-		sd.diff(vect, m, i, numer)
+		sd.diff(vect, j, m, numer)
 		if numer.Equal(sd.ZeroG1) {
 			continue
 		}
