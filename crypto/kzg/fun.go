@@ -37,10 +37,6 @@ func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
 }
 
 func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
-	if vect[i] == nil && vect[m] == nil {
-		ret.Zero()
-		return
-	}
 	numer := sd.Suite.G1().Scalar()
 	denom := sd.Suite.G1().Scalar()
 	if i != m {

@@ -61,16 +61,20 @@ func TestValidate0(t *testing.T) {
 
 	vect := new([D]kyber.Scalar)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
+	vect[1] = tr.ZeroG1
 	c := tr.Commit(vect)
 
 	t.Logf("C = %s", c)
 	pi0 := tr.Prove(vect, 0)
 	pi1 := tr.Prove(vect, 1)
+	pi2 := tr.Prove(vect, 2)
 	t.Logf("Pi[0] = %s", pi0)
 	t.Logf("Pi[1] = %s", pi1)
+	t.Logf("Pi[2] = %s", pi2)
 
 	require.True(t, tr.Verify(c, pi0, vect[0], 0))
 	require.True(t, tr.Verify(c, pi1, tr.ZeroG1, 1))
+	require.True(t, tr.Verify(c, pi2, tr.ZeroG1, 2))
 }
 
 func TestValidate1(t *testing.T) {
@@ -82,11 +86,19 @@ func TestValidate1(t *testing.T) {
 	require.NoError(t, err)
 
 	vect := new([D]kyber.Scalar)
-	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
+	for i := range vect {
+		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
+	}
 	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
-	c, pi := tr.CommitAll(vect)
-	require.True(t, tr.Verify(c, pi[0], vect[0], 0))
+	pi := new([D]kyber.Point)
+	for i := range pi {
+		pi[i] = tr.Prove(vect, i)
+
+	}
+	for i := range pi {
+		require.True(t, tr.Verify(c, pi[i], vect[i], i))
+	}
 }
 
 func TestValidate2(t *testing.T) {
@@ -102,7 +114,10 @@ func TestValidate2(t *testing.T) {
 	}
 	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
-	c, pi := tr.CommitAll(vect)
+	pi := new([D]kyber.Point)
+	for i := range pi {
+		pi[i] = tr.Prove(vect, i)
+	}
 	for i := range vect {
 		require.True(t, tr.Verify(c, pi[i], vect[i], i))
 	}
