@@ -12,9 +12,11 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+const D = 257
+
 func TestConst(t *testing.T) {
 	t.Logf("FACTOR = %d", FACTOR)
-	t.Logf("D = %d", 16)
+	t.Logf("D = %d", D)
 	t.Logf("fieldOrder = %d", fieldOrder)
 	orderMinus1 := new(big.Int)
 	orderMinus1.Sub(fieldOrder, big1)
@@ -35,7 +37,7 @@ func TestConst(t *testing.T) {
 
 func TestGenerate(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
@@ -53,16 +55,17 @@ func TestGenerate(t *testing.T) {
 
 func TestValidate0(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
-	t.Logf("omega = %s", rou.String())
+	omega, _ := GenRootOfUnityQuasiPrimitive(suite, D)
+	t.Logf("omega = %s", omega.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
+	tr, err := TrustedSetupFromSecret(suite, D, omega, secret)
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
 	vect[1] = tr.ZeroG1
 	c := tr.Commit(vect)
+	require.True(t, tr.VerifyVector(vect, c))
 
 	t.Logf("C = %s", c)
 	pi0 := tr.Prove(vect, 0)
@@ -79,7 +82,7 @@ func TestValidate0(t *testing.T) {
 
 func TestValidate1(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
@@ -90,8 +93,9 @@ func TestValidate1(t *testing.T) {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
 	c := tr.Commit(vect)
+	require.True(t, tr.VerifyVector(vect, c))
 	t.Logf("C = %s", c)
-	pi := new([D]kyber.Point)
+	pi := make([]kyber.Point, D)
 	for i := range pi {
 		pi[i] = tr.Prove(vect, i)
 
@@ -103,7 +107,7 @@ func TestValidate1(t *testing.T) {
 
 func TestValidate2(t *testing.T) {
 	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
+	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	secret := suite.G1().Scalar().Pick(random.New())
 	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
 	require.NoError(t, err)
@@ -114,7 +118,8 @@ func TestValidate2(t *testing.T) {
 	}
 	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
-	pi := new([D]kyber.Point)
+	require.True(t, tr.VerifyVector(vect, c))
+	pi := make([]kyber.Point, D)
 	for i := range pi {
 		pi[i] = tr.Prove(vect, i)
 	}
@@ -127,7 +132,7 @@ func TestValidate2(t *testing.T) {
 		require.False(t, tr.Verify(c, pi[i], v, i))
 	}
 	rnd := random.New()
-	for k := 0; k < 100; k++ {
+	for k := 0; k < 10; k++ {
 		v.Pick(rnd)
 		for i := range vect {
 			require.False(t, tr.Verify(c, pi[i], v, i))
@@ -143,6 +148,7 @@ func TestValidate1Load(t *testing.T) {
 	vect := make([]kyber.Scalar, D)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
 	c := tr.Commit(vect)
+	require.True(t, tr.VerifyVector(vect, c))
 	t.Logf("C = %s", c)
 	c, pi := tr.CommitAll(vect)
 	require.True(t, tr.Verify(c, pi[0], vect[0], 0))
@@ -169,7 +175,7 @@ func TestValidate2Load(t *testing.T) {
 		require.False(t, tr.Verify(c, pi[i], v, i))
 	}
 	rnd := random.New()
-	for k := 0; k < 100; k++ {
+	for k := 0; k < 10; k++ {
 		v.Pick(rnd)
 		for i := range vect {
 			require.False(t, tr.Verify(c, pi[i], v, i))

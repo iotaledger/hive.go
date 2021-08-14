@@ -19,6 +19,7 @@ import (
 const (
 	minSeed     = 20
 	defaultFile = "example.setup"
+	D           = 257
 )
 
 func main() {
@@ -60,8 +61,8 @@ func main() {
 	s := suite.G1().Scalar()
 	s.SetBytes(h[:])
 	h = [32]byte{} // destroy secret
-	rou, _ := kzg.GenRootOfUnityQuasiPrimitive(suite)
-	tr, err := kzg.TrustedSetupFromSecret(suite, 16, rou, s)
+	omega, _ := kzg.GenRootOfUnityQuasiPrimitive(suite, D)
+	tr, err := kzg.TrustedSetupFromSecret(suite, D, omega, s)
 	s.Zero() // // destroy secret
 	if err != nil {
 		panic(err)

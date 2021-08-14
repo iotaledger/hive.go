@@ -42,7 +42,6 @@ func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
 	return &TrustedSetup{Suite: suite}
 }
 
-// newTrustedSetup creates and initializes new structure
 func (sd *TrustedSetup) init(d uint16) {
 	sd.D = d
 	sd.Omega = sd.Suite.G1().Scalar()
@@ -64,7 +63,7 @@ func (sd *TrustedSetup) init(d uint16) {
 	sd.OneG1 = sd.Suite.G1().Scalar().One()
 }
 
-// TrustedSetupFromSecret calculates TrustedSetup from secret and rootOfUnity
+// TrustedSetupFromSecret calculates TrustedSetup from secret and omega
 // Only used once after what secret must be destroyed
 // The trusted setup does not contain any secret
 func TrustedSetupFromSecret(suite *bn256.Suite, d uint16, omega, secret kyber.Scalar) (*TrustedSetup, error) {
@@ -116,7 +115,7 @@ func (sd *TrustedSetup) Bytes() []byte {
 	return buf.Bytes()
 }
 
-// generate creates a new TrustedSetup based on its root of unity and provided secret
+// generate creates a new TrustedSetup based on omega and secret
 func (sd *TrustedSetup) generate(omega, secret kyber.Scalar) error {
 	if len(secret.String()) < 50 {
 		return errWrongSecret

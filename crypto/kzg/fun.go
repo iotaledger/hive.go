@@ -29,7 +29,6 @@ func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
 	qij := sd.Suite.G1().Scalar()
 	for j := range sd.OmegaPowers {
 		sd.q(vect, i, j, qij)
-		//fmt.Printf("q[%d][%d] = %s\n", i, j, qij.String())
 		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}
@@ -94,12 +93,30 @@ func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) b
 	return p1.Equal(p2)
 }
 
+// VerifyVector calculates proofs and verifies all elements in the vector against commitment C
+func (sd *TrustedSetup) VerifyVector(vect []kyber.Scalar, c kyber.Point) bool {
+	pi := make([]kyber.Point, sd.D)
+	for i := range vect {
+		pi[i] = sd.Prove(vect, i)
+	}
+	for i := range pi {
+		v := vect[i]
+		if v == nil {
+			v = sd.ZeroG1
+		}
+		if !sd.Verify(c, pi[i], v, i) {
+			return false
+		}
+	}
+	return true
+}
+
 // CommitAll return commit to the whole vector and to each of values of it
 // Generate commitment to the vector and proofs to all values.
 // Expensive. Usually used only in tests
-func (sd *TrustedSetup) CommitAll(vect []kyber.Scalar) (kyber.Point, *[D]kyber.Point) {
+func (sd *TrustedSetup) CommitAll(vect []kyber.Scalar) (kyber.Point, []kyber.Point) {
 	retC := sd.Commit(vect)
-	retPi := new([D]kyber.Point)
+	retPi := make([]kyber.Point, sd.D)
 	for i := range vect {
 		if vect[i] == nil {
 			continue

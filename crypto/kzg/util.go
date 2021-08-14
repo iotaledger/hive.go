@@ -70,10 +70,13 @@ func generateRootOfUnity(suite *bn256.Suite) kyber.Scalar {
 // GenRootOfUnityQuasiPrimitive generates random roots of unity based on FACTOR until all its powers
 // up to D-1 are long enough thus excluding also 1.
 // Note that the generated root of unity may not be primitive wrt FACTOR
-func GenRootOfUnityQuasiPrimitive(suite *bn256.Suite) (kyber.Scalar, *[D]kyber.Scalar) {
+func GenRootOfUnityQuasiPrimitive(suite *bn256.Suite, d uint16) (kyber.Scalar, []kyber.Scalar) {
+	if d > FACTOR {
+		panic("d > FACTOR")
+	}
 	repeat := true
 	var rou kyber.Scalar
-	retPowers := new([D]kyber.Scalar)
+	retPowers := make([]kyber.Scalar, d)
 
 	for repeat {
 		repeat = false
