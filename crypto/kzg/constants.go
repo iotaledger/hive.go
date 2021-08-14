@@ -8,16 +8,8 @@ import (
 
 // constants are used in KZG trusted setup
 
-const (
-	// factor of order-1
-	FACTOR = 16 // 5743
-	// D = 257 we will be building 257-ary verkle trie. Each node commits to up to 257 values
-	// The indices 0..255 are children, index 256 corresponds to the terminal value if present
-	// We will calculate first D values of the Lagrange basis
-	D = 16 // 257
-	// a constant to check consistency: orderMinus1DivDStr = (fieldOrder-1)/FACTOR
-	orderMinus1DivFactorStr = "11318222130532231191502078833773272809084173089657633012342166632255644576"
-)
+// factor of order-1
+const FACTOR = 5743
 
 var (
 	// from kyber library
@@ -35,13 +27,10 @@ var (
 
 // check consistency of constants
 func init() {
-	if D > FACTOR {
-		panic("D > FACTOR")
-	}
-	//	c, _ := new(big.Int).SetString(orderMinus1DivFactorStr, 10)
 	orderMinus1DivFactor.Sub(fieldOrder, big1)
 	orderMinus1DivFactor.Div(orderMinus1DivFactor, bigFactor)
-	//	if c.Cmp(orderMinus1DivFactor) != 0 {
-	//		panic("inconsistent constants")
-	//	}
+	orderMinus1ModFactor := new(big.Int)
+	if orderMinus1ModFactor.Cmp(big0) != 0 {
+		panic("inconsistent constants")
+	}
 }

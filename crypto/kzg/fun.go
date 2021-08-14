@@ -8,7 +8,7 @@ import (
 // it is [f(s)]1 where f is polynomial  in evaluation (Lagrange) form,
 // i.e. with f(rou[i]) = vect[i], i = 0..D-1
 // vect[k] == nil equivalent to 0
-func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
+func (sd *TrustedSetup) Commit(vect []kyber.Scalar) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	elem := sd.Suite.G1().Point()
 	for i, e := range vect {
@@ -23,7 +23,7 @@ func (sd *TrustedSetup) Commit(vect *[D]kyber.Scalar) kyber.Point {
 
 // Prove returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
 // This isthe proof sent to verifier
-func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
+func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	e := sd.Suite.G1().Point()
 	qij := sd.Suite.G1().Scalar()
@@ -36,7 +36,7 @@ func (sd *TrustedSetup) Prove(vect *[D]kyber.Scalar, i int) kyber.Point {
 	return ret
 }
 
-func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
+func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, ret kyber.Scalar) {
 	numer := sd.Suite.G1().Scalar()
 	denom := sd.Suite.G1().Scalar()
 	if i != m {
@@ -67,7 +67,7 @@ func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
 	}
 }
 
-func (sd *TrustedSetup) diff(vect *[D]kyber.Scalar, i, j int, ret kyber.Scalar) {
+func (sd *TrustedSetup) diff(vect []kyber.Scalar, i, j int, ret kyber.Scalar) {
 	switch {
 	case vect[i] == nil && vect[j] == nil:
 		ret.Zero()
@@ -97,7 +97,7 @@ func (sd *TrustedSetup) Verify(c, pi kyber.Point, v kyber.Scalar, atIndex int) b
 // CommitAll return commit to the whole vector and to each of values of it
 // Generate commitment to the vector and proofs to all values.
 // Expensive. Usually used only in tests
-func (sd *TrustedSetup) CommitAll(vect *[D]kyber.Scalar) (kyber.Point, *[D]kyber.Point) {
+func (sd *TrustedSetup) CommitAll(vect []kyber.Scalar) (kyber.Point, *[D]kyber.Point) {
 	retC := sd.Commit(vect)
 	retPi := new([D]kyber.Point)
 	for i := range vect {

@@ -2,6 +2,7 @@ package kzg
 
 import (
 	"bytes"
+	"encoding/binary"
 	"io"
 	"io/ioutil"
 
@@ -19,16 +20,16 @@ import (
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element
 type TrustedSetup struct {
 	Suite         *bn256.Suite
-	Omega         kyber.Scalar   // persistent. omega: a primitive root of unity of the field.
-	LagrangeBasis [D]kyber.Point // persistent. TLi = [l<i>(secret)]1
-	Diff2         [D]kyber.Point // persistent
+	D             uint16
+	Omega         kyber.Scalar  // persistent. omega: a primitive root of unity of the field.
+	LagrangeBasis []kyber.Point // persistent. TLi = [l<i>(secret)]1
+	Diff2         []kyber.Point // persistent
 	// auxiliary values
 	// precalc
-	OmegaPowers  [D]kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
-	AprimeOmegaI [D]kyber.Scalar
+	OmegaPowers  []kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
+	AprimeOmegaI []kyber.Scalar
 	ZeroG1       kyber.Scalar
 	OneG1        kyber.Scalar
-	DG1          kyber.Scalar
 }
 
 var (
@@ -37,35 +38,39 @@ var (
 	errWrongROU    = xerrors.New("wrong root of unity")
 )
 
-// newTrustedSetup creates and initializes new structure
 func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
-	ret := &TrustedSetup{
-		Suite: suite,
-		Omega: suite.G1().Scalar(),
-		// util
-		ZeroG1: suite.G1().Scalar().Zero(),
-		OneG1:  suite.G1().Scalar().One(),
-		DG1:    suite.G1().Scalar().SetInt64(D),
+	return &TrustedSetup{Suite: suite}
+}
+
+// newTrustedSetup creates and initializes new structure
+func (sd *TrustedSetup) init(d uint16) {
+	sd.D = d
+	sd.Omega = sd.Suite.G1().Scalar()
+	sd.LagrangeBasis = make([]kyber.Point, d)
+	sd.Diff2 = make([]kyber.Point, d)
+	sd.OmegaPowers = make([]kyber.Scalar, d)
+	sd.AprimeOmegaI = make([]kyber.Scalar, d)
+	for i := range sd.OmegaPowers {
+		sd.OmegaPowers[i] = sd.Suite.G1().Scalar()
 	}
-	for i := range ret.OmegaPowers {
-		ret.OmegaPowers[i] = suite.G1().Scalar()
+	for i := range sd.AprimeOmegaI {
+		sd.AprimeOmegaI[i] = sd.Suite.G1().Scalar()
 	}
-	for i := range ret.AprimeOmegaI {
-		ret.AprimeOmegaI[i] = suite.G1().Scalar()
+	for i := range sd.LagrangeBasis {
+		sd.LagrangeBasis[i] = sd.Suite.G1().Point()
+		sd.Diff2[i] = sd.Suite.G2().Point()
 	}
-	for i := range ret.LagrangeBasis {
-		ret.LagrangeBasis[i] = suite.G1().Point()
-		ret.Diff2[i] = suite.G2().Point()
-	}
-	return ret
+	sd.ZeroG1 = sd.Suite.G1().Scalar().Zero()
+	sd.OneG1 = sd.Suite.G1().Scalar().One()
 }
 
 // TrustedSetupFromSecret calculates TrustedSetup from secret and rootOfUnity
 // Only used once after what secret must be destroyed
 // The trusted setup does not contain any secret
-func TrustedSetupFromSecret(suite *bn256.Suite, rootOfUnity, secret kyber.Scalar) (*TrustedSetup, error) {
+func TrustedSetupFromSecret(suite *bn256.Suite, d uint16, omega, secret kyber.Scalar) (*TrustedSetup, error) {
 	ret := newTrustedSetup(suite)
-	if err := ret.generate(rootOfUnity, secret); err != nil {
+	ret.init(d)
+	if err := ret.generate(omega, secret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -112,11 +117,11 @@ func (sd *TrustedSetup) Bytes() []byte {
 }
 
 // generate creates a new TrustedSetup based on its root of unity and provided secret
-func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
+func (sd *TrustedSetup) generate(omega, secret kyber.Scalar) error {
 	if len(secret.String()) < 50 {
 		return errWrongSecret
 	}
-	sd.Omega.Set(rootOfUnity)
+	sd.Omega.Set(omega)
 	for i := range sd.OmegaPowers {
 		powerSimple(sd.Suite, sd.Omega, i, sd.OmegaPowers[i])
 		if sd.OmegaPowers[i].Equal(secret) {
@@ -149,7 +154,7 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 	numer := sd.Suite.G1().Scalar()
 	denom := sd.Suite.G1().Scalar()
 	elem := sd.Suite.G1().Scalar()
-	for j := 0; j < D; j++ {
+	for j := 0; j < int(sd.D); j++ {
 		if j == i {
 			continue
 		}
@@ -176,6 +181,11 @@ func (sd *TrustedSetup) aprime(m int, ret kyber.Scalar) {
 
 // write marshal
 func (sd *TrustedSetup) write(w io.Writer) error {
+	var tmp2 [2]byte
+	binary.LittleEndian.PutUint16(tmp2[:], sd.D)
+	if _, err := w.Write(tmp2[:]); err != nil {
+		return err
+	}
 	if _, err := sd.Omega.MarshalTo(w); err != nil {
 		return err
 	}
@@ -194,6 +204,13 @@ func (sd *TrustedSetup) write(w io.Writer) error {
 
 // read unmarshal
 func (sd *TrustedSetup) read(r io.Reader) error {
+	var tmp2 [2]byte
+	if _, err := r.Read(tmp2[:]); err != nil {
+		return err
+	}
+
+	sd.init(binary.LittleEndian.Uint16(tmp2[:]))
+
 	if _, err := sd.Omega.UnmarshalFrom(r); err != nil {
 		return err
 	}

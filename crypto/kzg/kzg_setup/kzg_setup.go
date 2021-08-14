@@ -16,14 +16,21 @@ import (
 	"golang.org/x/term"
 )
 
-const minSeed = 20
+const (
+	minSeed     = 20
+	defaultFile = "example.setup"
+)
 
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) > 2 {
 		fmt.Printf("Usage: kzg_setup <file name>\n")
 		return
 	}
-	fmt.Printf("generating new trusted KXG setup to file '%s'... \n", os.Args[1])
+	fname := defaultFile
+	if len(os.Args) == 2 {
+		fname = os.Args[1]
+	}
+	fmt.Printf("generating new trusted KXG setup to file '%s'... \n", fname)
 	var seed []byte
 	var err error
 	for {
@@ -54,18 +61,18 @@ func main() {
 	s.SetBytes(h[:])
 	h = [32]byte{} // destroy secret
 	rou, _ := kzg.GenRootOfUnityQuasiPrimitive(suite)
-	tr, err := kzg.TrustedSetupFromSecret(suite, rou, s)
+	tr, err := kzg.TrustedSetupFromSecret(suite, 16, rou, s)
 	s.Zero() // // destroy secret
 	if err != nil {
 		panic(err)
 	}
-	if err = ioutil.WriteFile(os.Args[1], tr.Bytes(), 0600); err != nil {
+	if err = ioutil.WriteFile(fname, tr.Bytes(), 0600); err != nil {
 		panic(err)
 	}
-	fmt.Printf("success. The trusted setup has been generated and saved into the file '%s'\n", os.Args[1])
-	if _, err = kzg.TrustedSetupFromFile(suite, os.Args[1]); err != nil {
-		fmt.Printf("reading trusted setup back from file '%s': %v\nFAIL\n", os.Args[1], err)
+	fmt.Printf("success. The trusted setup has been generated and saved into the file '%s'\n", fname)
+	if _, err = kzg.TrustedSetupFromFile(suite, fname); err != nil {
+		fmt.Printf("reading trusted setup back from file '%s': %v\nFAIL\n", fname, err)
 	} else {
-		fmt.Printf("reading trusted setup back from file '%s': OK\nSUCCESS\n", os.Args[1])
+		fmt.Printf("reading trusted setup back from file '%s': OK\nSUCCESS\n", fname)
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 func TestConst(t *testing.T) {
 	t.Logf("FACTOR = %d", FACTOR)
-	t.Logf("D = %d", D)
+	t.Logf("D = %d", 16)
 	t.Logf("fieldOrder = %d", fieldOrder)
 	orderMinus1 := new(big.Int)
 	orderMinus1.Sub(fieldOrder, big1)
@@ -38,7 +38,7 @@ func TestGenerate(t *testing.T) {
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, rou, secret)
+	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
 	require.NoError(t, err)
 	data := tr.Bytes()
 	t.Logf("trusted setup size: %d", len(data))
@@ -56,10 +56,10 @@ func TestValidate0(t *testing.T) {
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, rou, secret)
+	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
 	require.NoError(t, err)
 
-	vect := new([D]kyber.Scalar)
+	vect := make([]kyber.Scalar, D)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
 	vect[1] = tr.ZeroG1
 	c := tr.Commit(vect)
@@ -82,10 +82,10 @@ func TestValidate1(t *testing.T) {
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, rou, secret)
+	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
 	require.NoError(t, err)
 
-	vect := new([D]kyber.Scalar)
+	vect := make([]kyber.Scalar, D)
 	for i := range vect {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
@@ -105,10 +105,10 @@ func TestValidate2(t *testing.T) {
 	suite := bn256.NewSuite()
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite)
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, rou, secret)
+	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
 	require.NoError(t, err)
 
-	vect := new([D]kyber.Scalar)
+	vect := make([]kyber.Scalar, D)
 	for i := range vect {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
@@ -140,7 +140,7 @@ func TestValidate1Load(t *testing.T) {
 	tr, err := TrustedSetupFromFile(suite, "example.setup")
 	require.NoError(t, err)
 
-	vect := new([D]kyber.Scalar)
+	vect := make([]kyber.Scalar, D)
 	vect[0] = tr.Suite.G1().Scalar().SetInt64(42)
 	c := tr.Commit(vect)
 	t.Logf("C = %s", c)
@@ -153,7 +153,7 @@ func TestValidate2Load(t *testing.T) {
 	tr, err := TrustedSetupFromFile(suite, "example.setup")
 	require.NoError(t, err)
 
-	vect := new([D]kyber.Scalar)
+	vect := make([]kyber.Scalar, D)
 	for i := range vect {
 		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
 	}
