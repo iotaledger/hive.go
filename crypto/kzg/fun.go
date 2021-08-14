@@ -59,9 +59,9 @@ func (sd *TrustedSetup) q(vect *[D]kyber.Scalar, i, m int, ret kyber.Scalar) {
 		if numer.Equal(sd.ZeroG1) {
 			continue
 		}
-		numer.Mul(numer, sd.OmegaPowers[j])
+		numer.Mul(numer, sd.AprimeOmegaI[m])
 		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
-		denom.Mul(denom, sd.OmegaPowers[m])
+		denom.Mul(denom, sd.AprimeOmegaI[j])
 		numer.Div(numer, denom)
 		ret.Add(ret, numer)
 	}

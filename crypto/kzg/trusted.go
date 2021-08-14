@@ -19,14 +19,16 @@ import (
 // [x]2 means a projection of scalar x to the G2 curve. [x]2 = xH, where H is the generating element
 type TrustedSetup struct {
 	Suite         *bn256.Suite
-	Omega         kyber.Scalar    // persistent. omega: a primitive root of unity of the field.
-	OmegaPowers   [D]kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
-	LagrangeBasis [D]kyber.Point  // persistent. TLi = [l<i>(secret)]1
-	Diff2         [D]kyber.Point  // persistent
+	Omega         kyber.Scalar   // persistent. omega: a primitive root of unity of the field.
+	LagrangeBasis [D]kyber.Point // persistent. TLi = [l<i>(secret)]1
+	Diff2         [D]kyber.Point // persistent
 	// auxiliary values
-	ZeroG1 kyber.Scalar
-	OneG1  kyber.Scalar
-	DG1    kyber.Scalar
+	// precalc
+	OmegaPowers  [D]kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
+	AprimeOmegaI [D]kyber.Scalar
+	ZeroG1       kyber.Scalar
+	OneG1        kyber.Scalar
+	DG1          kyber.Scalar
 }
 
 var (
@@ -47,6 +49,9 @@ func newTrustedSetup(suite *bn256.Suite) *TrustedSetup {
 	}
 	for i := range ret.OmegaPowers {
 		ret.OmegaPowers[i] = suite.G1().Scalar()
+	}
+	for i := range ret.AprimeOmegaI {
+		ret.AprimeOmegaI[i] = suite.G1().Scalar()
 	}
 	for i := range ret.LagrangeBasis {
 		ret.LagrangeBasis[i] = suite.G1().Point()
@@ -77,6 +82,9 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 		if i > 0 && ret.OmegaPowers[i].Equal(ret.OneG1) {
 			return nil, errWrongROU
 		}
+	}
+	for i := range ret.AprimeOmegaI {
+		ret.aprime(i, ret.AprimeOmegaI[i])
 	}
 	return ret, nil
 }
@@ -118,6 +126,9 @@ func (sd *TrustedSetup) generate(rootOfUnity, secret kyber.Scalar) error {
 			return errWrongROU
 		}
 	}
+	for i := range sd.AprimeOmegaI {
+		sd.aprime(i, sd.AprimeOmegaI[i])
+	}
 	// calculate Lagrange basis: [l_i(s)]1
 	for i := range sd.LagrangeBasis {
 		l := sd.evalLagrangeValue(i, secret)
@@ -148,6 +159,19 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 		ret.Mul(ret, elem)
 	}
 	return ret
+}
+
+// A'(omega^m)
+func (sd *TrustedSetup) aprime(m int, ret kyber.Scalar) {
+	e := sd.Suite.G1().Scalar()
+	ret.One()
+	for i := range sd.OmegaPowers {
+		if i == m {
+			continue
+		}
+		e.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
+		ret.Mul(ret, e)
+	}
 }
 
 // write marshal
