@@ -35,11 +35,25 @@ func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
 	return ret
 }
 
+// Prove returns pi = [(f(s)-y)/(s-rou<index>)]1
+// This isthe proof sent to verifier
+func (sd *TrustedSetup) ProveByValue(vect []kyber.Scalar, i int, y kyber.Scalar) kyber.Point {
+	ret := sd.Suite.G1().Point().Null()
+	e := sd.Suite.G1().Point()
+	qij := sd.Suite.G1().Scalar()
+	for j := range sd.OmegaPowers {
+		sd.qValue(vect, i, j, y, qij)
+		e.Mul(qij, sd.LagrangeBasis[j])
+		ret.Add(ret, e)
+	}
+	return ret
+}
+
 func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, ret kyber.Scalar) {
 	numer := sd.Suite.G1().Scalar()
 	denom := sd.Suite.G1().Scalar()
 	if i != m {
-		sd.diff(vect, m, i, numer)
+		sd.diffByIndex(vect, m, i, numer)
 		if numer.Equal(sd.ZeroG1) {
 			ret.Zero()
 			return
@@ -54,7 +68,7 @@ func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, ret kyber.Scalar) {
 		if j == m {
 			continue
 		}
-		sd.diff(vect, j, m, numer)
+		sd.diffByIndex(vect, j, m, numer)
 		if numer.Equal(sd.ZeroG1) {
 			continue
 		}
@@ -66,17 +80,53 @@ func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, ret kyber.Scalar) {
 	}
 }
 
-func (sd *TrustedSetup) diff(vect []kyber.Scalar, i, j int, ret kyber.Scalar) {
+// used for testing
+func (sd *TrustedSetup) qValue(vect []kyber.Scalar, i, m int, y kyber.Scalar, ret kyber.Scalar) {
+	numer := sd.Suite.G1().Scalar()
+	denom := sd.Suite.G1().Scalar()
+	if i != m {
+		sd.diff(vect[m], y, numer)
+		if numer.Equal(sd.ZeroG1) {
+			ret.Zero()
+			return
+		}
+		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
+		ret.Div(numer, denom)
+		return
+	}
+	// i == m
+	ret.Zero()
+	for j := range vect {
+		if j == m {
+			continue
+		}
+		sd.diff(vect[j], y, numer)
+		if numer.Equal(sd.ZeroG1) {
+			continue
+		}
+		numer.Mul(numer, sd.AprimeOmegaI[m])
+		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
+		denom.Mul(denom, sd.AprimeOmegaI[j])
+		numer.Div(numer, denom)
+		ret.Add(ret, numer)
+	}
+}
+
+func (sd *TrustedSetup) diffByIndex(vect []kyber.Scalar, i, j int, ret kyber.Scalar) {
+	sd.diff(vect[i], vect[j], ret)
+}
+
+func (sd *TrustedSetup) diff(vi, vj kyber.Scalar, ret kyber.Scalar) {
 	switch {
-	case vect[i] == nil && vect[j] == nil:
+	case vi == nil && vj == nil:
 		ret.Zero()
 		return
-	case vect[i] != nil && vect[j] == nil:
-		ret.Set(vect[i])
-	case vect[i] == nil && vect[j] != nil:
-		ret.Neg(vect[j])
+	case vi != nil && vj == nil:
+		ret.Set(vi)
+	case vi == nil && vj != nil:
+		ret.Neg(vj)
 	default:
-		ret.Sub(vect[i], vect[j])
+		ret.Sub(vi, vj)
 	}
 }
 
