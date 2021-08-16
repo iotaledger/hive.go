@@ -24,15 +24,7 @@ func (sd *TrustedSetup) Commit(vect []kyber.Scalar) kyber.Point {
 // Prove returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
 // This isthe proof sent to verifier
 func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
-	ret := sd.Suite.G1().Point().Null()
-	e := sd.Suite.G1().Point()
-	qij := sd.Suite.G1().Scalar()
-	for j := range sd.OmegaPowers {
-		sd.q(vect, i, j, qij)
-		e.Mul(qij, sd.LagrangeBasis[j])
-		ret.Add(ret, e)
-	}
-	return ret
+	return sd.ProveByValue(vect, i, vect[i])
 }
 
 // Prove returns pi = [(f(s)-y)/(s-rou<index>)]1
@@ -42,46 +34,15 @@ func (sd *TrustedSetup) ProveByValue(vect []kyber.Scalar, i int, y kyber.Scalar)
 	e := sd.Suite.G1().Point()
 	qij := sd.Suite.G1().Scalar()
 	for j := range sd.OmegaPowers {
-		sd.qValue(vect, i, j, y, qij)
+		sd.q(vect, i, j, y, qij)
 		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}
 	return ret
 }
 
-func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, ret kyber.Scalar) {
-	numer := sd.Suite.G1().Scalar()
-	denom := sd.Suite.G1().Scalar()
-	if i != m {
-		sd.diffByIndex(vect, m, i, numer)
-		if numer.Equal(sd.ZeroG1) {
-			ret.Zero()
-			return
-		}
-		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
-		ret.Div(numer, denom)
-		return
-	}
-	// i == m
-	ret.Zero()
-	for j := range vect {
-		if j == m {
-			continue
-		}
-		sd.diffByIndex(vect, j, m, numer)
-		if numer.Equal(sd.ZeroG1) {
-			continue
-		}
-		numer.Mul(numer, sd.AprimeOmegaI[m])
-		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
-		denom.Mul(denom, sd.AprimeOmegaI[j])
-		numer.Div(numer, denom)
-		ret.Add(ret, numer)
-	}
-}
-
 // used for testing
-func (sd *TrustedSetup) qValue(vect []kyber.Scalar, i, m int, y kyber.Scalar, ret kyber.Scalar) {
+func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, y kyber.Scalar, ret kyber.Scalar) {
 	numer := sd.Suite.G1().Scalar()
 	denom := sd.Suite.G1().Scalar()
 	if i != m {
@@ -110,10 +71,6 @@ func (sd *TrustedSetup) qValue(vect []kyber.Scalar, i, m int, y kyber.Scalar, re
 		numer.Div(numer, denom)
 		ret.Add(ret, numer)
 	}
-}
-
-func (sd *TrustedSetup) diffByIndex(vect []kyber.Scalar, i, j int, ret kyber.Scalar) {
-	sd.diff(vect[i], vect[j], ret)
 }
 
 func (sd *TrustedSetup) diff(vi, vj kyber.Scalar, ret kyber.Scalar) {
