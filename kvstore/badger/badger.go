@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
+
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/types"
@@ -42,14 +43,18 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 func (s *badgerStore) Shutdown() {
 }
 
-func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
 		iteratorOptions.PrefetchValues = true
+		iteratorOptions.Reverse = kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			value, err := item.ValueCopy(nil)
@@ -65,14 +70,18 @@ func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 	})
 }
 
-func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
 		iteratorOptions.PrefetchValues = false
+		iteratorOptions.Reverse = kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
 			if !consumerFunc(it.Item().KeyCopy(nil)[len(s.dbPrefix):]) {
 				break

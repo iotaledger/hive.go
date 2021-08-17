@@ -2,11 +2,13 @@ package bolt
 
 import (
 	"bytes"
+	"errors"
 	"sync"
+
+	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/types"
-	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/kvstore"
 )
@@ -46,7 +48,7 @@ func (s *boltStore) Realm() kvstore.Realm {
 func (s *boltStore) Shutdown() {
 }
 
-func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -54,8 +56,31 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 		}
 		c := b.Cursor()
 
+		direction := kvstore.GetIterDirection(iterDirection...)
+
 		if len(prefix) > 0 {
-			for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+
+			var k, v []byte
+			var moveFunc func() (key []byte, value []byte)
+
+			switch direction {
+			case kvstore.IterDirectionForward:
+				k, v = c.Seek(prefix)
+				moveFunc = c.Next
+
+			case kvstore.IterDirectionBackward:
+				// we need to search the first item after the prefix
+				prefixUpperBound := keyUpperBound(prefix)
+				if prefixUpperBound == nil {
+					return errors.New("no upper bound for prefix")
+				}
+				_, _ = c.Seek(prefixUpperBound)
+				// we need to go back one time to get the first matching key
+				k, v = c.Prev()
+				moveFunc = c.Prev
+			}
+
+			for ; k != nil && bytes.HasPrefix(k, prefix); k, v = moveFunc() {
 				value := v
 				if copyValues {
 					value = copyBytes(v)
@@ -67,7 +92,15 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 			return nil
 		}
 
-		for k, v := c.First(); k != nil; k, v = c.Next() {
+		startFunc := c.First
+		moveFunc := c.Next
+
+		if direction == kvstore.IterDirectionBackward {
+			startFunc = c.Last
+			moveFunc = c.Prev
+		}
+
+		for k, v := startFunc(); k != nil; k, v = moveFunc() {
 			value := v
 			if copyValues {
 				value = copyBytes(v)
@@ -80,15 +113,19 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 	})
 }
 
-func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	return s.iterate(prefix, true, kvConsumerFunc)
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	return s.iterate(prefix, true, kvConsumerFunc, iterDirection...)
 }
 
-func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	// same as with values but we simply don't copy them
 	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
-	})
+	}, iterDirection...)
 }
 
 func (s *boltStore) Clear() error {

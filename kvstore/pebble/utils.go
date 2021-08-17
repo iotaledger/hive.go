@@ -33,3 +33,15 @@ func copyBytes(source []byte) []byte {
 	copy(cpy, source)
 	return cpy
 }
+
+func keyUpperBound(b []byte) []byte {
+	end := make([]byte, len(b))
+	copy(end, b)
+	for i := len(end) - 1; i >= 0; i-- {
+		end[i] = end[i] + 1
+		if end[i] != 0 {
+			return end[:i+1]
+		}
+	}
+	return nil // no upper-bound
+}

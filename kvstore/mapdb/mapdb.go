@@ -40,13 +40,17 @@ func (s *mapDB) Realm() kvstore.Realm {
 func (s *mapDB) Shutdown() {
 }
 
-func (s *mapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	s.m.iterate(s.realm, prefix, consumerFunc)
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *mapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	s.m.iterate(s.realm, prefix, consumerFunc, iterDirection...)
 	return nil
 }
 
-func (s *mapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
-	s.m.iterateKeys(s.realm, prefix, consumerFunc)
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *mapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	s.m.iterateKeys(s.realm, prefix, consumerFunc, iterDirection...)
 	return nil
 }
 

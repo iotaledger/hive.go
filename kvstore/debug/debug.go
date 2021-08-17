@@ -103,18 +103,22 @@ func (s *debugStore) Shutdown() {
 	s.underlying.Shutdown()
 }
 
-func (s *debugStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *debugStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(IterateCommand) {
 		s.accessCallback(IterateCommand, prefix)
 	}
-	return s.underlying.Iterate(prefix, kvConsumerFunc)
+	return s.underlying.Iterate(prefix, kvConsumerFunc, iterDirection...)
 }
 
-func (s *debugStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *debugStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(IterateKeysCommand) {
 		s.accessCallback(IterateKeysCommand, prefix)
 	}
-	return s.underlying.IterateKeys(prefix, consumerFunc)
+	return s.underlying.IterateKeys(prefix, consumerFunc, iterDirection...)
 }
 
 func (s *debugStore) Clear() error {

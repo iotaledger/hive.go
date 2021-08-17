@@ -45,14 +45,23 @@ func (s *rocksDBStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefi
 func (s *rocksDBStore) Shutdown() {
 }
 
-func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
 	keyPrefix := s.buildKeyPrefix(prefix)
-	it.Seek(keyPrefix)
 
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	startFunc := it.Seek
+	moveFunc := it.Next
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.SeekForPrev
+		moveFunc = it.Prev
+	}
+
+	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
 		key := it.Key()
 		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
@@ -69,14 +78,23 @@ func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.It
 	return nil
 }
 
-func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
 	keyPrefix := s.buildKeyPrefix(prefix)
-	it.Seek(keyPrefix)
 
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	startFunc := it.Seek
+	moveFunc := it.Next
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.SeekForPrev
+		moveFunc = it.Prev
+	}
+
+	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
 		key := it.Key()
 		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
@@ -130,9 +148,7 @@ func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	it.Seek(keyPrefix)
-
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	for it.Seek(keyPrefix); it.ValidForPrefix(keyPrefix); it.Next() {
 		key := it.Key()
 		writeBatch.Delete(key.Data())
 		key.Free()
