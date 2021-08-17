@@ -394,7 +394,6 @@ func NewDeserializer(src []byte) *Deserializer {
 type Deserializer struct {
 	src    []byte
 	offset int
-	read   int
 	err    error
 }
 

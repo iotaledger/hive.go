@@ -3,8 +3,9 @@ package serializer_test
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/iotaledger/hive.go/serializer"
 	"testing"
+
+	"github.com/iotaledger/hive.go/serializer"
 
 	"github.com/stretchr/testify/assert"
 )

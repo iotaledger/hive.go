@@ -2,10 +2,11 @@ package serializer_test
 
 import (
 	"errors"
-	"github.com/iotaledger/hive.go/serializer"
-	"github.com/iotaledger/hive.go/testutil"
 	"sort"
 	"testing"
+
+	"github.com/iotaledger/hive.go/serializer"
+	"github.com/iotaledger/hive.go/testutil"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -98,14 +99,6 @@ func (b *B) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error)
 	bf[0] = TypeB
 	copy(bf[serializer.SmallTypeDenotationByteSize:], b.Name[:])
 	return bf[:], nil
-}
-
-func randSerializedB() []byte {
-	var bf [typeBLength]byte
-	bf[0] = TypeB
-	nameData := testutil.RandBytes(bNameLength)
-	copy(bf[serializer.SmallTypeDenotationByteSize:], nameData)
-	return bf[:]
 }
 
 func randB() *B {

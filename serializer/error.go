@@ -50,8 +50,8 @@ var (
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
 )
 
-// checkType checks that the denoted type equals the shouldType.
-func checkType(data []byte, shouldType uint32) error {
+// CheckType checks that the denoted type equals the shouldType.
+func CheckType(data []byte, shouldType uint32) error {
 	if len(data) < 4 {
 		return fmt.Errorf("%w: can't check type denotation", ErrDeserializationNotEnoughData)
 	}
@@ -62,9 +62,9 @@ func checkType(data []byte, shouldType uint32) error {
 	return nil
 }
 
-// checkTypeByte checks that the denoted type byte equals the shouldType.
-func checkTypeByte(data []byte, shouldType byte) error {
-	if data == nil || len(data) == 0 {
+// CheckTypeByte checks that the denoted type byte equals the shouldType.
+func CheckTypeByte(data []byte, shouldType byte) error {
+	if len(data) == 0 {
 		return fmt.Errorf("%w: can't check type byte", ErrDeserializationNotEnoughData)
 	}
 	if data[0] != shouldType {
@@ -73,16 +73,16 @@ func checkTypeByte(data []byte, shouldType byte) error {
 	return nil
 }
 
-// checkExactByteLength checks that the given length equals exact.
-func checkExactByteLength(exact int, length int) error {
+// CheckExactByteLength checks that the given length equals exact.
+func CheckExactByteLength(exact int, length int) error {
 	if length != exact {
 		return fmt.Errorf("%w: data must be at exact %d bytes long but is %d", ErrInvalidBytes, exact, length)
 	}
 	return nil
 }
 
-// checkMinByteLength checks that length is min. min.
-func checkMinByteLength(min int, length int) error {
+// CheckMinByteLength checks that length is min. min.
+func CheckMinByteLength(min int, length int) error {
 	if length < min {
 		return fmt.Errorf("%w: data must be at least %d bytes long but is %d", ErrDeserializationNotEnoughData, min, length)
 	}
