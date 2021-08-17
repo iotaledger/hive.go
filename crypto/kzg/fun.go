@@ -24,17 +24,11 @@ func (sd *TrustedSetup) Commit(vect []kyber.Scalar) kyber.Point {
 // Prove returns pi = [(f(s)-vect<index>)/(s-rou<index>)]1
 // This isthe proof sent to verifier
 func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
-	return sd.ProveByValue(vect, i, vect[i])
-}
-
-// Prove returns pi = [(f(s)-y)/(s-rou<index>)]1
-// This isthe proof sent to verifier
-func (sd *TrustedSetup) ProveByValue(vect []kyber.Scalar, i int, y kyber.Scalar) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	e := sd.Suite.G1().Point()
 	qij := sd.Suite.G1().Scalar()
 	for j := range sd.OmegaPowers {
-		sd.q(vect, i, j, y, qij)
+		sd.q(vect, i, j, vect[i], qij)
 		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
 	}

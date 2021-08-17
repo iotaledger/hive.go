@@ -98,36 +98,9 @@ func TestValidate1(t *testing.T) {
 	pi := make([]kyber.Point, D)
 	for i := range pi {
 		pi[i] = tr.Prove(vect, i)
-
 	}
 	for i := range pi {
 		require.True(t, tr.Verify(c, pi[i], vect[i], i))
-	}
-}
-
-func TestFakeProof(t *testing.T) {
-	suite := bn256.NewSuite()
-	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
-	t.Logf("omega = %s", rou.String())
-	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
-	require.NoError(t, err)
-
-	vect := make([]kyber.Scalar, D)
-	for i := range vect {
-		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
-	}
-	c := tr.Commit(vect)
-	require.True(t, tr.VerifyVector(vect, c))
-	t.Logf("C = %s", c)
-	pi := make([]kyber.Point, D)
-	for i := range pi {
-		e := tr.Suite.G1().Scalar().SetInt64(int64(i + 1))
-		p := tr.ProveByValue(vect, i, e)
-		require.False(t, tr.Verify(c, p, e, i))
-		e.Pick(random.New())
-		p = tr.ProveByValue(vect, i, e)
-		require.False(t, tr.Verify(c, p, e, i))
 	}
 }
 
@@ -158,7 +131,7 @@ func TestValidate2(t *testing.T) {
 		require.False(t, tr.Verify(c, pi[i], v, i))
 	}
 	rnd := random.New()
-	for k := 0; k < 10; k++ {
+	for k := 0; k < 5; k++ {
 		v.Pick(rnd)
 		for i := range vect {
 			require.False(t, tr.Verify(c, pi[i], v, i))
@@ -201,7 +174,7 @@ func TestValidate2Load(t *testing.T) {
 		require.False(t, tr.Verify(c, pi[i], v, i))
 	}
 	rnd := random.New()
-	for k := 0; k < 10; k++ {
+	for k := 0; k < 5; k++ {
 		v.Pick(rnd)
 		for i := range vect {
 			require.False(t, tr.Verify(c, pi[i], v, i))
