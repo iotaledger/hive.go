@@ -270,6 +270,212 @@ func TestIterate(t *testing.T) {
 	}
 }
 
+func TestIterateDirection(t *testing.T) {
+
+	prefix := kvstore.EmptyPrefix
+
+	for _, dbImplementation := range dbImplementations {
+
+		store := testStore(t, dbImplementation, prefix)
+		count := 9
+
+		var err error
+
+		insertedValues := make(map[string]string)
+
+		for i := 0; i < count; i++ {
+			str := strconv.FormatInt(int64(i), 10)
+			testKey := "testKey" + str
+			testValue := "testValue" + str
+			err = store.Set([]byte(testKey), []byte(testValue))
+			require.NoError(t, err, "used db: %s", dbImplementation)
+			insertedValues[testKey] = testValue
+		}
+
+		insertedValuesWithTestPrefix := len(insertedValues)
+
+		// forward iteration
+		i := 0
+		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+			str := strconv.FormatInt(int64(i), 10)
+			expectedKey := "testKey" + str
+			expectedValue := "testValue" + str
+
+			require.Equal(t, expectedKey, string(key), "direction forward, used db: %s", dbImplementation)
+			require.Equal(t, expectedValue, string(value), "direction forward, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionForward)
+		require.NoError(t, err, "direction forward, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction forward, used db: %s", dbImplementation)
+
+		// backward iteration
+		i = 0
+		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+			str := strconv.FormatInt(int64(insertedValuesWithTestPrefix-1-i), 10)
+			expectedKey := "testKey" + str
+			expectedValue := "testValue" + str
+
+			require.Equal(t, expectedKey, string(key), "direction backward, used db: %s", dbImplementation)
+			require.Equal(t, expectedValue, string(value), "direction backward, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionBackward)
+		require.NoError(t, err, "direction backward, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward, used db: %s", dbImplementation)
+
+		// insert other keys to check prefix filtering
+		for i := 0; i < count; i++ {
+			str := strconv.FormatInt(int64(i), 10)
+			testKey := "exampleKey" + str
+			testValue := "exampleValue" + str
+			err = store.Set([]byte(testKey), []byte(testValue))
+			require.NoError(t, err, "used db: %s", dbImplementation)
+			insertedValues[testKey] = testValue
+		}
+
+		// insert "upperBound" key for backwards prefix scan edge case
+		testKey := "tesu"
+		testValue := ""
+		err = store.Set([]byte(testKey), []byte(testValue))
+		require.NoError(t, err, "used db: %s", dbImplementation)
+		insertedValues[testKey] = testValue
+
+		// forward iteration with prefix
+		i = 0
+		err = store.Iterate([]byte("test"), func(key kvstore.Key, value kvstore.Value) bool {
+			str := strconv.FormatInt(int64(i), 10)
+			expectedKey := "testKey" + str
+			expectedValue := "testValue" + str
+
+			require.Equal(t, expectedKey, string(key), "direction forward with prefix, used db: %s", dbImplementation)
+			require.Equal(t, expectedValue, string(value), "direction forward with prefix, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionForward)
+		require.NoError(t, err, "direction forward with prefix, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction forward with prefix, used db: %s", dbImplementation)
+
+		// backward iteration with prefix
+		i = 0
+		err = store.Iterate([]byte("test"), func(key kvstore.Key, value kvstore.Value) bool {
+			str := strconv.FormatInt(int64(insertedValuesWithTestPrefix-1-i), 10)
+			expectedKey := "testKey" + str
+			expectedValue := "testValue" + str
+
+			require.Equal(t, expectedKey, string(key), "direction backward with prefix, used db: %s", dbImplementation)
+			require.Equal(t, expectedValue, string(value), "direction backward with prefix, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionBackward)
+		require.NoError(t, err, "direction backward with prefix, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward with prefix, used db: %s", dbImplementation)
+	}
+}
+
+func TestIterateDirectionKeyOnly(t *testing.T) {
+
+	prefix := kvstore.EmptyPrefix
+
+	for _, dbImplementation := range dbImplementations {
+
+		store := testStore(t, dbImplementation, prefix)
+		count := 9
+
+		var err error
+
+		insertedValues := make(map[string]string)
+
+		for i := 0; i < count; i++ {
+			str := strconv.FormatInt(int64(i), 10)
+			testKey := "testKey" + str
+			testValue := "testValue" + str
+			err = store.Set([]byte(testKey), []byte(testValue))
+			require.NoError(t, err, "used db: %s", dbImplementation)
+			insertedValues[testKey] = testValue
+		}
+
+		insertedValuesWithTestPrefix := len(insertedValues)
+
+		// forward iteration
+		i := 0
+		err = store.IterateKeys(kvstore.EmptyPrefix, func(key kvstore.Key) bool {
+			str := strconv.FormatInt(int64(i), 10)
+			expectedKey := "testKey" + str
+
+			require.Equal(t, expectedKey, string(key), "direction forward, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionForward)
+		require.NoError(t, err, "direction forward, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction forward, used db: %s", dbImplementation)
+
+		// backward iteration
+		i = 0
+		err = store.IterateKeys(kvstore.EmptyPrefix, func(key kvstore.Key) bool {
+			str := strconv.FormatInt(int64(insertedValuesWithTestPrefix-1-i), 10)
+			expectedKey := "testKey" + str
+
+			require.Equal(t, expectedKey, string(key), "direction backward, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionBackward)
+		require.NoError(t, err, "direction backward, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward, used db: %s", dbImplementation)
+
+		// insert other keys to check prefix filtering
+		for i := 0; i < count; i++ {
+			str := strconv.FormatInt(int64(i), 10)
+			testKey := "exampleKey" + str
+			testValue := "exampleValue" + str
+			err = store.Set([]byte(testKey), []byte(testValue))
+			require.NoError(t, err, "used db: %s", dbImplementation)
+			insertedValues[testKey] = testValue
+		}
+
+		// insert "upperBound" key for backwards prefix scan edge case
+		testKey := "tesu"
+		testValue := ""
+		err = store.Set([]byte(testKey), []byte(testValue))
+		require.NoError(t, err, "used db: %s", dbImplementation)
+		insertedValues[testKey] = testValue
+
+		// forward iteration with prefix
+		i = 0
+		err = store.IterateKeys([]byte("test"), func(key kvstore.Key) bool {
+			str := strconv.FormatInt(int64(i), 10)
+			expectedKey := "testKey" + str
+
+			require.Equal(t, expectedKey, string(key), "direction forward with prefix, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionForward)
+		require.NoError(t, err, "direction forward with prefix, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction forward with prefix, used db: %s", dbImplementation)
+
+		// backward iteration with prefix
+		i = 0
+		err = store.IterateKeys([]byte("test"), func(key kvstore.Key) bool {
+			str := strconv.FormatInt(int64(insertedValuesWithTestPrefix-1-i), 10)
+			expectedKey := "testKey" + str
+
+			require.Equal(t, expectedKey, string(key), "direction backward with prefix, used db: %s", dbImplementation)
+
+			i++
+			return true
+		}, kvstore.IterDirectionBackward)
+		require.NoError(t, err, "direction backward with prefix, used db: %s", dbImplementation)
+		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward with prefix, used db: %s", dbImplementation)
+	}
+}
+
 func TestIteratePrefix(t *testing.T) {
 
 	prefix := []byte("testPrefix")
