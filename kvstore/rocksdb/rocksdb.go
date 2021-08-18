@@ -3,13 +3,14 @@
 package rocksdb
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/linxGnu/grocksdb"
 
 	"github.com/iotaledger/hive.go/byteutils"
-
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/types"
 )
 
@@ -63,11 +64,11 @@ func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.It
 
 	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
 		key := it.Key()
-		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
+		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
 
 		value := it.Value()
-		v := copyBytes(value.Data(), value.Size())
+		v := utils.CopyBytes(value.Data(), value.Size())
 		value.Free()
 
 		if !consumerFunc(k, v) {
@@ -96,7 +97,7 @@ func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstor
 
 	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
 		key := it.Key()
-		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
+		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
 
 		if !consumerFunc(k) {

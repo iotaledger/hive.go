@@ -3,9 +3,10 @@ package mapdb
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 var testEntries = []*struct {
@@ -53,6 +54,42 @@ func TestMapDB_Iterate(t *testing.T) {
 		i++
 		return true
 	})
+	assert.NoError(t, err)
+	assert.Equal(t, len(testEntries), i)
+}
+
+func TestMapDB_IterateDirection(t *testing.T) {
+	store := NewMapDB()
+	for _, entry := range testEntries {
+		err := store.Set(entry.Key, entry.Value)
+		require.NoError(t, err)
+	}
+
+	// forward iteration
+	i := 0
+	err := store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+		entry := &struct {
+			kvstore.Key
+			kvstore.Value
+		}{key, value}
+		assert.Equal(t, testEntries[i], entry, "entries are not equal")
+		i++
+		return true
+	}, kvstore.IterDirectionForward)
+	assert.NoError(t, err)
+	assert.Equal(t, len(testEntries), i)
+
+	// backward iteration
+	i = 0
+	err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
+		entry := &struct {
+			kvstore.Key
+			kvstore.Value
+		}{key, value}
+		assert.Equal(t, testEntries[len(testEntries)-1-i], entry, "entries are not equal")
+		i++
+		return true
+	}, kvstore.IterDirectionBackward)
 	assert.NoError(t, err)
 	assert.Equal(t, len(testEntries), i)
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 type syncedKVMap struct {
@@ -73,7 +74,7 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 	}
 
 	// iterate through found elements
-	for _, key := range sortSlice(keysSlice, iterDirection...) {
+	for _, key := range utils.SortSlice(keysSlice, iterDirection...) {
 		if !consume([]byte(key)[len(realm):], copiedElements[key]) {
 			break
 		}
@@ -98,7 +99,7 @@ func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(k
 	}
 
 	// iterate through found elements
-	for _, key := range sortSlice(keysSlice, iterDirection...) {
+	for _, key := range utils.SortSlice(keysSlice, iterDirection...) {
 		if !consume([]byte(key)[len(realm):]) {
 			break
 		}

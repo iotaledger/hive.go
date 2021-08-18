@@ -8,9 +8,9 @@ import (
 	"go.etcd.io/bbolt"
 
 	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/types"
-
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/types"
 )
 
 const (
@@ -103,9 +103,9 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 		for k, v := startFunc(); k != nil; k, v = moveFunc() {
 			value := v
 			if copyValues {
-				value = copyBytes(v)
+				value = utils.CopyBytes(v)
 			}
-			if !kvConsumerFunc(copyBytes(k), value) {
+			if !kvConsumerFunc(utils.CopyBytes(k), value) {
 				break
 			}
 		}
@@ -146,7 +146,7 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 		}
 		v := b.Get(key)
 		if v != nil {
-			value = copyBytes(v)
+			value = utils.CopyBytes(v)
 		}
 		return nil
 	}); err != nil {
