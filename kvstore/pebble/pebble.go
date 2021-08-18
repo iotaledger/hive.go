@@ -52,7 +52,22 @@ func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 		return nil, nil
 	}
 
-	return start, keyUpperBound(start)
+	return start, utils.KeyPrefixUpperBound(start)
+}
+
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore.IterDirection) (start func() bool, valid func() bool, move func() bool, err error) {
+
+	startFunc := it.First
+	validFunc := it.Valid
+	moveFunc := it.Next
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.Last
+		moveFunc = it.Prev
+	}
+
+	return startFunc, validFunc, moveFunc, nil
 }
 
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
@@ -63,16 +78,13 @@ func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer it.Close()
 
-	startFunc := it.First
-	moveFunc := it.Next
-
-	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
-		startFunc = it.Last
-		moveFunc = it.Prev
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
+	if err != nil {
+		return err
 	}
 
-	for startFunc(); it.Valid(); moveFunc() {
-		if !consumerFunc(copyBytes(it.Key())[len(s.dbPrefix):], copyBytes(it.Value())) {
+	for startFunc(); validFunc(); moveFunc() {
+		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):], utils.CopyBytes(it.Value())) {
 			break
 		}
 	}
@@ -88,16 +100,13 @@ func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer it.Close()
 
-	startFunc := it.First
-	moveFunc := it.Next
-
-	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
-		startFunc = it.Last
-		moveFunc = it.Prev
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
+	if err != nil {
+		return err
 	}
 
-	for startFunc(); it.Valid(); moveFunc() {
-		if !consumerFunc(copyBytes(it.Key())[len(s.dbPrefix):]) {
+	for startFunc(); validFunc(); moveFunc() {
+		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):]) {
 			break
 		}
 	}
@@ -119,7 +128,7 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 		return nil, err
 	}
 
-	value := copyBytes(val)
+	value := utils.CopyBytes(val)
 
 	if err := closer.Close(); err != nil {
 		return nil, err

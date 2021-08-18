@@ -45,19 +45,64 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 func (s *badgerStore) Shutdown() {
 }
 
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *badgerStore) getIterFuncs(it *badger.Iterator, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func(), valid func() bool, move func(), err error) {
+
+	startFunc := it.Rewind
+	validFunc := it.Valid
+	moveFunc := it.Next
+
+	if len(keyPrefix) > 0 {
+		startFunc = func() {
+			it.Seek(keyPrefix)
+		}
+		validFunc = func() bool {
+			return it.ValidForPrefix(keyPrefix)
+		}
+	}
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+
+		if len(keyPrefix) > 0 {
+			// we need to search the first item after the prefix
+			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
+			if prefixUpperBound == nil {
+				return nil, nil, nil, errors.New("no upper bound for prefix")
+			}
+			startFunc = func() {
+				it.Seek(prefixUpperBound)
+
+				// if the upper bound exists (not part of the prefix set), we need to use the next entry
+				if !validFunc() {
+					moveFunc()
+				}
+			}
+		}
+	}
+
+	return startFunc, validFunc, moveFunc, nil
+}
+
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
+		keyPrefix := s.buildKeyPrefix(prefix)
+
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
+		iteratorOptions.Prefix = keyPrefix
 		iteratorOptions.PrefetchValues = true
 		iteratorOptions.Reverse = kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()
 
-		for it.Rewind(); it.Valid(); it.Next() {
+		startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, keyPrefix, iterDirection...)
+		if err != nil {
+			return err
+		}
+
+		for startFunc(); validFunc(); moveFunc() {
 			item := it.Item()
 			value, err := item.ValueCopy(nil)
 			if err != nil {
@@ -76,15 +121,22 @@ func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(txn *badger.Txn) (err error) {
+		keyPrefix := s.buildKeyPrefix(prefix)
+
 		iteratorOptions := badger.DefaultIteratorOptions
-		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
+		iteratorOptions.Prefix = keyPrefix
 		iteratorOptions.PrefetchValues = false
 		iteratorOptions.Reverse = kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward
 
 		it := txn.NewIterator(iteratorOptions)
 		defer it.Close()
 
-		for it.Rewind(); it.Valid(); it.Next() {
+		startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, keyPrefix, iterDirection...)
+		if err != nil {
+			return err
+		}
+
+		for startFunc(); validFunc(); moveFunc() {
 			if !consumerFunc(it.Item().KeyCopy(nil)[len(s.dbPrefix):]) {
 				break
 			}

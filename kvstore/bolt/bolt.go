@@ -48,6 +48,50 @@ func (s *boltStore) Realm() kvstore.Realm {
 func (s *boltStore) Shutdown() {
 }
 
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *boltStore) getIterFuncs(c *bbolt.Cursor, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func() (k []byte, v []byte), valid func(k []byte) bool, move func() (k []byte, v []byte), err error) {
+
+	startFunc := c.First
+	validFunc := func(k []byte) bool {
+		return k != nil
+	}
+	moveFunc := c.Next
+
+	if len(keyPrefix) > 0 {
+		startFunc = func() (k []byte, v []byte) {
+			return c.Seek(keyPrefix)
+		}
+		validFunc = func(k []byte) bool {
+			return k != nil && bytes.HasPrefix(k, keyPrefix)
+		}
+	}
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = c.Last
+		moveFunc = c.Prev
+
+		if len(keyPrefix) > 0 {
+			// we need to search the first item after the prefix
+			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
+			if prefixUpperBound == nil {
+				return nil, nil, nil, errors.New("no upper bound for prefix")
+			}
+
+			startFunc = func() (k []byte, v []byte) {
+				k, v = c.Seek(prefixUpperBound)
+
+				// if the upper bound exists (not part of the prefix set), we need to use the next entry
+				if !validFunc(k) {
+					k, v = moveFunc()
+				}
+				return k, v
+			}
+		}
+	}
+
+	return startFunc, validFunc, moveFunc, nil
+}
+
 func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
@@ -56,51 +100,12 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 		}
 		c := b.Cursor()
 
-		direction := kvstore.GetIterDirection(iterDirection...)
-
-		if len(prefix) > 0 {
-
-			var k, v []byte
-			var moveFunc func() (key []byte, value []byte)
-
-			switch direction {
-			case kvstore.IterDirectionForward:
-				k, v = c.Seek(prefix)
-				moveFunc = c.Next
-
-			case kvstore.IterDirectionBackward:
-				// we need to search the first item after the prefix
-				prefixUpperBound := keyUpperBound(prefix)
-				if prefixUpperBound == nil {
-					return errors.New("no upper bound for prefix")
-				}
-				_, _ = c.Seek(prefixUpperBound)
-				// we need to go back one time to get the first matching key
-				k, v = c.Prev()
-				moveFunc = c.Prev
-			}
-
-			for ; k != nil && bytes.HasPrefix(k, prefix); k, v = moveFunc() {
-				value := v
-				if copyValues {
-					value = copyBytes(v)
-				}
-				if !kvConsumerFunc(copyBytes(k), value) {
-					break
-				}
-			}
-			return nil
+		startFunc, validFunc, moveFunc, err := s.getIterFuncs(c, prefix, iterDirection...)
+		if err != nil {
+			return err
 		}
 
-		startFunc := c.First
-		moveFunc := c.Next
-
-		if direction == kvstore.IterDirectionBackward {
-			startFunc = c.Last
-			moveFunc = c.Prev
-		}
-
-		for k, v := startFunc(); k != nil; k, v = moveFunc() {
+		for k, v := startFunc(); validFunc(k); k, v = moveFunc() {
 			value := v
 			if copyValues {
 				value = utils.CopyBytes(v)

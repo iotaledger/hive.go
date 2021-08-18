@@ -46,23 +46,58 @@ func (s *rocksDBStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefi
 func (s *rocksDBStore) Shutdown() {
 }
 
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *rocksDBStore) getIterFuncs(it *grocksdb.Iterator, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func(), valid func() bool, move func(), err error) {
+
+	startFunc := it.SeekToFirst
+	validFunc := it.Valid
+	moveFunc := it.Next
+
+	if len(keyPrefix) > 0 {
+		startFunc = func() {
+			it.Seek(keyPrefix)
+		}
+		validFunc = func() bool {
+			return it.ValidForPrefix(keyPrefix)
+		}
+	}
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.SeekToLast
+		moveFunc = it.Prev
+
+		if len(keyPrefix) > 0 {
+			// we need to search the first item after the prefix
+			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
+			if prefixUpperBound == nil {
+				return nil, nil, nil, errors.New("no upper bound for prefix")
+			}
+			startFunc = func() {
+				it.SeekForPrev(prefixUpperBound)
+
+				// if the upper bound exists (not part of the prefix set), we need to use the next entry
+				if !validFunc() {
+					moveFunc()
+				}
+			}
+		}
+	}
+
+	return startFunc, validFunc, moveFunc, nil
+}
+
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	keyPrefix := s.buildKeyPrefix(prefix)
-
-	startFunc := it.Seek
-	moveFunc := it.Next
-
-	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
-		startFunc = it.SeekForPrev
-		moveFunc = it.Prev
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, s.buildKeyPrefix(prefix), iterDirection...)
+	if err != nil {
+		return err
 	}
 
-	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
+	for startFunc(); validFunc(); moveFunc() {
 		key := it.Key()
 		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
@@ -85,17 +120,12 @@ func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstor
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	keyPrefix := s.buildKeyPrefix(prefix)
-
-	startFunc := it.Seek
-	moveFunc := it.Next
-
-	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
-		startFunc = it.SeekForPrev
-		moveFunc = it.Prev
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, s.buildKeyPrefix(prefix), iterDirection...)
+	if err != nil {
+		return err
 	}
 
-	for startFunc(keyPrefix); it.ValidForPrefix(keyPrefix); moveFunc() {
+	for startFunc(); validFunc(); moveFunc() {
 		key := it.Key()
 		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
