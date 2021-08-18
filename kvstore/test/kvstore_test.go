@@ -327,7 +327,7 @@ func TestIterateDirection(t *testing.T) {
 		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward, used db: %s", dbImplementation)
 
 		// insert other keys to check prefix filtering
-		for i := 0; i < count; i++ {
+		for i = 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "exampleKey" + str
 			testValue := "exampleValue" + str
@@ -430,7 +430,7 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 		require.Equal(t, insertedValuesWithTestPrefix, i, "direction backward, used db: %s", dbImplementation)
 
 		// insert other keys to check prefix filtering
-		for i := 0; i < count; i++ {
+		for i = 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
 			testKey := "exampleKey" + str
 			testValue := "exampleValue" + str
