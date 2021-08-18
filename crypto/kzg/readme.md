@@ -16,13 +16,14 @@ It follows guidelines:
 * [KZG polynomial commitments](https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html) by Dankrad Feist
 * [PCS multiproofs using random evaluation](https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html) Dankrad Feist
 
-This implementation uses proprietary structure of the trusted setup, not mentioned in the article above.
-The implemented trusted setup contains a number of constant values on G1 curve which are precomputed
-from the secret scalar and generated primitive root of unity for the field.
+This implementation uses a trusted setup completely in the Lagrange basis an all calculetions
+are performed in the evaluation form of the polynomial. The coordinate form and powers of the secret on the curve
+nor any FFT operations are not needed.
 
-The implementation assumes maximum lengths of vectors `D` = 257. It corresponds to the 257-ary _verkle trie_.
+`D` kan be arbitrary value. The implementation assumes maximum lengths of vectors `D` = 257.
+It corresponds to the 257-ary _verkle trie_.
 
-The math of the implementation is described in this [HackMD document](https://hackmd.io/JM7BDAugQyuJgW66K-OX7A).
+The math of the implementation is described in this [document](https://hackmd.io/JM7BDAugQyuJgW66K-OX7A).
 
 
 
