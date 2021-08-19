@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 type syncedKVMap struct {
@@ -54,7 +56,7 @@ func (s *syncedKVMap) deletePrefix(keyPrefix []byte) {
 	}
 }
 
-func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, value []byte) bool) {
+func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, value []byte) bool, iterDirection ...kvstore.IterDirection) {
 	// take a snapshot of the current elements
 	s.RLock()
 	copiedElements := make(map[string][]byte)
@@ -66,15 +68,20 @@ func (s *syncedKVMap) iterate(realm []byte, keyPrefix []byte, consume func(key, 
 	}
 	s.RUnlock()
 
+	keysSlice := make([]string, 0, len(copiedElements))
+	for k := range copiedElements {
+		keysSlice = append(keysSlice, k)
+	}
+
 	// iterate through found elements
-	for key, value := range copiedElements {
-		if !consume([]byte(key)[len(realm):], value) {
+	for _, key := range utils.SortSlice(keysSlice, iterDirection...) {
+		if !consume([]byte(key)[len(realm):], copiedElements[key]) {
 			break
 		}
 	}
 }
 
-func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool) {
+func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(key []byte) bool, iterDirection ...kvstore.IterDirection) {
 	// take a snapshot of the current elements
 	s.RLock()
 	copiedElements := make(map[string]struct{})
@@ -86,8 +93,13 @@ func (s *syncedKVMap) iterateKeys(realm []byte, keyPrefix []byte, consume func(k
 	}
 	s.RUnlock()
 
+	keysSlice := make([]string, 0, len(copiedElements))
+	for k := range copiedElements {
+		keysSlice = append(keysSlice, k)
+	}
+
 	// iterate through found elements
-	for key := range copiedElements {
+	for _, key := range utils.SortSlice(keysSlice, iterDirection...) {
 		if !consume([]byte(key)[len(realm):]) {
 			break
 		}

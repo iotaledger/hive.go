@@ -5,12 +5,14 @@ import (
 	"path"
 
 	"go.etcd.io/bbolt"
+
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 func CreateDB(directory string, filename string, optionalOptions ...*bbolt.Options) (*bbolt.DB, error) {
 
-	if err := checkDir(directory); err != nil {
-		return nil, fmt.Errorf("could not check directory: %w", err)
+	if err := utils.CreateDirectory(directory, 0700); err != nil {
+		return nil, fmt.Errorf("could not create directory: %w", err)
 	}
 
 	options := bbolt.DefaultOptions

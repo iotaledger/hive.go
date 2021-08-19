@@ -3,13 +3,14 @@
 package rocksdb
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/linxGnu/grocksdb"
 
 	"github.com/iotaledger/hive.go/byteutils"
-
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/types"
 )
 
@@ -45,20 +46,64 @@ func (s *rocksDBStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefi
 func (s *rocksDBStore) Shutdown() {
 }
 
-func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *rocksDBStore) getIterFuncs(it *grocksdb.Iterator, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func(), valid func() bool, move func(), err error) {
+
+	startFunc := it.SeekToFirst
+	validFunc := it.Valid
+	moveFunc := it.Next
+
+	if len(keyPrefix) > 0 {
+		startFunc = func() {
+			it.Seek(keyPrefix)
+		}
+		validFunc = func() bool {
+			return it.ValidForPrefix(keyPrefix)
+		}
+	}
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.SeekToLast
+		moveFunc = it.Prev
+
+		if len(keyPrefix) > 0 {
+			// we need to search the first item after the prefix
+			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
+			if prefixUpperBound == nil {
+				return nil, nil, nil, errors.New("no upper bound for prefix")
+			}
+			startFunc = func() {
+				it.SeekForPrev(prefixUpperBound)
+
+				// if the upper bound exists (not part of the prefix set), we need to use the next entry
+				if !validFunc() {
+					moveFunc()
+				}
+			}
+		}
+	}
+
+	return startFunc, validFunc, moveFunc, nil
+}
+
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	keyPrefix := s.buildKeyPrefix(prefix)
-	it.Seek(keyPrefix)
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, s.buildKeyPrefix(prefix), iterDirection...)
+	if err != nil {
+		return err
+	}
 
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	for startFunc(); validFunc(); moveFunc() {
 		key := it.Key()
-		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
+		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
 
 		value := it.Value()
-		v := copyBytes(value.Data(), value.Size())
+		v := utils.CopyBytes(value.Data(), value.Size())
 		value.Free()
 
 		if !consumerFunc(k, v) {
@@ -69,16 +114,20 @@ func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.It
 	return nil
 }
 
-func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	keyPrefix := s.buildKeyPrefix(prefix)
-	it.Seek(keyPrefix)
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, s.buildKeyPrefix(prefix), iterDirection...)
+	if err != nil {
+		return err
+	}
 
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	for startFunc(); validFunc(); moveFunc() {
 		key := it.Key()
-		k := copyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
+		k := utils.CopyBytes(key.Data(), key.Size())[len(s.dbPrefix):]
 		key.Free()
 
 		if !consumerFunc(k) {
@@ -130,9 +179,7 @@ func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
-	it.Seek(keyPrefix)
-
-	for ; it.ValidForPrefix(keyPrefix); it.Next() {
+	for it.Seek(keyPrefix); it.ValidForPrefix(keyPrefix); it.Next() {
 		key := it.Key()
 		writeBatch.Delete(key.Data())
 		key.Free()

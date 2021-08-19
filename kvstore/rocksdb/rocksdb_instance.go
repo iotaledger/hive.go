@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/linxGnu/grocksdb"
+
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 // RocksDB holds the underlying grocksdb.DB instance and options
@@ -19,8 +21,8 @@ type RocksDB struct {
 // CreateDB creates a new RocksDB instance.
 func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
-	if err := checkDir(directory); err != nil {
-		return nil, fmt.Errorf("could not check directory: %w", err)
+	if err := utils.CreateDirectory(directory, 0700); err != nil {
+		return nil, fmt.Errorf("could not create directory: %w", err)
 	}
 
 	dbOpts := dbOptions(options)

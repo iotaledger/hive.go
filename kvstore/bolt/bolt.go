@@ -2,13 +2,15 @@ package bolt
 
 import (
 	"bytes"
+	"errors"
 	"sync"
 
-	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/types"
 	"go.etcd.io/bbolt"
 
+	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/types"
 )
 
 const (
@@ -46,7 +48,51 @@ func (s *boltStore) Realm() kvstore.Realm {
 func (s *boltStore) Shutdown() {
 }
 
-func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *boltStore) getIterFuncs(c *bbolt.Cursor, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func() (k []byte, v []byte), valid func(k []byte) bool, move func() (k []byte, v []byte), err error) {
+
+	startFunc := c.First
+	validFunc := func(k []byte) bool {
+		return k != nil
+	}
+	moveFunc := c.Next
+
+	if len(keyPrefix) > 0 {
+		startFunc = func() (k []byte, v []byte) {
+			return c.Seek(keyPrefix)
+		}
+		validFunc = func(k []byte) bool {
+			return k != nil && bytes.HasPrefix(k, keyPrefix)
+		}
+	}
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = c.Last
+		moveFunc = c.Prev
+
+		if len(keyPrefix) > 0 {
+			// we need to search the first item after the prefix
+			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
+			if prefixUpperBound == nil {
+				return nil, nil, nil, errors.New("no upper bound for prefix")
+			}
+
+			startFunc = func() (k []byte, v []byte) {
+				k, v = c.Seek(prefixUpperBound)
+
+				// if the upper bound exists (not part of the prefix set), we need to use the next entry
+				if !validFunc(k) {
+					k, v = moveFunc()
+				}
+				return k, v
+			}
+		}
+	}
+
+	return startFunc, validFunc, moveFunc, nil
+}
+
+func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	return s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -54,25 +100,17 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 		}
 		c := b.Cursor()
 
-		if len(prefix) > 0 {
-			for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
-				value := v
-				if copyValues {
-					value = copyBytes(v)
-				}
-				if !kvConsumerFunc(copyBytes(k), value) {
-					break
-				}
-			}
-			return nil
+		startFunc, validFunc, moveFunc, err := s.getIterFuncs(c, prefix, iterDirection...)
+		if err != nil {
+			return err
 		}
 
-		for k, v := c.First(); k != nil; k, v = c.Next() {
+		for k, v := startFunc(); validFunc(k); k, v = moveFunc() {
 			value := v
 			if copyValues {
-				value = copyBytes(v)
+				value = utils.CopyBytes(v)
 			}
-			if !kvConsumerFunc(copyBytes(k), value) {
+			if !kvConsumerFunc(utils.CopyBytes(k), value) {
 				break
 			}
 		}
@@ -80,15 +118,19 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 	})
 }
 
-func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
-	return s.iterate(prefix, true, kvConsumerFunc)
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	return s.iterate(prefix, true, kvConsumerFunc, iterDirection...)
 }
 
-func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	// same as with values but we simply don't copy them
 	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
-	})
+	}, iterDirection...)
 }
 
 func (s *boltStore) Clear() error {
@@ -109,7 +151,7 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 		}
 		v := b.Get(key)
 		if v != nil {
-			value = copyBytes(v)
+			value = utils.CopyBytes(v)
 		}
 		return nil
 	}); err != nil {
