@@ -21,15 +21,15 @@ import (
 type TrustedSetup struct {
 	Suite         *bn256.Suite
 	D             uint16
-	Omega         kyber.Scalar  // persistent. omega: a primitive root of unity of the field.
+	Omega         kyber.Scalar  // persistent. omega: a primitive root of unity of the field. If omega==0, it is not used
 	LagrangeBasis []kyber.Point // persistent. TLi = [l<i>(secret)]1
 	Diff2         []kyber.Point // persistent
 	// auxiliary values
 	// precalc
-	OmegaPowers  []kyber.Scalar // non-persistent. omega<i> =  omega^i. omega<0> == 1, omega<1> =  omega
-	AprimeOmegaI []kyber.Scalar
-	ZeroG1       kyber.Scalar
-	OneG1        kyber.Scalar
+	Domain        []kyber.Scalar // non-persistent. if omega != 0, domain_i =  omega^i, otherwise domain_i = i.
+	AprimeDomainI []kyber.Scalar
+	ZeroG1        kyber.Scalar
+	OneG1         kyber.Scalar
 }
 
 var (
@@ -47,13 +47,13 @@ func (sd *TrustedSetup) init(d uint16) {
 	sd.Omega = sd.Suite.G1().Scalar()
 	sd.LagrangeBasis = make([]kyber.Point, d)
 	sd.Diff2 = make([]kyber.Point, d)
-	sd.OmegaPowers = make([]kyber.Scalar, d)
-	sd.AprimeOmegaI = make([]kyber.Scalar, d)
-	for i := range sd.OmegaPowers {
-		sd.OmegaPowers[i] = sd.Suite.G1().Scalar()
+	sd.Domain = make([]kyber.Scalar, d)
+	sd.AprimeDomainI = make([]kyber.Scalar, d)
+	for i := range sd.Domain {
+		sd.Domain[i] = sd.Suite.G1().Scalar()
 	}
-	for i := range sd.AprimeOmegaI {
-		sd.AprimeOmegaI[i] = sd.Suite.G1().Scalar()
+	for i := range sd.AprimeDomainI {
+		sd.AprimeDomainI[i] = sd.Suite.G1().Scalar()
 	}
 	for i := range sd.LagrangeBasis {
 		sd.LagrangeBasis[i] = sd.Suite.G1().Point()
@@ -63,13 +63,23 @@ func (sd *TrustedSetup) init(d uint16) {
 	sd.OneG1 = sd.Suite.G1().Scalar().One()
 }
 
-// TrustedSetupFromSecret calculates TrustedSetup from secret and omega
+// TrustedSetupFromSecretPowers calculates TrustedSetup from secret and omega
+// It uses powers of the omega as a domain for Lagrange basis
 // Only used once after what secret must be destroyed
 // The trusted setup does not contain any secret
-func TrustedSetupFromSecret(suite *bn256.Suite, d uint16, omega, secret kyber.Scalar) (*TrustedSetup, error) {
+func TrustedSetupFromSecretPowers(suite *bn256.Suite, d uint16, omega, secret kyber.Scalar) (*TrustedSetup, error) {
 	ret := newTrustedSetup(suite)
 	ret.init(d)
-	if err := ret.generate(omega, secret); err != nil {
+	if err := ret.generatePowers(omega, secret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func TrustedSetupFromSecretLinearDomain(suite *bn256.Suite, d uint16, secret kyber.Scalar) (*TrustedSetup, error) {
+	ret := newTrustedSetup(suite)
+	ret.init(d)
+	if err := ret.generateLinearDomain(secret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -81,14 +91,20 @@ func TrustedSetupFromBytes(suite *bn256.Suite, data []byte) (*TrustedSetup, erro
 	if err := ret.read(bytes.NewReader(data)); err != nil {
 		return nil, err
 	}
-	for i := range ret.OmegaPowers {
-		powerSimple(ret.Suite, ret.Omega, i, ret.OmegaPowers[i])
-		if i > 0 && ret.OmegaPowers[i].Equal(ret.OneG1) {
-			return nil, errWrongROU
+	if !ret.Omega.Equal(ret.ZeroG1) {
+		for i := range ret.Domain {
+			powerSimple(ret.Suite, ret.Omega, i, ret.Domain[i])
+			if i > 0 && ret.Domain[i].Equal(ret.OneG1) {
+				return nil, errWrongROU
+			}
+		}
+	} else {
+		for i := range ret.Domain {
+			ret.Domain[i].SetInt64(int64(i))
 		}
 	}
-	for i := range ret.AprimeOmegaI {
-		ret.aprime(i, ret.AprimeOmegaI[i])
+	for i := range ret.AprimeDomainI {
+		ret.aprime(i, ret.AprimeDomainI[i])
 	}
 	return ret, nil
 }
@@ -115,23 +131,23 @@ func (sd *TrustedSetup) Bytes() []byte {
 	return buf.Bytes()
 }
 
-// generate creates a new TrustedSetup based on omega and secret
-func (sd *TrustedSetup) generate(omega, secret kyber.Scalar) error {
+// generatePowers creates a new TrustedSetup based on omega and secret
+func (sd *TrustedSetup) generatePowers(omega, secret kyber.Scalar) error {
 	if len(secret.String()) < 50 {
 		return errWrongSecret
 	}
 	sd.Omega.Set(omega)
-	for i := range sd.OmegaPowers {
-		powerSimple(sd.Suite, sd.Omega, i, sd.OmegaPowers[i])
-		if sd.OmegaPowers[i].Equal(secret) {
+	for i := range sd.Domain {
+		powerSimple(sd.Suite, sd.Omega, i, sd.Domain[i])
+		if sd.Domain[i].Equal(secret) {
 			return errWrongSecret
 		}
-		if i > 0 && sd.OmegaPowers[i].Equal(sd.OneG1) {
+		if i > 0 && sd.Domain[i].Equal(sd.OneG1) {
 			return errWrongROU
 		}
 	}
-	for i := range sd.AprimeOmegaI {
-		sd.aprime(i, sd.AprimeOmegaI[i])
+	for i := range sd.AprimeDomainI {
+		sd.aprime(i, sd.AprimeDomainI[i])
 	}
 	// calculate Lagrange basis: [l_i(s)]1
 	for i := range sd.LagrangeBasis {
@@ -141,7 +157,33 @@ func (sd *TrustedSetup) generate(omega, secret kyber.Scalar) error {
 	// calculate [secret-rou^i]2
 	e2 := sd.Suite.G2().Scalar()
 	for i := range sd.Diff2 {
-		e2.Sub(secret, sd.OmegaPowers[i])
+		e2.Sub(secret, sd.Domain[i])
+		sd.Diff2[i].Mul(e2, nil)
+	}
+	return nil
+}
+
+// generateLinearDomain creates a new TrustedSetup from secret and using 0,1,2..d-1 as a domain for Lagrange basis
+func (sd *TrustedSetup) generateLinearDomain(secret kyber.Scalar) error {
+	if len(secret.String()) < 50 {
+		return errWrongSecret
+	}
+	sd.Omega.Zero()
+	for i := range sd.Domain {
+		sd.Domain[i].SetInt64(int64(i))
+	}
+	for i := range sd.AprimeDomainI {
+		sd.aprime(i, sd.AprimeDomainI[i])
+	}
+	// calculate Lagrange basis: [l_i(s)]1
+	for i := range sd.LagrangeBasis {
+		l := sd.evalLagrangeValue(i, secret)
+		sd.LagrangeBasis[i].Mul(l, nil) // [l_i(secret)]1
+	}
+	// calculate [secret-domain_i]2
+	e2 := sd.Suite.G2().Scalar()
+	for i := range sd.Diff2 {
+		e2.Sub(secret, sd.Domain[i])
 		sd.Diff2[i].Mul(e2, nil)
 	}
 	return nil
@@ -157,8 +199,8 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 		if j == i {
 			continue
 		}
-		numer.Sub(v, sd.OmegaPowers[j])
-		denom.Sub(sd.OmegaPowers[i], sd.OmegaPowers[j])
+		numer.Sub(v, sd.Domain[j])
+		denom.Sub(sd.Domain[i], sd.Domain[j])
 		elem.Div(numer, denom)
 		ret.Mul(ret, elem)
 	}
@@ -169,11 +211,11 @@ func (sd *TrustedSetup) evalLagrangeValue(i int, v kyber.Scalar) kyber.Scalar {
 func (sd *TrustedSetup) aprime(m int, ret kyber.Scalar) {
 	e := sd.Suite.G1().Scalar()
 	ret.One()
-	for i := range sd.OmegaPowers {
+	for i := range sd.Domain {
 		if i == m {
 			continue
 		}
-		e.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
+		e.Sub(sd.Domain[m], sd.Domain[i])
 		ret.Mul(ret, e)
 	}
 }

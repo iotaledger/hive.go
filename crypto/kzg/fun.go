@@ -27,7 +27,7 @@ func (sd *TrustedSetup) Prove(vect []kyber.Scalar, i int) kyber.Point {
 	ret := sd.Suite.G1().Point().Null()
 	e := sd.Suite.G1().Point()
 	qij := sd.Suite.G1().Scalar()
-	for j := range sd.OmegaPowers {
+	for j := range sd.Domain {
 		sd.q(vect, i, j, vect[i], qij)
 		e.Mul(qij, sd.LagrangeBasis[j])
 		ret.Add(ret, e)
@@ -45,7 +45,7 @@ func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, y kyber.Scalar, ret kyb
 			ret.Zero()
 			return
 		}
-		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[i])
+		denom.Sub(sd.Domain[m], sd.Domain[i])
 		ret.Div(numer, denom)
 		return
 	}
@@ -59,9 +59,9 @@ func (sd *TrustedSetup) q(vect []kyber.Scalar, i, m int, y kyber.Scalar, ret kyb
 		if numer.Equal(sd.ZeroG1) {
 			continue
 		}
-		numer.Mul(numer, sd.AprimeOmegaI[m])
-		denom.Sub(sd.OmegaPowers[m], sd.OmegaPowers[j])
-		denom.Mul(denom, sd.AprimeOmegaI[j])
+		numer.Mul(numer, sd.AprimeDomainI[m])
+		denom.Sub(sd.Domain[m], sd.Domain[j])
+		denom.Mul(denom, sd.AprimeDomainI[j])
 		numer.Div(numer, denom)
 		ret.Add(ret, numer)
 	}

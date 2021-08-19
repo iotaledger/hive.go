@@ -62,7 +62,7 @@ func main() {
 	s.SetBytes(h[:])
 	h = [32]byte{} // destroy secret
 	omega, _ := kzg.GenRootOfUnityQuasiPrimitive(suite, D)
-	tr, err := kzg.TrustedSetupFromSecret(suite, D, omega, s)
+	tr, err := kzg.TrustedSetupFromSecretPowers(suite, D, omega, s)
 	s.Zero() // // destroy secret
 	if err != nil {
 		panic(err)

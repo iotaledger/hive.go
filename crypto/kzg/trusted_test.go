@@ -40,7 +40,7 @@ func TestGenerate(t *testing.T) {
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
+	tr, err := TrustedSetupFromSecretPowers(suite, D, rou, secret)
 	require.NoError(t, err)
 	data := tr.Bytes()
 	t.Logf("trusted setup size: %d", len(data))
@@ -58,7 +58,7 @@ func TestValidate0(t *testing.T) {
 	omega, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	t.Logf("omega = %s", omega.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, omega, secret)
+	tr, err := TrustedSetupFromSecretPowers(suite, D, omega, secret)
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
@@ -85,7 +85,7 @@ func TestValidate1(t *testing.T) {
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	t.Logf("omega = %s", rou.String())
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
+	tr, err := TrustedSetupFromSecretPowers(suite, D, rou, secret)
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
@@ -108,7 +108,41 @@ func TestValidate2(t *testing.T) {
 	suite := bn256.NewSuite()
 	rou, _ := GenRootOfUnityQuasiPrimitive(suite, D)
 	secret := suite.G1().Scalar().Pick(random.New())
-	tr, err := TrustedSetupFromSecret(suite, D, rou, secret)
+	tr, err := TrustedSetupFromSecretPowers(suite, D, rou, secret)
+	require.NoError(t, err)
+
+	vect := make([]kyber.Scalar, D)
+	for i := range vect {
+		vect[i] = tr.Suite.G1().Scalar().SetInt64(int64(i))
+	}
+	c := tr.Commit(vect)
+	t.Logf("C = %s", c)
+	require.True(t, tr.VerifyVector(vect, c))
+	pi := make([]kyber.Point, D)
+	for i := range pi {
+		pi[i] = tr.Prove(vect, i)
+	}
+	for i := range vect {
+		require.True(t, tr.Verify(c, pi[i], vect[i], i))
+	}
+	v := tr.Suite.G1().Scalar()
+	for i := range vect {
+		v.SetInt64(int64(i + 1))
+		require.False(t, tr.Verify(c, pi[i], v, i))
+	}
+	rnd := random.New()
+	for k := 0; k < 5; k++ {
+		v.Pick(rnd)
+		for i := range vect {
+			require.False(t, tr.Verify(c, pi[i], v, i))
+		}
+	}
+}
+
+func TestValidateLinearDomain(t *testing.T) {
+	suite := bn256.NewSuite()
+	secret := suite.G1().Scalar().Pick(random.New())
+	tr, err := TrustedSetupFromSecretLinearDomain(suite, D, secret)
 	require.NoError(t, err)
 
 	vect := make([]kyber.Scalar, D)
