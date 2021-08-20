@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/iotaledger/hive.go/events"
+	"go.uber.org/dig"
 )
 
 type pluginEvents struct {
@@ -12,6 +13,10 @@ type pluginEvents struct {
 
 func pluginCaller(handler interface{}, params ...interface{}) {
 	handler.(func(*Plugin))(params[0].(*Plugin))
+}
+
+func pluginAndDepCaller(handler interface{}, params ...interface{}) {
+	handler.(func(*Plugin, *dig.Container))(params[0].(*Plugin), params[1].(*dig.Container))
 }
 
 func pluginParameterCaller(handler interface{}, params ...interface{}) {
