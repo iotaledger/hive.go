@@ -13,12 +13,14 @@ type fieldCache struct {
 	structFieldCache map[reflect.Type][]int
 }
 
+// NewFieldCache creates and returns new fieldCache.
 func NewFieldCache() *fieldCache {
 	return &fieldCache{
 		structFieldCache: make(map[reflect.Type][]int),
 	}
 }
 
+// GetFields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
 func (c *fieldCache) GetFields(structType reflect.Type) ([]int, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()

@@ -3,12 +3,13 @@ package autoserializer
 import (
 	"errors"
 	"fmt"
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
-	"github.com/iotaledger/hive.go/marshalutil"
 	"math"
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 // SerializationManager stores TypeRegistry and is used to automatically serialize and deserialize structures.
@@ -326,12 +327,12 @@ func (m *SerializationManager) serialize(value reflect.Value, buffer *marshaluti
 	case reflect.Uint64, reflect.Uint:
 		buffer.WriteUint64(value.Uint())
 	case reflect.Float32:
-		if value.Float() == math.NaN() {
+		if math.IsNaN(value.Float()) {
 			return fmt.Errorf("NaN float value")
 		}
 		buffer.WriteFloat32(float32(value.Float()))
 	case reflect.Float64:
-		if value.Float() == math.NaN() {
+		if math.IsNaN(value.Float()) {
 			return fmt.Errorf("NaN float value")
 		}
 		buffer.WriteFloat64(value.Float())
@@ -357,7 +358,6 @@ func (m *SerializationManager) serialize(value reflect.Value, buffer *marshaluti
 		}
 	case reflect.Map:
 		// TODO: parametrize this using a struct tag
-
 		buffer.WriteUint8(uint8(value.Len()))
 
 		keys := value.MapKeys()
@@ -385,7 +385,7 @@ func (m *SerializationManager) serialize(value reflect.Value, buffer *marshaluti
 		if structType == reflect.TypeOf(time.Time{}) {
 			buffer.WriteTime(value.Interface().(time.Time))
 		} else if structType == reflect.TypeOf(orderedmap.OrderedMap{}) {
-			err := m.serializeOrderedMap(value, buffer)
+			err = m.serializeOrderedMap(value, buffer)
 			if err != nil {
 				break
 			}
@@ -446,10 +446,7 @@ func (m *SerializationManager) serializeOrderedMap(value reflect.Value, buffer *
 			return false
 		}
 		err = m.serialize(reflect.ValueOf(value), buffer)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	})
 	return err
 }

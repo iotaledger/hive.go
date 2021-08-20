@@ -2,12 +2,13 @@ package autoserializer
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 type Test interface {
@@ -581,7 +582,7 @@ func TestAutoserializer_Struct(t *testing.T) {
 		},
 		StructType:                InnerStruct{[]string{"one", "two", "three", "four"}},
 		PointerStructType:         &InnerStruct{[]string{"one", "two", "three", "four"}},
-		SlicePointerStructType:    []*InnerStruct{&InnerStruct{[]string{"one", "two", "three", "four"}}},
+		SlicePointerStructType:    []*InnerStruct{{[]string{"one", "two", "three", "four"}}},
 		SliceStructType:           []InnerStruct{{[]string{"one", "two", "three", "four"}}},
 		InterfaceType:             TestImpl1{Val: 10},
 		PointerInterfaceType:      &interfacePointer,
@@ -660,7 +661,7 @@ func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
 		},
 		StructType:                InnerStruct{[]string{"one", "two", "three", "four"}},
 		PointerStructType:         &InnerStruct{[]string{"one", "two", "three", "four"}},
-		SlicePointerStructType:    []*InnerStruct{&InnerStruct{[]string{"one", "two", "three", "four"}}},
+		SlicePointerStructType:    []*InnerStruct{{[]string{"one", "two", "three", "four"}}},
 		SliceStructType:           []InnerStruct{{[]string{"one", "two", "three", "four"}}},
 		InterfaceType:             TestImpl1{Val: 10},
 		PointerInterfaceType:      &interfacePointer,
