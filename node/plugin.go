@@ -28,7 +28,7 @@ type Plugin struct {
 
 // NewPlugin creates a new plugin with the given name, default status and callbacks.
 // The last specified callback is the mandatory run callback, while all other callbacks are configure callbacks.
-func NewPlugin(name string, status int, deps interface{}, callbacks ...Callback) *Plugin {
+func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback) *Plugin {
 	plugin := &Plugin{
 		Name:   name,
 		Status: status,
