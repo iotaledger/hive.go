@@ -1,10 +1,12 @@
 package node
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/iotaledger/hive.go/daemon"
 	"github.com/iotaledger/hive.go/logger"
+	"go.uber.org/dig"
 )
 
 var (
@@ -19,6 +21,7 @@ type Node struct {
 	loadedPlugins []*Plugin
 	Logger        *logger.Logger
 	options       *NodeOptions
+	depContainer  *dig.Container
 }
 
 func New(optionalOptions ...NodeOption) *Node {
@@ -26,6 +29,7 @@ func New(optionalOptions ...NodeOption) *Node {
 		wg:            &sync.WaitGroup{},
 		loadedPlugins: make([]*Plugin, 0),
 		options:       newNodeOptions(optionalOptions),
+		depContainer:  dig.New(),
 	}
 
 	// initialize plugins
@@ -76,23 +80,50 @@ func isEnabled(plugin *Plugin) bool {
 
 func (node *Node) init(plugins ...*Plugin) {
 	for _, plugin := range plugins {
-		plugin.Events.Init.Trigger(plugin)
+		if IsSkipped(plugin) {
+			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
+			continue
+		}
+		plugin.Events.Init.Trigger(plugin, node.depContainer)
 	}
 }
 
 func (node *Node) configure(plugins ...*Plugin) {
 	for _, plugin := range plugins {
 		if IsSkipped(plugin) {
-			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
 			continue
 		}
 
 		plugin.wg = node.wg
 		plugin.Node = node
 
+		if plugin.deps != nil {
+			node.populatePluginDependencies(plugin)
+		}
+
 		plugin.Events.Configure.Trigger(plugin)
 		node.loadedPlugins = append(node.loadedPlugins, plugin)
 		node.Logger.Infof("Loading Plugin: %s ... done", plugin.Name)
+	}
+}
+
+func (node *Node) populatePluginDependencies(plugin *Plugin) {
+	depsType := reflect.TypeOf(plugin.deps)
+	if depsType.Kind() != reflect.Ptr {
+		panic("must pass pointer to plugin dependency struct")
+	}
+
+	depStructVal := reflect.Indirect(reflect.ValueOf(plugin.deps))
+	depStructType := depStructVal.Type()
+
+	invokeFnType := reflect.FuncOf([]reflect.Type{depStructType}, []reflect.Type{}, false)
+	invokeFn := reflect.MakeFunc(invokeFnType, func(args []reflect.Value) (results []reflect.Value) {
+		reflect.ValueOf(plugin.deps).Elem().Set(args[0])
+		return results
+	})
+
+	if err := node.depContainer.Invoke(invokeFn.Interface()); err != nil {
+		panic(err)
 	}
 }
 
