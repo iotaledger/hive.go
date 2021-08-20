@@ -26,11 +26,7 @@ func TestDependencyInjection(t *testing.T) {
 		},
 	)
 
-	pluginB := node.NewPlugin("B", node.Enabled, depsA,
-		func(plugin *node.Plugin) {
-
-		},
-	)
+	pluginB := node.NewPlugin("B", node.Enabled, nil)
 
 	pluginB.Events.Init.Attach(events.NewClosure(func(_ *node.Plugin, container *dig.Container) {
 		require.NoError(t, container.Provide(func() string {
