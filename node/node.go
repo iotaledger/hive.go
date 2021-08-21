@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -123,7 +124,7 @@ func (node *Node) populatePluginDependencies(plugin *Plugin) {
 	})
 
 	if err := node.depContainer.Invoke(invokeFn.Interface()); err != nil {
-		panic(err)
+		panic(fmt.Errorf("unable to populate dependencies of plugin %s: %w", plugin.Name, err))
 	}
 }
 
