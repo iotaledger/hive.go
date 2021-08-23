@@ -4,11 +4,14 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/pebble"
+
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 func CreateDB(directory string, optionalOptions ...*pebble.Options) (*pebble.DB, error) {
-	if err := checkDir(directory); err != nil {
-		return nil, fmt.Errorf("could not check directory: %w", err)
+
+	if err := utils.CreateDirectory(directory, 0700); err != nil {
+		return nil, fmt.Errorf("could not create directory: %w", err)
 	}
 
 	var opts *pebble.Options

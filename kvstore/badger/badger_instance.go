@@ -6,11 +6,14 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {
-	if err := checkDir(directory); err != nil {
-		return nil, fmt.Errorf("could not check directory: %w", err)
+
+	if err := utils.CreateDirectory(directory, 0700); err != nil {
+		return nil, fmt.Errorf("could not create directory: %w", err)
 	}
 
 	var opts badger.Options

@@ -7,13 +7,14 @@ import (
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/types"
 )
 
 // pebbleStore implements the KVStore interface around a pebble instance.
 type pebbleStore struct {
-	instance                     *pebble.DB
-	dbPrefix                     []byte
+	instance *pebble.DB
+	dbPrefix []byte
 }
 
 // New creates a new KVStore with the underlying pebbleDB.
@@ -51,29 +52,39 @@ func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 		return nil, nil
 	}
 
-	return start, keyUpperBound(start)
+	return start, utils.KeyPrefixUpperBound(start)
 }
 
-func keyUpperBound(b []byte) []byte {
-	end := make([]byte, len(b))
-	copy(end, b)
-	for i := len(end) - 1; i >= 0; i-- {
-		end[i] = end[i] + 1
-		if end[i] != 0 {
-			return end[:i+1]
-		}
+// getIterFuncs returns the function pointers for the iteration based on the given settings.
+func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore.IterDirection) (start func() bool, valid func() bool, move func() bool, err error) {
+
+	startFunc := it.First
+	validFunc := it.Valid
+	moveFunc := it.Next
+
+	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
+		startFunc = it.Last
+		moveFunc = it.Prev
 	}
-	return nil // no upper-bound
+
+	return startFunc, validFunc, moveFunc, nil
 }
 
-func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc) error {
+// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	start, end := s.getIterBounds(prefix)
 
-	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
-	defer iter.Close()
+	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+	defer it.Close()
 
-	for iter.First(); iter.Valid(); iter.Next() {
-		if !consumerFunc(copyBytes(iter.Key())[len(s.dbPrefix):], copyBytes(iter.Value())) {
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
+	if err != nil {
+		return err
+	}
+
+	for startFunc(); validFunc(); moveFunc() {
+		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):], utils.CopyBytes(it.Value())) {
 			break
 		}
 	}
@@ -81,14 +92,21 @@ func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 	return nil
 }
 
-func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc) error {
+// IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
+// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
+func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
 	start, end := s.getIterBounds(prefix)
 
-	iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
-	defer iter.Close()
+	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+	defer it.Close()
 
-	for iter.First(); iter.Valid(); iter.Next() {
-		if !consumerFunc(copyBytes(iter.Key())[len(s.dbPrefix):]) {
+	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
+	if err != nil {
+		return err
+	}
+
+	for startFunc(); validFunc(); moveFunc() {
+		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):]) {
 			break
 		}
 	}
@@ -110,7 +128,7 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 		return nil, err
 	}
 
-	value := copyBytes(val)
+	value := utils.CopyBytes(val)
 
 	if err := closer.Close(); err != nil {
 		return nil, err
@@ -149,13 +167,12 @@ func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 
 	if start == nil {
 		// DeleteRange does not work without range, so we have to iterate over all keys and delete them
-
-		iter := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
-		defer iter.Close()
+		it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
+		defer it.Close()
 
 		b := s.instance.NewBatch()
-		for iter.First(); iter.Valid(); iter.Next() {
-			if err := b.Delete(iter.Key(), nil); err != nil {
+		for it.First(); it.Valid(); it.Next() {
+			if err := b.Delete(it.Key(), nil); err != nil {
 				b.Close()
 				return err
 			}
