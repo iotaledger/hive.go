@@ -1,10 +1,8 @@
 package autoserializer
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
-	"unicode"
 )
 
 type fieldCache struct {
@@ -34,10 +32,15 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]int, error) {
 	cachedFields := make([]int, 0, numFields)
 	for i := 0; i < numFields; i++ {
 		field := structType.Field(i)
-		if field.Tag.Get("serialize") == "true" {
-			if unicode.IsLower(rune(field.Name[0])) {
-				return nil, fmt.Errorf("can't marshal un-exported field '%s'", structType.Field(i).Name)
-			}
+		switch field.Tag.Get("serialize") {
+		case "true":
+			fallthrough
+		case "unpack":
+			/*
+				if unicode.IsLower(rune(field.Name[0])) {
+					return nil, fmt.Errorf("can't marshal un-exported field '%s'", structType.Field(i).Name)
+				}
+			*/
 			cachedFields = append(cachedFields, i)
 		}
 	}

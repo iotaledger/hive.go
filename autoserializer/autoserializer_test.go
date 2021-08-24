@@ -436,8 +436,8 @@ func TestAutoserializer_OrderedMap(t *testing.T) {
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
 
-	var restored *orderedmap.OrderedMap
-	err = sm.Deserialize(&restored, bytes)
+	restored := orderedmap.New()
+	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, restored.Size(), 3)
 }
@@ -448,8 +448,8 @@ func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
 
-	var restored *orderedmap.OrderedMap
-	err = sm.Deserialize(&restored, bytes)
+	restored := orderedmap.New()
+	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, restored.Size(), 0)
 }
@@ -466,8 +466,8 @@ func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
 
-	var restored *orderedmap.OrderedMap
-	err = sm.Deserialize(&restored, bytes)
+	restored := orderedmap.New()
+	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, restored.Size(), 3)
 	first, exists := restored.Get("first")
@@ -494,8 +494,8 @@ func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
 
-	var restored *orderedmap.OrderedMap
-	err = sm.Deserialize(&restored, bytes)
+	restored := orderedmap.New()
+	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, restored.Size(), 3)
 	first, exists := restored.Get("first")
@@ -516,8 +516,8 @@ func TestAutoserializer_PointerToStruct(t *testing.T) {
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
 
-	var restored *TestImpl1
-	err = sm.Deserialize(&restored, bytes)
+	restored := &TestImpl1{}
+	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
 	assert.EqualValues(t, orig, restored)
 }
@@ -532,10 +532,11 @@ func TestAutoserializer_PointerToInterface(t *testing.T) {
 	bytes, err := sm.Serialize(t2)
 	assert.NoError(t, err)
 
-	var restored *Test
-	err = sm.Deserialize(&restored, bytes)
+	restored := Test(TestImpl1{})
+	t3 := &restored
+	err = sm.Deserialize(t3, bytes)
 	assert.NoError(t, err)
-	assert.EqualValues(t, t2, restored)
+	assert.EqualValues(t, t2, t3)
 }
 
 func TestAutoserializer_TooManyBytes(t *testing.T) {

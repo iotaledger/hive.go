@@ -282,12 +282,34 @@ func (m *SerializationManager) deserializeStruct(structType reflect.Type, marsha
 		restoredStruct := reflect.New(structType).Elem()
 		for i := 0; i < structType.NumField(); i++ {
 			field := structType.Field(i)
-			if field.Tag.Get("serialize") == "true" {
+			switch field.Tag.Get("serialize") {
+			case "true":
 				fieldValue, err := m.deserialize(field.Type, marshalutil)
 				if err != nil {
 					return nil, err
 				}
 				restoredStruct.Field(i).Set(reflect.ValueOf(fieldValue).Convert(field.Type))
+			case "unpack":
+				if !field.Anonymous {
+					panic(fmt.Sprintf("unpack on non anonymous field %s", field.Name))
+				}
+
+				if field.Type.Kind() != reflect.Struct {
+					panic(fmt.Sprintf("unpack on non anonymous struct field %s", field.Name))
+				}
+
+				anonEmbeddedStructType := field.Type
+				for j := 0; j < anonEmbeddedStructType.NumField(); j++ {
+					embStructField := anonEmbeddedStructType.Field(j)
+					if embStructField.Tag.Get("serialize") != "true" {
+						continue
+					}
+					embStructFieldVal, err := m.deserialize(embStructField.Type, marshalutil)
+					if err != nil {
+						return nil, err
+					}
+					restoredStruct.Field(i).Field(j).Set(reflect.ValueOf(embStructFieldVal).Convert(embStructField.Type))
+				}
 			}
 		}
 
@@ -298,8 +320,13 @@ func (m *SerializationManager) deserializeStruct(structType reflect.Type, marsha
 // Serialize turns object into bytes.
 func (m *SerializationManager) Serialize(s interface{}) ([]byte, error) {
 	buffer := marshalutil.New()
-	err := m.serialize(reflect.ValueOf(s), buffer)
-	if err != nil {
+	if reflect.TypeOf(s).Kind() == reflect.Ptr {
+		if err := m.serialize(reflect.ValueOf(s).Elem(), buffer); err != nil {
+			return nil, err
+		}
+		return buffer.Bytes(), nil
+	}
+	if err := m.serialize(reflect.ValueOf(s), buffer); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
