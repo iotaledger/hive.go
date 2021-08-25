@@ -39,6 +39,9 @@ type InnerStruct struct {
 	Custom CustomType `serialize:"true"`
 }
 
+type InnerPointer struct {
+	Custom *TestImpl1 `serialize:"true"`
+}
 type sampleStruct struct {
 	Num1                      int64                  `serialize:"true"`
 	Num2                      int32                  `serialize:"true"`
@@ -53,21 +56,23 @@ type sampleStruct struct {
 	Boolean                   bool                   `serialize:"true"`
 	StringSlice               []string               `serialize:"true"`
 	NumSlice                  []int64                `serialize:"true"`
-	ByteSlice                 []byte                 `serialize:"true"`
+	ByteSlice                 []byte                 `serialize:"true" lenPrefixBytes:"4"`
 	StringArray               [32]string             `serialize:"true"`
 	NumArray                  [32]int64              `serialize:"true"`
 	ByteArray                 [32]byte               `serialize:"true"`
 	Map                       map[string]float64     `serialize:"true"`
 	StructType                InnerStruct            `serialize:"true"`
 	PointerStructType         *InnerStruct           `serialize:"true"`
-	SlicePointerStructType    []*InnerStruct         `serialize:"true"`
+	SlicePointerStructType    []*InnerStruct         `serialize:"true" lenPrefixBytes:"1"`
 	SliceStructType           []InnerStruct          `serialize:"true"`
-	OrderedMap                *orderedmap.OrderedMap `serialize:"true"`
+	OrderedMap                *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
 	Time                      time.Time              `serialize:"true"`
 	InterfaceType             Test                   `serialize:"true"`
 	PointerInterfaceType      *Test                  `serialize:"true"`
-	SliceInterfaceType        []Test                 `serialize:"true"`
+	SliceInterfaceType        []Test                 `serialize:"true" lenPrefixBytes:"2"`
 	SlicePointerInterfaceType []*Test                `serialize:"true"`
+	NilPointerType            *InnerStruct           `serialize:"true"`
+	NilPointerInterfaceType   *Test                  `serialize:"true"`
 }
 
 func TestAutoserializer_Int64(t *testing.T) {
@@ -325,6 +330,7 @@ func TestAutoserializer_InterfaceSlice(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, orig, restored)
 }
+
 func TestAutoserializer_EmptySlice(t *testing.T) {
 	sm := NewSerializationManager()
 
@@ -522,6 +528,21 @@ func TestAutoserializer_PointerToStruct(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
+func TestAutoserializer_NilPointer(t *testing.T) {
+	sm := NewSerializationManager()
+
+	orig := &InnerPointer{}
+	bytes, err := sm.Serialize(orig)
+	assert.NoError(t, err)
+
+	restored := &InnerPointer{}
+	err = sm.Deserialize(restored, bytes)
+	assert.NoError(t, err)
+	assert.Nil(t, restored.Custom)
+	assert.Nil(t, orig.Custom)
+
+}
+
 func TestAutoserializer_PointerToInterface(t *testing.T) {
 	sm := NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
@@ -620,7 +641,8 @@ func TestAutoserializer_Struct(t *testing.T) {
 	third, exists := restored.OrderedMap.Get("third")
 	assert.True(t, exists)
 	assert.Equal(t, third, TestImpl2{12})
-
+	assert.Nil(t, restored.NilPointerType)
+	assert.Nil(t, restored.NilPointerInterfaceType)
 	// time is correctly restored, remove it from the struct to use automatic equality check
 	restored.Time = time.Time{}
 	orig.Time = time.Time{}
