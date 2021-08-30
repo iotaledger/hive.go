@@ -34,7 +34,7 @@ func (q *Queue) Trigger() {
 	defer q.queuedElementsMutex.Unlock()
 
 	for _, queuedElement := range q.queuedElements {
-		queuedElement.event.Trigger(queuedElement.params)
+		queuedElement.event.Trigger(queuedElement.params...)
 	}
 	q.clear()
 }
