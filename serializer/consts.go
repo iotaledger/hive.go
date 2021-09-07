@@ -31,8 +31,6 @@ const (
 	PayloadLengthByteSize = UInt32ByteSize
 	// MinPayloadByteSize is the minimum size of a payload (together with its length denotation).
 	MinPayloadByteSize = UInt32ByteSize + OneByte
-	// TokenSupply is the IOTA token supply.
-	TokenSupply = 2_779_530_283_277_761
 )
 
 // TypeDenotationType defines a type denotation.
