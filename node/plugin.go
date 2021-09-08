@@ -22,17 +22,19 @@ type Plugin struct {
 	Events  pluginEvents
 	log     *logger.Logger
 	logOnce sync.Once
+	deps    interface{}
 	wg      *sync.WaitGroup
 }
 
-// Creates a new plugin with the given name, default status and callbacks.
+// NewPlugin creates a new plugin with the given name, default status and callbacks.
 // The last specified callback is the mandatory run callback, while all other callbacks are configure callbacks.
-func NewPlugin(name string, status int, callbacks ...Callback) *Plugin {
+func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback) *Plugin {
 	plugin := &Plugin{
 		Name:   name,
 		Status: status,
+		deps:   deps,
 		Events: pluginEvents{
-			Init:      events.NewEvent(pluginCaller),
+			Init:      events.NewEvent(pluginAndDepCaller),
 			Configure: events.NewEvent(pluginCaller),
 			Run:       events.NewEvent(pluginCaller),
 		},
