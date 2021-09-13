@@ -1,11 +1,13 @@
-package autoserializer
+package autoserializer_test
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/iotaledger/hive.go/autoserializer"
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 	"github.com/stretchr/testify/assert"
@@ -60,12 +62,12 @@ type sampleStruct struct {
 	StringArray               [32]string             `serialize:"true"`
 	NumArray                  [32]int64              `serialize:"true"`
 	ByteArray                 [32]byte               `serialize:"true"`
-	Map                       map[string]float64     `serialize:"true"`
 	StructType                InnerStruct            `serialize:"true"`
 	PointerStructType         *InnerStruct           `serialize:"true"`
 	SlicePointerStructType    []*InnerStruct         `serialize:"true" lenPrefixBytes:"1"`
 	SliceStructType           []InnerStruct          `serialize:"true"`
 	OrderedMap                *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
+	NilOrderedMap             *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
 	Time                      time.Time              `serialize:"true"`
 	InterfaceType             Test                   `serialize:"true"`
 	PointerInterfaceType      *Test                  `serialize:"true"`
@@ -73,10 +75,11 @@ type sampleStruct struct {
 	SlicePointerInterfaceType []*Test                `serialize:"true"`
 	NilPointerType            *InnerStruct           `serialize:"true"`
 	NilPointerInterfaceType   *Test                  `serialize:"true"`
+	BinaryMarshallerType      *url.URL               `serialize:"true"`
 }
 
 func TestAutoserializer_Int64(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := int64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -89,7 +92,7 @@ func TestAutoserializer_Int64(t *testing.T) {
 }
 
 func TestAutoserializer_Int32(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := int32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -102,7 +105,7 @@ func TestAutoserializer_Int32(t *testing.T) {
 }
 
 func TestAutoserializer_Int16(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := int16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -115,7 +118,7 @@ func TestAutoserializer_Int16(t *testing.T) {
 }
 
 func TestAutoserializer_Int8(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := int8(100)
 	bytes, err := sm.Serialize(orig)
@@ -128,7 +131,7 @@ func TestAutoserializer_Int8(t *testing.T) {
 }
 
 func TestAutoserializer_Uint64(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := uint64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -141,7 +144,7 @@ func TestAutoserializer_Uint64(t *testing.T) {
 }
 
 func TestAutoserializer_Uint32(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := uint32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -154,7 +157,7 @@ func TestAutoserializer_Uint32(t *testing.T) {
 }
 
 func TestAutoserializer_Uint16(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := uint16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -167,7 +170,7 @@ func TestAutoserializer_Uint16(t *testing.T) {
 }
 
 func TestAutoserializer_Uint8(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := uint8(137)
 	bytes, err := sm.Serialize(orig)
@@ -180,7 +183,7 @@ func TestAutoserializer_Uint8(t *testing.T) {
 }
 
 func TestAutoserializer_Float32(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := float32(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -193,7 +196,7 @@ func TestAutoserializer_Float32(t *testing.T) {
 }
 
 func TestAutoserializer_Float64(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := float64(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -206,7 +209,7 @@ func TestAutoserializer_Float64(t *testing.T) {
 }
 
 func TestAutoserializer_Bool(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := true
 	bytes, err := sm.Serialize(orig)
@@ -219,7 +222,7 @@ func TestAutoserializer_Bool(t *testing.T) {
 }
 
 func TestAutoserializer_Byte(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := byte(100)
 	bytes, err := sm.Serialize(orig)
@@ -232,7 +235,7 @@ func TestAutoserializer_Byte(t *testing.T) {
 }
 
 func TestAutoserializer_String(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := "test string value"
 	bytes, err := sm.Serialize(orig)
@@ -245,7 +248,7 @@ func TestAutoserializer_String(t *testing.T) {
 }
 
 func TestAutoserializer_Array(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := [2]string{"test string value", "test string value 2"}
 	bytes, err := sm.Serialize(orig)
@@ -257,7 +260,7 @@ func TestAutoserializer_Array(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 func TestAutoserializer_StructArray(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := [3]TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -270,7 +273,7 @@ func TestAutoserializer_StructArray(t *testing.T) {
 }
 
 func TestAutoserializer_InterfaceArray(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -288,7 +291,7 @@ func TestAutoserializer_InterfaceArray(t *testing.T) {
 }
 
 func TestAutoserializer_Slice(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	bytes, err := sm.Serialize(orig)
@@ -301,7 +304,7 @@ func TestAutoserializer_Slice(t *testing.T) {
 }
 
 func TestAutoserializer_StructSlice(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := []TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -314,7 +317,7 @@ func TestAutoserializer_StructSlice(t *testing.T) {
 }
 
 func TestAutoserializer_InterfaceSlice(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -332,7 +335,7 @@ func TestAutoserializer_InterfaceSlice(t *testing.T) {
 }
 
 func TestAutoserializer_EmptySlice(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := make([]string, 0)
 	bytes, err := sm.Serialize(orig)
@@ -345,7 +348,7 @@ func TestAutoserializer_EmptySlice(t *testing.T) {
 	assert.Len(t, restored, 0)
 }
 func TestAutoserializer_NilSlice(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	var orig []int
 	bytes, err := sm.Serialize(orig)
@@ -361,7 +364,7 @@ func TestAutoserializer_NilSlice(t *testing.T) {
 }
 
 func TestAutoserializer_SliceOfEmptyStructs(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	type emptyStruct struct{}
 
@@ -376,38 +379,8 @@ func TestAutoserializer_SliceOfEmptyStructs(t *testing.T) {
 	assert.Len(t, restored, 255)
 }
 
-func TestAutoserializer_Map(t *testing.T) {
-	sm := NewSerializationManager()
-
-	orig := map[string]float64{
-		"eggs":    1.75,
-		"bacon":   3.22,
-		"sausage": 1.89,
-	}
-	bytes, err := sm.Serialize(orig)
-	assert.NoError(t, err)
-
-	var restored map[string]float64
-	err = sm.Deserialize(&restored, bytes)
-	assert.NoError(t, err)
-	assert.EqualValues(t, orig, restored)
-}
-
-func TestAutoserializer_EmptyMap(t *testing.T) {
-	sm := NewSerializationManager()
-
-	orig := map[string]float64{}
-	bytes, err := sm.Serialize(orig)
-	assert.NoError(t, err)
-
-	var restored map[string]float64
-	err = sm.Deserialize(&restored, bytes)
-	assert.NoError(t, err)
-	assert.Len(t, restored, 0)
-}
-
 func TestAutoserializer_Time(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := time.Now()
 	bytes, err := sm.Serialize(orig)
@@ -419,8 +392,24 @@ func TestAutoserializer_Time(t *testing.T) {
 	assert.True(t, orig.Equal(restored))
 }
 
+func TestAutoserializer_BinaryMarshaler(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+
+	orig, err := url.Parse("https://pkg.go.dev/encoding#BinaryMarshaler")
+	assert.NoError(t, err)
+
+	bytes, err := sm.Serialize(orig)
+
+	assert.NoError(t, err)
+
+	restored := &url.URL{}
+	err = sm.Deserialize(restored, bytes)
+	assert.NoError(t, err)
+	assert.Equal(t, orig, restored)
+}
+
 func TestAutoserializer_ZeroTime(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	var defaultTime time.Time
 	bytes, err := sm.Serialize(defaultTime)
@@ -433,15 +422,15 @@ func TestAutoserializer_ZeroTime(t *testing.T) {
 }
 
 func TestAutoserializer_OrderedMap(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	sm.RegisterType("")
 	orig := orderedmap.New()
 	orig.Set("first", "value")
 	orig.Set("second", "value")
 	orig.Set("third", "value")
 	bytes, err := sm.Serialize(orig)
+	fmt.Println(bytes)
 	assert.NoError(t, err)
-
 	restored := orderedmap.New()
 	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
@@ -449,11 +438,11 @@ func TestAutoserializer_OrderedMap(t *testing.T) {
 }
 
 func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	orig := orderedmap.New()
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
-
+	fmt.Println(bytes)
 	restored := orderedmap.New()
 	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
@@ -461,7 +450,7 @@ func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
 }
 
 func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	sm.RegisterType("")
 	sm.RegisterType(TestImpl1{})
 	sm.RegisterType(TestImpl2{})
@@ -488,8 +477,7 @@ func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
 }
 
 func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
-	t.Skip("autoserialization of orderedmap with interface type not supported")
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	sm.RegisterType("")
 	sm.RegisterType(TestImpl1{})
 	sm.RegisterType(TestImpl2{})
@@ -516,7 +504,7 @@ func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
 }
 
 func TestAutoserializer_PointerToStruct(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -529,7 +517,7 @@ func TestAutoserializer_PointerToStruct(t *testing.T) {
 }
 
 func TestAutoserializer_NilPointer(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := &InnerPointer{}
 	bytes, err := sm.Serialize(orig)
@@ -544,7 +532,7 @@ func TestAutoserializer_NilPointer(t *testing.T) {
 }
 
 func TestAutoserializer_PointerToInterface(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -561,7 +549,7 @@ func TestAutoserializer_PointerToInterface(t *testing.T) {
 }
 
 func TestAutoserializer_TooManyBytes(t *testing.T) {
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -578,30 +566,26 @@ func TestAutoserializer_Struct(t *testing.T) {
 	sampleOrderedMap.Set("first", TestImpl2{2})
 	sampleOrderedMap.Set("second", TestImpl2{33})
 	sampleOrderedMap.Set("third", TestImpl2{12})
-
+	urlValue, err := url.Parse("https://pkg.go.dev/encoding#BinaryMarshaler")
+	assert.NoError(t, err)
 	orig := sampleStruct{
-		Num1:        1,
-		Num2:        2,
-		Num3:        3,
-		Num4:        4,
-		Num5:        5,
-		Num6:        6,
-		Num7:        7,
-		Num8:        8,
-		Float1:      1.23,
-		Float2:      2.65,
-		Boolean:     true,
-		StringSlice: []string{"one", "two", "three", "four"},
-		NumSlice:    []int64{1, 2, 3, 4},
-		ByteSlice:   []byte{1, 2, 3, 4},
-		StringArray: [32]string{"one", "two", "three"},
-		NumArray:    [32]int64{1, 2, 3},
-		ByteArray:   [32]byte{1, 2, 3},
-		Map: map[string]float64{
-			"eggs":    1.75,
-			"bacon":   3.22,
-			"sausage": 1.89,
-		},
+		Num1:                      1,
+		Num2:                      2,
+		Num3:                      3,
+		Num4:                      4,
+		Num5:                      5,
+		Num6:                      6,
+		Num7:                      7,
+		Num8:                      8,
+		Float1:                    1.23,
+		Float2:                    2.65,
+		Boolean:                   true,
+		StringSlice:               []string{"one", "two", "three", "four"},
+		NumSlice:                  []int64{1, 2, 3, 4},
+		ByteSlice:                 []byte{1, 2, 3, 4},
+		StringArray:               [32]string{"one", "two", "three"},
+		NumArray:                  [32]int64{1, 2, 3},
+		ByteArray:                 [32]byte{1, 2, 3},
 		StructType:                InnerStruct{[]string{"one", "two", "three", "four"}},
 		PointerStructType:         &InnerStruct{[]string{"one", "two", "three", "four"}},
 		SlicePointerStructType:    []*InnerStruct{{[]string{"one", "two", "three", "four"}}},
@@ -612,9 +596,10 @@ func TestAutoserializer_Struct(t *testing.T) {
 		SlicePointerInterfaceType: []*Test{&interfacePointer},
 		Time:                      time.Now(),
 		OrderedMap:                sampleOrderedMap,
+		BinaryMarshallerType:      urlValue,
 	}
-	sm := NewSerializationManager()
-	err := sm.RegisterType("")
+	sm := autoserializer.NewSerializationManager()
+	err = sm.RegisterType("")
 	assert.NoError(t, err)
 
 	err = sm.RegisterType(TestImpl1{})
@@ -643,11 +628,15 @@ func TestAutoserializer_Struct(t *testing.T) {
 	assert.Equal(t, third, TestImpl2{12})
 	assert.Nil(t, restored.NilPointerType)
 	assert.Nil(t, restored.NilPointerInterfaceType)
+	assert.Nil(t, restored.NilOrderedMap)
+	assert.Equal(t, orig.BinaryMarshallerType, restored.BinaryMarshallerType)
+
 	// time is correctly restored, remove it from the struct to use automatic equality check
 	restored.Time = time.Time{}
 	orig.Time = time.Time{}
 	assert.EqualValues(t, orig, restored)
 	assert.True(t, reflect.DeepEqual(orig, restored))
+
 }
 
 var result []byte
@@ -660,28 +649,23 @@ func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
 	sampleOrderedMap.Set("third", TestImpl2{12})
 
 	orig := sampleStruct{
-		Num1:        1,
-		Num2:        2,
-		Num3:        3,
-		Num4:        4,
-		Num5:        5,
-		Num6:        6,
-		Num7:        7,
-		Num8:        8,
-		Float1:      1.23,
-		Float2:      2.65,
-		Boolean:     true,
-		StringSlice: []string{"one", "two", "three", "four"},
-		NumSlice:    []int64{1, 2, 3, 4},
-		ByteSlice:   []byte{1, 2, 3, 4},
-		StringArray: [32]string{"one", "two", "three"},
-		NumArray:    [32]int64{1, 2, 3},
-		ByteArray:   [32]byte{1, 2, 3},
-		Map: map[string]float64{
-			"eggs":    1.75,
-			"bacon":   3.22,
-			"sausage": 1.89,
-		},
+		Num1:                      1,
+		Num2:                      2,
+		Num3:                      3,
+		Num4:                      4,
+		Num5:                      5,
+		Num6:                      6,
+		Num7:                      7,
+		Num8:                      8,
+		Float1:                    1.23,
+		Float2:                    2.65,
+		Boolean:                   true,
+		StringSlice:               []string{"one", "two", "three", "four"},
+		NumSlice:                  []int64{1, 2, 3, 4},
+		ByteSlice:                 []byte{1, 2, 3, 4},
+		StringArray:               [32]string{"one", "two", "three"},
+		NumArray:                  [32]int64{1, 2, 3},
+		ByteArray:                 [32]byte{1, 2, 3},
 		StructType:                InnerStruct{[]string{"one", "two", "three", "four"}},
 		PointerStructType:         &InnerStruct{[]string{"one", "two", "three", "four"}},
 		SlicePointerStructType:    []*InnerStruct{{[]string{"one", "two", "three", "four"}}},
@@ -693,7 +677,7 @@ func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
 		Time:                      time.Now(),
 		OrderedMap:                sampleOrderedMap,
 	}
-	sm := NewSerializationManager()
+	sm := autoserializer.NewSerializationManager()
 	_ = sm.RegisterType("")
 
 	_ = sm.RegisterType(TestImpl1{})

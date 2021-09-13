@@ -1,7 +1,12 @@
 package orderedmap
 
 import (
+	"go/types"
+	"reflect"
 	"sync"
+
+	"github.com/iotaledger/hive.go/autoserializer"
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
@@ -198,4 +203,119 @@ func (orderedMap *OrderedMap) Size() int {
 	defer orderedMap.mutex.RUnlock()
 
 	return orderedMap.size
+}
+
+func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (data []byte, err error) {
+	buffer := marshalutil.New()
+	buffer.WriteUint32(uint32(orderedMap.Size()))
+
+	if orderedMap.Size() == 0 {
+		return buffer.Bytes(), nil
+	}
+	var encodedKeyType uint32
+	var encodedValType uint32
+	orderedMap.ForEach(func(key, value interface{}) bool {
+		encodedKeyType, err = m.EncodeType(reflect.TypeOf(key))
+		if err != nil {
+			return false
+		}
+		encodedValType, err = m.EncodeType(reflect.TypeOf(value))
+		if err != nil {
+			return false
+		}
+		buffer.WriteUint32(encodedKeyType)
+		buffer.WriteUint32(encodedValType)
+		err = m.SerializeValue(reflect.ValueOf(key), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		if err != nil {
+			return false
+		}
+		err = m.SerializeValue(reflect.ValueOf(value), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		return err == nil
+	})
+	if err != nil {
+		return
+	}
+	return buffer.Bytes(), nil
+}
+
+func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (data []byte, err error) {
+	buffer := marshalutil.New()
+	err = autoserializer.WriteLen(orderedMap.Size(), lenPrefixType, buffer)
+	if err != nil {
+		return
+	}
+
+	if orderedMap.Size() == 0 {
+		return buffer.Bytes(), nil
+	}
+	var encodedKeyType uint32
+	var encodedValType uint32
+	orderedMap.ForEach(func(key, value interface{}) bool {
+		encodedKeyType, err = m.EncodeType(reflect.TypeOf(key))
+		if err != nil {
+			return false
+		}
+		encodedValType, err = m.EncodeType(reflect.TypeOf(value))
+		if err != nil {
+			return false
+		}
+		buffer.WriteUint32(encodedKeyType)
+		buffer.WriteUint32(encodedValType)
+		err = m.SerializeValue(reflect.ValueOf(key), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		if err != nil {
+			return false
+		}
+		err = m.SerializeValue(reflect.ValueOf(value), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		return err == nil
+	})
+	if err != nil {
+		return
+	}
+	return buffer.Bytes(), nil
+}
+
+func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (err error) {
+	orderedMap.dictionary = make(map[interface{}]*Element)
+	var orderedMapSize int
+	orderedMapSize, err = autoserializer.ReadLen(lenPrefixType, buffer)
+	if err != nil {
+		return
+	}
+	if orderedMapSize == 0 {
+		return nil
+	}
+
+	var encodedKeyType, encodedValueType uint32
+	var keyType, valueType reflect.Type
+
+	for i := 0; i < orderedMapSize; i++ {
+		encodedKeyType, err = buffer.ReadUint32()
+		if err != nil {
+			return
+		}
+		encodedValueType, err = buffer.ReadUint32()
+		if err != nil {
+			return
+		}
+		keyType, err = m.DecodeType(encodedKeyType)
+		if err != nil {
+			return
+		}
+		valueType, err = m.DecodeType(encodedValueType)
+		if err != nil {
+			return
+		}
+
+		var key, value interface{}
+		key, err = m.DeserializeType(keyType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		if err != nil {
+			return
+		}
+		value, err = m.DeserializeType(valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		if err != nil {
+			return
+		}
+		orderedMap.Set(key, value)
+	}
+	return nil
 }
