@@ -183,12 +183,23 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		return restoredString, nil
 	case reflect.Array:
 		restoredArray := reflect.New(valueType).Elem()
-		for i := 0; i < valueType.Len(); i++ {
-			elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		arrayLen := valueType.Len()
+		if valueType.Elem().Kind() == reflect.Uint8 {
+			bytes, err := buffer.ReadBytes(arrayLen)
 			if err != nil {
 				return nil, err
 			}
-			restoredArray.Index(i).Set(reflect.ValueOf(elem))
+			for i := 0; i < arrayLen; i++ {
+				restoredArray.Index(i).Set(reflect.ValueOf(bytes[i]))
+			}
+		} else {
+			for i := 0; i < arrayLen; i++ {
+				elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				if err != nil {
+					return nil, err
+				}
+				restoredArray.Index(i).Set(reflect.ValueOf(elem))
+			}
 		}
 		return restoredArray.Interface(), nil
 	case reflect.Slice:
@@ -200,12 +211,21 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		if sliceLen == 0 {
 			return restoredSlice.Interface(), nil
 		}
-		for i := 0; i < sliceLen; i++ {
-			elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+
+		if valueType.Elem().Kind() == reflect.Uint8 {
+			restored, err := buffer.ReadBytes(sliceLen)
 			if err != nil {
 				return nil, err
 			}
-			restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(elem))
+			restoredSlice = reflect.ValueOf(restored)
+		} else {
+			for i := 0; i < sliceLen; i++ {
+				elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				if err != nil {
+					return nil, err
+				}
+				restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(elem))
+			}
 		}
 		return restoredSlice.Interface(), nil
 	case reflect.Map:
@@ -391,10 +411,17 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, 
 		buffer.WriteUint16(uint16(len(value.String())))
 		buffer.WriteBytes([]byte(value.String()))
 	case reflect.Array:
-		for i := 0; i < value.Len(); i++ {
-			err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
-			if err != nil {
-				break
+		arrayLen := value.Len()
+		if value.Type().Elem().Kind() == reflect.Uint8 {
+			for i := 0; i < arrayLen; i++ {
+				buffer.WriteByte(uint8(value.Index(i).Uint()))
+			}
+		} else {
+			for i := 0; i < arrayLen; i++ {
+				err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				if err != nil {
+					break
+				}
 			}
 		}
 	case reflect.Slice:
@@ -402,10 +429,14 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, 
 		if err != nil {
 			break
 		}
-		for i := 0; i < value.Len(); i++ {
-			err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
-			if err != nil {
-				break
+		if value.Type().Elem().Kind() == reflect.Uint8 {
+			buffer.WriteBytes(value.Bytes())
+		} else {
+			for i := 0; i < value.Len(); i++ {
+				err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				if err != nil {
+					break
+				}
 			}
 		}
 	case reflect.Map:
