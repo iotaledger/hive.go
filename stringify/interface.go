@@ -37,6 +37,10 @@ func Interface(value interface{}) string {
 		return UInt(uint64(typeCastedValue))
 	case uint64:
 		return UInt(typeCastedValue)
+	case float64:
+		return Float64(typeCastedValue)
+	case float32:
+		return Float32(typeCastedValue)
 	case reflect.Value:
 		switch typeCastedValue.Kind() {
 		case reflect.Slice:
