@@ -28,6 +28,7 @@ type FieldMetadata struct {
 	MaxSliceLength   int
 	MinSliceLength   int
 	AllowNil         bool
+	LexicalOrder     bool
 }
 
 // GetFields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
@@ -79,7 +80,13 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]FieldMetadata, error)
 				}
 				sm.AllowNil = allowNil
 			}
-
+			if v := field.Tag.Get("lexicalOrder"); v != "" {
+				lexicalOrder, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				sm.LexicalOrder = lexicalOrder
+			}
 			if v := field.Tag.Get("lenPrefixBytes"); v != "" {
 				prefixBytes, err := strconv.Atoi(v)
 				if err != nil {

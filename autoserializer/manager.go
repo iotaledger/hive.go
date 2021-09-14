@@ -1,12 +1,14 @@
 package autoserializer
 
 import (
+	"bytes"
 	"encoding"
 	"errors"
 	"fmt"
 	"go/types"
 	"math"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/iotaledger/hive.go/marshalutil"
@@ -222,6 +224,38 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, fieldMeta
 				return nil, err
 			}
 			restoredSlice = reflect.ValueOf(restored)
+		} else if fieldMetadata.LexicalOrder {
+			readOffset := buffer.ReadOffset()
+			sortedInputs := make([]struct {
+				elem      interface{}
+				elemBytes []byte
+			}, 0)
+			for i := 0; i < sliceLen; i++ {
+				elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
+				if err != nil {
+					return nil, err
+				}
+				bytesRead := buffer.ReadOffset() - readOffset
+				buffer.ReadSeek(-bytesRead)
+				elemBytes, err := buffer.ReadBytes(bytesRead)
+				if err != nil {
+					return nil, err
+				}
+				sortedInputs = append(sortedInputs, struct {
+					elem      interface{}
+					elemBytes []byte
+				}{elem, elemBytes})
+			}
+
+			// sort inputs
+			sort.Slice(sortedInputs, func(i, j int) bool {
+				return bytes.Compare(sortedInputs[i].elemBytes, sortedInputs[j].elemBytes) < 0
+			})
+
+			for _, sortedInput := range sortedInputs {
+				restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(sortedInput.elem))
+			}
+
 		} else {
 			for i := 0; i < sliceLen; i++ {
 				elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
@@ -443,6 +477,23 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, fieldMetadata
 
 		if value.Type().Elem().Kind() == reflect.Uint8 {
 			buffer.WriteBytes(value.Bytes())
+			break
+		}
+		if fieldMetadata.LexicalOrder {
+			sortedInputs := make([][]byte, 0)
+			for i := 0; i < value.Len(); i++ {
+				elemBuffer := marshalutil.New()
+				err = m.SerializeValue(value.Index(i), fieldMetadata, elemBuffer)
+				sortedInputs = append(sortedInputs, elemBuffer.Bytes())
+			}
+
+			// sort inputs
+			sort.Slice(sortedInputs, func(i, j int) bool {
+				return bytes.Compare(sortedInputs[i], sortedInputs[j]) < 0
+			})
+			for _, sortedInput := range sortedInputs {
+				buffer.WriteBytes(sortedInput)
+			}
 		} else {
 			for i := 0; i < value.Len(); i++ {
 				err = m.SerializeValue(value.Index(i), fieldMetadata, buffer)
