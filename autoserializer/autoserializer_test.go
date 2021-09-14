@@ -42,7 +42,7 @@ type InnerStruct struct {
 }
 
 type InnerPointer struct {
-	Custom *TestImpl1 `serialize:"true"`
+	Custom *TestImpl1 `serialize:"true" allowNil:"true"`
 }
 type sampleStruct struct {
 	Num1                      int64                  `serialize:"true"`
@@ -58,7 +58,7 @@ type sampleStruct struct {
 	Boolean                   bool                   `serialize:"true"`
 	StringSlice               []string               `serialize:"true"`
 	NumSlice                  []int64                `serialize:"true"`
-	ByteSlice                 []byte                 `serialize:"true" lenPrefixBytes:"4"`
+	ByteSlice                 []byte                 `serialize:"true" lenPrefixBytes:"4" `
 	StringArray               [32]string             `serialize:"true"`
 	NumArray                  [32]int64              `serialize:"true"`
 	ByteArray                 [32]byte               `serialize:"true"`
@@ -67,15 +67,164 @@ type sampleStruct struct {
 	SlicePointerStructType    []*InnerStruct         `serialize:"true" lenPrefixBytes:"1"`
 	SliceStructType           []InnerStruct          `serialize:"true"`
 	OrderedMap                *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
-	NilOrderedMap             *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
+	NilOrderedMap             *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2" allowNil:"true"`
 	Time                      time.Time              `serialize:"true"`
 	InterfaceType             Test                   `serialize:"true"`
 	PointerInterfaceType      *Test                  `serialize:"true"`
 	SliceInterfaceType        []Test                 `serialize:"true" lenPrefixBytes:"2"`
 	SlicePointerInterfaceType []*Test                `serialize:"true"`
-	NilPointerType            *InnerStruct           `serialize:"true"`
-	NilPointerInterfaceType   *Test                  `serialize:"true"`
+	NilPointerType            *InnerStruct           `serialize:"true" allowNil:"true"`
+	NilPointerInterfaceType   *Test                  `serialize:"true" allowNil:"true"`
 	BinaryMarshallerType      *url.URL               `serialize:"true"`
+}
+
+type sliceStruct struct {
+	NumSlice   []int                  `serialize:"true" lenPrefixBytes:"4" minLen:"2" maxLen:"4"`
+	OrderedMap *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2" minLen:"3" maxLen:"4"`
+}
+
+type sliceStructNovalidation struct {
+	NumSlice   []int                  `serialize:"true" lenPrefixBytes:"4"`
+	OrderedMap *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
+}
+
+func TestAutoserializer_LengthValidationCorrect(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	sm.RegisterType("")
+	orderedMapOrig := orderedmap.New()
+	orderedMapOrig.Set("first", "value")
+	orderedMapOrig.Set("second", "value")
+	orderedMapOrig.Set("third", "value")
+	orderedMapOrig.Set("fourth", "value")
+	orig := sliceStruct{
+		NumSlice:   []int{1, 2},
+		OrderedMap: orderedMapOrig,
+	}
+	bytes, err := sm.Serialize(orig)
+	assert.NoError(t, err)
+
+	var restored sliceStruct
+	err = sm.Deserialize(&restored, bytes)
+	assert.NoError(t, err)
+	assert.EqualValues(t, orig, restored)
+}
+
+func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	sm.RegisterType("")
+	orderedMapOrig := orderedmap.New()
+	orderedMapOrig.Set("first", "value")
+	orderedMapOrig.Set("second", "value")
+	orderedMapOrig.Set("third", "value")
+	orderedMapOrig.Set("fourth", "value")
+
+	origSlice := sliceStruct{
+		NumSlice: []int{1, 2, 3, 4, 5, 5},
+	}
+	_, err := sm.Serialize(origSlice)
+	assert.Error(t, err)
+
+	orderedMapOrig.Set("fifth", "value")
+
+	origMap := sliceStruct{
+		OrderedMap: orderedMapOrig,
+		NumSlice:   []int{1, 2, 3},
+	}
+	_, err = sm.Serialize(origMap)
+	assert.Error(t, err)
+}
+
+func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	sm.RegisterType("")
+	orderedMapOrig := orderedmap.New()
+	orderedMapOrig.Set("first", "value")
+
+	origSlice := sliceStruct{
+		NumSlice:   []int{1, 2, 3},
+		OrderedMap: orderedMapOrig,
+	}
+	_, err := sm.Serialize(origSlice)
+	assert.Error(t, err)
+	fmt.Println(err)
+	orderedMapOrig.Set("second", "value")
+	orderedMapOrig.Set("third", "value")
+
+	origMap := sliceStruct{
+		OrderedMap: orderedMapOrig,
+		NumSlice:   []int{1},
+	}
+	_, err = sm.Serialize(origMap)
+	assert.Error(t, err)
+}
+
+func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	sm.RegisterType("")
+	orderedMapOrig := orderedmap.New()
+	orderedMapOrig.Set("first", "value")
+	orderedMapOrig.Set("second", "value")
+	orderedMapOrig.Set("third", "value")
+	orderedMapOrig.Set("fourth", "value")
+
+	origSlice := sliceStructNovalidation{
+		NumSlice:   []int{1, 2, 3, 4, 5, 5},
+		OrderedMap: orderedMapOrig,
+	}
+	bytesSlice, err := sm.Serialize(origSlice)
+	assert.NoError(t, err)
+
+	var restoredSlice sliceStruct
+	err = sm.Deserialize(&restoredSlice, bytesSlice)
+	assert.Error(t, err)
+	fmt.Println(err)
+
+	orderedMapOrig.Set("fifth", "value")
+
+	origMap := sliceStructNovalidation{
+		OrderedMap: orderedMapOrig,
+		NumSlice:   []int{1, 2, 3},
+	}
+	bytesMap, err := sm.Serialize(origMap)
+	assert.NoError(t, err)
+
+	var restoredMap sliceStruct
+	err = sm.Deserialize(&restoredMap, bytesMap)
+	assert.Error(t, err)
+}
+
+func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	sm.RegisterType("")
+	orderedMapOrig := orderedmap.New()
+	orderedMapOrig.Set("first", "value")
+
+	origMap := sliceStructNovalidation{
+		NumSlice:   []int{1, 2, 3},
+		OrderedMap: orderedMapOrig,
+	}
+	bytesMap, err := sm.Serialize(origMap)
+	assert.NoError(t, err)
+
+	var restoredMap sliceStruct
+	err = sm.Deserialize(&restoredMap, bytesMap)
+	assert.Error(t, err)
+	fmt.Println(err)
+
+	orderedMapOrig.Set("second", "value")
+	orderedMapOrig.Set("third", "value")
+
+	origSlice := sliceStructNovalidation{
+		OrderedMap: orderedMapOrig,
+		NumSlice:   []int{1},
+	}
+	bytesSlice, err := sm.Serialize(origSlice)
+	assert.NoError(t, err)
+
+	var restoredSlice sliceStruct
+	err = sm.Deserialize(&restoredSlice, bytesSlice)
+	assert.Error(t, err)
+	fmt.Println(err)
 }
 
 func TestAutoserializer_Int64(t *testing.T) {

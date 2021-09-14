@@ -12,25 +12,25 @@ import (
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
-const (
-	defaultMinLen        = 0
-	defaultMaxLen        = 0
-	defaultLenPrefixType = types.Uint8
-)
-
 var (
 	binaryMarshallerType                   = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
 	binaryUnarshallerType                  = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
 	autoserializerBinarySerializerType     = reflect.TypeOf((*BinarySerializer)(nil)).Elem()
 	autoserializerBinararyDeserializerType = reflect.TypeOf((*BinaryDeserializer)(nil)).Elem()
+	defaultFieldMetadata                   = FieldMetadata{
+		LengthPrefixType: types.Uint8,
+		MaxSliceLength:   0,
+		MinSliceLength:   0,
+		AllowNil:         false,
+	}
 )
 
 type BinaryDeserializer interface {
-	DeserializeBytes(buffer *marshalutil.MarshalUtil, m *SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (err error)
+	DeserializeBytes(buffer *marshalutil.MarshalUtil, m *SerializationManager, metadata FieldMetadata) (err error)
 }
 
 type BinarySerializer interface {
-	SerializeBytes(m *SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (data []byte, err error)
+	SerializeBytes(m *SerializationManager, metadata FieldMetadata) (data []byte, err error)
 }
 
 // SerializationManager stores TypeRegistry and is used to automatically serialize and deserialize structures.
@@ -61,7 +61,7 @@ func (m *SerializationManager) Deserialize(s interface{}, data []byte) (err erro
 	// if the pointer type implements built-in deserializer, then use it. otherwise, handle it as a regular pointer type.
 	if valueType != reflect.TypeOf(&time.Time{}) && (valueType.Implements(autoserializerBinararyDeserializerType) ||
 		valueType.Implements(binaryUnarshallerType)) {
-		result, err = m.DeserializeType(valueType, defaultMinLen, defaultMaxLen, defaultLenPrefixType, buffer)
+		result, err = m.DeserializeType(valueType, defaultFieldMetadata, buffer)
 		if err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (m *SerializationManager) Deserialize(s interface{}, data []byte) (err erro
 		}
 		value.Elem().Set(reflect.ValueOf(result).Elem())
 	} else {
-		result, err = m.DeserializeType(valueType.Elem(), defaultMinLen, defaultMaxLen, defaultLenPrefixType, buffer)
+		result, err = m.DeserializeType(valueType.Elem(), defaultFieldMetadata, buffer)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (m *SerializationManager) Deserialize(s interface{}, data []byte) (err erro
 	return nil
 }
 
-func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (interface{}, error) {
+func (m *SerializationManager) DeserializeType(valueType reflect.Type, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (interface{}, error) {
 	switch valueType.Kind() {
 	case reflect.Bool:
 		tmp, err := buffer.ReadBool()
@@ -194,7 +194,7 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 			}
 		} else {
 			for i := 0; i < arrayLen; i++ {
-				elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 				if err != nil {
 					return nil, err
 				}
@@ -203,7 +203,11 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		}
 		return restoredArray.Interface(), nil
 	case reflect.Slice:
-		sliceLen, err := ReadLen(lenPrefixType, buffer)
+		sliceLen, err := ReadLen(fieldMetadata.LengthPrefixType, buffer)
+		if err != nil {
+			return nil, err
+		}
+		err = ValidateLength(sliceLen, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +224,7 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 			restoredSlice = reflect.ValueOf(restored)
 		} else {
 			for i := 0; i < sliceLen; i++ {
-				elem, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 				if err != nil {
 					return nil, err
 				}
@@ -231,19 +235,20 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 	case reflect.Map:
 		return nil, fmt.Errorf("native map type is not supported. use orderedmap instead")
 	case reflect.Ptr:
-		nilPointer, err := buffer.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		// if pointer prefix is 0 then set value of the pointer to nil
-		if nilPointer == 0 {
-			return nil, nil
+		if fieldMetadata.AllowNil {
+			nilPointer, err := buffer.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			// if pointer prefix is 0 then set value of the pointer to nil
+			if nilPointer == 0 {
+				return nil, nil
+			}
 		}
 		p := reflect.New(valueType.Elem())
 
 		// try to use built-in deserializer if the pointer type provides it
-		var processed bool
-		processed, err = m.tryBuiltInDeserializer(p, valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		processed, err := m.tryBuiltInDeserializer(p, valueType, fieldMetadata, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +257,7 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		}
 
 		// deserialize as normal pointer type
-		de, err := m.DeserializeType(valueType.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		de, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +275,7 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		structValue := reflect.New(valueType).Elem()
 
 		// try to use built-in deserializer if the struct type provides it
-		processed, err := m.tryBuiltInDeserializer(structValue, valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		processed, err := m.tryBuiltInDeserializer(structValue, valueType, fieldMetadata, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -285,27 +290,28 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, minSliceL
 		}
 		return s, nil
 	case reflect.Interface:
-		nilPointer, err := buffer.ReadByte()
+		if fieldMetadata.AllowNil {
+			nilPointer, err := buffer.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			// if interface prefix is 0 then set value of the interface to nil
+			if nilPointer == 0 {
+				return nil, nil
+			}
+		}
+		encodedType, err := buffer.ReadUint32()
 		if err != nil {
 			return nil, err
 		}
-		// if pointer prefix is 0 then set value of the interface to nil
-		if nilPointer == 0 {
-			return nil, nil
-		} else {
-			encodedType, err := buffer.ReadUint32()
-			if err != nil {
-				return nil, err
-			}
-			implementationType, err := m.DecodeType(encodedType)
-			if err != nil {
-				return nil, err
-			}
-			if !implementationType.Implements(valueType) {
-				return nil, fmt.Errorf("couldn't deserialize interface: %s must implement interface %s", implementationType, valueType)
-			}
-			return m.DeserializeType(implementationType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		implementationType, err := m.DecodeType(encodedType)
+		if err != nil {
+			return nil, err
 		}
+		if !implementationType.Implements(valueType) {
+			return nil, fmt.Errorf("couldn't deserialize interface: %s must implement interface %s", implementationType, valueType)
+		}
+		return m.DeserializeType(implementationType, fieldMetadata, buffer)
 	}
 
 	return nil, nil
@@ -319,7 +325,7 @@ func (m *SerializationManager) deserializeStruct(restoredStruct reflect.Value, s
 	for _, fieldMeta := range serializedFields {
 		field := structType.Field(fieldMeta.idx)
 		if !fieldMeta.unpack {
-			fieldValue, err := m.DeserializeType(field.Type, fieldMeta.minSliceLength, fieldMeta.minSliceLength, fieldMeta.lengthPrefixType, buffer)
+			fieldValue, err := m.DeserializeType(field.Type, fieldMeta, buffer)
 			if err != nil {
 				return nil, err
 			}
@@ -342,7 +348,7 @@ func (m *SerializationManager) deserializeStruct(restoredStruct reflect.Value, s
 			}
 			for _, embFieldMeta := range anonEmbeddedSerializedFields {
 				embStructField := anonEmbeddedStructType.Field(embFieldMeta.idx)
-				embStructFieldVal, err := m.DeserializeType(embStructField.Type, fieldMeta.minSliceLength, fieldMeta.minSliceLength, fieldMeta.lengthPrefixType, buffer)
+				embStructFieldVal, err := m.DeserializeType(embStructField.Type, fieldMeta, buffer)
 				if err != nil {
 					return nil, err
 				}
@@ -364,19 +370,19 @@ func (m *SerializationManager) Serialize(s interface{}) ([]byte, error) {
 	if objectType.Kind() == reflect.Ptr &&
 		!objectType.Implements(autoserializerBinarySerializerType) &&
 		!objectType.Implements(binaryMarshallerType) {
-		if err := m.SerializeValue(reflect.ValueOf(s).Elem(), defaultMinLen, defaultMaxLen, defaultLenPrefixType, buffer); err != nil {
+		if err := m.SerializeValue(reflect.ValueOf(s).Elem(), defaultFieldMetadata, buffer); err != nil {
 			return nil, err
 		}
 		return buffer.Bytes(), nil
 	}
 
-	if err := m.SerializeValue(reflect.ValueOf(s), defaultMinLen, defaultMaxLen, defaultLenPrefixType, buffer); err != nil {
+	if err := m.SerializeValue(reflect.ValueOf(s), defaultFieldMetadata, buffer); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
 }
 
-func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) error {
+func (m *SerializationManager) SerializeValue(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) error {
 	var err error
 	switch value.Kind() {
 	case reflect.Bool:
@@ -418,22 +424,28 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, 
 			}
 		} else {
 			for i := 0; i < arrayLen; i++ {
-				err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				err = m.SerializeValue(value.Index(i), fieldMetadata, buffer)
 				if err != nil {
 					break
 				}
 			}
 		}
 	case reflect.Slice:
-		err = WriteLen(value.Len(), lenPrefixType, buffer)
+		err = WriteLen(value.Len(), fieldMetadata.LengthPrefixType, buffer)
 		if err != nil {
 			break
 		}
+
+		err = ValidateLength(value.Len(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+		if err != nil {
+			return err
+		}
+
 		if value.Type().Elem().Kind() == reflect.Uint8 {
 			buffer.WriteBytes(value.Bytes())
 		} else {
 			for i := 0; i < value.Len(); i++ {
-				err = m.SerializeValue(value.Index(i), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+				err = m.SerializeValue(value.Index(i), fieldMetadata, buffer)
 				if err != nil {
 					break
 				}
@@ -443,21 +455,23 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, 
 		err = fmt.Errorf("native map type is not supported. use orderedmap instead")
 		break
 	case reflect.Ptr:
-		if value.IsNil() {
+		// write first byte only if AllowNil set to true
+		if value.IsNil() && fieldMetadata.AllowNil {
 			buffer.WriteByte(byte(0))
 			break
+		} else if fieldMetadata.AllowNil {
+			buffer.WriteByte(byte(1))
 		}
-		buffer.WriteByte(byte(1))
 
 		valueType := reflect.TypeOf(value.Interface())
 
 		var processed bool
-		processed, err = m.tryBuiltInSerializer(value, valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		processed, err = m.tryBuiltInSerializer(value, valueType, fieldMetadata, buffer)
 		if err != nil || processed {
 			break
 		}
 
-		err = m.SerializeValue(value.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.SerializeValue(value.Elem(), fieldMetadata, buffer)
 	case reflect.Struct:
 		valueType := value.Type()
 		if valueType == reflect.TypeOf(time.Time{}) {
@@ -466,32 +480,34 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, minSliceLen, 
 		}
 		// serialize using built-in serializer if it's available
 		var processed bool
-		processed, err = m.tryBuiltInSerializer(value, valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		processed, err = m.tryBuiltInSerializer(value, valueType, fieldMetadata, buffer)
 		if err != nil || processed {
 			break
 		}
 
 		// serialize as regular struct
-		err = m.serializeStruct(value, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.serializeStruct(value, buffer)
 	case reflect.Interface:
-		if value.IsNil() {
+		// write first byte only if AllowNil set to true
+		if value.IsNil() && fieldMetadata.AllowNil {
 			buffer.WriteByte(byte(0))
-		} else {
+			break
+		} else if fieldMetadata.AllowNil {
 			buffer.WriteByte(byte(1))
-			interfaceType := reflect.TypeOf(value.Interface())
-			var encodedType uint32
-			encodedType, err = m.EncodeType(interfaceType)
-			if err != nil {
-				break
-			}
-			buffer.WriteUint32(encodedType)
-			err = m.SerializeValue(value.Elem(), minSliceLen, maxSliceLen, lenPrefixType, buffer)
 		}
+		interfaceType := reflect.TypeOf(value.Interface())
+		var encodedType uint32
+		encodedType, err = m.EncodeType(interfaceType)
+		if err != nil {
+			break
+		}
+		buffer.WriteUint32(encodedType)
+		err = m.SerializeValue(value.Elem(), fieldMetadata, buffer)
 	}
 	return err
 }
 
-func (m *SerializationManager) serializeStruct(value reflect.Value, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) error {
+func (m *SerializationManager) serializeStruct(value reflect.Value, buffer *marshalutil.MarshalUtil) error {
 	structType := value.Type()
 	var err error
 	serializedFields, err := m.fieldCache.GetFields(structType)
@@ -500,7 +516,7 @@ func (m *SerializationManager) serializeStruct(value reflect.Value, minSliceLen,
 	}
 	for _, fieldMeta := range serializedFields {
 		fieldValue := value.Field(fieldMeta.idx)
-		err = m.SerializeValue(fieldValue, fieldMeta.minSliceLength, fieldMeta.maxSliceLength, fieldMeta.lengthPrefixType, buffer)
+		err = m.SerializeValue(fieldValue, fieldMeta, buffer)
 		if err != nil {
 			break
 		}
@@ -508,42 +524,38 @@ func (m *SerializationManager) serializeStruct(value reflect.Value, minSliceLen,
 	return err
 }
 
-func (m *SerializationManager) tryBuiltInSerializer(value reflect.Value, valueType reflect.Type, minSliceLen int, maxSliceLen int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (processed bool, err error) {
-	if valueType.Implements(autoserializerBinarySerializerType) {
-		marshaller := value.Interface().(BinarySerializer)
-		var bytes []byte
-		bytes, err = marshaller.SerializeBytes(m, minSliceLen, maxSliceLen, lenPrefixType)
-		if err != nil {
-			return true, err
-		}
-
-		err = WriteLen(len(bytes), lenPrefixType, buffer)
-		if err != nil {
-			return true, err
-		}
-		buffer.WriteBytes(bytes)
-		return true, nil
-	} else if valueType.Implements(binaryMarshallerType) {
+func (m *SerializationManager) tryBuiltInSerializer(value reflect.Value, valueType reflect.Type, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (processed bool, err error) {
+	if valueType.Implements(binaryMarshallerType) {
 		marshaller := value.Interface().(encoding.BinaryMarshaler)
 		var bytes []byte
 		bytes, err = marshaller.MarshalBinary()
 		if err != nil {
 			return true, err
 		}
-		err = WriteLen(len(bytes), lenPrefixType, buffer)
+		err = WriteLen(len(bytes), fieldMetadata.LengthPrefixType, buffer)
 		if err != nil {
 			return true, err
 		}
+		buffer.WriteBytes(bytes)
+		return true, nil
+	} else if valueType.Implements(autoserializerBinarySerializerType) {
+		marshaller := value.Interface().(BinarySerializer)
+		var bytes []byte
+		bytes, err = marshaller.SerializeBytes(m, fieldMetadata)
+		if err != nil {
+			return true, err
+		}
+
 		buffer.WriteBytes(bytes)
 		return true, nil
 	}
 	return false, err
 }
 
-func (m *SerializationManager) tryBuiltInDeserializer(p reflect.Value, structType reflect.Type, minSliceLen int, maxSliceLen int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (processed bool, err error) {
+func (m *SerializationManager) tryBuiltInDeserializer(p reflect.Value, structType reflect.Type, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (processed bool, err error) {
 	if structType.Implements(binaryUnarshallerType) {
 		var structSize int
-		structSize, err = ReadLen(lenPrefixType, buffer)
+		structSize, err = ReadLen(fieldMetadata.LengthPrefixType, buffer)
 		if err != nil {
 			return true, err
 		}
@@ -558,24 +570,14 @@ func (m *SerializationManager) tryBuiltInDeserializer(p reflect.Value, structTyp
 		}
 		return true, nil
 	} else if structType.Implements(autoserializerBinararyDeserializerType) {
-		structSize, err := ReadLen(lenPrefixType, buffer)
-		if err != nil {
-			return true, err
-		}
-		structBytes, err := buffer.ReadBytes(structSize)
-		if err != nil {
-			return true, err
-		}
-
 		restoredStruct := p.Interface().(BinaryDeserializer)
-		err = restoredStruct.DeserializeBytes(marshalutil.New(structBytes), m, minSliceLen, maxSliceLen, lenPrefixType)
+		err = restoredStruct.DeserializeBytes(buffer, m, fieldMetadata)
 		if err != nil {
 			return true, err
 		}
 		return true, nil
 	}
 	return
-
 }
 
 func ReadLen(lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (int, error) {
@@ -593,6 +595,7 @@ func ReadLen(lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (in
 		return 0, fmt.Errorf("unknown length prefix type %d", lenPrefixType)
 	}
 }
+
 func WriteLen(length int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) error {
 	switch lenPrefixType {
 	case types.Uint8:
@@ -605,4 +608,14 @@ func WriteLen(length int, lenPrefixType types.BasicKind, buffer *marshalutil.Mar
 		return fmt.Errorf("unknown length prefix type %d", lenPrefixType)
 	}
 	return nil
+}
+
+func ValidateLength(length int, minSliceLen int, maxSliceLen int) (err error) {
+	if length < minSliceLen {
+		err = fmt.Errorf("collection is required to have at least %d elements instead of %d", minSliceLen, length)
+	}
+	if maxSliceLen > 0 && length > maxSliceLen {
+		err = fmt.Errorf("collection is required to have at most %d elements instead of %d", maxSliceLen, length)
+	}
+	return
 }

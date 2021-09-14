@@ -11,40 +11,41 @@ import (
 
 type fieldCache struct {
 	lock             sync.Mutex
-	structFieldCache map[reflect.Type][]serializationMetadata
+	structFieldCache map[reflect.Type][]FieldMetadata
 }
 
 // NewFieldCache creates and returns new fieldCache.
 func NewFieldCache() *fieldCache {
 	return &fieldCache{
-		structFieldCache: make(map[reflect.Type][]serializationMetadata),
+		structFieldCache: make(map[reflect.Type][]FieldMetadata),
 	}
 }
 
-type serializationMetadata struct {
+type FieldMetadata struct {
 	idx              int
 	unpack           bool
-	lengthPrefixType types.BasicKind
-	maxSliceLength   int
-	minSliceLength   int
+	LengthPrefixType types.BasicKind
+	MaxSliceLength   int
+	MinSliceLength   int
+	AllowNil         bool
 }
 
 // GetFields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
-func (c *fieldCache) GetFields(structType reflect.Type) ([]serializationMetadata, error) {
+func (c *fieldCache) GetFields(structType reflect.Type) ([]FieldMetadata, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.structFieldCache == nil {
-		c.structFieldCache = make(map[reflect.Type][]serializationMetadata)
+		c.structFieldCache = make(map[reflect.Type][]FieldMetadata)
 	}
 	if cachedFields, ok := c.structFieldCache[structType]; ok {
 		return cachedFields, nil
 	}
 	numFields := structType.NumField()
-	cachedFields := make([]serializationMetadata, 0, numFields)
+	cachedFields := make([]FieldMetadata, 0, numFields)
 	for i := 0; i < numFields; i++ {
 		field := structType.Field(i)
-		var sm serializationMetadata
-		sm.lengthPrefixType = types.Uint8
+		var sm FieldMetadata
+		sm.LengthPrefixType = types.Uint8
 		switch field.Tag.Get("serialize") {
 		case "unpack":
 			sm.unpack = true
@@ -60,7 +61,7 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]serializationMetadata
 				if err != nil {
 					return nil, err
 				}
-				sm.minSliceLength = minLen
+				sm.MinSliceLength = minLen
 			}
 
 			if v := field.Tag.Get("maxLen"); v != "" {
@@ -68,7 +69,15 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]serializationMetadata
 				if err != nil {
 					return nil, err
 				}
-				sm.maxSliceLength = maxLen
+				sm.MaxSliceLength = maxLen
+			}
+
+			if v := field.Tag.Get("allowNil"); v != "" {
+				allowNil, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				sm.AllowNil = allowNil
 			}
 
 			if v := field.Tag.Get("lenPrefixBytes"); v != "" {
@@ -78,11 +87,11 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]serializationMetadata
 				}
 				switch prefixBytes {
 				case 1:
-					sm.lengthPrefixType = types.Uint8
+					sm.LengthPrefixType = types.Uint8
 				case 2:
-					sm.lengthPrefixType = types.Uint16
+					sm.LengthPrefixType = types.Uint16
 				case 4:
-					sm.lengthPrefixType = types.Uint32
+					sm.LengthPrefixType = types.Uint32
 				}
 			}
 			cachedFields = append(cachedFields, sm)

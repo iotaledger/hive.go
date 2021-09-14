@@ -1,7 +1,6 @@
 package orderedmap
 
 import (
-	"go/types"
 	"reflect"
 	"sync"
 
@@ -205,7 +204,7 @@ func (orderedMap *OrderedMap) Size() int {
 	return orderedMap.size
 }
 
-func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (data []byte, err error) {
+func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
 	buffer.WriteUint32(uint32(orderedMap.Size()))
 
@@ -225,11 +224,11 @@ func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, 
 		}
 		buffer.WriteUint32(encodedKeyType)
 		buffer.WriteUint32(encodedValType)
-		err = m.SerializeValue(reflect.ValueOf(key), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.SerializeValue(reflect.ValueOf(key), fieldMetadata, buffer)
 		if err != nil {
 			return false
 		}
-		err = m.SerializeValue(reflect.ValueOf(value), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.SerializeValue(reflect.ValueOf(value), fieldMetadata, buffer)
 		return err == nil
 	})
 	if err != nil {
@@ -238,13 +237,16 @@ func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, 
 	return buffer.Bytes(), nil
 }
 
-func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (data []byte, err error) {
+func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
-	err = autoserializer.WriteLen(orderedMap.Size(), lenPrefixType, buffer)
+	err = autoserializer.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
-
+	err = autoserializer.ValidateLength(orderedMap.Size(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	if err != nil {
+		return nil, err
+	}
 	if orderedMap.Size() == 0 {
 		return buffer.Bytes(), nil
 	}
@@ -261,11 +263,11 @@ func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationMana
 		}
 		buffer.WriteUint32(encodedKeyType)
 		buffer.WriteUint32(encodedValType)
-		err = m.SerializeValue(reflect.ValueOf(key), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.SerializeValue(reflect.ValueOf(key), fieldMetadata, buffer)
 		if err != nil {
 			return false
 		}
-		err = m.SerializeValue(reflect.ValueOf(value), minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		err = m.SerializeValue(reflect.ValueOf(value), fieldMetadata, buffer)
 		return err == nil
 	})
 	if err != nil {
@@ -274,13 +276,18 @@ func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationMana
 	return buffer.Bytes(), nil
 }
 
-func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *autoserializer.SerializationManager, minSliceLen, maxSliceLen int, lenPrefixType types.BasicKind) (err error) {
+func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (err error) {
 	orderedMap.dictionary = make(map[interface{}]*Element)
 	var orderedMapSize int
-	orderedMapSize, err = autoserializer.ReadLen(lenPrefixType, buffer)
+	orderedMapSize, err = autoserializer.ReadLen(fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
+	err = autoserializer.ValidateLength(orderedMapSize, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	if err != nil {
+		return err
+	}
+
 	if orderedMapSize == 0 {
 		return nil
 	}
@@ -307,11 +314,11 @@ func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, 
 		}
 
 		var key, value interface{}
-		key, err = m.DeserializeType(keyType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		key, err = m.DeserializeType(keyType, fieldMetadata, buffer)
 		if err != nil {
 			return
 		}
-		value, err = m.DeserializeType(valueType, minSliceLen, maxSliceLen, lenPrefixType, buffer)
+		value, err = m.DeserializeType(valueType, fieldMetadata, buffer)
 		if err != nil {
 			return
 		}
