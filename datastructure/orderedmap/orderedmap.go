@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/iotaledger/hive.go/autoserializer"
 	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/iotaledger/hive.go/reflectionserializer"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
@@ -204,7 +204,7 @@ func (orderedMap *OrderedMap) Size() int {
 	return orderedMap.size
 }
 
-func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (data []byte, err error) {
+func (orderedMap *OrderedMap) Serialize(m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
 	buffer.WriteUint32(uint32(orderedMap.Size()))
 
@@ -237,13 +237,13 @@ func (orderedMap *OrderedMap) Serialize(m *autoserializer.SerializationManager, 
 	return buffer.Bytes(), nil
 }
 
-func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (data []byte, err error) {
+func (orderedMap *OrderedMap) SerializeBytes(m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
-	err = autoserializer.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
+	err = reflectionserializer.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
-	err = autoserializer.ValidateLength(orderedMap.Size(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	err = reflectionserializer.ValidateLength(orderedMap.Size(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
 	if err != nil {
 		return nil, err
 	}
@@ -276,14 +276,14 @@ func (orderedMap *OrderedMap) SerializeBytes(m *autoserializer.SerializationMana
 	return buffer.Bytes(), nil
 }
 
-func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *autoserializer.SerializationManager, fieldMetadata autoserializer.FieldMetadata) (err error) {
+func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (err error) {
 	orderedMap.dictionary = make(map[interface{}]*Element)
 	var orderedMapSize int
-	orderedMapSize, err = autoserializer.ReadLen(fieldMetadata.LengthPrefixType, buffer)
+	orderedMapSize, err = reflectionserializer.ReadLen(fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
-	err = autoserializer.ValidateLength(orderedMapSize, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	err = reflectionserializer.ValidateLength(orderedMapSize, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
 	if err != nil {
 		return err
 	}

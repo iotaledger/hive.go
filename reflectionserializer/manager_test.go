@@ -1,4 +1,4 @@
-package autoserializer_test
+package reflectionserializer_test
 
 import (
 	"net/url"
@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/autoserializer"
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	"github.com/iotaledger/hive.go/reflectionserializer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -98,8 +98,8 @@ type sliceOrderStructNoOrder struct {
 	StringSlice []string `serialize:"true"`
 }
 
-func TestAutoserializer_LexicalOrdering(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{0, 1, 2, 15, -100, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
@@ -148,8 +148,8 @@ func TestAutoserializer_LexicalOrdering(t *testing.T) {
 	assert.EqualValues(t, expected, restoredOrder)
 }
 
-func TestAutoserializer_NoDuplicates(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_NoDuplicates(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{1, 2, 15, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
@@ -195,8 +195,8 @@ func TestAutoserializer_NoDuplicates(t *testing.T) {
 	assert.EqualValues(t, expected, restoredNoDups)
 }
 
-func TestAutoserializer_LengthValidationCorrect(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_LengthValidationCorrect(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	orderedMapOrig := orderedmap.New()
@@ -217,8 +217,8 @@ func TestAutoserializer_LengthValidationCorrect(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_SerializeLengthValidationTooLong(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -244,8 +244,8 @@ func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -269,8 +269,8 @@ func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -305,8 +305,8 @@ func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -339,8 +339,8 @@ func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAutoserializer_Int64(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Int64(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := int64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -352,8 +352,8 @@ func TestAutoserializer_Int64(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Int32(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Int32(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := int32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -365,8 +365,8 @@ func TestAutoserializer_Int32(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Int16(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Int16(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := int16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -378,8 +378,8 @@ func TestAutoserializer_Int16(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Int8(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Int8(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := int8(100)
 	bytes, err := sm.Serialize(orig)
@@ -391,8 +391,8 @@ func TestAutoserializer_Int8(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Uint64(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Uint64(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := uint64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -404,8 +404,8 @@ func TestAutoserializer_Uint64(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Uint32(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Uint32(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := uint32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -417,8 +417,8 @@ func TestAutoserializer_Uint32(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Uint16(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Uint16(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := uint16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -430,8 +430,8 @@ func TestAutoserializer_Uint16(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Uint8(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Uint8(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := uint8(137)
 	bytes, err := sm.Serialize(orig)
@@ -443,8 +443,8 @@ func TestAutoserializer_Uint8(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Float32(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Float32(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := float32(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -456,8 +456,8 @@ func TestAutoserializer_Float32(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Float64(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Float64(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := float64(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -469,8 +469,8 @@ func TestAutoserializer_Float64(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Bool(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Bool(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	bytes, err := sm.Serialize(true)
 	assert.NoError(t, err)
@@ -481,8 +481,8 @@ func TestAutoserializer_Bool(t *testing.T) {
 	assert.True(t, restored)
 }
 
-func TestAutoserializer_Byte(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Byte(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := byte(100)
 	bytes, err := sm.Serialize(orig)
@@ -494,8 +494,8 @@ func TestAutoserializer_Byte(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_String(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_String(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := "test string value"
 	bytes, err := sm.Serialize(orig)
@@ -507,8 +507,8 @@ func TestAutoserializer_String(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_Array(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Array(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := [2]string{"test string value", "test string value 2"}
 	bytes, err := sm.Serialize(orig)
@@ -520,8 +520,8 @@ func TestAutoserializer_Array(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_StructArray(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_StructArray(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := [3]TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -533,8 +533,8 @@ func TestAutoserializer_StructArray(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_InterfaceArray(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_InterfaceArray(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -551,8 +551,8 @@ func TestAutoserializer_InterfaceArray(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_Slice(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Slice(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	bytes, err := sm.Serialize(orig)
@@ -564,8 +564,8 @@ func TestAutoserializer_Slice(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_StructSlice(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_StructSlice(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := []TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -577,8 +577,8 @@ func TestAutoserializer_StructSlice(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_InterfaceSlice(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_InterfaceSlice(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -595,8 +595,8 @@ func TestAutoserializer_InterfaceSlice(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_EmptySlice(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_EmptySlice(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := make([]string, 0)
 	bytes, err := sm.Serialize(orig)
@@ -609,8 +609,8 @@ func TestAutoserializer_EmptySlice(t *testing.T) {
 	assert.Len(t, restored, 0)
 }
 
-func TestAutoserializer_NilSlice(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_NilSlice(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	var orig []int
 	bytes, err := sm.Serialize(orig)
@@ -625,8 +625,8 @@ func TestAutoserializer_NilSlice(t *testing.T) {
 	assert.Len(t, restored, 0)
 }
 
-func TestAutoserializer_SliceOfEmptyStructs(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_SliceOfEmptyStructs(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	type emptyStruct struct{}
 
@@ -641,8 +641,8 @@ func TestAutoserializer_SliceOfEmptyStructs(t *testing.T) {
 	assert.Len(t, restored, 255)
 }
 
-func TestAutoserializer_Time(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_Time(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := time.Now()
 	bytes, err := sm.Serialize(orig)
@@ -654,8 +654,8 @@ func TestAutoserializer_Time(t *testing.T) {
 	assert.True(t, orig.Equal(restored))
 }
 
-func TestAutoserializer_BinaryMarshaler(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_BinaryMarshaler(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig, err := url.Parse("https://pkg.go.dev/encoding#BinaryMarshaler")
 	assert.NoError(t, err)
@@ -670,8 +670,8 @@ func TestAutoserializer_BinaryMarshaler(t *testing.T) {
 	assert.Equal(t, orig, restored)
 }
 
-func TestAutoserializer_ZeroTime(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_ZeroTime(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	var defaultTime time.Time
 	bytes, err := sm.Serialize(defaultTime)
@@ -683,8 +683,8 @@ func TestAutoserializer_ZeroTime(t *testing.T) {
 	assert.True(t, restored.IsZero())
 }
 
-func TestAutoserializer_OrderedMap(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_OrderedMap(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -700,8 +700,8 @@ func TestAutoserializer_OrderedMap(t *testing.T) {
 	assert.Equal(t, restored.Size(), 3)
 }
 
-func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_EmptyOrderedMap(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	orig := orderedmap.New()
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
@@ -711,8 +711,8 @@ func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
 	assert.Equal(t, restored.Size(), 0)
 }
 
-func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_OrderedMapWithStruct(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	err = sm.RegisterType(TestImpl1{})
@@ -741,8 +741,8 @@ func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
 	assert.Equal(t, third, TestImpl2{12})
 }
 
-func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_OrderedMapWithInterface(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	err = sm.RegisterType(TestImpl1{})
@@ -771,8 +771,8 @@ func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
 	assert.Equal(t, third, Test(TestImpl1{12}))
 }
 
-func TestAutoserializer_PointerToStruct(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_PointerToStruct(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -784,8 +784,8 @@ func TestAutoserializer_PointerToStruct(t *testing.T) {
 	assert.EqualValues(t, orig, restored)
 }
 
-func TestAutoserializer_NilPointer(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_NilPointer(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := &InnerPointer{}
 	bytes, err := sm.Serialize(orig)
@@ -798,8 +798,8 @@ func TestAutoserializer_NilPointer(t *testing.T) {
 	assert.Nil(t, orig.Custom)
 }
 
-func TestAutoserializer_PointerToInterface(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_PointerToInterface(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -815,8 +815,8 @@ func TestAutoserializer_PointerToInterface(t *testing.T) {
 	assert.EqualValues(t, t2, t3)
 }
 
-func TestAutoserializer_TooManyBytes(t *testing.T) {
-	sm := autoserializer.NewSerializationManager()
+func TestReflectionSerializer_TooManyBytes(t *testing.T) {
+	sm := reflectionserializer.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -827,7 +827,7 @@ func TestAutoserializer_TooManyBytes(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAutoserializer_Struct(t *testing.T) {
+func TestReflectionSerializer_Struct(t *testing.T) {
 	interfacePointer := Test(TestImpl2{Val: 10})
 	sampleOrderedMap := orderedmap.New()
 	sampleOrderedMap.Set("first", TestImpl2{2})
@@ -865,7 +865,7 @@ func TestAutoserializer_Struct(t *testing.T) {
 		OrderedMap:                sampleOrderedMap,
 		BinaryMarshallerType:      urlValue,
 	}
-	sm := autoserializer.NewSerializationManager()
+	sm := reflectionserializer.NewSerializationManager()
 	err = sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -907,7 +907,7 @@ func TestAutoserializer_Struct(t *testing.T) {
 
 var result []byte
 
-func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
+func BenchmarkMessageToBytesReflectionSerializer(b *testing.B) {
 	interfacePointer := Test(TestImpl2{Val: 10})
 	sampleOrderedMap := orderedmap.New()
 	sampleOrderedMap.Set("first", TestImpl2{2})
@@ -943,7 +943,7 @@ func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
 		Time:                      time.Now(),
 		OrderedMap:                sampleOrderedMap,
 	}
-	sm := autoserializer.NewSerializationManager()
+	sm := reflectionserializer.NewSerializationManager()
 	_ = sm.RegisterType("")
 
 	_ = sm.RegisterType(TestImpl1{})

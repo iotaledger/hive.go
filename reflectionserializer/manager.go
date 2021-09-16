@@ -1,4 +1,4 @@
-package autoserializer
+package reflectionserializer
 
 import (
 	"bytes"
