@@ -179,11 +179,11 @@ func (m *SerializationManager) DeserializeType(valueType reflect.Type, fieldMeta
 		}
 		return tmp, nil
 	case reflect.String:
-		tmp, err := buffer.ReadUint16()
+		tmp, err := ReadLen(fieldMetadata.LengthPrefixType, buffer)
 		if err != nil {
 			return nil, err
 		}
-		bytesRead, err := buffer.ReadBytes(int(tmp))
+		bytesRead, err := buffer.ReadBytes(tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -526,8 +526,10 @@ func (m *SerializationManager) SerializeValue(value reflect.Value, fieldMetadata
 		}
 		buffer.WriteFloat64(value.Float())
 	case reflect.String:
-		buffer.WriteUint16(uint16(len(value.String())))
-		buffer.WriteBytes([]byte(value.String()))
+		err = WriteLen(len(value.String()), fieldMetadata.LengthPrefixType, buffer)
+		if err == nil {
+			buffer.WriteBytes([]byte(value.String()))
+		}
 	case reflect.Array:
 		err = m.serializeArray(value, fieldMetadata, buffer)
 	case reflect.Slice:
