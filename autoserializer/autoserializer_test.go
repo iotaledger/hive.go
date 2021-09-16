@@ -1,7 +1,6 @@
 package autoserializer_test
 
 import (
-	"fmt"
 	"net/url"
 	"reflect"
 	"testing"
@@ -44,6 +43,7 @@ type InnerStruct struct {
 type InnerPointer struct {
 	Custom *TestImpl1 `serialize:"true" allowNil:"true"`
 }
+
 type sampleStruct struct {
 	Num1                      int64                  `serialize:"true"`
 	Num2                      int32                  `serialize:"true"`
@@ -88,9 +88,117 @@ type sliceStructNovalidation struct {
 	OrderedMap *orderedmap.OrderedMap `serialize:"true" lenPrefixBytes:"2"`
 }
 
+type sliceOrderStruct struct {
+	NumSlice    []int    `serialize:"true" lexicalOrder:"true" noDuplicates:"true"`
+	StringSlice []string `serialize:"true" lexicalOrder:"true" noDuplicates:"true"`
+}
+
+type sliceOrderStructNoOrder struct {
+	NumSlice    []int    `serialize:"true"`
+	StringSlice []string `serialize:"true"`
+}
+
+func TestAutoserializer_LexicalOrdering(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	expected := sliceOrderStruct{
+		NumSlice:    []int{0, 1, 2, 15, -100, -31},
+		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
+	}
+
+	orig := sliceOrderStruct{
+		NumSlice:    []int{2, 1, 0, -100, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
+	}
+
+	origNoOrder := sliceOrderStructNoOrder{
+		NumSlice:    []int{2, 1, 0, -100, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
+	}
+
+	bytesExpected, err := sm.Serialize(expected)
+	assert.NoError(t, err)
+
+	bytesOrder, err := sm.Serialize(orig)
+	assert.NoError(t, err)
+
+	bytesNoOrder, err := sm.Serialize(origNoOrder)
+	assert.NoError(t, err)
+
+	// the same object with and without ordering tags should be serialized to different binary forms
+	assert.NotEqual(t, bytesOrder, bytesNoOrder)
+	assert.Equal(t, bytesExpected, bytesOrder)
+	var restoredOrderRaw sliceOrderStructNoOrder
+	var restoredOrder sliceOrderStruct
+	var restoredNoOrder sliceOrderStruct
+
+	// restore bytes into structure without order checking and see if the bytes are correctly serialized
+	err = sm.Deserialize(&restoredOrderRaw, bytesOrder)
+	assert.NoError(t, err)
+	assert.NotEqual(t, restoredOrderRaw, orig)
+
+	err = sm.Deserialize(&restoredOrder, bytesOrder)
+	assert.NoError(t, err)
+	// restoring bytes with unordered slice into ordered struct
+	err = sm.Deserialize(&restoredNoOrder, bytesNoOrder)
+	assert.NoError(t, err)
+
+	// both should be deserialized into exactly the same structure
+	assert.EqualValues(t, expected, restoredNoOrder)
+	assert.EqualValues(t, expected, restoredOrderRaw)
+	assert.EqualValues(t, expected, restoredOrder)
+}
+
+func TestAutoserializer_NoDuplicates(t *testing.T) {
+	sm := autoserializer.NewSerializationManager()
+	expected := sliceOrderStruct{
+		NumSlice:    []int{1, 2, 15, -31},
+		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
+	}
+
+	orig := sliceOrderStruct{
+		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
+	}
+	origDups := sliceOrderStructNoOrder{
+		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
+	}
+
+	bytesNoDups, err := sm.Serialize(orig)
+	assert.NoError(t, err)
+
+	bytesDups, err := sm.Serialize(origDups)
+	assert.NoError(t, err)
+
+	bytesExpected, err := sm.Serialize(expected)
+	assert.NoError(t, err)
+	// the same object with and without ordering tags should be serialized to different binary forms
+	assert.NotEqual(t, bytesNoDups, bytesDups)
+	assert.Equal(t, bytesExpected, bytesNoDups)
+
+	var restoredNoDupsRaw sliceOrderStructNoOrder
+	var restoredNoDups sliceOrderStruct
+	var restoredDups sliceOrderStruct
+
+	err = sm.Deserialize(&restoredNoDupsRaw, bytesNoDups)
+	assert.NoError(t, err)
+
+	err = sm.Deserialize(&restoredNoDups, bytesNoDups)
+	assert.NoError(t, err)
+	// restoring bytes with unordered slice into ordered struct
+	err = sm.Deserialize(&restoredDups, bytesDups)
+	assert.NoError(t, err)
+
+	// both should be deserialized into exactly the same structure
+	assert.EqualValues(t, expected, restoredDups)
+	assert.EqualValues(t, expected, restoredNoDupsRaw)
+	assert.EqualValues(t, expected, restoredNoDups)
+}
+
 func TestAutoserializer_LengthValidationCorrect(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
 	orderedMapOrig := orderedmap.New()
 	orderedMapOrig.Set("first", "value")
 	orderedMapOrig.Set("second", "value")
@@ -111,7 +219,9 @@ func TestAutoserializer_LengthValidationCorrect(t *testing.T) {
 
 func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+
 	orderedMapOrig := orderedmap.New()
 	orderedMapOrig.Set("first", "value")
 	orderedMapOrig.Set("second", "value")
@@ -121,7 +231,7 @@ func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
 	origSlice := sliceStruct{
 		NumSlice: []int{1, 2, 3, 4, 5, 5},
 	}
-	_, err := sm.Serialize(origSlice)
+	_, err = sm.Serialize(origSlice)
 	assert.Error(t, err)
 
 	orderedMapOrig.Set("fifth", "value")
@@ -136,7 +246,9 @@ func TestAutoserializer_SerializeLengthValidationTooLong(t *testing.T) {
 
 func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+
 	orderedMapOrig := orderedmap.New()
 	orderedMapOrig.Set("first", "value")
 
@@ -144,9 +256,8 @@ func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
 		NumSlice:   []int{1, 2, 3},
 		OrderedMap: orderedMapOrig,
 	}
-	_, err := sm.Serialize(origSlice)
+	_, err = sm.Serialize(origSlice)
 	assert.Error(t, err)
-	fmt.Println(err)
 	orderedMapOrig.Set("second", "value")
 	orderedMapOrig.Set("third", "value")
 
@@ -160,7 +271,9 @@ func TestAutoserializer_SerializeLengthValidationTooShort(t *testing.T) {
 
 func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+
 	orderedMapOrig := orderedmap.New()
 	orderedMapOrig.Set("first", "value")
 	orderedMapOrig.Set("second", "value")
@@ -177,7 +290,6 @@ func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
 	var restoredSlice sliceStruct
 	err = sm.Deserialize(&restoredSlice, bytesSlice)
 	assert.Error(t, err)
-	fmt.Println(err)
 
 	orderedMapOrig.Set("fifth", "value")
 
@@ -195,7 +307,9 @@ func TestAutoserializer_DeserializeLengthValidationTooLong(t *testing.T) {
 
 func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+
 	orderedMapOrig := orderedmap.New()
 	orderedMapOrig.Set("first", "value")
 
@@ -209,7 +323,6 @@ func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
 	var restoredMap sliceStruct
 	err = sm.Deserialize(&restoredMap, bytesMap)
 	assert.Error(t, err)
-	fmt.Println(err)
 
 	orderedMapOrig.Set("second", "value")
 	orderedMapOrig.Set("third", "value")
@@ -224,7 +337,6 @@ func TestAutoserializer_DeserializeLengthValidationTooShort(t *testing.T) {
 	var restoredSlice sliceStruct
 	err = sm.Deserialize(&restoredSlice, bytesSlice)
 	assert.Error(t, err)
-	fmt.Println(err)
 }
 
 func TestAutoserializer_Int64(t *testing.T) {
@@ -360,8 +472,7 @@ func TestAutoserializer_Float64(t *testing.T) {
 func TestAutoserializer_Bool(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
 
-	orig := true
-	bytes, err := sm.Serialize(orig)
+	bytes, err := sm.Serialize(true)
 	assert.NoError(t, err)
 
 	var restored bool
@@ -408,6 +519,7 @@ func TestAutoserializer_Array(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, orig, restored)
 }
+
 func TestAutoserializer_StructArray(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
 
@@ -496,6 +608,7 @@ func TestAutoserializer_EmptySlice(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, restored, 0)
 }
+
 func TestAutoserializer_NilSlice(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
 
@@ -572,13 +685,14 @@ func TestAutoserializer_ZeroTime(t *testing.T) {
 
 func TestAutoserializer_OrderedMap(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+
 	orig := orderedmap.New()
 	orig.Set("first", "value")
 	orig.Set("second", "value")
 	orig.Set("third", "value")
 	bytes, err := sm.Serialize(orig)
-	fmt.Println(bytes)
 	assert.NoError(t, err)
 	restored := orderedmap.New()
 	err = sm.Deserialize(restored, bytes)
@@ -591,7 +705,6 @@ func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
 	orig := orderedmap.New()
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
-	fmt.Println(bytes)
 	restored := orderedmap.New()
 	err = sm.Deserialize(restored, bytes)
 	assert.NoError(t, err)
@@ -600,9 +713,12 @@ func TestAutoserializer_EmptyOrderedMap(t *testing.T) {
 
 func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
-	sm.RegisterType(TestImpl1{})
-	sm.RegisterType(TestImpl2{})
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+	err = sm.RegisterType(TestImpl1{})
+	assert.NoError(t, err)
+	err = sm.RegisterType(TestImpl2{})
+	assert.NoError(t, err)
 	orig := orderedmap.New()
 	orig.Set("first", TestImpl2{2})
 	orig.Set("second", TestImpl2{33})
@@ -627,9 +743,12 @@ func TestAutoserializer_OrderedMapWithStruct(t *testing.T) {
 
 func TestAutoserializer_OrderedMapWithInterface(t *testing.T) {
 	sm := autoserializer.NewSerializationManager()
-	sm.RegisterType("")
-	sm.RegisterType(TestImpl1{})
-	sm.RegisterType(TestImpl2{})
+	err := sm.RegisterType("")
+	assert.NoError(t, err)
+	err = sm.RegisterType(TestImpl1{})
+	assert.NoError(t, err)
+	err = sm.RegisterType(TestImpl2{})
+	assert.NoError(t, err)
 	orig := orderedmap.New()
 	orig.Set("first", Test(TestImpl1{2}))
 	orig.Set("second", Test(TestImpl2{33}))
@@ -677,7 +796,6 @@ func TestAutoserializer_NilPointer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, restored.Custom)
 	assert.Nil(t, orig.Custom)
-
 }
 
 func TestAutoserializer_PointerToInterface(t *testing.T) {
@@ -785,7 +903,6 @@ func TestAutoserializer_Struct(t *testing.T) {
 	orig.Time = time.Time{}
 	assert.EqualValues(t, orig, restored)
 	assert.True(t, reflect.DeepEqual(orig, restored))
-
 }
 
 var result []byte
@@ -833,13 +950,11 @@ func BenchmarkMessageToBytesAutoserializer(b *testing.B) {
 
 	_ = sm.RegisterType(TestImpl2{})
 	var bytes []byte
-	fmt.Println(b.N)
 
 	var err error
 	for n := 0; err == nil && n < b.N; n++ {
 		bytes, err = sm.Serialize(orig)
 	}
-	fmt.Println(len(bytes))
 	if err != nil {
 		b.Error(err)
 	}
