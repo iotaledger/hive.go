@@ -204,39 +204,7 @@ func (orderedMap *OrderedMap) Size() int {
 	return orderedMap.size
 }
 
-func (orderedMap *OrderedMap) Serialize(m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (data []byte, err error) {
-	buffer := marshalutil.New()
-	buffer.WriteUint32(uint32(orderedMap.Size()))
-
-	if orderedMap.Size() == 0 {
-		return buffer.Bytes(), nil
-	}
-	var encodedKeyType uint32
-	var encodedValType uint32
-	orderedMap.ForEach(func(key, value interface{}) bool {
-		encodedKeyType, err = m.EncodeType(reflect.TypeOf(key))
-		if err != nil {
-			return false
-		}
-		encodedValType, err = m.EncodeType(reflect.TypeOf(value))
-		if err != nil {
-			return false
-		}
-		buffer.WriteUint32(encodedKeyType)
-		buffer.WriteUint32(encodedValType)
-		err = m.SerializeValue(reflect.ValueOf(key), fieldMetadata, buffer)
-		if err != nil {
-			return false
-		}
-		err = m.SerializeValue(reflect.ValueOf(value), fieldMetadata, buffer)
-		return err == nil
-	})
-	if err != nil {
-		return
-	}
-	return buffer.Bytes(), nil
-}
-
+// SerializeBytes implements the reflectionserializer.BinarySerializer interface for serialization.
 func (orderedMap *OrderedMap) SerializeBytes(m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
 	err = reflectionserializer.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
@@ -276,6 +244,7 @@ func (orderedMap *OrderedMap) SerializeBytes(m *reflectionserializer.Serializati
 	return buffer.Bytes(), nil
 }
 
+// DeserializeBytes implements the reflectionserializer.BinaryDeserializer interface for deserialization.
 func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (err error) {
 	orderedMap.dictionary = make(map[interface{}]*Element)
 	var orderedMapSize int
