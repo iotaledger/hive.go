@@ -106,7 +106,53 @@ getter method with the same name, so direct access is still limited.
 
 ## Interface-type fields and `TypeRegistry`
 
-TODO
+For interface types or collection types that do not contain concrete types of the elements in the type definition, such
+as slice of interface-type values or `orderedmap.OrderedMap` it is necessary to encode the concrete type information
+into the serialized bytes. The concrete types are represented by a unique 4-byte `uint32` values. Which value
+corresponds to a single concrete type in the code, so that deserializer knows which concrete type it needs to
+instantiate for correct deserialization.
+
+The relationships between numeric values and the types are stored by `TypeRegistry`. Each type that will be serialized
+as a key or an element of `orderedmap.OrderedMap` or will be set as a value of field with interface type needs to be
+added (registered) into the type registry. Registration will assign a unique integer value to the registered type. Type
+registry makes it possible to transform the type into the numeric value and numeric value back into the concrete type.
+Regular users will only need to register the types using type registry, however users that need to
+implement `reflectionserializer.BinarySerializer` interface in their custom structures will also need to know how to
+encode and decode the types.
+
+### Registering new type
+
+In order to register a new type, `RegisterType(value interface{}) error` needs to be called as in the example below. A
+sample value of the registered type must be passed as an argument.
+
+```go
+sm := reflectionserializer.NewSerializationManager()
+sm.RegisterType("") // register string type for use in orderedmap.OreredMap
+sm.RegisterType(&ledgerstate.ED25519Address{}) // register concrete Address type
+sm.RegisterType(&ledgerstate.ED25519Signature{}) // register concrete Signature type
+sm.RegisterType(&ledgerstate.UTXOInput{}) // register concrete Input type
+```
+
+### Type encoding and decoding
+
+In order to encode type, the `EncodeType(t reflect.Type) (uint32, error)` method needs to be called. For type decoding
+similar `DecodeType(t uint32) (reflect.Type, error)` method needs to be called. The examples below show how it in
+practice. The type registry is part of the serialization manager, so the `TypeRegistry` methods are available directly.
+If a non-registered type is passed to either encoding or decoding function, it will result in an error that needs to be
+handled. Unlike for type registration, for type encoding a reflection type must be passed and is returned from
+the `TypeRegistry`.
+
+```go
+sm := reflectionserializer.NewSerializationManager()
+sm.RegisterType("")
+
+v := "stringType"
+// encoding string type into corresponding integer value
+encodedType, err := m.EncodeType(reflect.TypeOf(v))
+
+// decoding integer value into string type
+keyType, err := m.DecodeType(encodedType)
+```
 
 ## Built-in serialization interfaces
 
