@@ -89,16 +89,77 @@ type sliceStructNovalidation struct {
 }
 
 type sliceOrderStruct struct {
-	NumSlice    []int    `serialize:"true" lexicalOrder:"true" noDuplicates:"true"`
-	StringSlice []string `serialize:"true" lexicalOrder:"true" noDuplicates:"true"`
+	NumSlice    []int    `serialize:"true" lexicalOrder:"true"`
+	StringSlice []string `serialize:"true" lexicalOrder:"true"`
 }
 
-type sliceOrderStructNoOrder struct {
+type sliceDuplicateStruct struct {
+	NumSlice    []int    `serialize:"true" noDuplicates:"true"`
+	StringSlice []string `serialize:"true" noDuplicates:"true"`
+}
+type sliceDuplicateOrderStruct struct {
+	NumSlice    []int    `serialize:"true" noDuplicates:"true" lexicalOrder:"true"`
+	StringSlice []string `serialize:"true" noDuplicates:"true" lexicalOrder:"true"`
+}
+type sliceStructNoOrder struct {
 	NumSlice    []int    `serialize:"true"`
 	StringSlice []string `serialize:"true"`
 }
 
-func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
+func TestReflectionSerializer_NoDuplicates(t *testing.T) {
+	sm := refseri.NewSerializationManager()
+
+	orig := sliceDuplicateStruct{
+		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
+	}
+	origDups := sliceStructNoOrder{
+		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
+	}
+
+	_, err := sm.Serialize(orig)
+	assert.ErrorIs(t, err, refseri.ErrNoDuplicatesViolated)
+
+	bytesDups, err := sm.Serialize(origDups)
+	assert.NoError(t, err)
+
+	var restoredDups sliceDuplicateStruct
+
+	// restoring bytes with unordered slice into ordered struct
+	err = sm.Deserialize(&restoredDups, bytesDups)
+	assert.ErrorIs(t, err, refseri.ErrNoDuplicatesViolated)
+}
+
+func TestReflectionSerializer_EnforceLexicalOrdering(t *testing.T) {
+	sm := refseri.NewSerializationManager()
+
+	orig := sliceOrderStruct{
+		NumSlice:    []int{2, 1, 0, -100, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
+	}
+
+	origNoOrder := sliceStructNoOrder{
+		NumSlice:    []int{2, 1, 0, -100, 15, -31},
+		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
+	}
+
+	_, err := sm.Serialize(orig)
+	assert.ErrorIs(t, err, refseri.ErrLexicalOrderViolated)
+
+	bytesNoOrder, err := sm.Serialize(origNoOrder)
+	assert.NoError(t, err)
+
+	// the same object with and without ordering tags should be serialized to different binary forms
+	var restoredNoOrder sliceOrderStruct
+
+	// restoring bytes with unordered slice into ordered struct
+	err = sm.Deserialize(&restoredNoOrder, bytesNoOrder)
+	assert.ErrorIs(t, err, refseri.ErrLexicalOrderViolated)
+}
+
+func TestReflectionSerializer_FixLexicalOrdering(t *testing.T) {
+	t.Skip()
 	sm := refseri.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{0, 1, 2, 15, -100, -31},
@@ -110,7 +171,7 @@ func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
 		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
 	}
 
-	origNoOrder := sliceOrderStructNoOrder{
+	origNoOrder := sliceStructNoOrder{
 		NumSlice:    []int{2, 1, 0, -100, 15, -31},
 		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
 	}
@@ -127,7 +188,7 @@ func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
 	// the same object with and without ordering tags should be serialized to different binary forms
 	assert.NotEqual(t, bytesOrder, bytesNoOrder)
 	assert.Equal(t, bytesExpected, bytesOrder)
-	var restoredOrderRaw sliceOrderStructNoOrder
+	var restoredOrderRaw sliceStructNoOrder
 	var restoredOrder sliceOrderStruct
 	var restoredNoOrder sliceOrderStruct
 
@@ -148,7 +209,9 @@ func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
 	assert.EqualValues(t, expected, restoredOrder)
 }
 
-func TestReflectionSerializer_NoDuplicates(t *testing.T) {
+func TestReflectionSerializer_SkipDuplicates(t *testing.T) {
+	t.Skip()
+
 	sm := refseri.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{1, 2, 15, -31},
@@ -159,7 +222,7 @@ func TestReflectionSerializer_NoDuplicates(t *testing.T) {
 		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
 		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
 	}
-	origDups := sliceOrderStructNoOrder{
+	origDups := sliceStructNoOrder{
 		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
 		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
 	}
@@ -176,7 +239,7 @@ func TestReflectionSerializer_NoDuplicates(t *testing.T) {
 	assert.NotEqual(t, bytesNoDups, bytesDups)
 	assert.Equal(t, bytesExpected, bytesNoDups)
 
-	var restoredNoDupsRaw sliceOrderStructNoOrder
+	var restoredNoDupsRaw sliceStructNoOrder
 	var restoredNoDups sliceOrderStruct
 	var restoredDups sliceOrderStruct
 
@@ -232,7 +295,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooLong(t *testing.T) {
 		NumSlice: []int{1, 2, 3, 4, 5, 5},
 	}
 	_, err = sm.Serialize(origSlice)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMaxLength)
 
 	orderedMapOrig.Set("fifth", "value")
 
@@ -241,7 +304,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooLong(t *testing.T) {
 		NumSlice:   []int{1, 2, 3},
 	}
 	_, err = sm.Serialize(origMap)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMaxLength)
 }
 
 func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
@@ -257,7 +320,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
 		OrderedMap: orderedMapOrig,
 	}
 	_, err = sm.Serialize(origSlice)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMinLength)
 	orderedMapOrig.Set("second", "value")
 	orderedMapOrig.Set("third", "value")
 
@@ -266,7 +329,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
 		NumSlice:   []int{1},
 	}
 	_, err = sm.Serialize(origMap)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMinLength)
 }
 
 func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
@@ -289,7 +352,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
 
 	var restoredSlice sliceStruct
 	err = sm.Deserialize(&restoredSlice, bytesSlice)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMaxLength)
 
 	orderedMapOrig.Set("fifth", "value")
 
@@ -302,7 +365,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
 
 	var restoredMap sliceStruct
 	err = sm.Deserialize(&restoredMap, bytesMap)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMaxLength)
 }
 
 func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) {
@@ -322,7 +385,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) 
 
 	var restoredMap sliceStruct
 	err = sm.Deserialize(&restoredMap, bytesMap)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMinLength)
 
 	orderedMapOrig.Set("second", "value")
 	orderedMapOrig.Set("third", "value")
@@ -336,7 +399,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) 
 
 	var restoredSlice sliceStruct
 	err = sm.Deserialize(&restoredSlice, bytesSlice)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrSliceMinLength)
 }
 
 func TestReflectionSerializer_Int64(t *testing.T) {
@@ -824,7 +887,7 @@ func TestReflectionSerializer_TooManyBytes(t *testing.T) {
 	tooManyBytes := byteutils.ConcatBytes(bytes, []byte{0x00, 0x01, 0x02})
 	var restored *TestImpl1
 	err = sm.Deserialize(&restored, tooManyBytes)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, refseri.ErrNotAllBytesRead)
 }
 
 func TestReflectionSerializer_Struct(t *testing.T) {

@@ -608,9 +608,10 @@ func (m *Serializer) SerializeValue(value reflect.Value, fieldMetadata FieldMeta
 
 func (m *Serializer) serializeInterface(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
 	// write first byte only if AllowNil set to true
-	if err = writeNilFlag(value, fieldMetadata, buffer); err != nil {
-		err = fmt.Errorf("%w: interface cannot have nil value", err)
-		return
+	if isNil, err := writeNilFlag(value, fieldMetadata, buffer); err != nil {
+		return fmt.Errorf("%w: interface cannot have nil value", err)
+	} else if isNil {
+		return nil
 	}
 
 	interfaceType := reflect.TypeOf(value.Interface())
@@ -658,8 +659,10 @@ func (m *Serializer) serializeFields(value reflect.Value, buffer *marshalutil.Ma
 
 func (m *Serializer) serializePointer(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
 	// write first byte only if AllowNil set to true
-	if err = writeNilFlag(value, fieldMetadata, buffer); err != nil {
+	if isNil, err := writeNilFlag(value, fieldMetadata, buffer); err != nil {
 		return fmt.Errorf("%w: pointer cannot have nil value", err)
+	} else if isNil {
+		return nil
 	}
 
 	// if pointer implements built-in serialization, use it
@@ -885,8 +888,9 @@ func checkIfNil(fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (b
 	return false, nil
 }
 
-func writeNilFlag(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
+func writeNilFlag(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (isNil bool, err error) {
 	if value.IsNil() && fieldMetadata.AllowNil {
+		isNil = true
 		buffer.WriteByte(byte(0))
 	} else if fieldMetadata.AllowNil {
 		buffer.WriteByte(byte(1))
