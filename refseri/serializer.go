@@ -28,17 +28,40 @@ var (
 	}
 )
 
+//ErrNotAllBytesRead error returned when not all bytes have been read from the buffer
 var ErrNotAllBytesRead = errors.New("did not read all bytes from the buffer")
+
+// ErrMapNotSupported error returned when trying to serialize/deserialize native map type
 var ErrMapNotSupported = errors.New("native map type is not supported. use orderedmap instead")
+
+//ErrSerializeInterface error returned when there is a problem during interface serialization
 var ErrSerializeInterface = errors.New("couldn't deserialize interface")
+
+//ErrUnpackAnonymous error returned when 'unpack' tag is added to anonymous field
 var ErrUnpackAnonymous = errors.New("cannot unpack on non anonymous field")
+
+//ErrUnpackNonStruct error returned when 'unpack' tag is added to a non-struct field
 var ErrUnpackNonStruct = errors.New("cannot unpack on non struct field")
+
+//ErrUnknownLengthPrefix error returned when length prefix struct tag is set to an unknown value
 var ErrUnknownLengthPrefix = errors.New("unknown length prefix type")
+
+//ErrNilNotAllowed error returned when non-optional pointer or interface field has nil value
 var ErrNilNotAllowed = errors.New("nil value is not allowed")
+
+//ErrNaNValue error returned when float type has NaN value
 var ErrNaNValue = errors.New("NaN float value")
+
+//ErrSliceMinLength error is returned when a slice does not have minimum required length
 var ErrSliceMinLength = errors.New("collection is required to have min number of elements")
+
+//ErrSliceMaxLength error is returned when a slice has more than maximum allowed length
 var ErrSliceMaxLength = errors.New("collection is required to have max number of elements")
+
+//ErrLexicalOrderViolated error is returned when slice is not sorted in byte lexical order
 var ErrLexicalOrderViolated = errors.New("lexical order violated")
+
+//ErrNoDuplicatesViolated error is returned when slice does not have unique elements
 var ErrNoDuplicatesViolated = errors.New("no duplicates requirement violated")
 
 // BinaryDeserializer interface is used to implement built-in deserialization of complex structures, usually collections.
@@ -286,7 +309,8 @@ func (m *Serializer) deserializeFields(restoredStruct reflect.Value, structType 
 		field := structType.Field(fieldMeta.Idx)
 
 		if !fieldMeta.Unpack {
-			fieldValue, err := m.DeserializeType(field.Type, fieldMeta, buffer)
+			var fieldValue interface{}
+			fieldValue, err = m.DeserializeType(field.Type, fieldMeta, buffer)
 			if err != nil {
 				err = fmt.Errorf("%w: error deserializing field: '%s'", err, fieldMeta.Name)
 				return nil, err
@@ -606,7 +630,7 @@ func (m *Serializer) SerializeValue(value reflect.Value, fieldMetadata FieldMeta
 	return err
 }
 
-func (m *Serializer) serializeInterface(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
+func (m *Serializer) serializeInterface(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) error {
 	// write first byte only if AllowNil set to true
 	if isNil, err := writeNilFlag(value, fieldMetadata, buffer); err != nil {
 		return fmt.Errorf("%w: interface cannot have nil value", err)
@@ -617,7 +641,7 @@ func (m *Serializer) serializeInterface(value reflect.Value, fieldMetadata Field
 	interfaceType := reflect.TypeOf(value.Interface())
 	encodedType, err := m.EncodeType(interfaceType)
 	if err != nil {
-		return
+		return err
 	}
 	buffer.WriteUint32(encodedType)
 	return m.SerializeValue(value.Elem(), fieldMetadata, buffer)

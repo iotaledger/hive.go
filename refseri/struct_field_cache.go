@@ -35,6 +35,7 @@ type FieldMetadata struct {
 	NoDuplicates     bool
 }
 
+// ErrUnexportedField error returned when trying to marshal unexported field
 var ErrUnexportedField = errors.New("can't marshal un-exported field")
 
 // Fields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.

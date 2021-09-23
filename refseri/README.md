@@ -22,8 +22,9 @@ General principles of reflection serializer:
 * `encoding.BinaryUnmarshaler` and `encoding.BinaryMarshaler` interfaces are supported and used if available;
     * serialized bytes are serialized as a regular byte slice;
     * during deserialization byte slice is read and passed to unmarshaler;
+
 * for custom collection types (e.g. `orderedmap.OrderedMap`), a special `BinarySerializer` and `BinaryDeserializer` is
-  used. Custom collection type needs to implement those interfaces internally;
+  used. Custom collection types need to implement those interfaces internally;
 
 ## Available struct tags
 
@@ -161,7 +162,8 @@ keyType, err := m.DecodeType(encodedType)
 If struct or pointer type implements `encoding.BinaryMarshaller` and `encoding.BinaryUnmarshaller`, then the method is
 used for serialization and deserialization. The interfaces are defined in standard Go libraries. The resulting bytes are
 serialized as a regular slice of bytes, therefore the serialized value is prefixed with the number of bytes the
-structure has been serialized to. During theserialization the length is used to read necessary number of bytes, and then
+structure has been serialized to. During the serialization the length is used to read necessary number of bytes, and 
+then
 those bytes are passed to `UnmarshalBinary` method.
 
 ### `reflectionserializer.BinarySerializer`

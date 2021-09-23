@@ -16,7 +16,10 @@ type TypeRegistry struct {
 	typeToTypeID map[reflect.Type]uint32
 }
 
+// ErrTypeNotRegistered error returned when trying to encode/decode a type that was not registered
 var ErrTypeNotRegistered = errors.New("type not registered")
+
+// ErrAlreadyRegistered error returned when trying to register a type multiple times
 var ErrAlreadyRegistered = errors.New("type already registered")
 
 // NewTypeRegistry creates a new type registry
