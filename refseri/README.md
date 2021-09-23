@@ -126,7 +126,7 @@ In order to register a new type, `RegisterType(value interface{}) error` needs t
 sample value of the registered type must be passed as an argument.
 
 ```go
-sm := reflectionserializer.NewSerializationManager()
+sm := refseri.NewSerializer()
 sm.RegisterType("") // register string type for use in orderedmap.OreredMap
 sm.RegisterType(&ledgerstate.ED25519Address{}) // register concrete Address type
 sm.RegisterType(&ledgerstate.ED25519Signature{}) // register concrete Signature type
@@ -143,7 +143,7 @@ handled. Unlike for type registration, for type encoding a reflection type must 
 the `TypeRegistry`.
 
 ```go
-sm := reflectionserializer.NewSerializationManager()
+sm := refseri.NewSerializer()
 sm.RegisterType("")
 
 v := "stringType"
@@ -199,7 +199,7 @@ interface type.
 ```go
 package example
 
-import "github.com/iotaledger/hive.go/reflectionserializer"
+import "github.com/iotaledger/hive.go/refseri"
 
 type Test interface {
 	Test() int
@@ -224,7 +224,7 @@ func (m TestImpl2) Test() int {
 }
 
 func InterfaceSlice() error {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializer()
 	err := sm.RegisterType(TestImpl1{})
 	if err != nil {
 		return err

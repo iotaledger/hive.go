@@ -1,6 +1,7 @@
-package reflectionserializer
+package refseri
 
 import (
+	"errors"
 	"fmt"
 	"go/types"
 	"reflect"
@@ -23,8 +24,9 @@ func newFieldCache() *fieldCache {
 
 // FieldMetadata contains information necessary to serialize and deserialize a struct field
 type FieldMetadata struct {
-	idx              int
-	unpack           bool
+	Idx              int
+	Unpack           bool
+	Name             string
 	LengthPrefixType types.BasicKind
 	MaxSliceLength   int
 	MinSliceLength   int
@@ -33,8 +35,10 @@ type FieldMetadata struct {
 	NoDuplicates     bool
 }
 
-// GetFields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
-func (c *fieldCache) GetFields(structType reflect.Type) ([]FieldMetadata, error) {
+var ErrUnexportedField = errors.New("can't marshal un-exported field")
+
+// Fields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
+func (c *fieldCache) Fields(structType reflect.Type) ([]FieldMetadata, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.structFieldCache == nil {
@@ -51,14 +55,14 @@ func (c *fieldCache) GetFields(structType reflect.Type) ([]FieldMetadata, error)
 		sm.LengthPrefixType = types.Uint8
 		switch field.Tag.Get("serialize") {
 		case "unpack":
-			sm.unpack = true
+			sm.Unpack = true
 			fallthrough
 		case "true":
-			if !sm.unpack && unicode.IsLower(rune(field.Name[0])) {
-				return nil, fmt.Errorf("can't marshal un-exported field '%s'", structType.Field(i).Name)
+			if !sm.Unpack && unicode.IsLower(rune(field.Name[0])) {
+				return nil, fmt.Errorf("%w: '%s'", ErrUnexportedField, field.Name)
 			}
-			sm.idx = i
-
+			sm.Idx = i
+			sm.Name = field.Name
 			if v := field.Tag.Get("minLen"); v != "" {
 				minLen, err := strconv.Atoi(v)
 				if err != nil {

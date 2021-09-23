@@ -1,4 +1,4 @@
-package reflectionserializer_test
+package refseri_test
 
 import (
 	"net/url"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
-	"github.com/iotaledger/hive.go/reflectionserializer"
+	"github.com/iotaledger/hive.go/refseri"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,7 +99,7 @@ type sliceOrderStructNoOrder struct {
 }
 
 func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{0, 1, 2, 15, -100, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
@@ -149,7 +149,7 @@ func TestReflectionSerializer_LexicalOrdering(t *testing.T) {
 }
 
 func TestReflectionSerializer_NoDuplicates(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	expected := sliceOrderStruct{
 		NumSlice:    []int{1, 2, 15, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
@@ -196,7 +196,7 @@ func TestReflectionSerializer_NoDuplicates(t *testing.T) {
 }
 
 func TestReflectionSerializer_LengthValidationCorrect(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	orderedMapOrig := orderedmap.New()
@@ -218,7 +218,7 @@ func TestReflectionSerializer_LengthValidationCorrect(t *testing.T) {
 }
 
 func TestReflectionSerializer_SerializeLengthValidationTooLong(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -245,7 +245,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooLong(t *testing.T) {
 }
 
 func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -270,7 +270,7 @@ func TestReflectionSerializer_SerializeLengthValidationTooShort(t *testing.T) {
 }
 
 func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -306,7 +306,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooLong(t *testing.T) {
 }
 
 func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -340,7 +340,7 @@ func TestReflectionSerializer_DeserializeLengthValidationTooShort(t *testing.T) 
 }
 
 func TestReflectionSerializer_Int64(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := int64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -353,7 +353,7 @@ func TestReflectionSerializer_Int64(t *testing.T) {
 }
 
 func TestReflectionSerializer_Int32(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := int32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -366,7 +366,7 @@ func TestReflectionSerializer_Int32(t *testing.T) {
 }
 
 func TestReflectionSerializer_Int16(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := int16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -379,7 +379,7 @@ func TestReflectionSerializer_Int16(t *testing.T) {
 }
 
 func TestReflectionSerializer_Int8(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := int8(100)
 	bytes, err := sm.Serialize(orig)
@@ -392,7 +392,7 @@ func TestReflectionSerializer_Int8(t *testing.T) {
 }
 
 func TestReflectionSerializer_Uint64(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := uint64(1337)
 	bytes, err := sm.Serialize(orig)
@@ -405,7 +405,7 @@ func TestReflectionSerializer_Uint64(t *testing.T) {
 }
 
 func TestReflectionSerializer_Uint32(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := uint32(1337)
 	bytes, err := sm.Serialize(orig)
@@ -418,7 +418,7 @@ func TestReflectionSerializer_Uint32(t *testing.T) {
 }
 
 func TestReflectionSerializer_Uint16(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := uint16(1337)
 	bytes, err := sm.Serialize(orig)
@@ -431,7 +431,7 @@ func TestReflectionSerializer_Uint16(t *testing.T) {
 }
 
 func TestReflectionSerializer_Uint8(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := uint8(137)
 	bytes, err := sm.Serialize(orig)
@@ -444,7 +444,7 @@ func TestReflectionSerializer_Uint8(t *testing.T) {
 }
 
 func TestReflectionSerializer_Float32(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := float32(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -457,7 +457,7 @@ func TestReflectionSerializer_Float32(t *testing.T) {
 }
 
 func TestReflectionSerializer_Float64(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := float64(3.14)
 	bytes, err := sm.Serialize(orig)
@@ -470,7 +470,7 @@ func TestReflectionSerializer_Float64(t *testing.T) {
 }
 
 func TestReflectionSerializer_Bool(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	bytes, err := sm.Serialize(true)
 	assert.NoError(t, err)
@@ -482,7 +482,7 @@ func TestReflectionSerializer_Bool(t *testing.T) {
 }
 
 func TestReflectionSerializer_Byte(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := byte(100)
 	bytes, err := sm.Serialize(orig)
@@ -495,7 +495,7 @@ func TestReflectionSerializer_Byte(t *testing.T) {
 }
 
 func TestReflectionSerializer_String(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := "test string value"
 	bytes, err := sm.Serialize(orig)
@@ -508,7 +508,7 @@ func TestReflectionSerializer_String(t *testing.T) {
 }
 
 func TestReflectionSerializer_Array(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := [2]string{"test string value", "test string value 2"}
 	bytes, err := sm.Serialize(orig)
@@ -521,7 +521,7 @@ func TestReflectionSerializer_Array(t *testing.T) {
 }
 
 func TestReflectionSerializer_StructArray(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := [3]TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -534,7 +534,7 @@ func TestReflectionSerializer_StructArray(t *testing.T) {
 }
 
 func TestReflectionSerializer_InterfaceArray(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -552,7 +552,7 @@ func TestReflectionSerializer_InterfaceArray(t *testing.T) {
 }
 
 func TestReflectionSerializer_Slice(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	bytes, err := sm.Serialize(orig)
@@ -565,7 +565,7 @@ func TestReflectionSerializer_Slice(t *testing.T) {
 }
 
 func TestReflectionSerializer_StructSlice(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := []TestImpl1{{1}, {2}, {3}}
 	bytes, err := sm.Serialize(orig)
@@ -578,7 +578,7 @@ func TestReflectionSerializer_StructSlice(t *testing.T) {
 }
 
 func TestReflectionSerializer_InterfaceSlice(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -596,7 +596,7 @@ func TestReflectionSerializer_InterfaceSlice(t *testing.T) {
 }
 
 func TestReflectionSerializer_EmptySlice(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := make([]string, 0)
 	bytes, err := sm.Serialize(orig)
@@ -610,7 +610,7 @@ func TestReflectionSerializer_EmptySlice(t *testing.T) {
 }
 
 func TestReflectionSerializer_NilSlice(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	var orig []int
 	bytes, err := sm.Serialize(orig)
@@ -626,7 +626,7 @@ func TestReflectionSerializer_NilSlice(t *testing.T) {
 }
 
 func TestReflectionSerializer_SliceOfEmptyStructs(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	type emptyStruct struct{}
 
@@ -642,7 +642,7 @@ func TestReflectionSerializer_SliceOfEmptyStructs(t *testing.T) {
 }
 
 func TestReflectionSerializer_Time(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := time.Now()
 	bytes, err := sm.Serialize(orig)
@@ -655,7 +655,7 @@ func TestReflectionSerializer_Time(t *testing.T) {
 }
 
 func TestReflectionSerializer_BinaryMarshaler(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig, err := url.Parse("https://pkg.go.dev/encoding#BinaryMarshaler")
 	assert.NoError(t, err)
@@ -671,7 +671,7 @@ func TestReflectionSerializer_BinaryMarshaler(t *testing.T) {
 }
 
 func TestReflectionSerializer_ZeroTime(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	var defaultTime time.Time
 	bytes, err := sm.Serialize(defaultTime)
@@ -684,7 +684,7 @@ func TestReflectionSerializer_ZeroTime(t *testing.T) {
 }
 
 func TestReflectionSerializer_OrderedMap(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -701,7 +701,7 @@ func TestReflectionSerializer_OrderedMap(t *testing.T) {
 }
 
 func TestReflectionSerializer_EmptyOrderedMap(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	orig := orderedmap.New()
 	bytes, err := sm.Serialize(orig)
 	assert.NoError(t, err)
@@ -712,7 +712,7 @@ func TestReflectionSerializer_EmptyOrderedMap(t *testing.T) {
 }
 
 func TestReflectionSerializer_OrderedMapWithStruct(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	err = sm.RegisterType(TestImpl1{})
@@ -742,7 +742,7 @@ func TestReflectionSerializer_OrderedMapWithStruct(t *testing.T) {
 }
 
 func TestReflectionSerializer_OrderedMapWithInterface(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType("")
 	assert.NoError(t, err)
 	err = sm.RegisterType(TestImpl1{})
@@ -772,7 +772,7 @@ func TestReflectionSerializer_OrderedMapWithInterface(t *testing.T) {
 }
 
 func TestReflectionSerializer_PointerToStruct(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -785,7 +785,7 @@ func TestReflectionSerializer_PointerToStruct(t *testing.T) {
 }
 
 func TestReflectionSerializer_NilPointer(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := &InnerPointer{}
 	bytes, err := sm.Serialize(orig)
@@ -799,7 +799,7 @@ func TestReflectionSerializer_NilPointer(t *testing.T) {
 }
 
 func TestReflectionSerializer_PointerToInterface(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err := sm.RegisterType(TestImpl1{})
 	assert.NoError(t, err)
 
@@ -816,7 +816,7 @@ func TestReflectionSerializer_PointerToInterface(t *testing.T) {
 }
 
 func TestReflectionSerializer_TooManyBytes(t *testing.T) {
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 
 	orig := &TestImpl1{12}
 	bytes, err := sm.Serialize(orig)
@@ -865,7 +865,7 @@ func TestReflectionSerializer_Struct(t *testing.T) {
 		OrderedMap:                sampleOrderedMap,
 		BinaryMarshallerType:      urlValue,
 	}
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	err = sm.RegisterType("")
 	assert.NoError(t, err)
 
@@ -943,7 +943,7 @@ func BenchmarkMessageToBytesReflectionSerializer(b *testing.B) {
 		Time:                      time.Now(),
 		OrderedMap:                sampleOrderedMap,
 	}
-	sm := reflectionserializer.NewSerializationManager()
+	sm := refseri.NewSerializationManager()
 	_ = sm.RegisterType("")
 
 	_ = sm.RegisterType(TestImpl1{})

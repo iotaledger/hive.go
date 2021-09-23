@@ -1,6 +1,7 @@
-package reflectionserializer
+package refseri
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -14,6 +15,9 @@ type TypeRegistry struct {
 	typeIDToType map[uint32]reflect.Type
 	typeToTypeID map[reflect.Type]uint32
 }
+
+var ErrTypeNotRegistered = errors.New("type not registered")
+var ErrAlreadyRegistered = errors.New("type already registered")
 
 // NewTypeRegistry creates a new type registry
 func NewTypeRegistry() *TypeRegistry {
@@ -31,7 +35,7 @@ func (r *TypeRegistry) RegisterType(value interface{}) error {
 
 	valueType := reflect.TypeOf(value)
 	if _, exists := r.typeToTypeID[valueType]; exists {
-		return fmt.Errorf("type %v has already been registered", valueType)
+		return fmt.Errorf("%w: type %v", ErrAlreadyRegistered, valueType)
 	}
 	r.typeIDToType[r.typeID] = valueType
 	r.typeToTypeID[valueType] = r.typeID
@@ -40,14 +44,15 @@ func (r *TypeRegistry) RegisterType(value interface{}) error {
 }
 
 // EncodeType returns numeric value registered for type t. Returns error if type is not registered.
-func (r *TypeRegistry) EncodeType(t reflect.Type) (uint32, error) {
+func (r *TypeRegistry) EncodeType(t reflect.Type) (typeID uint32, err error) {
 	r.registryLock.RLock()
 	defer r.registryLock.RUnlock()
 	typeID, exists := r.typeToTypeID[t]
 	if !exists {
-		return 0, fmt.Errorf("type %v is not registered", t)
+		err = fmt.Errorf("%w: type %v", ErrTypeNotRegistered, t)
+		return
 	}
-	return typeID, nil
+	return
 }
 
 // DecodeType returns type registered for identifier t. Returns error if identifier is not known.
@@ -56,7 +61,7 @@ func (r *TypeRegistry) DecodeType(t uint32) (reflect.Type, error) {
 	defer r.registryLock.RUnlock()
 	mappedType, exists := r.typeIDToType[t]
 	if !exists {
-		return nil, fmt.Errorf("typeID %v is not registered", t)
+		return nil, fmt.Errorf("%w: typeID %v", ErrTypeNotRegistered, t)
 	}
 	return mappedType, nil
 }

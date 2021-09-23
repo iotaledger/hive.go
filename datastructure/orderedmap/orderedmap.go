@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/marshalutil"
-	"github.com/iotaledger/hive.go/reflectionserializer"
+	"github.com/iotaledger/hive.go/refseri"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
@@ -204,14 +204,14 @@ func (orderedMap *OrderedMap) Size() int {
 	return orderedMap.size
 }
 
-// SerializeBytes implements the reflectionserializer.BinarySerializer interface for serialization.
-func (orderedMap *OrderedMap) SerializeBytes(m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (data []byte, err error) {
+// SerializeBytes implements the refseri.BinarySerializer interface for serialization.
+func (orderedMap *OrderedMap) SerializeBytes(m *refseri.Serializer, fieldMetadata refseri.FieldMetadata) (data []byte, err error) {
 	buffer := marshalutil.New()
-	err = reflectionserializer.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
+	err = refseri.WriteLen(orderedMap.Size(), fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
-	err = reflectionserializer.ValidateLength(orderedMap.Size(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	err = refseri.ValidateLength(orderedMap.Size(), fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
 	if err != nil {
 		return nil, err
 	}
@@ -244,15 +244,15 @@ func (orderedMap *OrderedMap) SerializeBytes(m *reflectionserializer.Serializati
 	return buffer.Bytes(), nil
 }
 
-// DeserializeBytes implements the reflectionserializer.BinaryDeserializer interface for deserialization.
-func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *reflectionserializer.SerializationManager, fieldMetadata reflectionserializer.FieldMetadata) (err error) {
+// DeserializeBytes implements the refseri.BinaryDeserializer interface for deserialization.
+func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, m *refseri.Serializer, fieldMetadata refseri.FieldMetadata) (err error) {
 	orderedMap.dictionary = make(map[interface{}]*Element)
 	var orderedMapSize int
-	orderedMapSize, err = reflectionserializer.ReadLen(fieldMetadata.LengthPrefixType, buffer)
+	orderedMapSize, err = refseri.ReadLen(fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
 		return
 	}
-	err = reflectionserializer.ValidateLength(orderedMapSize, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
+	err = refseri.ValidateLength(orderedMapSize, fieldMetadata.MinSliceLength, fieldMetadata.MaxSliceLength)
 	if err != nil {
 		return err
 	}
