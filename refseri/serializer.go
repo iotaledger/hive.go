@@ -3,11 +3,11 @@ package refseri
 import (
 	"bytes"
 	"encoding"
-	"errors"
 	"fmt"
 	"go/types"
 	"math"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/iotaledger/hive.go/marshalutil"
@@ -27,42 +27,6 @@ var (
 		AllowNil:         false,
 	}
 )
-
-//ErrNotAllBytesRead error returned when not all bytes have been read from the buffer
-var ErrNotAllBytesRead = errors.New("did not read all bytes from the buffer")
-
-// ErrMapNotSupported error returned when trying to serialize/deserialize native map type
-var ErrMapNotSupported = errors.New("native map type is not supported. use orderedmap instead")
-
-//ErrSerializeInterface error returned when there is a problem during interface serialization
-var ErrSerializeInterface = errors.New("couldn't deserialize interface")
-
-//ErrUnpackAnonymous error returned when 'unpack' tag is added to anonymous field
-var ErrUnpackAnonymous = errors.New("cannot unpack on non anonymous field")
-
-//ErrUnpackNonStruct error returned when 'unpack' tag is added to a non-struct field
-var ErrUnpackNonStruct = errors.New("cannot unpack on non struct field")
-
-//ErrUnknownLengthPrefix error returned when length prefix struct tag is set to an unknown value
-var ErrUnknownLengthPrefix = errors.New("unknown length prefix type")
-
-//ErrNilNotAllowed error returned when non-optional pointer or interface field has nil value
-var ErrNilNotAllowed = errors.New("nil value is not allowed")
-
-//ErrNaNValue error returned when float type has NaN value
-var ErrNaNValue = errors.New("NaN float value")
-
-//ErrSliceMinLength error is returned when a slice does not have minimum required length
-var ErrSliceMinLength = errors.New("collection is required to have min number of elements")
-
-//ErrSliceMaxLength error is returned when a slice has more than maximum allowed length
-var ErrSliceMaxLength = errors.New("collection is required to have max number of elements")
-
-//ErrLexicalOrderViolated error is returned when slice is not sorted in byte lexical order
-var ErrLexicalOrderViolated = errors.New("lexical order violated")
-
-//ErrNoDuplicatesViolated error is returned when slice does not have unique elements
-var ErrNoDuplicatesViolated = errors.New("no duplicates requirement violated")
 
 // BinaryDeserializer interface is used to implement built-in deserialization of complex structures, usually collections.
 type BinaryDeserializer interface {
@@ -398,7 +362,8 @@ func (m *Serializer) deserializeSlice(valueType reflect.Type, fieldMetadata Fiel
 	if valueType.Elem().Kind() == reflect.Uint8 {
 		// special handling of byte slice to optimize execution
 		return m.deserializeSliceOfBytes(sliceLen, buffer)
-	} else if fieldMetadata.LexicalOrder || fieldMetadata.NoDuplicates {
+	}
+	if fieldMetadata.LexicalOrder || fieldMetadata.NoDuplicates || fieldMetadata.Sort || fieldMetadata.SkipDuplicates {
 		// if lexical ordering or no duplicates is required, perform additional processing
 		return m.deserializeConstrainedSlice(valueType, sliceLen, fieldMetadata, buffer)
 	}
@@ -420,12 +385,19 @@ func (m *Serializer) deserializeRegularSlice(valueType reflect.Type, sliceLen in
 	return restoredSlice.Interface(), nil
 }
 
+type elemPair struct {
+	elem      interface{}
+	elemBytes []byte
+}
+
 func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLen int, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (interface{}, error) {
 	restoredSlice := reflect.New(valueType).Elem()
 
 	readOffset := buffer.ReadOffset()
 	elementsMap := make(map[string]customtypes.Empty)
 	var prevBytes []byte
+	elements := make([]elemPair, 0)
+
 	for i := 0; i < sliceLen; i++ {
 		// deserialize slice element
 		elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
@@ -441,7 +413,7 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 		readOffset = buffer.ReadOffset()
 
 		// check if element is not duplicate of already deserialized element. return error otherwise
-		if fieldMetadata.NoDuplicates {
+		if fieldMetadata.NoDuplicates || fieldMetadata.SkipDuplicates {
 			elemBytesString := typeutils.BytesToString(elemBytes)
 			if err != nil {
 				err = fmt.Errorf("%w: error while writing byte slice as string", err)
@@ -449,8 +421,13 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 			}
 
 			if _, seenAlready := elementsMap[elemBytesString]; seenAlready {
-				err = fmt.Errorf("%w: slice index %d", ErrNoDuplicatesViolated, i)
-				return reflect.Value{}, err
+				if fieldMetadata.NoDuplicates {
+					err = fmt.Errorf("%w: slice index %d", ErrNoDuplicatesViolated, i)
+					return reflect.Value{}, err
+				}
+				if fieldMetadata.SkipDuplicates {
+					continue
+				}
 			}
 			elementsMap[elemBytesString] = customtypes.Void
 		}
@@ -465,8 +442,23 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 		}
 		prevBytes = elemBytes
 
-		// append element to resulting slice
-		restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(elem))
+		if fieldMetadata.Sort {
+			// append element to a slice that will be sorted
+			elements = append(elements, elemPair{elem, elemBytes})
+		} else {
+			// append element to resulting slice
+			restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(elem))
+		}
+	}
+
+	if fieldMetadata.Sort {
+		// sort inputs
+		sort.Slice(elements, func(i, j int) bool {
+			return bytes.Compare(elements[i].elemBytes, elements[j].elemBytes) < 0
+		})
+		for _, sortedInput := range elements {
+			restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(sortedInput.elem))
+		}
 	}
 
 	return restoredSlice.Interface(), nil
@@ -703,13 +695,13 @@ func (m *Serializer) serializeSlice(value reflect.Value, fieldMetadata FieldMeta
 	if value.Type().Elem().Kind() == reflect.Uint8 {
 		// serialize slice of bytes individually to optimize execution
 		return m.serializeByteSlice(value, fieldMetadata, buffer)
-	} else if fieldMetadata.LexicalOrder || fieldMetadata.NoDuplicates {
+	}
+	if fieldMetadata.LexicalOrder || fieldMetadata.NoDuplicates || fieldMetadata.Sort || fieldMetadata.SkipDuplicates {
 		// if lexical order or no duplicates is required, perform necessary preprocessing to sort or remove duplicates
 		return m.serializeConstrainedSlice(value, fieldMetadata, buffer)
-	} else {
-		// validate slice length according to specified values
-		return m.serializeRegularSlice(value, fieldMetadata, buffer)
 	}
+	// validate slice length according to specified values
+	return m.serializeRegularSlice(value, fieldMetadata, buffer)
 }
 
 func (m *Serializer) serializeRegularSlice(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
@@ -743,20 +735,28 @@ func (m *Serializer) serializeConstrainedSlice(value reflect.Value, fieldMetadat
 		elemBytes := elemBuffer.Bytes()
 
 		// check if no duplicate elements are serialized, skip any duplicates
-		if fieldMetadata.NoDuplicates {
+		if fieldMetadata.NoDuplicates || fieldMetadata.SkipDuplicates {
 			elemBytesString := typeutils.BytesToString(elemBytes)
-			if _, seenElem := elemsMap[elemBytesString]; fieldMetadata.NoDuplicates && seenElem {
-				return fmt.Errorf("%w: index %d", ErrNoDuplicatesViolated, i)
+			if _, seenElem := elemsMap[elemBytesString]; seenElem {
+				if fieldMetadata.NoDuplicates {
+					return fmt.Errorf("%w: index %d", ErrNoDuplicatesViolated, i)
+				}
+				if fieldMetadata.SkipDuplicates {
+					continue
+				}
 			}
 			elemsMap[elemBytesString] = customtypes.Void
 		}
-
 		// check if lexical order is preserved, return error otherwise
 		if fieldMetadata.LexicalOrder && i > 0 && bytes.Compare(elems[i-1], elemBytes) >= 0 {
 			return fmt.Errorf("%w: index %d", ErrLexicalOrderViolated, i)
 		}
 
-		elems = append(elems, elemBytes)
+		if fieldMetadata.Sort {
+			elems = InsertSorted(elems, elemBytes)
+		} else {
+			elems = append(elems, elemBytes)
+		}
 	}
 
 	// validate length of the slice after preprocessing
@@ -850,51 +850,6 @@ func (m *Serializer) serializeBinaryMarshaller(value reflect.Value, fieldMetadat
 	}
 	// write byte slice of serialized structure
 	buffer.WriteBytes(bytesMarshalled)
-	return
-}
-
-// ReadLen reads length of a collection from the buffer according to lenPrefixType
-func ReadLen(lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) (int, error) {
-	switch lenPrefixType {
-	case types.Uint8:
-		lengthUint8, err := buffer.ReadUint8()
-		return int(lengthUint8), err
-	case types.Uint16:
-		lengthUint16, err := buffer.ReadUint16()
-		return int(lengthUint16), err
-	case types.Uint32:
-		lengthUint32, err := buffer.ReadUint32()
-		return int(lengthUint32), err
-	default:
-		return 0, fmt.Errorf("%w: %d", ErrUnknownLengthPrefix, lenPrefixType)
-	}
-}
-
-// WriteLen writes length of a collection from the buffer according to lenPrefixType
-func WriteLen(length int, lenPrefixType types.BasicKind, buffer *marshalutil.MarshalUtil) error {
-	switch lenPrefixType {
-	case types.Uint8:
-		buffer.WriteUint8(uint8(length))
-	case types.Uint16:
-		buffer.WriteUint16(uint16(length))
-	case types.Uint32:
-		buffer.WriteUint32(uint32(length))
-	default:
-		return fmt.Errorf("%w: %d", ErrUnknownLengthPrefix, lenPrefixType)
-	}
-	return nil
-}
-
-// ValidateLength is used to make sure that the length of a collection is within bounds specified in struct tags.
-func ValidateLength(length int, minSliceLen int, maxSliceLen int) (err error) {
-	if length < minSliceLen {
-		err = fmt.Errorf("%w: min %d elements instead of %d", ErrSliceMinLength, minSliceLen, length)
-		return
-	}
-	if maxSliceLen > 0 && length > maxSliceLen {
-		err = fmt.Errorf("%w: max %d elements instead of %d", ErrSliceMaxLength, maxSliceLen, length)
-		return
-	}
 	return
 }
 

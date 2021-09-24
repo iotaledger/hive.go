@@ -12,6 +12,10 @@ General principles of reflection serializer:
 
 * optionally, slices can be sorted in byte lexical order before serialization and deserialization;
 * optionally, slices can have duplicates removed before serialization and deserialization;
+* optionally, slices can be checked for duplicates during serialization/deserialization and return an error if 
+  duplicates are found;
+* optionally, slices can be checked if they are lexically sorted during serialization/deserialization and return an 
+  error if the order is violated;
 * by default, interface and pointer types cannot have `nil` value;
 * by default, sizes of dynamic containers (`string`, `slice`) are written before values as uint32;
 * optionally, collection types' length (e.g. `slice`, `orderedmap.OrderedMap`) can be validated before serialization and
@@ -37,8 +41,10 @@ Structure fields can be annotated using struct tags that can specify the followi
 | minLen          | int  | ensure that serialized collection has the specified min length.                                    | `slice` `orderedmap.OrderedMap`          |
 | maxLen          | int  | ensure that serialized collection has the specified max length                                     | `slice` `orderedmap.OrderedMap`          |
 | allowNil        | bool | whether given struct field can have nil value                                                      | `interface` `ptr`                        |
-| noDuplicates    | bool | whether a slice should have duplicate values removed during serialization and deserialization      | `slice`                                  |
-| lexicalOrder    | bool | whether a slice values should be lexicographically sorted before serialization and deserialization | `slice`                                  |
+| noDuplicates    | bool | whether duplicate values are allowed in a slice. return an error if any duplicates are found       | `slice`                                  |
+| skipDuplicates  | bool | whether a slice should have duplicate values removed during serialization and deserialization      | `slice`                                  |
+| sort            | bool | whether a slice values should be lexicographically sorted before serialization and deserialization | `slice`                                  |
+| lexicalOrder    | bool | whether to check if serialized/deserialized slices are sorted lexically. return an error otherwise | `slice`                                  |
 | lenPrefixBytes  | int  | number of bytes to use for serialization of length of types with dynamic size.                     | `slice` `orderedmap.OrderedMap` `string` |
 
 ## Supported types
@@ -162,9 +168,8 @@ keyType, err := m.DecodeType(encodedType)
 If struct or pointer type implements `encoding.BinaryMarshaller` and `encoding.BinaryUnmarshaller`, then the method is
 used for serialization and deserialization. The interfaces are defined in standard Go libraries. The resulting bytes are
 serialized as a regular slice of bytes, therefore the serialized value is prefixed with the number of bytes the
-structure has been serialized to. During the serialization the length is used to read necessary number of bytes, and 
-then
-those bytes are passed to `UnmarshalBinary` method.
+structure has been serialized to. During the serialization the length is used to read necessary number of bytes, and
+then those bytes are passed to `UnmarshalBinary` method.
 
 ### `reflectionserializer.BinarySerializer`
 

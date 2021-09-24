@@ -1,7 +1,6 @@
 package refseri
 
 import (
-	"errors"
 	"fmt"
 	"go/types"
 	"reflect"
@@ -33,10 +32,9 @@ type FieldMetadata struct {
 	AllowNil         bool
 	LexicalOrder     bool
 	NoDuplicates     bool
+	Sort             bool
+	SkipDuplicates   bool
 }
-
-// ErrUnexportedField error returned when trying to marshal unexported field
-var ErrUnexportedField = errors.New("can't marshal un-exported field")
 
 // Fields returns struct fields that are available for serialization. It caches the fields so consecutive calls for the same time can use previously extracted values.
 func (c *fieldCache) Fields(structType reflect.Type) ([]FieldMetadata, error) {
@@ -91,6 +89,20 @@ func (c *fieldCache) Fields(structType reflect.Type) ([]FieldMetadata, error) {
 					return nil, err
 				}
 				sm.LexicalOrder = lexicalOrder
+			}
+			if v := field.Tag.Get("sort"); v != "" {
+				sort, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				sm.Sort = sort
+			}
+			if v := field.Tag.Get("skipDuplicates"); v != "" {
+				skipDuplicates, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				sm.SkipDuplicates = skipDuplicates
 			}
 			if v := field.Tag.Get("noDuplicates"); v != "" {
 				noDuplicates, err := strconv.ParseBool(v)

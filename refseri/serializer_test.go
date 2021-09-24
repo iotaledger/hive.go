@@ -98,8 +98,8 @@ type sliceDuplicateStruct struct {
 	StringSlice []string `serialize:"true" noDuplicates:"true"`
 }
 type sliceDuplicateOrderStruct struct {
-	NumSlice    []int    `serialize:"true" noDuplicates:"true" lexicalOrder:"true"`
-	StringSlice []string `serialize:"true" noDuplicates:"true" lexicalOrder:"true"`
+	NumSlice    []int    `serialize:"true" skipDuplicates:"true" sort:"true"`
+	StringSlice []string `serialize:"true" skipDuplicates:"true" sort:"true"`
 }
 type sliceStructNoOrder struct {
 	NumSlice    []int    `serialize:"true"`
@@ -159,14 +159,13 @@ func TestReflectionSerializer_EnforceLexicalOrdering(t *testing.T) {
 }
 
 func TestReflectionSerializer_FixLexicalOrdering(t *testing.T) {
-	t.Skip()
 	sm := refseri.NewSerializationManager()
-	expected := sliceOrderStruct{
+	expected := sliceDuplicateOrderStruct{
 		NumSlice:    []int{0, 1, 2, 15, -100, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
 	}
 
-	orig := sliceOrderStruct{
+	orig := sliceDuplicateOrderStruct{
 		NumSlice:    []int{2, 1, 0, -100, 15, -31},
 		StringSlice: []string{"zebra", "elephant", "alpaca", "lion"},
 	}
@@ -189,8 +188,8 @@ func TestReflectionSerializer_FixLexicalOrdering(t *testing.T) {
 	assert.NotEqual(t, bytesOrder, bytesNoOrder)
 	assert.Equal(t, bytesExpected, bytesOrder)
 	var restoredOrderRaw sliceStructNoOrder
-	var restoredOrder sliceOrderStruct
-	var restoredNoOrder sliceOrderStruct
+	var restoredOrder sliceDuplicateOrderStruct
+	var restoredNoOrder sliceDuplicateOrderStruct
 
 	// restore bytes into structure without order checking and see if the bytes are correctly serialized
 	err = sm.Deserialize(&restoredOrderRaw, bytesOrder)
@@ -210,15 +209,13 @@ func TestReflectionSerializer_FixLexicalOrdering(t *testing.T) {
 }
 
 func TestReflectionSerializer_SkipDuplicates(t *testing.T) {
-	t.Skip()
-
 	sm := refseri.NewSerializationManager()
-	expected := sliceOrderStruct{
+	expected := sliceDuplicateOrderStruct{
 		NumSlice:    []int{1, 2, 15, -31},
 		StringSlice: []string{"lion", "zebra", "alpaca", "elephant"},
 	}
 
-	orig := sliceOrderStruct{
+	orig := sliceDuplicateOrderStruct{
 		NumSlice:    []int{2, 1, 1, 2, 15, 15, -31},
 		StringSlice: []string{"zebra", "elephant", "zebra", "alpaca", "lion", "alpaca", "elephant"},
 	}
@@ -240,8 +237,8 @@ func TestReflectionSerializer_SkipDuplicates(t *testing.T) {
 	assert.Equal(t, bytesExpected, bytesNoDups)
 
 	var restoredNoDupsRaw sliceStructNoOrder
-	var restoredNoDups sliceOrderStruct
-	var restoredDups sliceOrderStruct
+	var restoredNoDups sliceDuplicateOrderStruct
+	var restoredDups sliceDuplicateOrderStruct
 
 	err = sm.Deserialize(&restoredNoDupsRaw, bytesNoDups)
 	assert.NoError(t, err)
