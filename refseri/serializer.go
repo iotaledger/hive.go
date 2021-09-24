@@ -218,16 +218,15 @@ func (m *Serializer) deserializeInterface(valueType reflect.Type, fieldMetadata 
 
 	encodedType, err := buffer.ReadUint32()
 	if err != nil {
-		err = fmt.Errorf("%w: error while reading encoded type", err)
+		err = fmt.Errorf("%w: error reading encoded type", err)
 		return nil, err
 	}
 	implementationType, err := m.DecodeType(encodedType)
 	if err != nil {
-		err = fmt.Errorf("%w: error while decoding type", err)
 		return nil, err
 	}
 	if !implementationType.Implements(valueType) {
-		return nil, fmt.Errorf("%w: %s must implement interface %s", ErrSerializeInterface, implementationType, valueType)
+		return nil, fmt.Errorf("%w: %s must implement interface %s", ErrDeserializeInterface, implementationType, valueType)
 	}
 	return m.DeserializeType(implementationType, fieldMetadata, buffer)
 }
@@ -248,7 +247,6 @@ func (m *Serializer) deserializeStructure(valueType reflect.Type, fieldMetadata 
 	// if the struct type provides it try to use built-in deserializer
 	processed, err := m.tryBuiltInDeserializer(structValue, valueType, fieldMetadata, buffer)
 	if err != nil {
-		err = fmt.Errorf("%w: error while using built-in deserializer", err)
 		return nil, err
 	}
 	if processed {
@@ -312,7 +310,6 @@ func (m *Serializer) deserializeFields(restoredStruct reflect.Value, structType 
 				restoredStruct.Field(fieldMeta.Idx).Field(embFieldMeta.Idx).Set(reflect.ValueOf(embStructFieldVal).Convert(embStructField.Type))
 			}
 		}
-
 	}
 	return restoredStruct.Interface(), nil
 }
@@ -348,7 +345,7 @@ func (m *Serializer) deserializeSlice(valueType reflect.Type, fieldMetadata Fiel
 	// read length of the slice and validate that it matches the bounds
 	sliceLen, err := ReadLen(fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
-		err = fmt.Errorf("%w: error while reading slice length", err)
+		err = fmt.Errorf("%w: error reading slice length", err)
 		return nil, err
 	}
 
@@ -378,6 +375,7 @@ func (m *Serializer) deserializeRegularSlice(valueType reflect.Type, sliceLen in
 	for i := 0; i < sliceLen; i++ {
 		elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 		if err != nil {
+			err = fmt.Errorf("%w: error deserializing slice elem on position %d", err, i)
 			return nil, err
 		}
 		restoredSlice = reflect.Append(restoredSlice, reflect.ValueOf(elem))
@@ -402,7 +400,7 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 		// deserialize slice element
 		elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 		if err != nil {
-			err = fmt.Errorf("%w: error while deserializing slice elem on position %d", err, i)
+			err = fmt.Errorf("%w: error deserializing slice elem on index %d", err, i)
 			return reflect.Value{}, err
 		}
 
@@ -416,7 +414,7 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 		if fieldMetadata.NoDuplicates || fieldMetadata.SkipDuplicates {
 			elemBytesString := typeutils.BytesToString(elemBytes)
 			if err != nil {
-				err = fmt.Errorf("%w: error while writing byte slice as string", err)
+				err = fmt.Errorf("%w: error writing byte slice as string", err)
 				return reflect.Value{}, err
 			}
 
@@ -467,7 +465,7 @@ func (m *Serializer) deserializeConstrainedSlice(valueType reflect.Type, sliceLe
 func (m *Serializer) deserializeSliceOfBytes(sliceLen int, buffer *marshalutil.MarshalUtil) (interface{}, error) {
 	restored, err := buffer.ReadBytes(sliceLen)
 	if err != nil {
-		err = fmt.Errorf("%w: error while reading slice of bytes", err)
+		err = fmt.Errorf("%w: error reading slice of bytes", err)
 		return nil, err
 	}
 	return restored, nil
@@ -490,6 +488,7 @@ func (m *Serializer) deserializeArray(valueType reflect.Type, buffer *marshaluti
 	for i := 0; i < arrayLen; i++ {
 		elem, err := m.DeserializeType(valueType.Elem(), fieldMetadata, buffer)
 		if err != nil {
+			err = fmt.Errorf("%w: error deserializing array elem on position %d", err, i)
 			return nil, err
 		}
 		restoredArray.Index(i).Set(reflect.ValueOf(elem))
@@ -516,7 +515,7 @@ func (m *Serializer) deserializeBinaryDeserializer(p reflect.Value, fieldMetadat
 	// it will deserialize correctly and use only as many bytes from the buffer as needed, leaving others untouched
 	restoredStruct := p.Interface().(BinaryDeserializer)
 	if err = restoredStruct.DeserializeBytes(buffer, m, fieldMetadata); err != nil {
-		err = fmt.Errorf("%w: error while deserializing struct", err)
+		err = fmt.Errorf("%w: error deserializing refseri.BinaryDeserializer", err)
 		return
 	}
 	return
@@ -529,19 +528,19 @@ func (m *Serializer) deserializeBinaryUnmarshaller(p reflect.Value, fieldMetadat
 	var structBytes []byte
 	structSize, err = ReadLen(fieldMetadata.LengthPrefixType, buffer)
 	if err != nil {
-		err = fmt.Errorf("%w: error while reading struct length", err)
+		err = fmt.Errorf("%w: error reading struct length", err)
 		return
 	}
 	structBytes, err = buffer.ReadBytes(structSize)
 	if err != nil {
-		err = fmt.Errorf("%w: error while reading struct bytes", err)
+		err = fmt.Errorf("%w: error reading struct bytes", err)
 		return
 	}
 	// unmarshal the structure using read bytes
 	restoredStruct := p.Interface().(encoding.BinaryUnmarshaler)
 
 	if err = restoredStruct.UnmarshalBinary(structBytes); err != nil {
-		err = fmt.Errorf("%w: error while deserializing struct", err)
+		err = fmt.Errorf("%w: error deserializing encoding.BinaryUnmarshaler", err)
 		return
 	}
 	return
@@ -625,7 +624,7 @@ func (m *Serializer) SerializeValue(value reflect.Value, fieldMetadata FieldMeta
 func (m *Serializer) serializeInterface(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) error {
 	// write first byte only if AllowNil set to true
 	if isNil, err := writeNilFlag(value, fieldMetadata, buffer); err != nil {
-		return fmt.Errorf("%w: interface cannot have nil value", err)
+		return err
 	} else if isNil {
 		return nil
 	}
@@ -666,17 +665,17 @@ func (m *Serializer) serializeFields(value reflect.Value, buffer *marshalutil.Ma
 		fieldValue := value.Field(fieldMeta.Idx)
 
 		if err = m.SerializeValue(fieldValue, fieldMeta, buffer); err != nil {
-			err = fmt.Errorf("%w: error while serializing field: '%s'", err, fieldMeta.Name)
+			err = fmt.Errorf("%w: error serializing field: '%s'", err, fieldMeta.Name)
 			break
 		}
 	}
 	return
 }
 
-func (m *Serializer) serializePointer(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) (err error) {
+func (m *Serializer) serializePointer(value reflect.Value, fieldMetadata FieldMetadata, buffer *marshalutil.MarshalUtil) error {
 	// write first byte only if AllowNil set to true
 	if isNil, err := writeNilFlag(value, fieldMetadata, buffer); err != nil {
-		return fmt.Errorf("%w: pointer cannot have nil value", err)
+		return err
 	} else if isNil {
 		return nil
 	}
@@ -716,7 +715,7 @@ func (m *Serializer) serializeRegularSlice(value reflect.Value, fieldMetadata Fi
 
 	for i := 0; i < value.Len(); i++ {
 		if err = m.SerializeValue(value.Index(i), fieldMetadata, buffer); err != nil {
-			return fmt.Errorf("%w: error while serializing slice element on index %d", err, i)
+			return fmt.Errorf("%w: error serializing slice element on index %d", err, i)
 		}
 	}
 	return
@@ -800,6 +799,7 @@ func (m *Serializer) serializeArray(value reflect.Value, fieldMetadata FieldMeta
 
 	for i := 0; i < arrayLen; i++ {
 		if err = m.SerializeValue(value.Index(i), fieldMetadata, buffer); err != nil {
+			err = fmt.Errorf("%w: error serializing array elem on position %d", err, i)
 			break
 		}
 	}
@@ -825,6 +825,7 @@ func (m *Serializer) serializeBinarySerializer(value reflect.Value, fieldMetadat
 	var bytesMarshalled []byte
 
 	if bytesMarshalled, err = marshaller.SerializeBytes(m, fieldMetadata); err != nil {
+		err = fmt.Errorf("%w: error serializing using refseri.BinarySerializer", err)
 		return
 	}
 
@@ -839,13 +840,13 @@ func (m *Serializer) serializeBinaryMarshaller(value reflect.Value, fieldMetadat
 	var bytesMarshalled []byte
 
 	if bytesMarshalled, err = marshaller.MarshalBinary(); err != nil {
-		err = fmt.Errorf("%w: error while serializing structure", err)
+		err = fmt.Errorf("%w: error serializing encoding.BinaryMarshaler", err)
 		return
 	}
 
 	// write number of bytes the struct was serialized to
 	if err = WriteLen(len(bytesMarshalled), fieldMetadata.LengthPrefixType, buffer); err != nil {
-		err = fmt.Errorf("%w: error while serializing length of the serialized structure", err)
+		err = fmt.Errorf("%w: error serializing length of the serialized structure", err)
 		return
 	}
 	// write byte slice of serialized structure

@@ -1,6 +1,7 @@
 package orderedmap
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -220,22 +221,30 @@ func (orderedMap *OrderedMap) SerializeBytes(m *refseri.Serializer, fieldMetadat
 	}
 	var encodedKeyType uint32
 	var encodedValType uint32
+	var i int
 	orderedMap.ForEach(func(key, value interface{}) bool {
 		encodedKeyType, err = m.EncodeType(reflect.TypeOf(key))
 		if err != nil {
+			err = fmt.Errorf("%w: error encoding key type on index %d", err, i)
 			return false
 		}
 		encodedValType, err = m.EncodeType(reflect.TypeOf(value))
 		if err != nil {
+			err = fmt.Errorf("%w: error encoding value type on index %d", err, i)
 			return false
 		}
 		buffer.WriteUint32(encodedKeyType)
 		buffer.WriteUint32(encodedValType)
 		err = m.SerializeValue(reflect.ValueOf(key), fieldMetadata, buffer)
 		if err != nil {
+			err = fmt.Errorf("%w: error serializing key %d", err, i)
 			return false
 		}
 		err = m.SerializeValue(reflect.ValueOf(value), fieldMetadata, buffer)
+		if err != nil {
+			err = fmt.Errorf("%w: error serializing value on index %d", err, i)
+		}
+		i++
 		return err == nil
 	})
 	if err != nil {
@@ -267,28 +276,34 @@ func (orderedMap *OrderedMap) DeserializeBytes(buffer *marshalutil.MarshalUtil, 
 	for i := 0; i < orderedMapSize; i++ {
 		encodedKeyType, err = buffer.ReadUint32()
 		if err != nil {
+			err = fmt.Errorf("%w: error reading key type on index %d", err, i)
 			return
 		}
 		encodedValueType, err = buffer.ReadUint32()
 		if err != nil {
+			err = fmt.Errorf("%w: error reading value type on index %d", err, i)
 			return
 		}
 		keyType, err = m.DecodeType(encodedKeyType)
 		if err != nil {
+			err = fmt.Errorf("%w: error decoding key type on index %d", err, i)
 			return
 		}
 		valueType, err = m.DecodeType(encodedValueType)
 		if err != nil {
+			err = fmt.Errorf("%w: error decoding value type on index %d", err, i)
 			return
 		}
 
 		var key, value interface{}
 		key, err = m.DeserializeType(keyType, fieldMetadata, buffer)
 		if err != nil {
+			err = fmt.Errorf("%w: error deserializing key on index %d", err, i)
 			return
 		}
 		value, err = m.DeserializeType(valueType, fieldMetadata, buffer)
 		if err != nil {
+			err = fmt.Errorf("%w: error deserializing value on index %d", err, i)
 			return
 		}
 		orderedMap.Set(key, value)

@@ -8,8 +8,8 @@ var ErrNotAllBytesRead = errors.New("did not read all bytes from the buffer")
 // ErrMapNotSupported error returned when trying to serialize/deserialize native map type
 var ErrMapNotSupported = errors.New("native map type is not supported. use orderedmap instead")
 
-//ErrSerializeInterface error returned when there is a problem during interface serialization
-var ErrSerializeInterface = errors.New("couldn't deserialize interface")
+//ErrDeserializeInterface error returned when there is a problem during interface serialization
+var ErrDeserializeInterface = errors.New("couldn't deserialize interface")
 
 //ErrUnpackAnonymous error returned when 'unpack' tag is added to anonymous field
 var ErrUnpackAnonymous = errors.New("cannot unpack on non anonymous field")
