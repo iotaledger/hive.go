@@ -46,7 +46,7 @@ func TestDeserializer_ReadSliceOfObjects(t *testing.T) {
 	bytesRead, err := serializer.NewDeserializer(data).
 		ReadSliceOfObjects(func(seri serializer.Serializables) {
 			readObjects = seri
-		}, serializer.DeSeriModePerformValidation, serializer.SeriSliceLengthAsUint16, serializer.TypeDenotationByte, DummyTypeSelector, nil, func(err error) error { return err }).
+		}, serializer.DeSeriModePerformValidation, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, DummyTypeSelector, nil, func(err error) error { return err }).
 		ConsumedAll(func(left int, err error) error { return err }).
 		Done()
 
@@ -94,7 +94,7 @@ func TestDeserializer_ReadString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var s string
 			_, err := serializer.NewDeserializer(tt.args.data).
-				ReadString(&s, serializer.SeriSliceLengthAsUint16, func(err error) error {
+				ReadString(&s, serializer.SeriLengthPrefixTypeAsUint16, func(err error) error {
 					return err
 				}).
 				ConsumedAll(func(left int, err error) error { return err }).
