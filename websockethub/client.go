@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/iotaledger/hive.go/typeutils"
 )
 
@@ -98,7 +99,7 @@ func (c *Client) checkPong() {
 
 	defer func() {
 		select {
-		case <-c.hub.shutdownSignal:
+		case <-c.hub.ctx.Done():
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
 		default:
@@ -140,7 +141,7 @@ func (c *Client) checkPong() {
 		if c.ReceiveChan != nil {
 			select {
 
-			case <-c.hub.shutdownSignal:
+			case <-c.hub.ctx.Done():
 				return
 
 			case <-c.ExitSignal:
@@ -172,7 +173,7 @@ func (c *Client) writePump() {
 		pingTicker.Stop()
 
 		select {
-		case <-c.hub.shutdownSignal:
+		case <-c.hub.ctx.Done():
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
 		default:
@@ -191,7 +192,7 @@ func (c *Client) writePump() {
 	for {
 		select {
 
-		case <-c.hub.shutdownSignal:
+		case <-c.hub.ctx.Done():
 			return
 
 		case <-c.ExitSignal:
@@ -235,7 +236,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 
 	if len(dontDrop) > 0 && dontDrop[0] {
 		select {
-		case <-c.hub.shutdownSignal:
+		case <-c.hub.ctx.Done():
 		case <-c.ExitSignal:
 		case <-c.sendChanClosed:
 		case c.sendChan <- msg:
@@ -244,7 +245,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	}
 
 	select {
-	case <-c.hub.shutdownSignal:
+	case <-c.hub.ctx.Done():
 	case <-c.ExitSignal:
 	case <-c.sendChanClosed:
 	case c.sendChan <- msg:
