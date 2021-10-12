@@ -301,7 +301,7 @@ func (d *OrderedDaemon) stopWorkers() {
 		for _, name := range d.shutdownOrderWorker {
 			worker := d.workers[name]
 			if !worker.running.IsSet() {
-				// the worker's shutdown channel will be automatically garbage collected
+				worker.ctxCancel()
 				continue
 			}
 			// if the current worker has a lower priority...
