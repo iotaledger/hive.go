@@ -1,6 +1,7 @@
 package timeutil
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,17 +9,17 @@ import (
 	"go.uber.org/atomic"
 )
 
-func TestTicker_ExternalShutdownSignal(t *testing.T) {
+func TestTicker_ExternalContext(t *testing.T) {
 	// use counter to track execution state
 	counter := atomic.NewUint64(0)
 
-	// create "external" shutdown signal
-	shutdownChan := make(chan struct{}, 1)
+	// create "external" context
+	ctx, ctxCancel := context.WithCancel(context.Background())
 	go func() {
 		for {
 			time.Sleep(10 * time.Millisecond)
 			if counter.Load() > 2 {
-				close(shutdownChan)
+				ctxCancel()
 				return
 			}
 		}
@@ -29,7 +30,7 @@ func TestTicker_ExternalShutdownSignal(t *testing.T) {
 		counter.Inc()
 		time.Sleep(1 * time.Second)
 		counter.Inc()
-	}, 100*time.Millisecond, shutdownChan)
+	}, 100*time.Millisecond, ctx)
 
 	// wait for the shutdown signal
 	ticker.WaitForShutdown()

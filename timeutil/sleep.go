@@ -1,12 +1,13 @@
 package timeutil
 
 import (
+	"context"
 	"time"
 )
 
-func Sleep(interval time.Duration, shutdownSignal <-chan struct{}) bool {
+func Sleep(ctx context.Context, interval time.Duration) bool {
 	select {
-	case <-shutdownSignal:
+	case <-ctx.Done():
 		return false
 
 	case <-time.After(interval):

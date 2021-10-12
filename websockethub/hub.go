@@ -1,6 +1,7 @@
 package websockethub
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -33,8 +34,9 @@ type Hub struct {
 	// unregister requests from clients.
 	unregister chan *Client
 
-	// signal shutdown of the websocket hub
-	shutdownSignal chan struct{}
+	// context of the websocket hub
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 
 	// indicates that the websocket hub was shut down
 	shutdownFlag *typeutils.AtomicBool
@@ -50,6 +52,8 @@ type message struct {
 }
 
 func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	return &Hub{
 		logger:                logger,
 		upgrader:              upgrader,
@@ -58,7 +62,8 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		broadcast:             make(chan *message, broadcastQueueSize),
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
-		shutdownSignal:        make(chan struct{}),
+		ctx:                   ctx,
+		ctxCancel:             ctxCancel,
 		shutdownFlag:          typeutils.NewAtomicBool(),
 		clientReadLimit:       clientReadLimit,
 	}
@@ -80,14 +85,14 @@ func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
 
 	if notDrop {
 		select {
-		case <-h.shutdownSignal:
+		case <-h.ctx.Done():
 		case h.broadcast <- msg:
 		}
 		return
 	}
 
 	select {
-	case <-h.shutdownSignal:
+	case <-h.ctx.Done():
 	case h.broadcast <- msg:
 	default:
 	}
@@ -119,13 +124,13 @@ drainLoop:
 }
 
 // Run starts the hub.
-func (h *Hub) Run(shutdownSignal <-chan struct{}) {
+func (h *Hub) Run(ctx context.Context) {
 
 	for {
 		select {
-		case <-shutdownSignal:
+		case <-ctx.Done():
 			h.shutdownFlag.Set()
-			close(h.shutdownSignal)
+			h.ctxCancel()
 
 			for client := range h.clients {
 				h.removeClient(client)
@@ -169,7 +174,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 					}
 
 					select {
-					case <-shutdownSignal:
+					case <-ctx.Done():
 					case <-client.ExitSignal:
 					case <-client.sendChanClosed:
 					case client.sendChan <- message.data:
@@ -186,7 +191,7 @@ func (h *Hub) Run(shutdownSignal <-chan struct{}) {
 				}
 
 				select {
-				case <-shutdownSignal:
+				case <-ctx.Done():
 				case <-client.ExitSignal:
 				case <-client.sendChanClosed:
 				case client.sendChan <- message.data:
@@ -235,7 +240,7 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 	}
 
 	select {
-	case <-h.shutdownSignal:
+	case <-h.ctx.Done():
 	case h.register <- client:
 	}
 }

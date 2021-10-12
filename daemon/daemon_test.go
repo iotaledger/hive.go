@@ -51,9 +51,9 @@ func TestStartShutdown(t *testing.T) {
 	d := daemon.New()
 
 	var isShutdown, wasStarted typeutils.AtomicBool
-	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	err := d.BackgroundWorker("A", func(ctx context.Context) {
 		wasStarted.Set()
-		<-shutdownSignal
+		<-ctx.Done()
 		isShutdown.Set()
 	})
 	require.NoError(t, err)
@@ -76,9 +76,9 @@ func TestRun(t *testing.T) {
 	d := daemon.New()
 
 	var workerStarted typeutils.AtomicBool
-	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	err := d.BackgroundWorker("A", func(ctx context.Context) {
 		workerStarted.Set()
-		<-shutdownSignal
+		<-ctx.Done()
 	})
 	require.NoError(t, err)
 
@@ -105,8 +105,8 @@ func TestShutdownOrder(t *testing.T) {
 	feedback := make(chan int, len(orders))
 	for _, order := range orders {
 		o := order
-		err := d.BackgroundWorker(strconv.Itoa(o), func(shutdownSignal <-chan struct{}) {
-			<-shutdownSignal
+		err := d.BackgroundWorker(strconv.Itoa(o), func(ctx context.Context) {
+			<-ctx.Done()
 			feedback <- o
 		}, o)
 		require.NoError(t, err)
@@ -124,14 +124,14 @@ func TestShutdownOrder(t *testing.T) {
 func TestGetRunningBackgroundWorkers(t *testing.T) {
 	d := daemon.New()
 
-	err := d.BackgroundWorker("quick", func(shutdownSignal <-chan struct{}) {
-		<-shutdownSignal
+	err := d.BackgroundWorker("quick", func(ctx context.Context) {
+		<-ctx.Done()
 	})
 	require.NoError(t, err)
 
 	blocker := make(chan struct{})
-	err = d.BackgroundWorker("blocked", func(shutdownSignal <-chan struct{}) {
-		<-shutdownSignal
+	err = d.BackgroundWorker("blocked", func(ctx context.Context) {
+		<-ctx.Done()
 		<-blocker
 	})
 	require.NoError(t, err)
@@ -152,8 +152,8 @@ func TestGetRunningBackgroundWorkers(t *testing.T) {
 func TestShutdownTwice(t *testing.T) {
 	d := daemon.New()
 
-	err := d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		<-shutdownSignal
+	err := d.BackgroundWorker("A", func(ctx context.Context) {
+		<-ctx.Done()
 		// sleep longer than the grace time before shutting down
 		time.Sleep(2 * graceTime)
 	})
@@ -172,19 +172,19 @@ func TestReRun(t *testing.T) {
 	d := daemon.New()
 
 	terminate := make(chan struct{}, 1)
-	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	require.NoError(t, d.BackgroundWorker("A", func(ctx context.Context) {
 		<-terminate
 	}))
 
 	// should throw an error if another worker with the same name is added before the daemon is started
-	require.Error(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		<-shutdownSignal
+	require.Error(t, d.BackgroundWorker("A", func(ctx context.Context) {
+		<-ctx.Done()
 	}))
 	d.Start()
 
 	// should throw an error if another worker with the same name is still running
-	require.Error(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
-		<-shutdownSignal
+	require.Error(t, d.BackgroundWorker("A", func(ctx context.Context) {
+		<-ctx.Done()
 	}))
 
 	terminate <- struct{}{}
@@ -192,9 +192,9 @@ func TestReRun(t *testing.T) {
 
 	// should throw no error because the daemon was terminated and can be reused now
 	var wasStarted typeutils.AtomicBool
-	require.NoError(t, d.BackgroundWorker("A", func(shutdownSignal <-chan struct{}) {
+	require.NoError(t, d.BackgroundWorker("A", func(ctx context.Context) {
 		wasStarted.Set()
-		<-shutdownSignal
+		<-ctx.Done()
 	}))
 
 	d.ShutdownAndWait()
