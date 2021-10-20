@@ -1,6 +1,7 @@
 package backoff
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -106,9 +107,9 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	cancel := make(chan struct{})
+	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	p := ZeroBackOff().With(Cancel(cancel))
+	p := ZeroBackOff().With(Cancel(ctx))
 
 	stopped := make(chan struct{}, 1)
 	go func() {
@@ -124,7 +125,7 @@ func TestCancel(t *testing.T) {
 		assert.FailNow(t, "retry stopped prematurely")
 	default:
 	}
-	close(cancel)
+	ctxCancel()
 	<-stopped
 }
 

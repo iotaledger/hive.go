@@ -1,17 +1,20 @@
 package workerpool
 
 import (
+	"context"
 	"sync"
 
 	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type WorkerPool struct {
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
 	workerFnc func(Task)
 	options   *Options
 
-	calls     chan Task
-	terminate chan struct{}
+	calls chan Task
 
 	running  bool
 	shutdown bool
@@ -27,11 +30,14 @@ func voidCaller(handler interface{}, params ...interface{}) {
 func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	result = &WorkerPool{
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
 		workerFnc: workerFnc,
 		options:   options,
 		calls:     make(chan Task, options.QueueSize),
-		terminate: make(chan struct{}),
 	}
 
 	return
@@ -107,7 +113,7 @@ func (wp *WorkerPool) Stop() {
 		wp.shutdown = true
 		wp.running = false
 
-		close(wp.terminate)
+		wp.ctxCancel()
 	}
 
 	wp.mutex.Unlock()
@@ -137,7 +143,7 @@ func (wp *WorkerPool) startWorkers() {
 			for !aborted {
 				select {
 
-				case <-wp.terminate:
+				case <-wp.ctx.Done():
 					aborted = true
 
 					if wp.options.FlushTasksAtShutdown {
