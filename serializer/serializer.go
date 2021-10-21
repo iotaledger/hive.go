@@ -534,9 +534,7 @@ func (d *Deserializer) ReadUint256(dest *big.Int, errProducer ErrProducer) *Dese
 		return d
 	}
 
-	l := len(d.src)
-
-	if l < UInt256ByteSize {
+	if len(d.src) < UInt256ByteSize {
 		d.err = errProducer(ErrDeserializationNotEnoughData)
 		return d
 	}
@@ -545,7 +543,7 @@ func (d *Deserializer) ReadUint256(dest *big.Int, errProducer ErrProducer) *Dese
 	copy(source, d.src[:UInt256ByteSize])
 
 	d.offset += UInt256ByteSize
-	d.src = d.src[l:]
+	d.src = d.src[UInt256ByteSize:]
 
 	// convert to big endian
 	for i, j := 0, len(source)-1; i < j; i, j = i+1, j-1 {
