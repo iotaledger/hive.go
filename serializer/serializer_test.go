@@ -3,9 +3,12 @@ package serializer_test
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/iotaledger/hive.go/serializer"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -106,6 +109,69 @@ func TestDeserializer_ReadString(t *testing.T) {
 			if s != tt.want {
 				t.Errorf("ReadStringFromBytes() got = %v, want %v", s, tt.want)
 			}
+		})
+	}
+}
+
+func TestReadWriteUint256(t *testing.T) {
+	tests := []struct {
+		name        string
+		x           *big.Int
+		expectedErr error
+	}{
+		{
+			name:        "ok - max uint256",
+			x:           abi.MaxUint256,
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - 0",
+			x:           new(big.Int).SetInt64(0),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - 1337",
+			x:           new(big.Int).SetInt64(1337),
+			expectedErr: nil,
+		},
+		{
+			name:        "err - negative 10",
+			x:           new(big.Int).SetInt64(-10),
+			expectedErr: serializer.ErrUint256NumNegative,
+		},
+		{
+			name:        "err - too big",
+			x:           new(big.Int).Add(abi.MaxUint256, abi.MaxUint256),
+			expectedErr: serializer.ErrUint256TooBig,
+		},
+		{
+			name:        "err - nil big.Int",
+			x:           nil,
+			expectedErr: serializer.ErrUint256Nil,
+		},
+	}
+
+	returnErr := func(err error) error { return err }
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serializedBytes, err := serializer.NewSerializer().WriteUint256(tt.x, returnErr).Serialize()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			y := new(big.Int)
+			_, err = serializer.NewDeserializer(serializedBytes).ReadUint256(y, returnErr).Done()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+			require.NoError(t, err)
+
+			require.Equal(t, 0, tt.x.Cmp(y))
 		})
 	}
 }

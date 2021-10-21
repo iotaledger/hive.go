@@ -30,6 +30,12 @@ var (
 	ErrDeserializationLengthInvalid = errors.New("length denotation invalid")
 	// ErrDeserializationNotAllConsumed gets returned if not all bytes were consumed during deserialization of a given type.
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
+	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit
+	ErrUint256NumNegative = errors.New("uint256 is negative")
+	// ErrUint256TooBig gets returned when a supposed uint256 big.Int value is more than 32 bytes in size.
+	ErrUint256TooBig = errors.New("uint256 big int is too big")
+	// ErrUint256Nil gets returned when a uint256 *big.Int is nil.
+	ErrUint256Nil = errors.New("uint256 must not be nil")
 )
 
 // CheckType checks that the denoted type equals the shouldType.

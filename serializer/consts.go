@@ -17,6 +17,8 @@ const (
 	Int64ByteSize = 8
 	// UInt64ByteSize is the byte size of an uint64.
 	UInt64ByteSize = 8
+	// UInt256ByteSize is the byte size of an uint256.
+	UInt256ByteSize = 32
 	// Float64ByteSize is the byte size of a float64.
 	Float64ByteSize = 8
 	// TypeDenotationByteSize is the size of a type denotation.

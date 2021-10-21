@@ -5,12 +5,22 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/big"
 	"time"
 )
 
 type (
+	// ArrayOf12Bytes is an array of 12 bytes.
+	ArrayOf12Bytes = [12]byte
+
+	// ArrayOf20Bytes is an array of 20 bytes.
+	ArrayOf20Bytes = [20]byte
+
 	// ArrayOf32Bytes is an array of 32 bytes.
 	ArrayOf32Bytes = [32]byte
+
+	// ArrayOf38Bytes is an array of 38 bytes.
+	ArrayOf38Bytes = [38]byte
 
 	// ArrayOf64Bytes is an array of 64 bytes.
 	ArrayOf64Bytes = [64]byte
@@ -106,6 +116,43 @@ func (s *Serializer) WriteNum(v interface{}, errProducer ErrProducer) *Serialize
 	if err := binary.Write(&s.buf, binary.LittleEndian, v); err != nil {
 		s.err = errProducer(err)
 	}
+	return s
+}
+
+// WriteUint256 writes the given *big.Int v representing an uint256 value to the Serializer.
+func (s *Serializer) WriteUint256(num *big.Int, errProducer ErrProducer) *Serializer {
+	if s.err != nil {
+		return s
+	}
+
+	if num == nil {
+		s.err = errProducer(ErrUint256Nil)
+		return s
+	}
+
+	switch {
+	case num.Sign() == -1:
+		s.err = errProducer(ErrUint256NumNegative)
+		return s
+	case len(num.Bytes()) > UInt256ByteSize:
+		s.err = errProducer(ErrUint256TooBig)
+		return s
+	}
+
+	numBytes := num.Bytes()
+
+	// order to little endianness
+	for i, j := 0, len(numBytes)-1; i < j; i, j = i+1, j-1 {
+		numBytes[i], numBytes[j] = numBytes[j], numBytes[i]
+	}
+
+	padded := append(numBytes, make([]byte, 32-len(numBytes))...)
+
+	if _, err := s.buf.Write(padded); err != nil {
+		s.err = errProducer(err)
+		return s
+	}
+
 	return s
 }
 
@@ -481,6 +528,35 @@ func (d *Deserializer) ReadByte(dest *byte, errProducer ErrProducer) *Deserializ
 	return d
 }
 
+// ReadUint256 reads a little endian encoded uint256 into dest.
+func (d *Deserializer) ReadUint256(dest *big.Int, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+
+	l := len(d.src)
+
+	if l < UInt256ByteSize {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+
+	source := make([]byte, UInt256ByteSize)
+	copy(source, d.src[:UInt256ByteSize])
+
+	d.offset += UInt256ByteSize
+	d.src = d.src[l:]
+
+	// convert to big endian
+	for i, j := 0, len(source)-1; i < j; i, j = i+1, j-1 {
+		source[i], source[j] = source[j], source[i]
+	}
+
+	dest.SetBytes(source)
+
+	return d
+}
+
 // ReadNum reads a number into dest.
 func (d *Deserializer) ReadNum(dest interface{}, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
@@ -585,12 +661,72 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 	return d
 }
 
+// ReadArrayOf12Bytes reads an array of 12 bytes.
+func (d *Deserializer) ReadArrayOf12Bytes(arr *ArrayOf12Bytes, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+	const length = 12
+
+	l := len(d.src)
+	if l < length {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+
+	copy(arr[:], d.src[:length])
+	d.offset += length
+	d.src = d.src[length:]
+
+	return d
+}
+
+// ReadArrayOf20Bytes reads an array of 20 bytes.
+func (d *Deserializer) ReadArrayOf20Bytes(arr *ArrayOf20Bytes, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+	const length = 20
+
+	l := len(d.src)
+	if l < length {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+
+	copy(arr[:], d.src[:length])
+	d.offset += length
+	d.src = d.src[length:]
+
+	return d
+}
+
 // ReadArrayOf32Bytes reads an array of 32 bytes.
 func (d *Deserializer) ReadArrayOf32Bytes(arr *ArrayOf32Bytes, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
 	const length = 32
+
+	l := len(d.src)
+	if l < length {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+
+	copy(arr[:], d.src[:length])
+	d.offset += length
+	d.src = d.src[length:]
+
+	return d
+}
+
+// ReadArrayOf38Bytes reads an array of 38 bytes.
+func (d *Deserializer) ReadArrayOf38Bytes(arr *ArrayOf38Bytes, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+	const length = 38
 
 	l := len(d.src)
 	if l < length {
