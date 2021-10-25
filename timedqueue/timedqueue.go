@@ -2,6 +2,7 @@ package timedqueue
 
 import (
 	"container/heap"
+	"context"
 	"sync"
 	"time"
 
@@ -20,16 +21,20 @@ type TimedQueue struct {
 
 	maxSize int
 
-	shutdownSignal chan byte
-	isShutdown     bool
-	shutdownFlags  ShutdownFlag
-	shutdownMutex  sync.Mutex
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	isShutdown    bool
+	shutdownFlags ShutdownFlag
+	shutdownMutex sync.Mutex
 }
 
 // New is the constructor for the TimedQueue.
 func New(opts ...Option) (queue *TimedQueue) {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	queue = &TimedQueue{
-		shutdownSignal: make(chan byte),
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
 	}
 	queue.waitCond = sync.NewCond(&queue.heapMutex)
 
@@ -123,8 +128,8 @@ func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 	// release the lock
 	t.shutdownMutex.Unlock()
 
-	// close the shutdown channel (notify waiting threads)
-	close(t.shutdownSignal)
+	// cancel the context to shutdown (notify waiting threads)
+	t.ctxCancel()
 
 	t.heapMutex.Lock()
 	switch queuedElementsCount := len(t.heap); queuedElementsCount {
@@ -181,7 +186,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 		// wait for the return value to become due
 		select {
 		// react if the queue was shutdown while waiting
-		case <-t.shutdownSignal:
+		case <-t.ctx.Done():
 			// abort if the pending elements are supposed to be canceled
 			if t.shutdownFlags.HasBits(CancelPendingElements) {
 				return nil

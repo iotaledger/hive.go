@@ -4,8 +4,8 @@ import (
 	"context"
 )
 
-// WorkerFunc is the function to run a worker accepting its shutdown signal handler channel.
-type WorkerFunc = func(shutdownSignal <-chan struct{})
+// WorkerFunc is the function to run a worker accepting its context.
+type WorkerFunc = func(ctx context.Context)
 
 // Daemon specifies an interface to run background go routines.
 type Daemon interface {

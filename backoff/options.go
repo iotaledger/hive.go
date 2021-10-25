@@ -1,6 +1,7 @@
 package backoff
 
 import (
+	"context"
 	"math/rand"
 	"time"
 )
@@ -65,11 +66,11 @@ func Timeout(timeout time.Time) Option {
 	})
 }
 
-// Cancel configures a backoff policy to stop the given channel is closed.
-func Cancel(done <-chan struct{}) Option {
+// Cancel configures a backoff policy to stop if the given context is done.
+func Cancel(ctx context.Context) Option {
 	return statelessOptionFunc(func(duration time.Duration) time.Duration {
 		select {
-		case <-done:
+		case <-ctx.Done():
 			return Stop
 		default:
 		}

@@ -107,10 +107,11 @@ type OrderedDaemon struct {
 }
 
 type worker struct {
-	handler        WorkerFunc
-	running        *typeutils.AtomicBool
-	shutdownOrder  int
-	shutdownSignal chan struct{}
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	handler       WorkerFunc
+	running       *typeutils.AtomicBool
+	shutdownOrder int
 }
 
 // GetRunningBackgroundWorkers gets the running background workers sorted by their priority.
@@ -143,7 +144,7 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 		if d.logger != nil {
 			d.logger.Debugf("Starting Background Worker: %s ...", name)
 		}
-		backgroundWorker(worker.shutdownSignal)
+		backgroundWorker(worker.ctx)
 		worker.running.UnSet()
 		shutdownOrderWaitGroup.Done()
 		if d.logger != nil {
@@ -198,11 +199,14 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 		d.wgPerSameShutdownOrder[shutdownOrder] = &sync.WaitGroup{}
 	}
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	d.workers[name] = &worker{
-		handler:        handler,
-		running:        typeutils.NewAtomicBool(),
-		shutdownOrder:  shutdownOrder,
-		shutdownSignal: make(chan struct{}, 1),
+		ctx:           ctx,
+		ctxCancel:     ctxCancel,
+		handler:       handler,
+		running:       typeutils.NewAtomicBool(),
+		shutdownOrder: shutdownOrder,
 	}
 
 	// add to the shutdown sequence and order by order
@@ -297,7 +301,7 @@ func (d *OrderedDaemon) stopWorkers() {
 		for _, name := range d.shutdownOrderWorker {
 			worker := d.workers[name]
 			if !worker.running.IsSet() {
-				// the worker's shutdown channel will be automatically garbage collected
+				worker.ctxCancel()
 				continue
 			}
 			// if the current worker has a lower priority...
@@ -309,7 +313,7 @@ func (d *OrderedDaemon) stopWorkers() {
 			if d.logger != nil {
 				d.logger.Debugf("Stopping Background Worker: %s ...", name)
 			}
-			close(worker.shutdownSignal)
+			worker.ctxCancel()
 		}
 		// wait for the last priority to finish
 		d.wgPerSameShutdownOrder[prevPriority].Wait()
