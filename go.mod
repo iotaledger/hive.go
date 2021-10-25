@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/cockroachdb/pebble v0.0.0-20210817201821-5e4468e97817
 	github.com/dgraph-io/badger/v2 v2.2007.3
+	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.4.2
 	github.com/knadh/koanf v1.2.1
@@ -21,7 +22,7 @@ require (
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.9.0
-	go.uber.org/dig v1.12.0 // indirect
+	go.uber.org/dig v1.12.0
 	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
