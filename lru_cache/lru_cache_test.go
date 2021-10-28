@@ -1,14 +1,19 @@
-package lru_cache_test
+package lru_cache
 
 import (
 	"fmt"
-	"github.com/iotaledger/hive.go/lru_cache"
-	"github.com/iotaledger/hive.go/typeutils"
+	"runtime"
 	"testing"
+
+	"golang.org/x/crypto/blake2b"
+
+	"github.com/iotaledger/hive.go/crypto"
+	"github.com/iotaledger/hive.go/types"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 func TestLRUCache(t *testing.T) {
-	cache := lru_cache.NewLRUCache(5)
+	cache := NewLRUCache(5)
 
 	cache.ComputeIfAbsent("test", func() interface{} {
 		return 12
@@ -88,7 +93,7 @@ func TestLRUCache(t *testing.T) {
 }
 
 func TestLRUCache_ComputeIfPresent(t *testing.T) {
-	cache := lru_cache.NewLRUCache(5)
+	cache := NewLRUCache(5)
 	cache.Set(8, 9)
 
 	cache.ComputeIfPresent(8, func(value interface{}) interface{} {
@@ -123,7 +128,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 		called = true
 	}
 
-	cache := lru_cache.NewLRUCache(10, &lru_cache.LRUCacheOptions{
+	cache := NewLRUCache(10, &LRUCacheOptions{
 		EvictionCallback:  cb,
 		EvictionBatchSize: 5,
 		IdleTimeout:       0,
@@ -144,8 +149,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 }
 
 func TestLRUCache_Eviction(t *testing.T) {
-
-	cache := lru_cache.NewLRUCache(100, &lru_cache.LRUCacheOptions{
+	cache := NewLRUCache(100, &LRUCacheOptions{
 		EvictionCallback: func(key interface{}, value interface{}) {
 			evictedKey := key.(string)
 			evictedObj := value.(int)
@@ -172,3 +176,47 @@ func TestLRUCache_Eviction(t *testing.T) {
 		println(fmt.Sprintf("Key: %d, Value: %d", i, result))
 	}
 }
+
+func TestLRUCache_MemLeak(t *testing.T) {
+	cache := NewLRUCache(1000, &LRUCacheOptions{
+		CleanupThreshold: 0,
+	})
+
+	fmt.Println(MemUsage())
+
+	entriesWritten := 0
+
+	for k := 0; k < 100000; k++ {
+		for i := 0; i < 10000; i++ {
+			entriesWritten++
+			cache.Set(randomBranchID(), make(branchIDs))
+		}
+
+		if k%100 == 0 {
+			fmt.Println(MemUsage())
+		}
+	}
+
+	cache.directory = nil
+	fmt.Println(MemUsage())
+
+	cache.krwMutex = nil
+	fmt.Println(MemUsage())
+}
+
+func MemUsage() uint64 {
+	runtime.GC()
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	return m.Alloc
+}
+
+type branchID [32]byte
+
+func randomBranchID() branchID {
+	return blake2b.Sum256([]byte(fmt.Sprintf("%f", crypto.Randomness.Float64())))
+}
+
+type branchIDs map[branchID]types.Empty

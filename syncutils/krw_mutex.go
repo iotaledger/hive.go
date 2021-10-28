@@ -3,6 +3,7 @@ package syncutils
 type KRWMutex struct {
 	keyMutexConsumers map[interface{}]int
 	keyMutexes        map[interface{}]*RWMutex
+	cleanupCounter    int
 	mutex             RWMutex
 }
 
@@ -38,6 +39,23 @@ func (kwrMutex *KRWMutex) Free(key interface{}) {
 		if val == 1 {
 			delete(kwrMutex.keyMutexConsumers, key)
 			delete(kwrMutex.keyMutexes, key)
+			kwrMutex.cleanupCounter++
+
+			if kwrMutex.cleanupCounter == 1024 {
+				kwrMutex.cleanupCounter = 0
+
+				keyMutexConsumersCopy := make(map[interface{}]int)
+				for k, v := range kwrMutex.keyMutexConsumers {
+					keyMutexConsumersCopy[k] = v
+				}
+				kwrMutex.keyMutexConsumers = keyMutexConsumersCopy
+
+				keyMutexesCopy := make(map[interface{}]*RWMutex)
+				for k, v := range kwrMutex.keyMutexes {
+					keyMutexesCopy[k] = v
+				}
+				kwrMutex.keyMutexes = keyMutexesCopy
+			}
 		} else {
 			kwrMutex.keyMutexConsumers[key] = val - 1
 		}

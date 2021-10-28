@@ -8,6 +8,7 @@ type LRUCacheOptions struct {
 	EvictionCallback  func(keyOrBatchedKeys interface{}, valueOrBatchedValues interface{})
 	EvictionBatchSize uint64
 	IdleTimeout       time.Duration
+	CleanupThreshold  int
 }
 
 var DEFAULT_OPTIONS = &LRUCacheOptions{

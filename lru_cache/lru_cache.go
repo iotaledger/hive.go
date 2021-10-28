@@ -16,6 +16,7 @@ type LRUCache struct {
 	doublyLinkedList *list.DoublyLinkedList
 	capacity         int
 	size             int
+	cleanupCounter   int
 	options          *LRUCacheOptions
 	mutex            syncutils.RWMutex
 	krwMutex         *syncutils.KRWMutex
@@ -35,6 +36,10 @@ func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
 		}
 	} else if currentOptions.EvictionBatchSize == 0 {
 		currentOptions.EvictionBatchSize = 1
+	}
+
+	if currentOptions.CleanupThreshold == 0 {
+		currentOptions.CleanupThreshold = 10 * capacity
 	}
 
 	return &LRUCache{
@@ -59,9 +64,7 @@ func (cache *LRUCache) Set(key interface{}, value interface{}) {
 }
 
 func (cache *LRUCache) set(key interface{}, value interface{}) {
-	directory := cache.directory
-
-	if element, exists := directory[key]; exists {
+	if element, exists := cache.directory[key]; exists {
 		element.Value.(*lruCacheElement).value = value
 		cache.promoteElement(element)
 		return
@@ -69,8 +72,11 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 
 	linkedListEntry := &list.DoublyLinkedListEntry{Value: &lruCacheElement{key: key, value: value}}
 	cache.doublyLinkedList.AddFirstEntry(linkedListEntry)
-	directory[key] = linkedListEntry
+	cache.directory[key] = linkedListEntry
 	cache.size++
+
+	cache.cleanupCounter++
+	defer cache.shrinkDictionaryIfNecessary()
 
 	if cache.size <= cache.capacity {
 		return
@@ -101,7 +107,7 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 	}
 	// remove the elements from the cache
 	for i := range elemsKeys {
-		delete(directory, elemsKeys[i])
+		delete(cache.directory, elemsKeys[i])
 	}
 	cache.size -= len(elemsToEvict)
 }
@@ -342,4 +348,21 @@ func (cache *LRUCache) DeleteAll() {
 	}
 
 	cache.mutex.Unlock()
+}
+
+func (cache *LRUCache) shrinkDictionaryIfNecessary() {
+	if cache.options.CleanupThreshold < 0 {
+		return
+	}
+
+	if cache.cleanupCounter >= cache.options.CleanupThreshold {
+		cache.cleanupCounter = 0
+
+		copiedDirectory := make(map[interface{}]*list.DoublyLinkedListEntry, len(cache.directory))
+		for k, v := range cache.directory {
+			cache.directory[k] = nil
+			copiedDirectory[k] = v
+		}
+		cache.directory = copiedDirectory
+	}
 }
