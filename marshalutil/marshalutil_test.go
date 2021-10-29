@@ -1,22 +1,80 @@
 package marshalutil
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test(t *testing.T) {
-	util := New(1)
-
+	util := New(16)
+	assert.Equal(t, 0, util.writeOffset)
+	assert.Equal(t, 0, util.readOffset)
+	assert.Equal(t, 0, util.size)
+	assert.Equal(t, 16, len(util.bytes))
 	util.WriteBytes(make([]byte, Uint64Size))
+	assert.Equal(t, 8, util.writeOffset)
+	assert.Equal(t, 0, util.readOffset)
+	assert.Equal(t, 8, util.size)
+	assert.Equal(t, 16, len(util.bytes))
 	util.WriteInt64(-12)
+	assert.Equal(t, 16, util.writeOffset)
+	assert.Equal(t, 0, util.readOffset)
+	assert.Equal(t, 16, util.size)
+	assert.Equal(t, 16, len(util.bytes))
 	util.WriteUint64(38)
+	assert.Equal(t, 24, util.writeOffset)
+	assert.Equal(t, 0, util.readOffset)
+	assert.Equal(t, 24, util.size)
+	assert.Equal(t, 24, len(util.bytes))
 	util.WriteUint64(38)
+	assert.Equal(t, 32, util.writeOffset)
+	assert.Equal(t, 0, util.readOffset)
+	assert.Equal(t, 32, util.size)
+	assert.Equal(t, 32, len(util.bytes))
 
-	fmt.Println(util.ReadBytes(Uint64Size))
-	fmt.Println(util.ReadInt64())
-	fmt.Println(util.ReadUint64())
-	fmt.Println(util.ReadUint64())
+	utilRestore := New(util.Bytes())
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
 
-	fmt.Println(util)
+	assert.Equal(t, 0, utilRestore.writeOffset)
+	assert.Equal(t, 0, utilRestore.readOffset)
+	assert.Equal(t, 32, utilRestore.size)
+	assert.Equal(t, 32, len(utilRestore.bytes))
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
+
+	bytesRead, err := utilRestore.ReadBytes(Uint64Size)
+	assert.NoError(t, err)
+	assert.EqualValues(t, make([]byte, Uint64Size), bytesRead)
+	assert.Equal(t, 0, utilRestore.writeOffset)
+	assert.Equal(t, 8, utilRestore.readOffset)
+	assert.Equal(t, 32, utilRestore.size)
+	assert.Equal(t, 32, len(utilRestore.bytes))
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
+
+	int64Read, err := utilRestore.ReadInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(-12), int64Read)
+	assert.Equal(t, 0, utilRestore.writeOffset)
+	assert.Equal(t, 16, utilRestore.readOffset)
+	assert.Equal(t, 32, utilRestore.size)
+	assert.Equal(t, 32, len(utilRestore.bytes))
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
+
+	int64Read2, err := utilRestore.ReadInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(38), int64Read2)
+	assert.Equal(t, 0, utilRestore.writeOffset)
+	assert.Equal(t, 24, utilRestore.readOffset)
+	assert.Equal(t, 32, utilRestore.size)
+	assert.Equal(t, 32, len(utilRestore.bytes))
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
+
+	int64Read3, err := utilRestore.ReadInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(38), int64Read3)
+	assert.Equal(t, 0, utilRestore.writeOffset)
+	assert.Equal(t, 32, utilRestore.readOffset)
+	assert.Equal(t, 32, utilRestore.size)
+	assert.Equal(t, 32, len(utilRestore.bytes))
+	assert.Equal(t, util.Bytes(), utilRestore.Bytes())
 }
