@@ -20,6 +20,8 @@ var (
 	ErrArrayValidationMaxElementsExceeded = errors.New("max count of elements within the array exceeded")
 	// ErrArrayValidationViolatesUniqueness gets returned if the array elements are not unique.
 	ErrArrayValidationViolatesUniqueness = errors.New("array elements must be unique")
+	// ErrArrayValidationViolatesTypeUniqueness gets returned if the array contains the same type multiple times.
+	ErrArrayValidationViolatesTypeUniqueness = errors.New("array elements must be of a unique type")
 	// ErrArrayValidationOrderViolatesLexicalOrder gets returned if the array elements are not in lexical order.
 	ErrArrayValidationOrderViolatesLexicalOrder = errors.New("array elements must be in their lexical order (byte wise)")
 	// ErrDeserializationNotEnoughData gets returned if there is not enough data available to deserialize a given object.
@@ -40,7 +42,7 @@ var (
 
 // CheckType checks that the denoted type equals the shouldType.
 func CheckType(data []byte, shouldType uint32) error {
-	if len(data) < 4 {
+	if len(data) < UInt32ByteSize {
 		return fmt.Errorf("%w: can't check type denotation", ErrDeserializationNotEnoughData)
 	}
 	actualType := binary.LittleEndian.Uint32(data)

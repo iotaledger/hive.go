@@ -3,6 +3,7 @@ package serializer_test
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -56,6 +57,98 @@ func TestDeserializer_ReadSliceOfObjects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(data), bytesRead)
 	assert.EqualValues(t, originObjs, readObjects)
+}
+
+type Stringers []fmt.Stringer
+
+func (s Stringers) ToSerializables() serializer.Serializables {
+	seris := make(serializer.Serializables, len(s))
+	for i, x := range s {
+		seris[i] = x.(serializer.Serializable)
+	}
+	return seris
+}
+
+func (s *Stringers) FromSerializables(seris serializer.Serializables) {
+	*s = make(Stringers, len(seris))
+	for i, seri := range seris {
+		(*s)[i] = seri.(fmt.Stringer)
+	}
+}
+
+type StructWithStringers struct {
+	Objects Stringers
+}
+
+func TestDeserializer_ReadSliceOfObjectsWithSerializableSlice(t *testing.T) {
+	var buf bytes.Buffer
+	originObjs := serializer.Serializables{
+		randA(), randA(), randB(), randA(), randB(), randB(),
+	}
+	assert.NoError(t, binary.Write(&buf, binary.LittleEndian, uint16(len(originObjs))))
+
+	for _, seri := range originObjs {
+		seriBytes, err := seri.Serialize(serializer.DeSeriModePerformValidation)
+		assert.NoError(t, err)
+		written, err := buf.Write(seriBytes)
+		assert.NoError(t, err)
+		assert.Equal(t, len(seriBytes), written)
+	}
+
+	data := buf.Bytes()
+
+	withStringers := StructWithStringers{}
+
+	bytesRead, err := serializer.NewDeserializer(data).
+		ReadSliceOfObjects(&withStringers.Objects, serializer.DeSeriModePerformValidation, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, DummyTypeSelector, nil, func(err error) error { return err }).
+		ConsumedAll(func(left int, err error) error { return err }).
+		Done()
+
+	assert.NoError(t, err)
+	assert.Equal(t, len(data), bytesRead)
+	assert.EqualValues(t, originObjs, withStringers.Objects.ToSerializables())
+}
+
+func TestDeserializer_ReadPayload(t *testing.T) {
+	source := randA()
+
+	data, _ := serializer.NewSerializer().WritePayload(source, serializer.DeSeriModePerformValidation, func(err error) error {
+		require.NoError(t, err)
+		return err
+	}).Serialize()
+
+	type StructWithA struct {
+		A *A
+	}
+
+	type StructWithAAsInterface struct {
+		A fmt.Stringer
+	}
+
+	withA := StructWithA{}
+	withAAsInterface := StructWithAAsInterface{}
+
+	bytesRead, err := serializer.NewDeserializer(data).
+		ReadPayload(&withA.A, serializer.DeSeriModePerformValidation, DummyTypeSelector, func(err error) error {
+			return err
+		}).
+		ConsumedAll(func(left int, err error) error { return err }).
+		Done()
+
+	assert.NoError(t, err)
+	assert.Equal(t, len(data), bytesRead)
+	assert.EqualValues(t, source, withA.A)
+
+	bytesRead, err = serializer.NewDeserializer(data).
+		ReadPayload(&withAAsInterface.A, serializer.DeSeriModePerformValidation, DummyTypeSelector, func(err error) error {
+			return err
+		}).
+		ConsumedAll(func(left int, err error) error { return err }).
+		Done()
+
+	assert.NoError(t, err)
+	assert.Equal(t, len(data), bytesRead)
+	assert.EqualValues(t, source, withAAsInterface.A)
 }
 
 func TestDeserializer_ReadString(t *testing.T) {

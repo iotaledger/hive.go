@@ -2,6 +2,7 @@ package serializer
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -24,6 +25,14 @@ type Serializable interface {
 
 // Serializables is a slice of Serializable.
 type Serializables []Serializable
+
+// SerializableSlice is a slice of a type which can convert itself to Serializables.
+type SerializableSlice interface {
+	// ToSerializables returns the representation of the slice as a Serializables.
+	ToSerializables() Serializables
+	// FromSerializables updates the slice itself with the given Serializables.
+	FromSerializables(seris Serializables)
+}
 
 // SerializableSelectorFunc is a function that given a type byte, returns an empty instance of the given underlying type.
 // If the type doesn't resolve, an error is returned.
@@ -56,6 +65,10 @@ const (
 	ArrayValidationModeNoDuplicates ArrayValidationMode = 1 << 0
 	// ArrayValidationModeLexicalOrdering instructs the array validation to check for lexical order.
 	ArrayValidationModeLexicalOrdering ArrayValidationMode = 1 << 1
+	// ArrayValidationModeAtMostOneOfEachTypeByte instructs the array validation to allow a given byte type to occur only once in the array.
+	ArrayValidationModeAtMostOneOfEachTypeByte ArrayValidationMode = 1 << 2
+	// ArrayValidationModeAtMostOneOfEachTypeUint32 instructs the array validation to allow a given uint32 type to occur only once in the array.
+	ArrayValidationModeAtMostOneOfEachTypeUint32 ArrayValidationMode = 1 << 3
 )
 
 // HasMode checks whether the array element validation mode includes the given mode.
@@ -72,6 +85,15 @@ type ArrayRules struct {
 	Max uint
 	// The mode of validation.
 	ValidationMode ArrayValidationMode
+}
+
+// ToWrittenObjectConsumer wraps this ArrayRules's ElementValidationFunc (according to ValidationMode) to a WrittenObjectConsumer.
+// If the passed in mode has no validation, the returned WrittenObjectConsumer is a no-op.
+func (ar *ArrayRules) ToWrittenObjectConsumer(mode DeSerializationMode) WrittenObjectConsumer {
+	if !mode.HasMode(DeSeriModePerformValidation) {
+		return func(index int, written []byte) error { return nil }
+	}
+	return WrittenObjectConsumer(ar.ElementValidationFunc(ar.ValidationMode))
 }
 
 // CheckBounds checks whether the given count violates the array bounds.
@@ -145,20 +167,71 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 	}
 }
 
+// AtMostOneOfEachTypeValidator returns an ElementValidationFunc which returns an error if a given type occurs multiple
+// times within the array.
+func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotationType) ElementValidationFunc {
+	seen := map[uint32]int{}
+	return func(index int, next []byte) error {
+		var key uint32
+		switch typeDenotation {
+		case TypeDenotationUint32:
+			if len(next) < UInt32ByteSize {
+				return fmt.Errorf("%w: not enough bytes to check type uniquness in array", ErrInvalidBytes)
+			}
+			key = binary.LittleEndian.Uint32(next)
+		case TypeDenotationByte:
+			if len(next) < OneByte {
+				return fmt.Errorf("%w: not enough bytes to check type uniquness in array", ErrInvalidBytes)
+			}
+			key = uint32(next[0])
+		default:
+			panic(fmt.Sprintf("unknown type denotation in AtMostOneOfEachTypeValidator passed: %d", typeDenotation))
+		}
+		prevIndex, has := seen[key]
+		if has {
+			return fmt.Errorf("%w: element %d and %d have the same type", ErrArrayValidationViolatesTypeUniqueness, index, prevIndex)
+		}
+		seen[key] = index
+		return nil
+	}
+}
+
 // ElementValidationFunc returns a new ElementValidationFunc according to the given mode.
 func (ar *ArrayRules) ElementValidationFunc(mode ArrayValidationMode) ElementValidationFunc {
 	var arrayElementValidator ElementValidationFunc
 
-	switch mode {
-	case ArrayValidationModeNone:
-	case ArrayValidationModeNoDuplicates:
-		arrayElementValidator = ar.ElementUniqueValidator()
-	case ArrayValidationModeLexicalOrdering:
-		arrayElementValidator = ar.LexicalOrderValidator()
-	case ArrayValidationModeNoDuplicates | ArrayValidationModeLexicalOrdering:
-		arrayElementValidator = ar.LexicalOrderWithoutDupsValidator()
-	default:
-		panic(ErrUnknownArrayValidationMode)
+	wrap := func(f ElementValidationFunc, f2 ElementValidationFunc) ElementValidationFunc {
+		return func(index int, next []byte) error {
+			if f != nil {
+				if err := f(index, next); err != nil {
+					return err
+				}
+			}
+			return f2(index, next)
+		}
+	}
+
+	for i := byte(1); i != 0; i <<= 1 {
+		switch ArrayValidationMode(byte(mode) & i) {
+		case ArrayValidationModeNone:
+		case ArrayValidationModeNoDuplicates:
+			if mode.HasMode(ArrayValidationModeLexicalOrdering) {
+				continue
+			}
+			arrayElementValidator = wrap(arrayElementValidator, ar.ElementUniqueValidator())
+		case ArrayValidationModeLexicalOrdering:
+			// optimization: if lexical order and no dups are enforced, then byte comparison
+			// to the previous element can be done instead of using a map
+			if mode.HasMode(ArrayValidationModeNoDuplicates) {
+				arrayElementValidator = wrap(arrayElementValidator, ar.LexicalOrderWithoutDupsValidator())
+				continue
+			}
+			arrayElementValidator = wrap(arrayElementValidator, ar.LexicalOrderValidator())
+		case ArrayValidationModeAtMostOneOfEachTypeByte:
+			arrayElementValidator = wrap(arrayElementValidator, ar.AtMostOneOfEachTypeValidator(TypeDenotationByte))
+		case ArrayValidationModeAtMostOneOfEachTypeUint32:
+			arrayElementValidator = wrap(arrayElementValidator, ar.AtMostOneOfEachTypeValidator(TypeDenotationUint32))
+		}
 	}
 
 	return arrayElementValidator

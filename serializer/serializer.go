@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"time"
 )
 
@@ -357,10 +358,12 @@ func (s *Serializer) WriteObject(seri Serializable, deSeriMode DeSerializationMo
 
 // WriteSliceOfObjects writes Serializables into the Serializer.
 // For every written Serializable, the given WrittenObjectConsumer is called if it isn't nil.
-func (s *Serializer) WriteSliceOfObjects(seris Serializables, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, woc WrittenObjectConsumer, errProducer ErrProducer) *Serializer {
+func (s *Serializer) WriteSliceOfObjects(source interface{}, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, woc WrittenObjectConsumer, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
 	}
+
+	seris := s.sourceToSerializables(source)
 
 	_ = s.writeSliceLength(len(seris), lenType, errProducer)
 	if s.err != nil {
@@ -385,6 +388,19 @@ func (s *Serializer) WriteSliceOfObjects(seris Serializables, deSeriMode DeSeria
 		}
 	}
 	return s
+}
+
+func (s *Serializer) sourceToSerializables(source interface{}) Serializables {
+	var seris Serializables
+	switch x := source.(type) {
+	case Serializables:
+		seris = x
+	case SerializableSlice:
+		seris = x.ToSerializables()
+	default:
+		panic(fmt.Sprintf("invalid source: %T", source))
+	}
+	return seris
 }
 
 // WriteTime writes a marshaled Time value to the internal buffer.
@@ -912,7 +928,7 @@ func (d *Deserializer) ReadSliceOfArraysOf64Bytes(slice *SliceOfArraysOf64Bytes,
 }
 
 // ReadObject reads an object, using the given SerializableSelectorFunc.
-func (d *Deserializer) ReadObject(f ReadObjectConsumerFunc, deSeriMode DeSerializationMode, typeDen TypeDenotationType, serSel SerializableSelectorFunc, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerializationMode, typeDen TypeDenotationType, serSel SerializableSelectorFunc, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -951,13 +967,13 @@ func (d *Deserializer) ReadObject(f ReadObjectConsumerFunc, deSeriMode DeSeriali
 	d.offset += bytesConsumed
 	d.src = d.src[bytesConsumed:]
 
-	f(seri)
+	d.readSerializableIntoTarget(target, seri)
 
 	return d
 }
 
 // ReadSliceOfObjects reads a slice of objects.
-func (d *Deserializer) ReadSliceOfObjects(f ReadObjectsConsumerFunc, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, typeDen TypeDenotationType, serSel SerializableSelectorFunc, arrayRules *ArrayRules, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, typeDen TypeDenotationType, serSel SerializableSelectorFunc, arrayRules *ArrayRules, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -1008,9 +1024,20 @@ func (d *Deserializer) ReadSliceOfObjects(f ReadObjectsConsumerFunc, deSeriMode 
 		seris = append(seris, seri)
 	}
 
-	f(seris)
+	d.readSerializablesIntoTarget(target, seris)
 
 	return d
+}
+
+func (d *Deserializer) readSerializablesIntoTarget(target interface{}, seris Serializables) {
+	switch x := target.(type) {
+	case func(seri Serializables):
+		x(seris)
+	case SerializableSlice:
+		x.FromSerializables(seris)
+	default:
+		panic("invalid target")
+	}
 }
 
 // ReadTime reads a Time value from the internal buffer.
@@ -1040,7 +1067,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 }
 
 // ReadPayload reads a payload.
-func (d *Deserializer) ReadPayload(f ReadObjectConsumerFunc, deSeriMode DeSerializationMode, sel SerializableSelectorFunc, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadPayload(s interface{}, deSeriMode DeSerializationMode, sel SerializableSelectorFunc, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -1088,9 +1115,23 @@ func (d *Deserializer) ReadPayload(f ReadObjectConsumerFunc, deSeriMode DeSerial
 	d.offset += payloadBytesConsumed
 	d.src = d.src[payloadBytesConsumed:]
 
-	f(payload)
+	d.readSerializableIntoTarget(s, payload)
 
 	return d
+}
+
+func (d *Deserializer) readSerializableIntoTarget(target interface{}, s Serializable) {
+	switch t := target.(type) {
+	case *Serializable:
+		*t = s
+	case func(seri Serializable):
+		t(s)
+	default:
+		if reflect.TypeOf(target).Kind() != reflect.Ptr {
+			panic("target parameter must be pointer or Serializable")
+		}
+		reflect.ValueOf(target).Elem().Set(reflect.ValueOf(s))
+	}
 }
 
 // ReadString reads a string.
@@ -1132,6 +1173,34 @@ func (d *Deserializer) AbortIf(errProducer ErrProducer) *Deserializer {
 		d.err = err
 	}
 	return d
+}
+
+// CheckTypePrefix checks whether the type prefix corresponds to the expected given prefix.
+// This function will advance the deserializer by the given TypeDenotationType length.
+func (d *Deserializer) CheckTypePrefix(prefix uint32, prefixType TypeDenotationType, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+
+	var toSkip int
+	switch prefixType {
+	case TypeDenotationUint32:
+		if err := CheckType(d.src, prefix); err != nil {
+			d.err = errProducer(err)
+			return d
+		}
+		toSkip = UInt32ByteSize
+	case TypeDenotationByte:
+		if err := CheckTypeByte(d.src, byte(prefix)); err != nil {
+			d.err = errProducer(err)
+			return d
+		}
+		toSkip = OneByte
+	default:
+		panic("invalid type prefix in CheckTypePrefix()")
+	}
+
+	return d.Skip(toSkip, func(err error) error { return err })
 }
 
 // Do calls f in the Deserializer chain.
