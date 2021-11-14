@@ -29,6 +29,19 @@ func TestDeserializer_ReadObject(t *testing.T) {
 	assert.Equal(t, seriA[serializer.SmallTypeDenotationByteSize:], objA.(*A).Key[:])
 }
 
+func TestDeserializer_ReadBytesInPlace(t *testing.T) {
+	type Example struct {
+		Out [10]byte
+	}
+	in := [10]byte{1}
+	example := &Example{}
+	_, err := serializer.NewDeserializer(in[:]).ReadBytesInPlace(example.Out[:], func(err error) error {
+		return err
+	}).Done()
+	require.NoError(t, err)
+	require.EqualValues(t, in, example.Out)
+}
+
 func TestDeserializer_ReadSliceOfObjects(t *testing.T) {
 	var buf bytes.Buffer
 	originObjs := serializer.Serializables{
