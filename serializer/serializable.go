@@ -34,9 +34,20 @@ type SerializableSlice interface {
 	FromSerializables(seris Serializables)
 }
 
-// SerializableSelectorFunc is a function that given a type byte, returns an empty instance of the given underlying type.
-// If the type doesn't resolve, an error is returned.
-type SerializableSelectorFunc func(ty uint32) (Serializable, error)
+// SerializableReadGuardFunc is a function that given a type prefix, returns an empty instance of the given underlying type.
+// If the type doesn't resolve or is not supported in the deserialization context, an error is returned.
+type SerializableReadGuardFunc func(ty uint32) (Serializable, error)
+
+// SerializableWriteGuardFunc is a function that given a Serializable, tells whether the given type is allowed to be serialized.
+type SerializableWriteGuardFunc func(seri Serializable) error
+
+// SerializableGuard defines the guards to de/serialize Serializable.
+type SerializableGuard struct {
+	// The read guard applied when reading objects.
+	ReadGuard SerializableReadGuardFunc
+	// The write guard applied when writing objects.
+	WriteGuard SerializableWriteGuardFunc
+}
 
 // DeSerializationMode defines the mode of de/serialization.
 type DeSerializationMode byte
@@ -83,6 +94,8 @@ type ArrayRules struct {
 	Min uint
 	// The max array bound.
 	Max uint
+	// The guards applied while de/serializing Serializables.
+	Guards SerializableGuard
 	// The mode of validation.
 	ValidationMode ArrayValidationMode
 }

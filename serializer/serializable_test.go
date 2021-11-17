@@ -23,6 +23,20 @@ const (
 
 var (
 	ErrUnknownDummyType = errors.New("unknown example type")
+
+	dummyTypeArrayRules = &serializer.ArrayRules{
+		Guards: serializer.SerializableGuard{
+			ReadGuard: DummyTypeSelector,
+			WriteGuard: func(seri serializer.Serializable) error {
+				switch seri.(type) {
+				case *A:
+				case *B:
+					return ErrUnknownDummyType
+				}
+				return nil
+			},
+		},
+	}
 )
 
 func DummyTypeSelector(dummyType uint32) (serializer.Serializable, error) {
