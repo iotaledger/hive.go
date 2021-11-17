@@ -93,6 +93,14 @@ func (s *Serializer) AbortIf(errProducer ErrProducer) *Serializer {
 	return s
 }
 
+// WithValidation runs errProducer if deSeriMode has DeSeriModePerformValidation.
+func (s *Serializer) WithValidation(deSeriMode DeSerializationMode, errProducer ErrProducer) *Serializer {
+	if !deSeriMode.HasMode(DeSeriModePerformValidation) {
+		return s
+	}
+	return s.AbortIf(errProducer)
+}
+
 // Do calls f in the Serializer chain.
 func (s *Serializer) Do(f func()) *Serializer {
 	if s.err != nil {
@@ -1184,6 +1192,14 @@ func (d *Deserializer) AbortIf(errProducer ErrProducer) *Deserializer {
 		d.err = err
 	}
 	return d
+}
+
+// WithValidation runs errProducer if deSeriMode has DeSeriModePerformValidation.
+func (d *Deserializer) WithValidation(deSeriMode DeSerializationMode, errProducer ErrProducer) *Deserializer {
+	if !deSeriMode.HasMode(DeSeriModePerformValidation) {
+		return d
+	}
+	return d.AbortIf(errProducer)
 }
 
 // CheckTypePrefix checks whether the type prefix corresponds to the expected given prefix.
