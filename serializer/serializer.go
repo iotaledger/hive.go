@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"sort"
 	"time"
 )
 
@@ -40,9 +41,6 @@ type (
 
 	// ErrProducerWithLeftOver produces an error and is called with the bytes left to read.
 	ErrProducerWithLeftOver func(left int, err error) error
-
-	// WrittenObjectConsumer gets called after an object has been serialized into a Serializer.
-	WrittenObjectConsumer func(index int, written []byte) error
 
 	// ReadObjectConsumerFunc gets called after an object has been deserialized from a Deserializer.
 	ReadObjectConsumerFunc func(seri Serializable)
@@ -256,84 +254,90 @@ func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefi
 }
 
 // Write32BytesArraySlice writes a slice of arrays of 32 bytes to the Serializer.
-func (s *Serializer) Write32BytesArraySlice(data SliceOfArraysOf32Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
+func (s *Serializer) Write32BytesArraySlice(slice SliceOfArraysOf32Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
 	}
 
-	sliceLength := len(data)
-
-	var arrayElementValidator ElementValidationFunc
-	if arrayRules != nil && deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
-			s.err = errProducer(err)
-			return s
-		}
-
-		arrayElementValidator = arrayRules.ElementValidationFunc(arrayRules.ValidationMode)
+	data := make([][]byte, len(slice))
+	for i, ele := range slice {
+		data[i] = ele[:]
 	}
 
-	_ = s.writeSliceLength(sliceLength, lenType, errProducer)
-	if s.err != nil {
-		return s
-	}
-
-	for i := range data {
-		element := data[i][:]
-
-		if arrayElementValidator != nil {
-			if err := arrayElementValidator(i, element); err != nil {
-				s.err = errProducer(err)
-				return s
-			}
-		}
-
-		if _, err := s.buf.Write(element); err != nil {
-			s.err = errProducer(err)
-			return s
-		}
-	}
-	return s
+	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
 }
 
 // Write64BytesArraySlice writes a slice of arrays of 64 bytes to the Serializer.
-func (s *Serializer) Write64BytesArraySlice(data SliceOfArraysOf64Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
+func (s *Serializer) Write64BytesArraySlice(slice SliceOfArraysOf64Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
 	}
 
-	sliceLength := len(data)
+	data := make([][]byte, len(slice))
+	for i, ele := range slice {
+		data[i] = ele[:]
+	}
 
-	var arrayElementValidator ElementValidationFunc
-	if arrayRules != nil && deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
+	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
+}
+
+// WriteSliceOfObjects writes Serializables into the Serializer.
+// For every written Serializable, the given WrittenObjectConsumer is called if it isn't nil.
+func (s *Serializer) WriteSliceOfObjects(source interface{}, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
+	if s.err != nil {
+		return s
+	}
+
+	seris := s.sourceToSerializables(source)
+
+	data := make([][]byte, len(seris))
+	for i, seri := range seris {
+		ser, err := seri.Serialize(deSeriMode)
+		if err != nil {
 			s.err = errProducer(err)
 			return s
 		}
-
-		arrayElementValidator = arrayRules.ElementValidationFunc(arrayRules.ValidationMode)
+		data[i] = ser
 	}
 
-	_ = s.writeSliceLength(sliceLength, lenType, errProducer)
+	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
+}
+
+func (s *Serializer) writeSliceOfByteSlices(data [][]byte, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, sliceRules *ArrayRules, errProducer ErrProducer) *Serializer {
+	var eleValFunc ElementValidationFunc
+	if deSeriMode.HasMode(DeSeriModePerformValidation) {
+		if err := sliceRules.CheckBounds(uint(len(data))); err != nil {
+			s.err = errProducer(err)
+			return s
+		}
+		eleValFunc = sliceRules.ElementValidationFunc()
+	}
+
+	_ = s.writeSliceLength(len(data), lenType, errProducer)
 	if s.err != nil {
 		return s
 	}
 
-	for i := range data {
-		element := data[i][:]
+	// we only auto sort if the rules require it
+	if deSeriMode.HasMode(DeSeriModePerformLexicalOrdering) && sliceRules.ValidationMode.HasMode(ArrayValidationModeLexicalOrdering) {
+		sort.Slice(data, func(i, j int) bool {
+			return bytes.Compare(data[i], data[j]) < 0
+		})
+	}
 
-		if arrayElementValidator != nil {
-			if err := arrayElementValidator(i, element); err != nil {
+	for i, ele := range data {
+		if eleValFunc != nil {
+			if err := eleValFunc(i, ele); err != nil {
 				s.err = errProducer(err)
 				return s
 			}
 		}
-
-		if _, err := s.buf.Write(element); err != nil {
+		if _, err := s.buf.Write(ele); err != nil {
 			s.err = errProducer(err)
 			return s
 		}
 	}
+
 	return s
 }
 
@@ -353,40 +357,6 @@ func (s *Serializer) WriteObject(seri Serializable, deSeriMode DeSerializationMo
 		s.err = errProducer(err)
 	}
 
-	return s
-}
-
-// WriteSliceOfObjects writes Serializables into the Serializer.
-// For every written Serializable, the given WrittenObjectConsumer is called if it isn't nil.
-func (s *Serializer) WriteSliceOfObjects(source interface{}, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, woc WrittenObjectConsumer, errProducer ErrProducer) *Serializer {
-	if s.err != nil {
-		return s
-	}
-
-	seris := s.sourceToSerializables(source)
-
-	_ = s.writeSliceLength(len(seris), lenType, errProducer)
-	if s.err != nil {
-		return s
-	}
-
-	for i, seri := range seris {
-		ser, err := seri.Serialize(deSeriMode)
-		if err != nil {
-			s.err = errProducer(err)
-			return s
-		}
-		if _, err := s.buf.Write(ser); err != nil {
-			s.err = errProducer(err)
-			return s
-		}
-		if woc != nil {
-			if err := woc(i, ser); err != nil {
-				s.err = errProducer(err)
-				return s
-			}
-		}
-	}
 	return s
 }
 
@@ -853,7 +823,7 @@ func (d *Deserializer) ReadSliceOfArraysOf32Bytes(slice *SliceOfArraysOf32Bytes,
 			return d
 		}
 
-		arrayElementValidator = arrayRules.ElementValidationFunc(arrayRules.ValidationMode)
+		arrayElementValidator = arrayRules.ElementValidationFunc()
 	}
 
 	s := make(SliceOfArraysOf32Bytes, sliceLength)
@@ -900,7 +870,7 @@ func (d *Deserializer) ReadSliceOfArraysOf64Bytes(slice *SliceOfArraysOf64Bytes,
 			return d
 		}
 
-		arrayElementValidator = arrayRules.ElementValidationFunc(arrayRules.ValidationMode)
+		arrayElementValidator = arrayRules.ElementValidationFunc()
 	}
 
 	s := make(SliceOfArraysOf64Bytes, sliceLength)
@@ -991,7 +961,7 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 			return d
 		}
 
-		arrayElementValidator = arrayRules.ElementValidationFunc(arrayRules.ValidationMode)
+		arrayElementValidator = arrayRules.ElementValidationFunc()
 	}
 
 	var seris Serializables

@@ -87,15 +87,6 @@ type ArrayRules struct {
 	ValidationMode ArrayValidationMode
 }
 
-// ToWrittenObjectConsumer wraps this ArrayRules's ElementValidationFunc (according to ValidationMode) to a WrittenObjectConsumer.
-// If the passed in mode has no validation, the returned WrittenObjectConsumer is a no-op.
-func (ar *ArrayRules) ToWrittenObjectConsumer(mode DeSerializationMode) WrittenObjectConsumer {
-	if !mode.HasMode(DeSeriModePerformValidation) {
-		return func(index int, written []byte) error { return nil }
-	}
-	return WrittenObjectConsumer(ar.ElementValidationFunc(ar.ValidationMode))
-}
-
 // CheckBounds checks whether the given count violates the array bounds.
 func (ar *ArrayRules) CheckBounds(count uint) error {
 	if ar.Min != 0 && count < ar.Min {
@@ -197,7 +188,7 @@ func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotation
 }
 
 // ElementValidationFunc returns a new ElementValidationFunc according to the given mode.
-func (ar *ArrayRules) ElementValidationFunc(mode ArrayValidationMode) ElementValidationFunc {
+func (ar *ArrayRules) ElementValidationFunc() ElementValidationFunc {
 	var arrayElementValidator ElementValidationFunc
 
 	wrap := func(f ElementValidationFunc, f2 ElementValidationFunc) ElementValidationFunc {
@@ -212,17 +203,17 @@ func (ar *ArrayRules) ElementValidationFunc(mode ArrayValidationMode) ElementVal
 	}
 
 	for i := byte(1); i != 0; i <<= 1 {
-		switch ArrayValidationMode(byte(mode) & i) {
+		switch ArrayValidationMode(byte(ar.ValidationMode) & i) {
 		case ArrayValidationModeNone:
 		case ArrayValidationModeNoDuplicates:
-			if mode.HasMode(ArrayValidationModeLexicalOrdering) {
+			if ar.ValidationMode.HasMode(ArrayValidationModeLexicalOrdering) {
 				continue
 			}
 			arrayElementValidator = wrap(arrayElementValidator, ar.ElementUniqueValidator())
 		case ArrayValidationModeLexicalOrdering:
 			// optimization: if lexical order and no dups are enforced, then byte comparison
 			// to the previous element can be done instead of using a map
-			if mode.HasMode(ArrayValidationModeNoDuplicates) {
+			if ar.ValidationMode.HasMode(ArrayValidationModeNoDuplicates) {
 				arrayElementValidator = wrap(arrayElementValidator, ar.LexicalOrderWithoutDupsValidator())
 				continue
 			}
