@@ -260,8 +260,8 @@ func (s *Serializer) Write32BytesArraySlice(slice SliceOfArraysOf32Bytes, deSeri
 	}
 
 	data := make([][]byte, len(slice))
-	for i, ele := range slice {
-		data[i] = ele[:]
+	for i := range slice {
+		data[i] = slice[i][:]
 	}
 
 	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
@@ -274,8 +274,8 @@ func (s *Serializer) Write64BytesArraySlice(slice SliceOfArraysOf64Bytes, deSeri
 	}
 
 	data := make([][]byte, len(slice))
-	for i, ele := range slice {
-		data[i] = ele[:]
+	for i := range slice {
+		data[i] = slice[i][:]
 	}
 
 	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
