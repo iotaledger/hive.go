@@ -592,21 +592,42 @@ func (d *Deserializer) ReadNum(dest interface{}, errProducer ErrProducer) *Deser
 }
 
 // ReadBytes reads specified number of bytes.
-// Use this function only to read fixed size slices/arrays, otherwise
-// use ReadVariableByteSlice instead.
+// Use this function only to read fixed size slices/arrays, otherwise use ReadVariableByteSlice instead.
 func (d *Deserializer) ReadBytes(slice *[]byte, numBytes int, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
 
-	dest := make([]byte, numBytes)
 	if len(d.src) < numBytes {
 		d.err = errProducer(ErrDeserializationNotEnoughData)
 		return d
 	}
 
+	dest := make([]byte, numBytes)
+
 	copy(dest, d.src[:numBytes])
 	*slice = dest
+
+	d.offset += numBytes
+	d.src = d.src[numBytes:]
+
+	return d
+}
+
+// ReadBytesInPlace reads slice length amount of bytes into slice.
+// Use this function only to read arrays.
+func (d *Deserializer) ReadBytesInPlace(slice []byte, errProducer ErrProducer) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+
+	numBytes := len(slice)
+	if len(d.src) < numBytes {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+
+	copy(slice, d.src[:numBytes])
 
 	d.offset += numBytes
 	d.src = d.src[numBytes:]
