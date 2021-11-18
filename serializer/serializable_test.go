@@ -76,13 +76,13 @@ func (a *A) UnmarshalJSON(i []byte) error {
 	panic("implement me")
 }
 
-func (a *A) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode) (int, error) {
+func (a *A) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(a.Key[:], data[:aKeyLength])
 	return typeALength, nil
 }
 
-func (a *A) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error) {
+func (a *A) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	var b [typeALength]byte
 	b[0] = TypeA
 	copy(b[serializer.SmallTypeDenotationByteSize:], a.Key[:])
@@ -153,13 +153,13 @@ func (b *B) UnmarshalJSON(i []byte) error {
 	panic("implement me")
 }
 
-func (b *B) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode) (int, error) {
+func (b *B) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(b.Name[:], data[:bNameLength])
 	return typeBLength, nil
 }
 
-func (b *B) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error) {
+func (b *B) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	var bf [typeBLength]byte
 	bf[0] = TypeB
 	copy(bf[serializer.SmallTypeDenotationByteSize:], b.Name[:])
@@ -175,7 +175,7 @@ func randB() *B {
 func TestDeserializeA(t *testing.T) {
 	seriA := randSerializedA()
 	objA := &A{}
-	bytesRead, err := objA.Deserialize(seriA, serializer.DeSeriModePerformValidation)
+	bytesRead, err := objA.Deserialize(seriA, serializer.DeSeriModePerformValidation, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, len(seriA), bytesRead)
 	assert.Equal(t, seriA[serializer.SmallTypeDenotationByteSize:], objA.Key[:])

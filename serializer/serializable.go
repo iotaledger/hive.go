@@ -8,19 +8,18 @@ import (
 	"sort"
 )
 
-// Serializable is something which knows how to serialize/deserialize itself from/into bytes.
-// This is almost analogous to BinaryMarshaler/BinaryUnmarshaler.
+// Serializable is something which knows how to serialize/deserialize itself from/into bytes
+// while also performing syntactical checks on the written/read data.
 type Serializable interface {
 	json.Marshaler
 	json.Unmarshaler
 	// Deserialize deserializes the given data (by copying) into the object and returns the amount of bytes consumed from data.
 	// If the passed data is not big enough for deserialization, an error must be returned.
 	// During deserialization additional validation may be performed if the given modes are set.
-	Deserialize(data []byte, deSeriMode DeSerializationMode) (int, error)
+	Deserialize(data []byte, deSeriMode DeSerializationMode, deSeriCtx interface{}) (int, error)
 	// Serialize returns a serialized byte representation.
-	// This function does not check the serialized data for validity.
 	// During serialization additional validation may be performed if the given modes are set.
-	Serialize(deSeriMode DeSerializationMode) ([]byte, error)
+	Serialize(deSeriMode DeSerializationMode, deSeriCtx interface{}) ([]byte, error)
 }
 
 // Serializables is a slice of Serializable.
@@ -57,7 +56,8 @@ const (
 	DeSeriModeNoValidation DeSerializationMode = 0
 	// DeSeriModePerformValidation instructs de/serialization to perform validation.
 	DeSeriModePerformValidation DeSerializationMode = 1 << 0
-	// DeSeriModePerformLexicalOrdering instructs de/deserialization to perform ordering of certain struct arrays by their lexical serialized form.
+	// DeSeriModePerformLexicalOrdering instructs de/deserialization to automatically perform ordering of
+	// certain arrays by their lexical serialized form.
 	DeSeriModePerformLexicalOrdering DeSerializationMode = 1 << 1
 )
 
@@ -76,9 +76,9 @@ const (
 	ArrayValidationModeNoDuplicates ArrayValidationMode = 1 << 0
 	// ArrayValidationModeLexicalOrdering instructs the array validation to check for lexical order.
 	ArrayValidationModeLexicalOrdering ArrayValidationMode = 1 << 1
-	// ArrayValidationModeAtMostOneOfEachTypeByte instructs the array validation to allow a given byte type to occur only once in the array.
+	// ArrayValidationModeAtMostOneOfEachTypeByte instructs the array validation to allow a given type prefix byte to occur only once in the array.
 	ArrayValidationModeAtMostOneOfEachTypeByte ArrayValidationMode = 1 << 2
-	// ArrayValidationModeAtMostOneOfEachTypeUint32 instructs the array validation to allow a given uint32 type to occur only once in the array.
+	// ArrayValidationModeAtMostOneOfEachTypeUint32 instructs the array validation to allow a given type prefix uint32 to occur only once in the array.
 	ArrayValidationModeAtMostOneOfEachTypeUint32 ArrayValidationMode = 1 << 3
 )
 
@@ -313,7 +313,7 @@ func RemoveDupsAndSortByLexicalOrderArrayOf32Bytes(slice SliceOfArraysOf32Bytes)
 	orderedArray = orderedArray[:uniqueElements]
 	sort.Sort(orderedArray)
 
-	return SliceOfArraysOf32Bytes(orderedArray)
+	return orderedArray
 }
 
 // SortedSerializables are Serializables sorted by their serialized form.
@@ -324,8 +324,8 @@ func (ss SortedSerializables) Len() int {
 }
 
 func (ss SortedSerializables) Less(i, j int) bool {
-	iData, _ := ss[i].Serialize(DeSeriModeNoValidation)
-	jData, _ := ss[j].Serialize(DeSeriModeNoValidation)
+	iData, _ := ss[i].Serialize(DeSeriModeNoValidation, nil)
+	jData, _ := ss[j].Serialize(DeSeriModeNoValidation, nil)
 	return bytes.Compare(iData, jData) < 0
 }
 

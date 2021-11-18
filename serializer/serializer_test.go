@@ -50,7 +50,7 @@ func TestDeserializer_ReadSliceOfObjects(t *testing.T) {
 	assert.NoError(t, binary.Write(&buf, binary.LittleEndian, uint16(len(originObjs))))
 
 	for _, seri := range originObjs {
-		seriBytes, err := seri.Serialize(serializer.DeSeriModePerformValidation)
+		seriBytes, err := seri.Serialize(serializer.DeSeriModePerformValidation, nil)
 		assert.NoError(t, err)
 		written, err := buf.Write(seriBytes)
 		assert.NoError(t, err)
@@ -101,7 +101,7 @@ func TestDeserializer_ReadSliceOfObjectsWithSerializableSlice(t *testing.T) {
 	assert.NoError(t, binary.Write(&buf, binary.LittleEndian, uint16(len(originObjs))))
 
 	for _, seri := range originObjs {
-		seriBytes, err := seri.Serialize(serializer.DeSeriModePerformValidation)
+		seriBytes, err := seri.Serialize(serializer.DeSeriModePerformValidation, nil)
 		assert.NoError(t, err)
 		written, err := buf.Write(seriBytes)
 		assert.NoError(t, err)
