@@ -98,6 +98,8 @@ type ArrayRules struct {
 	Guards SerializableGuard
 	// The mode of validation.
 	ValidationMode ArrayValidationMode
+	// The slice reduction function for uniqueness checks.
+	UniquenessSliceFunc ElementUniquenessSliceFunc
 }
 
 // CheckBounds checks whether the given count violates the array bounds.
@@ -111,6 +113,13 @@ func (ar *ArrayRules) CheckBounds(count uint) error {
 	return nil
 }
 
+// ElementUniquenessSliceFunc is a function which takes a byte slice and reduces it to
+// the part which is deemed relevant for uniqueness checks.
+// If this function is used in conjunction with ArrayValidationModeLexicalOrdering, then the reduction
+// must only reduce the slice from index 0 onwards, as otherwise lexical ordering on the set elements
+// can not be enforced.
+type ElementUniquenessSliceFunc func(next []byte) []byte
+
 // ElementValidationFunc is a function which runs during array validation (e.g. lexical ordering).
 type ElementValidationFunc func(index int, next []byte) error
 
@@ -118,6 +127,9 @@ type ElementValidationFunc func(index int, next []byte) error
 func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 	set := map[string]int{}
 	return func(index int, next []byte) error {
+		if ar.UniquenessSliceFunc != nil {
+			next = ar.UniquenessSliceFunc(next)
+		}
 		k := string(next)
 		if j, has := set[k]; has {
 			return fmt.Errorf("%w: element %d and %d are duplicates", ErrArrayValidationViolatesUniqueness, j, index)
@@ -154,9 +166,16 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 	var prevIndex int
 	return func(index int, next []byte) error {
 		if prev == nil {
-			prev = next
 			prevIndex = index
+			if ar.UniquenessSliceFunc != nil {
+				prev = ar.UniquenessSliceFunc(next)
+				return nil
+			}
+			prev = next
 			return nil
+		}
+		if ar.UniquenessSliceFunc != nil {
+			next = ar.UniquenessSliceFunc(next)
 		}
 		switch bytes.Compare(prev, next) {
 		case 1:
@@ -165,8 +184,12 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 			// dup
 			return fmt.Errorf("%w: element %d and %d are duplicates", ErrArrayValidationViolatesUniqueness, index, prevIndex)
 		}
-		prev = next
 		prevIndex = index
+		if ar.UniquenessSliceFunc != nil {
+			prev = ar.UniquenessSliceFunc(next)
+			return nil
+		}
+		prev = next
 		return nil
 	}
 }

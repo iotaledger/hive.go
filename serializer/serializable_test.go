@@ -348,9 +348,8 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -360,6 +359,7 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -370,13 +370,28 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 				{1, 1, 3},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
+			valid: false,
+		},
+		{
+			name: "not ok - dups with reduction",
+			args: [][]byte{
+				{1, 1, 1},
+				{1, 1, 2},
+				{1, 1, 3},
+			},
+			ar: &serializer.ArrayRules{
+				UniquenessSliceFunc: func(next []byte) []byte {
+					return next[:2]
+				},
+			},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.ElementUniqueValidator()
+			arrayElementValidator := tt.ar.ElementUniqueValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -463,9 +478,8 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -475,6 +489,7 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -484,6 +499,7 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{1, 1, 2},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -493,13 +509,14 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{1, 1, 2},
 				{3, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.LexicalOrderValidator()
+			arrayElementValidator := tt.ar.LexicalOrderValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -520,9 +537,8 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -532,6 +548,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -541,6 +558,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 2},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -551,6 +569,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 3},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: false,
 		},
 		{
@@ -560,13 +579,28 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 2},
 				{3, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
+			valid: false,
+		},
+		{
+			name: "not ok - dups with reduction",
+			args: [][]byte{
+				{1, 1, 1},
+				{1, 1, 2},
+				{1, 1, 3},
+			},
+			ar: &serializer.ArrayRules{
+				UniquenessSliceFunc: func(next []byte) []byte {
+					return next[:2]
+				},
+			},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.LexicalOrderWithoutDupsValidator()
+			arrayElementValidator := tt.ar.LexicalOrderWithoutDupsValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -587,10 +621,9 @@ func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 		ty    serializer.TypeDenotationType
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -601,6 +634,7 @@ func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
 				{3, 3, 3},
 			},
 			valid: true,
+			ar:    &serializer.ArrayRules{},
 			ty:    serializer.TypeDenotationByte,
 		},
 		{
@@ -611,6 +645,7 @@ func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
 				{3, 3, 3, 3},
 			},
 			valid: true,
+			ar:    &serializer.ArrayRules{},
 			ty:    serializer.TypeDenotationUint32,
 		},
 		{
@@ -621,6 +656,7 @@ func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
 				{3, 3, 3},
 			},
 			valid: false,
+			ar:    &serializer.ArrayRules{},
 			ty:    serializer.TypeDenotationByte,
 		},
 		{
@@ -631,13 +667,14 @@ func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
 				{1, 1, 1, 1},
 			},
 			valid: false,
+			ar:    &serializer.ArrayRules{},
 			ty:    serializer.TypeDenotationUint32,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.AtMostOneOfEachTypeValidator(tt.ty)
+			arrayElementValidator := tt.ar.AtMostOneOfEachTypeValidator(tt.ty)
 
 			valid := true
 			for i := range tt.args {
