@@ -19,7 +19,7 @@ func TestDeserializer_ReadObject(t *testing.T) {
 
 	var objA serializer.Serializable
 	bytesRead, err := serializer.NewDeserializer(seriA).
-		ReadObject(func(seri serializer.Serializable) { objA = seri }, serializer.DeSeriModePerformValidation, serializer.TypeDenotationByte, DummyTypeSelector, func(err error) error { return err }).
+		ReadObject(func(seri serializer.Serializable) { objA = seri }, serializer.DeSeriModePerformValidation, nil, serializer.TypeDenotationByte, DummyTypeSelector, func(err error) error { return err }).
 		ConsumedAll(func(left int, err error) error { return err }).
 		Done()
 
@@ -63,7 +63,7 @@ func TestDeserializer_ReadSliceOfObjects(t *testing.T) {
 	bytesRead, err := serializer.NewDeserializer(data).
 		ReadSliceOfObjects(func(seri serializer.Serializables) {
 			readObjects = seri
-		}, serializer.DeSeriModePerformValidation, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, dummyTypeArrayRules, func(err error) error { return err }).
+		}, serializer.DeSeriModePerformValidation, nil, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, dummyTypeArrayRules, func(err error) error { return err }).
 		ConsumedAll(func(left int, err error) error { return err }).
 		Done()
 
@@ -113,7 +113,7 @@ func TestDeserializer_ReadSliceOfObjectsWithSerializableSlice(t *testing.T) {
 	withStringers := StructWithStringers{}
 
 	bytesRead, err := serializer.NewDeserializer(data).
-		ReadSliceOfObjects(&withStringers.Objects, serializer.DeSeriModePerformValidation, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, dummyTypeArrayRules, func(err error) error { return err }).
+		ReadSliceOfObjects(&withStringers.Objects, serializer.DeSeriModePerformValidation, nil, serializer.SeriLengthPrefixTypeAsUint16, serializer.TypeDenotationByte, dummyTypeArrayRules, func(err error) error { return err }).
 		ConsumedAll(func(left int, err error) error { return err }).
 		Done()
 
@@ -125,7 +125,7 @@ func TestDeserializer_ReadSliceOfObjectsWithSerializableSlice(t *testing.T) {
 func TestDeserializer_ReadPayload(t *testing.T) {
 	source := randA()
 
-	data, _ := serializer.NewSerializer().WritePayload(source, serializer.DeSeriModePerformValidation, dummyTypeArrayRules.Guards.WriteGuard, func(err error) error {
+	data, _ := serializer.NewSerializer().WritePayload(source, serializer.DeSeriModePerformValidation, nil, dummyTypeArrayRules.Guards.WriteGuard, func(err error) error {
 		require.NoError(t, err)
 		return err
 	}).Serialize()
@@ -142,7 +142,7 @@ func TestDeserializer_ReadPayload(t *testing.T) {
 	withAAsInterface := StructWithAAsInterface{}
 
 	bytesRead, err := serializer.NewDeserializer(data).
-		ReadPayload(&withA.A, serializer.DeSeriModePerformValidation, DummyTypeSelector, func(err error) error {
+		ReadPayload(&withA.A, serializer.DeSeriModePerformValidation, nil, DummyTypeSelector, func(err error) error {
 			return err
 		}).
 		ConsumedAll(func(left int, err error) error { return err }).
@@ -153,7 +153,7 @@ func TestDeserializer_ReadPayload(t *testing.T) {
 	assert.EqualValues(t, source, withA.A)
 
 	bytesRead, err = serializer.NewDeserializer(data).
-		ReadPayload(&withAAsInterface.A, serializer.DeSeriModePerformValidation, DummyTypeSelector, func(err error) error {
+		ReadPayload(&withAAsInterface.A, serializer.DeSeriModePerformValidation, nil, DummyTypeSelector, func(err error) error {
 			return err
 		}).
 		ConsumedAll(func(left int, err error) error { return err }).
