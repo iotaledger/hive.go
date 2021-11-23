@@ -270,7 +270,7 @@ func TestReadWriteUint256(t *testing.T) {
 			require.NoError(t, err)
 
 			y := new(big.Int)
-			_, err = serializer.NewDeserializer(serializedBytes).ReadUint256(y, returnErr).Done()
+			_, err = serializer.NewDeserializer(serializedBytes).ReadUint256(&y, returnErr).Done()
 			if err != nil && tt.expectedErr != nil {
 				require.Equal(t, tt.expectedErr, err)
 				return

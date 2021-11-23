@@ -549,7 +549,7 @@ func (d *Deserializer) ReadByte(dest *byte, errProducer ErrProducer) *Deserializ
 }
 
 // ReadUint256 reads a little endian encoded uint256 into dest.
-func (d *Deserializer) ReadUint256(dest *big.Int, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadUint256(dest **big.Int, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -569,7 +569,7 @@ func (d *Deserializer) ReadUint256(dest *big.Int, errProducer ErrProducer) *Dese
 		source[i], source[j] = source[j], source[i]
 	}
 
-	dest.SetBytes(source)
+	*dest = new(big.Int).SetBytes(source)
 
 	return d
 }
