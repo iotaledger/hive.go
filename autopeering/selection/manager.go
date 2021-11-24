@@ -276,10 +276,10 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	if len(filteredList) == 0 {
 		return
 	}
-	// // reset rejectionFilter so that in the next call filteredList is full again
-	// if len(filteredList) < 2 {
-	// 	m.rejectionFilter.Clean()
-	// }
+	// reset rejectionFilter so that in the next call filteredList is full again
+	if len(filteredList) < 2 {
+		m.rejectionFilter.Clean()
+	}
 
 	// select new candidate
 	candidate := m.outbound.Select(filteredList)
