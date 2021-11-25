@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://discord.iota.org/" style="text-decoration:none;"><img src="https://img.shields.io/badge/Discord-9cf.svg?logo=discord" alt="Discord"></a>
     <a href="https://iota.stackexchange.com/" style="text-decoration:none;"><img src="https://img.shields.io/badge/StackExchange-9cf.svg?logo=stackexchange" alt="StackExchange"></a>
-    <a href="https://github.com/iotaledger/hive.go/v2/blob/master/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/github/license/iotaledger/hive.go.svg" alt="Apache 2.0 license"></a>
+    <a href="https://github.com/iotaledger/hive.go/blob/master/LICENSE" style="text-decoration:none;"><img src="https://img.shields.io/github/license/iotaledger/hive.go.svg" alt="Apache 2.0 license"></a>
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@ Hive.go is a shared library that is used in the GoShimmer and Hornet node softwa
 * Abstractions
 
 This is beta software, so there may be performance and stability issues.
-Please report any issues in our [issue tracker](https://github.com/iotaledger/hive.go/v2/issues/new).
+Please report any issues in our [issue tracker](https://github.com/iotaledger/hive.go/issues/new).
 
 ## Prerequisites
 
@@ -47,15 +47,15 @@ To install Hive.go and its dependencies, you can use one of the following option
 
     ```bash
     import (
-    "github.com/iotaledger/hive.go/v2/logger"
-    "github.com/iotaledger/hive.go/v2/node"
+    "github.com/iotaledger/hive.go/logger"
+    "github.com/iotaledger/hive.go/node"
     )
     ```
 
 * To download the library from GitHub, use the `go get` command
 
     ```bash
-    go get github.com/iotaledger/hive.go/v2
+    go get github.com/iotaledger/hive.go
     ```
 
 ## Getting started
@@ -65,7 +65,7 @@ After you've [installed the library](#installation), you can use it in your proj
 For example, to create a new `logger` instance:
 
 ```js
-import "github.com/iotaledger/hive.go/v2/logger"
+import "github.com/iotaledger/hive.go/logger"
 
 log = logger.NewLogger('myNewLoggerName')
 ```
@@ -76,7 +76,7 @@ To replace the mutexes in the `syncutils` package with [Go deadlock](https://git
 
 ## Supporting the project
 
-If this library has been useful to you and you feel like contributing, consider submitting a [bug report](https://github.com/iotaledger/hive.go/v2/issues/new), [feature request](https://github.com/iotaledger/hive.go/v2/issues/new) or a [pull request](https://github.com/iotaledger/hive.go/v2/pulls/).
+If this library has been useful to you and you feel like contributing, consider submitting a [bug report](https://github.com/iotaledger/hive.go/issues/new), [feature request](https://github.com/iotaledger/hive.go/issues/new) or a [pull request](https://github.com/iotaledger/hive.go/pulls/).
 
 See our [contributing guidelines](.github/CONTRIBUTING.md) for more information.
 

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/v2/bitmask"
+	"github.com/iotaledger/hive.go/bitmask"
 )
 
 // region TimedQueue ///////////////////////////////////////////////////////////////////////////////////////////////////

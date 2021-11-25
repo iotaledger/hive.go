@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/v2/events"
+	"github.com/iotaledger/hive.go/events"
 	"go.uber.org/atomic"
 )
 

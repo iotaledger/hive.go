@@ -6,7 +6,7 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/iotaledger/hive.go/v2/marshalutil"
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 type Signature [SignatureSize]byte

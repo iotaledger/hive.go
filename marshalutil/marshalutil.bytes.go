@@ -1,7 +1,7 @@
 package marshalutil
 
 import (
-	"github.com/iotaledger/hive.go/v2/byteutils"
+	"github.com/iotaledger/hive.go/byteutils"
 )
 
 // WriteBytes appends the given bytes to the internal buffer.

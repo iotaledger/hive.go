@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/iotaledger/hive.go/v2/configuration"
+	"github.com/iotaledger/hive.go/configuration"
 )
 
 func tempFile(t *testing.T, pattern string) (string, *os.File) {

@@ -4,7 +4,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/iotaledger/hive.go/v2/kvstore"
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 // PathExists returns whether the given file or directory exists.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/linxGnu/grocksdb"
 
-	"github.com/iotaledger/hive.go/v2/kvstore/utils"
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 // RocksDB holds the underlying grocksdb.DB instance and options

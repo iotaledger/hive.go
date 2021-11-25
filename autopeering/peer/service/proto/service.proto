@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/iotaledger/hive.go/v2/autopeering/peer/service/proto";
+option go_package = "github.com/iotaledger/hive.go/autopeering/peer/service/proto";
 
 package proto;
 

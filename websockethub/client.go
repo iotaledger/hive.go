@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/iotaledger/hive.go/v2/typeutils"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 const (
