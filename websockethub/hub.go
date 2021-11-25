@@ -6,8 +6,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/iotaledger/hive.go/logger"
-	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/iotaledger/hive.go/v2/logger"
+	"github.com/iotaledger/hive.go/v2/typeutils"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.

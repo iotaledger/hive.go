@@ -3,10 +3,10 @@ package node_test
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/configuration"
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/logger"
-	"github.com/iotaledger/hive.go/node"
+	"github.com/iotaledger/hive.go/v2/configuration"
+	"github.com/iotaledger/hive.go/v2/events"
+	"github.com/iotaledger/hive.go/v2/logger"
+	"github.com/iotaledger/hive.go/v2/node"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/dig"
 )

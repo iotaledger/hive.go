@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/iotaledger/hive.go/configuration"
+	"github.com/iotaledger/hive.go/v2/configuration"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,8 +5,8 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/iotaledger/hive.go/datastructure/queue"
-	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/v2/datastructure/queue"
+	"github.com/iotaledger/hive.go/v2/syncutils"
 	"github.com/panjf2000/ants/v2"
 )
 

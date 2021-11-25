@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	pb "github.com/iotaledger/hive.go/autopeering/peer/service/proto"
+	pb "github.com/iotaledger/hive.go/v2/autopeering/peer/service/proto"
 	"google.golang.org/protobuf/proto"
 )
 

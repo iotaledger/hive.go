@@ -3,8 +3,8 @@ package selection
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/identity"
+	"github.com/iotaledger/hive.go/v2/autopeering/peer"
+	"github.com/iotaledger/hive.go/v2/identity"
 )
 
 type Selector interface {

@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"github.com/iotaledger/hive.go/serializer"
+	"github.com/iotaledger/hive.go/v2/serializer"
 	"math/rand"
 	"sort"
 )

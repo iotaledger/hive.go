@@ -1,7 +1,7 @@
 package bls
 
 import (
-	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/iotaledger/hive.go/v2/marshalutil"
 	"github.com/mr-tron/base58"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/sign/bdn"

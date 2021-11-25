@@ -5,7 +5,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 
-	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/v2/kvstore/utils"
 )
 
 func CreateDB(directory string, optionalOptions ...*pebble.Options) (*pebble.DB, error) {

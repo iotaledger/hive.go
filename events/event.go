@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	"github.com/iotaledger/hive.go/v2/datastructure/orderedmap"
 )
 
 // Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.

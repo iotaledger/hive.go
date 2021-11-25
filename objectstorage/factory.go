@@ -1,6 +1,6 @@
 package objectstorage
 
-import "github.com/iotaledger/hive.go/kvstore"
+import "github.com/iotaledger/hive.go/v2/kvstore"
 
 // Factory is a utility that offers an api for a more compact creation of multiple ObjectStorage instances from within
 // the same package. It will automatically configure a new KVStore instance with the corresponding realm and provide it to

@@ -2,7 +2,7 @@
 
 package rocksdb
 
-import "github.com/iotaledger/hive.go/kvstore"
+import "github.com/iotaledger/hive.go/v2/kvstore"
 
 const (
 	panicMissingRocksDB = "For RocksDB support please compile with '-tags rocksdb'"

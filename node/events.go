@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/v2/events"
 	"go.uber.org/dig"
 )
 

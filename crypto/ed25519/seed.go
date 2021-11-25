@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 
-	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/v2/byteutils"
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
 	"golang.org/x/crypto/blake2b"

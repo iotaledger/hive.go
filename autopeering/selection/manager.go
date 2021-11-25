@@ -4,12 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/autopeering/mana"
-	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/identity"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/v2/autopeering/mana"
+	"github.com/iotaledger/hive.go/v2/autopeering/peer"
+	"github.com/iotaledger/hive.go/v2/autopeering/salt"
+	"github.com/iotaledger/hive.go/v2/events"
+	"github.com/iotaledger/hive.go/v2/identity"
+	"github.com/iotaledger/hive.go/v2/logger"
 )
 
 const (

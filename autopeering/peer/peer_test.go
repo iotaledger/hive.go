@@ -5,9 +5,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/iotaledger/hive.go/autopeering/peer/service"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
-	"github.com/iotaledger/hive.go/identity"
+	"github.com/iotaledger/hive.go/v2/autopeering/peer/service"
+	"github.com/iotaledger/hive.go/v2/crypto/ed25519"
+	"github.com/iotaledger/hive.go/v2/identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

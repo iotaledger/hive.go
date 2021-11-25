@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/v2/objectstorage"
 )
 
 func TestPartitionsManager(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/iotaledger/hive.go/serializer"
-	"github.com/iotaledger/hive.go/testutil"
+	"github.com/iotaledger/hive.go/v2/serializer"
+	"github.com/iotaledger/hive.go/v2/testutil"
 
 	"github.com/stretchr/testify/assert"
 )

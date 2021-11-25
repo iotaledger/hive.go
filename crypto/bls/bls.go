@@ -1,7 +1,7 @@
 package bls
 
 import (
-	"github.com/iotaledger/hive.go/crypto"
+	"github.com/iotaledger/hive.go/v2/crypto"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/kyber/v3/sign"

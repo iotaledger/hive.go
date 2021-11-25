@@ -3,8 +3,8 @@ package selection
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
+	"github.com/iotaledger/hive.go/v2/autopeering/peer"
+	"github.com/iotaledger/hive.go/v2/autopeering/peer/peertest"
 	"github.com/stretchr/testify/assert"
 )
 

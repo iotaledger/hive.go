@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/v2/events"
+	"github.com/iotaledger/hive.go/v2/logger"
 )
 
 const (

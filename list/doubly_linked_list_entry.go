@@ -1,7 +1,7 @@
 package list
 
 import (
-	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/v2/syncutils"
 )
 
 type DoublyLinkedListEntry struct {

@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/kvstore/badger"
-	"github.com/iotaledger/hive.go/kvstore/bolt"
-	"github.com/iotaledger/hive.go/kvstore/debug"
-	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/iotaledger/hive.go/kvstore/pebble"
-	"github.com/iotaledger/hive.go/kvstore/rocksdb"
+	"github.com/iotaledger/hive.go/v2/kvstore"
+	"github.com/iotaledger/hive.go/v2/kvstore/badger"
+	"github.com/iotaledger/hive.go/v2/kvstore/bolt"
+	"github.com/iotaledger/hive.go/v2/kvstore/debug"
+	"github.com/iotaledger/hive.go/v2/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/v2/kvstore/pebble"
+	"github.com/iotaledger/hive.go/v2/kvstore/rocksdb"
 )
 
 var (

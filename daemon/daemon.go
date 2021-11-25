@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/logger"
-	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/iotaledger/hive.go/v2/logger"
+	"github.com/iotaledger/hive.go/v2/syncutils"
+	"github.com/iotaledger/hive.go/v2/typeutils"
 )
 
 // Errors for the daemon package

@@ -1,4 +1,4 @@
-module github.com/iotaledger/hive.go
+module github.com/iotaledger/hive.go/v2
 
 go 1.16
 

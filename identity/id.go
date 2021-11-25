@@ -7,9 +7,9 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/iotaledger/hive.go/cerrors"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
-	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/iotaledger/hive.go/v2/cerrors"
+	"github.com/iotaledger/hive.go/v2/crypto/ed25519"
+	"github.com/iotaledger/hive.go/v2/marshalutil"
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 )

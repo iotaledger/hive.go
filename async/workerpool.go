@@ -8,7 +8,7 @@ import (
 
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/iotaledger/hive.go/v2/typeutils"
 )
 
 // Implements a blocking goroutine pool with fixed capacity, managing and recycling a massive number of goroutines,

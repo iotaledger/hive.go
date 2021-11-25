@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/configuration"
-	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/iotaledger/hive.go/v2/configuration"
+	"github.com/iotaledger/hive.go/v2/typeutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

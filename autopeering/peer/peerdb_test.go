@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/crypto/ed25519"
-	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/v2/crypto/ed25519"
+	"github.com/iotaledger/hive.go/v2/kvstore/mapdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

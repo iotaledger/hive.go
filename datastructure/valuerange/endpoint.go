@@ -1,8 +1,8 @@
 package valuerange
 
 import (
-	"github.com/iotaledger/hive.go/marshalutil"
-	"github.com/iotaledger/hive.go/stringify"
+	"github.com/iotaledger/hive.go/v2/marshalutil"
+	"github.com/iotaledger/hive.go/v2/stringify"
 	"golang.org/x/xerrors"
 )
 

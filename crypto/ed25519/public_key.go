@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/iotaledger/hive.go/v2/marshalutil"
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
 )

@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/iotaledger/hive.go/daemon"
+	"github.com/iotaledger/hive.go/v2/daemon"
 )
 
 type NodeOptions struct {
