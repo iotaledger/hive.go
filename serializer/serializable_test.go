@@ -3,12 +3,11 @@ package serializer_test
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
 	"testing"
 
 	"github.com/iotaledger/hive.go/serializer"
-	"github.com/iotaledger/hive.go/testutil"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -123,17 +122,26 @@ func (k *Keyers) FromSerializables(seris serializer.Serializables) {
 	}
 }
 
+// RandBytes returns length amount random bytes.
+func RandBytes(length int) []byte {
+	var b []byte
+	for i := 0; i < length; i++ {
+		b = append(b, byte(rand.Intn(256)))
+	}
+	return b
+}
+
 func randSerializedA() []byte {
 	var b [typeALength]byte
 	b[0] = TypeA
-	keyData := testutil.RandBytes(aKeyLength)
+	keyData := RandBytes(aKeyLength)
 	copy(b[serializer.SmallTypeDenotationByteSize:], keyData)
 	return b[:]
 }
 
 func randA() *A {
 	var k [aKeyLength]byte
-	copy(k[:], testutil.RandBytes(aKeyLength))
+	copy(k[:], RandBytes(aKeyLength))
 	return &A{Key: k}
 }
 
@@ -168,7 +176,7 @@ func (b *B) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inter
 
 func randB() *B {
 	var n [bNameLength]byte
-	copy(n[:], testutil.RandBytes(bNameLength))
+	copy(n[:], RandBytes(bNameLength))
 	return &B{Name: n}
 }
 

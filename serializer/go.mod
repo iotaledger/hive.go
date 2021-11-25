@@ -2,4 +2,7 @@ module github.com/iotaledger/hive.go/serializer
 
 go 1.16
 
-require github.com/iotaledger/hive.go v0.0.0-20211124122420-c2f1493d35a5 // indirect
+require (
+	github.com/ethereum/go-ethereum v1.10.13 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
+)
