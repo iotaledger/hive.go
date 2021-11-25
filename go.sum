@@ -158,6 +158,7 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/etcd-io/bbolt v1.3.3/go.mod h1:ZF2nL25h33cCyBtcyWeZ2/I3HQOfTP+0PIEvHjkjCrw=
 github.com/ethereum/go-ethereum v1.10.11 h1:KKIcwpmur9iTaVbR2dxlHu+peHVhU+/KX//NWvT1n9U=
 github.com/ethereum/go-ethereum v1.10.11/go.mod h1:W3yfrFyL9C1pHcwY5hmRHVDaorTiQxhYBkKyu5mEDHw=
+github.com/ethereum/go-ethereum v1.10.13/go.mod h1:W3yfrFyL9C1pHcwY5hmRHVDaorTiQxhYBkKyu5mEDHw=
 github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072/go.mod h1:duJ4Jxv5lDcvg4QuQr0oowTf7dz4/CR8NtyCooz9HL8=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
@@ -312,6 +313,8 @@ github.com/influxdata/usage-client v0.0.0-20160829180054-6d3895376368/go.mod h1:
 github.com/iotaledger/hive.go v0.0.0-20211124122420-c2f1493d35a5/go.mod h1:qfpjDWmi+h7AAOkqjZslPHTNeQ7Gf7kTCdIOzbMyjhc=
 github.com/iotaledger/hive.go/serializer v0.0.0-20211125111123-51e6af686a0d h1:2Cc2Pma1DzKXEPlaNdZxk2soLfbkLIIWWPCIhB23ZEQ=
 github.com/iotaledger/hive.go/serializer v0.0.0-20211125111123-51e6af686a0d/go.mod h1:cK0MbmhdREqMP/r9j7nqMDWTjt1t6o33cFK6Ko2ztUE=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20211125113956-c6d4ebfffb3b h1:39U0/Q1GMHncAY9lCYwpT4PlbFwEdY2brECIYL4y/GM=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20211125113956-c6d4ebfffb3b/go.mod h1:Aw7fS+UjhMBj4hxTBxSG8Ti/5ifp1SWFpyapGZFuzdc=
 github.com/iris-contrib/blackfriday v2.0.0+incompatible/go.mod h1:UzZ2bDEoaSGPbkg6SAB4att1aAwTmVIx/5gCVqeyUdI=
 github.com/iris-contrib/go.uuid v2.0.0+incompatible/go.mod h1:iz2lgM/1UnEf1kP0L/+fafWORmlnuysV2EMP8MW+qe0=
 github.com/iris-contrib/i18n v0.0.0-20171121225848-987a633949d0/go.mod h1:pMCz62A0xJL6I+umB2YTlFRwWXaDFA0jy+5HzGiJjqI=

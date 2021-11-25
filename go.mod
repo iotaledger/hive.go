@@ -6,9 +6,9 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20210817201821-5e4468e97817
 	github.com/dgraph-io/badger/v2 v2.2007.3
 	github.com/emirpasic/gods v1.12.0
-	github.com/ethereum/go-ethereum v1.10.11 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.4.2
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20211125113956-c6d4ebfffb3b // indirect
 	github.com/knadh/koanf v1.2.1
 	github.com/kr/text v0.2.0
 	github.com/linxGnu/grocksdb v1.6.33
