@@ -1,8 +1,10 @@
 package thresholdmap
 
 import (
+	"github.com/emirpasic/gods/trees/redblacktree"
+	"github.com/emirpasic/gods/utils"
+
 	"github.com/iotaledger/hive.go/datastructure/genericcomparator"
-	"github.com/iotaledger/hive.go/datastructure/redblacktree"
 )
 
 // region ThresholdMap /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,7 +12,7 @@ import (
 // ThresholdMap is a data structure that allows to map keys bigger or lower than a certain threshold to a given value.
 type ThresholdMap struct {
 	mode Mode
-	tree *redblacktree.RedBlackTree
+	tree *redblacktree.Tree
 }
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
@@ -19,20 +21,20 @@ func New(mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap 
 	if len(optionalComparator) >= 1 {
 		return &ThresholdMap{
 			mode: mode,
-			tree: redblacktree.New(optionalComparator[0]),
+			tree: redblacktree.NewWith(utils.Comparator(optionalComparator[0])),
 		}
 	}
 
 	return &ThresholdMap{
 		mode: mode,
-		tree: redblacktree.New(),
+		tree: redblacktree.NewWith(genericcomparator.Comparator),
 	}
 }
 
 // Set adds a new threshold that maps all keys >= or <= (depending on the Mode) the value given by key to a certain
 // value.
 func (t *ThresholdMap) Set(key interface{}, value interface{}) {
-	t.tree.Set(key, value)
+	t.tree.Put(key, value)
 }
 
 // Get returns the value of the next higher or lower existing threshold (depending on the mode) and a flag that
@@ -41,16 +43,15 @@ func (t *ThresholdMap) Get(key interface{}) (value interface{}, exists bool) {
 	var foundNode *redblacktree.Node
 	switch t.mode {
 	case UpperThresholdMode:
-		foundNode = t.tree.Ceiling(key)
+		foundNode, exists = t.tree.Ceiling(key)
 	case LowerThresholdMode:
-		foundNode = t.tree.Floor(key)
+		foundNode, exists = t.tree.Floor(key)
 	default:
 		panic("unsupported mode")
 	}
-	exists = foundNode != nil
 
 	if exists {
-		value = foundNode.Value()
+		value = foundNode.Value
 	}
 
 	return
@@ -58,8 +59,8 @@ func (t *ThresholdMap) Get(key interface{}) (value interface{}, exists bool) {
 
 // Floor returns the largest key that is <= the given key, it's value and a boolean flag indicating if it exists.
 func (t *ThresholdMap) Floor(key interface{}) (floorKey interface{}, floorValue interface{}, exists bool) {
-	if node := t.tree.Floor(key); node != nil {
-		return node.Key(), node.Value(), true
+	if node, exists := t.tree.Floor(key); exists {
+		return node.Key, node.Value, true
 	}
 
 	return nil, nil, false
@@ -67,8 +68,8 @@ func (t *ThresholdMap) Floor(key interface{}) (floorKey interface{}, floorValue 
 
 // Ceiling returns the smallest key that is >= the given key, it's value and a boolean flag indicating if it exists.
 func (t *ThresholdMap) Ceiling(key interface{}) (floorKey interface{}, floorValue interface{}, exists bool) {
-	if node := t.tree.Ceiling(key); node != nil {
-		return node.Key(), node.Value(), true
+	if node, exists := t.tree.Ceiling(key); exists {
+		return node.Key, node.Value, true
 	}
 
 	return nil, nil, false
@@ -76,10 +77,28 @@ func (t *ThresholdMap) Ceiling(key interface{}) (floorKey interface{}, floorValu
 
 // Delete removes a threshold from the map.
 func (t *ThresholdMap) Delete(key interface{}) (element *Element, success bool) {
-	node, success := t.tree.Delete(key)
-	element = t.wrapNode(node)
+	node := t.lookup(key)
+	if node != nil {
+		t.tree.Remove(key)
+	}
 
-	return
+	return t.wrapNode(node), node != nil
+}
+
+func (t *ThresholdMap) lookup(key interface{}) *redblacktree.Node {
+	node := t.tree.Root
+	for node != nil {
+		compare := t.tree.Comparator(key, node.Key)
+		switch {
+		case compare == 0:
+			return node
+		case compare < 0:
+			node = node.Left
+		case compare > 0:
+			node = node.Right
+		}
+	}
+	return nil
 }
 
 // Keys returns a list of thresholds that have been set in the map.
@@ -97,20 +116,22 @@ func (t *ThresholdMap) Values() []interface{} {
 func (t *ThresholdMap) GetElement(key interface{}) *Element {
 	switch t.mode {
 	case UpperThresholdMode:
-		return t.wrapNode(t.tree.Ceiling(key))
+		ceiling, _ := t.tree.Ceiling(key)
+		return t.wrapNode(ceiling)
 	default:
-		return t.wrapNode(t.tree.Floor(key))
+		floor, _ := t.tree.Floor(key)
+		return t.wrapNode(floor)
 	}
 }
 
 // MinElement returns the smallest threshold in the map (or nil if the map is empty).
 func (t *ThresholdMap) MinElement() *Element {
-	return t.wrapNode(t.tree.Min())
+	return t.wrapNode(t.tree.Left())
 }
 
 // MaxElement returns the largest threshold in the map (or nil if the map is empty).
 func (t *ThresholdMap) MaxElement() *Element {
-	return t.wrapNode(t.tree.Max())
+	return t.wrapNode(t.tree.Right())
 }
 
 // DeleteElement removes the given Element from the map.
@@ -119,14 +140,16 @@ func (t *ThresholdMap) DeleteElement(element *Element) {
 		return
 	}
 
-	t.tree.DeleteNode(element.Node)
+	t.tree.Remove(element.Node)
 }
 
 // ForEach provides a callback based iterator that iterates through all Elements in the map.
 func (t *ThresholdMap) ForEach(iterator func(node *Element) bool) {
-	t.tree.ForEach(func(node *redblacktree.Node) bool {
-		return iterator(t.wrapNode(node))
-	})
+	for it := t.tree.Iterator(); it.Next(); {
+		if !iterator(t.wrapNode(&redblacktree.Node{Key: it.Key(), Value: it.Value()})) {
+			break
+		}
+	}
 }
 
 // Iterator returns an Iterator object that can be used to manually iterate through the Elements in the map. It accepts
@@ -136,7 +159,7 @@ func (t *ThresholdMap) Iterator(optionalStartingNode ...*Element) *Iterator {
 		return NewIterator(optionalStartingNode[0])
 	}
 
-	return NewIterator(t.wrapNode(t.tree.Min()))
+	return NewIterator(t.wrapNode(t.tree.Left()))
 }
 
 // Size returns the amount of thresholds that are stored in the map.
@@ -170,6 +193,16 @@ func (t *ThresholdMap) wrapNode(node *redblacktree.Node) (element *Element) {
 // Element is a wrapper for the Node used in the underlying red-black RedBlackTree.
 type Element struct {
 	*redblacktree.Node
+}
+
+// Key returns the Key of the Element.
+func (e *Element) Key() interface{} {
+	return e.Node.Key
+}
+
+// Value returns the Value of the Element.
+func (e *Element) Value() interface{} {
+	return e.Node.Value
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +257,7 @@ func (i *Iterator) HasNext() bool {
 	case LeftEndReachedState:
 		return i.current != nil
 	case IterationStartedState:
-		return i.current.Successor() != nil
+		return i.current.Right != nil
 	}
 
 	return false
@@ -239,7 +272,7 @@ func (i *Iterator) HasPrev() bool {
 	case RightEndReachedState:
 		return i.current != nil
 	case IterationStartedState:
-		return i.current.Predecessor() != nil
+		return i.current.Left != nil
 	}
 
 	return false
@@ -253,10 +286,10 @@ func (i *Iterator) Next() *Element {
 	}
 
 	if i.state == IterationStartedState {
-		i.current = i.wrapNode(i.current.Successor())
+		i.current = i.wrapNode(i.current.Right)
 	}
 
-	if i.current.Successor() == nil {
+	if i.current.Right == nil {
 		i.state = RightEndReachedState
 	} else {
 		i.state = IterationStartedState
@@ -273,10 +306,10 @@ func (i *Iterator) Prev() *Element {
 	}
 
 	if i.state == IterationStartedState {
-		i.current = i.wrapNode(i.current.Predecessor())
+		i.current = i.wrapNode(i.current.Left)
 	}
 
-	if i.current.Predecessor() == nil {
+	if i.current.Left == nil {
 		i.state = LeftEndReachedState
 	} else {
 		i.state = IterationStartedState
