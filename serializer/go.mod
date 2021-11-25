@@ -1,4 +1,4 @@
-module github.com/iotaledger/hive.go/v2/serializer
+module github.com/iotaledger/hive.go/serializer/v2
 
 go 1.16
 
