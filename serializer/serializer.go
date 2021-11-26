@@ -1002,8 +1002,12 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		arrayElementValidator = arrayRules.ElementValidationFunc()
 	}
 
+	if sliceLength == 0 {
+		return d
+	}
+
 	var seris Serializables
-	for i := 0; i < int(sliceLength); i++ {
+	for i := 0; i < sliceLength; i++ {
 
 		// remember where we were before reading the object
 		srcBefore := d.src[d.offset:]
