@@ -465,12 +465,18 @@ func (s *Serializer) WritePayload(payload Serializable, deSeriMode DeSerializati
 }
 
 // WriteString writes the given string to the Serializer.
-func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errProducer ErrProducer) *Serializer {
+func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxLen ...int) *Serializer {
 	if s.err != nil {
 		return s
 	}
 
-	_ = s.writeSliceLength(len(str), lenType, errProducer)
+	strLen := len(str)
+	if len(maxLen) > 0 && strLen > maxLen[0] {
+		s.err = errProducer(fmt.Errorf("%w: string (len %d) exceeds max length of %d ", ErrStringTooLong, strLen, maxLen[0]))
+		return s
+	}
+
+	_ = s.writeSliceLength(strLen, lenType, errProducer)
 	if s.err != nil {
 		return s
 	}
@@ -1143,7 +1149,7 @@ func (d *Deserializer) readSerializableIntoTarget(target interface{}, s Serializ
 }
 
 // ReadString reads a string.
-func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxSize ...int) *Deserializer {
+func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxLen ...int) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -1154,8 +1160,8 @@ func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errPr
 		return d
 	}
 
-	if len(maxSize) > 0 && strLen > maxSize[0] {
-		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxSize[0]))
+	if len(maxLen) > 0 && strLen > maxLen[0] {
+		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen[0]))
 	}
 
 	if len(d.src[d.offset:]) < strLen {

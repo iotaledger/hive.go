@@ -34,6 +34,8 @@ var (
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
 	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit
 	ErrUint256NumNegative = errors.New("uint256 is negative")
+	// ErrStringTooLong gets returned if a string exceeds a max length.
+	ErrStringTooLong = errors.New("string is too long")
 	// ErrUint256TooBig gets returned when a supposed uint256 big.Int value is more than 32 bytes in size.
 	ErrUint256TooBig = errors.New("uint256 big int is too big")
 	// ErrUint256Nil gets returned when a uint256 *big.Int is nil.
