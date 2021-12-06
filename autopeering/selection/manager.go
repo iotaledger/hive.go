@@ -175,8 +175,8 @@ Loop:
 					m.triggerPeeringEvent(true, req.Remote, false)
 					m.dropPeering(p)
 				} else {
-					m.addNeighbor(m.outbound, req)
-					m.triggerPeeringEvent(true, req.Remote, true)
+					added := m.addNeighbor(m.outbound, req)
+					m.triggerPeeringEvent(true, req.Remote, added)
 				}
 			}
 			// call updateOutbound again after the given interval
@@ -325,19 +325,21 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 		return
 	}
 
-	m.addNeighbor(m.inbound, toAccept)
-	resp = accept
+	if m.addNeighbor(m.inbound, toAccept) {
+		resp = accept
+	}
 	return
 }
 
-func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) {
+func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) bool {
 	// drop furthest neighbor if necessary
 	if furthest, _ := nh.getFurthest(); furthest.Remote != nil {
 		if p := nh.RemovePeer(furthest.Remote.ID()); p != nil {
 			m.dropPeering(p)
 		}
 	}
-	nh.Add(toAdd)
+
+	return nh.Add(toAdd)
 }
 
 func (m *manager) updateSalt() {
