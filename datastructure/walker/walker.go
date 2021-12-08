@@ -43,12 +43,14 @@ func (w *Walker) Next() (nextElement interface{}) {
 }
 
 // Push adds a new element to the walk, which can consequently be retrieved by calling the Next method.
-func (w *Walker) Push(nextElement interface{}) {
+func (w *Walker) Push(nextElement interface{}) (walker *Walker) {
 	if w.seenElements != nil && !w.seenElements.Add(nextElement) {
-		return
+		return w
 	}
 
 	w.stack.PushBack(nextElement)
+
+	return w
 }
 
 // StopWalk aborts the walk and forces HasNext to always return false.

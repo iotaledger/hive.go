@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
+
+	"github.com/iotaledger/hive.go/kvstore/utils"
 )
 
 var (
@@ -63,8 +66,15 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
-	var parser koanf.Parser
+	exists, err := utils.PathExists(filePath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return os.ErrNotExist
+	}
 
+	var parser koanf.Parser
 	switch filepath.Ext(filePath) {
 	case ".json":
 		parser = &JSONLowerParser{}

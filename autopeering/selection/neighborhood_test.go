@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/iotaledger/hive.go/autopeering/distance"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetFurthest(t *testing.T) {
@@ -28,23 +29,27 @@ func TestGetFurthest(t *testing.T) {
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
+				size:      4,
+			},
 			expected: peer.PeerDistance{
 				Remote:   nil,
-				Distance: distance.Max},
+				Distance: distance.Max,
+			},
 			index: 1,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[2], d[3]},
-				size:      4},
+				size:      4,
+			},
 			expected: d[3],
 			index:    3,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
-				size:      4},
+				size:      4,
+			},
 			expected: d[4],
 			index:    2,
 		},
@@ -74,21 +79,24 @@ func TestGetPeerIndex(t *testing.T) {
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
+				size:      4,
+			},
 			target: d[0].Remote,
 			index:  0,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[2], d[3]},
-				size:      4},
+				size:      4,
+			},
 			target: d[3].Remote,
 			index:  3,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
-				size:      4},
+				size:      4,
+			},
 			target: d[3].Remote,
 			index:  -1,
 		},
@@ -117,21 +125,24 @@ func TestRemove(t *testing.T) {
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
+				size:      4,
+			},
 			toRemove: d[0].Remote,
 			expected: []peer.PeerDistance{},
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[3]},
-				size:      4},
+				size:      4,
+			},
 			toRemove: d[1].Remote,
 			expected: []peer.PeerDistance{d[0], d[3]},
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
-				size:      4},
+				size:      4,
+			},
 			toRemove: d[2].Remote,
 			expected: []peer.PeerDistance{d[0], d[1], d[4]},
 		},
@@ -151,37 +162,45 @@ func TestAdd(t *testing.T) {
 	}
 
 	type testCase struct {
-		input    *Neighborhood
-		toAdd    peer.PeerDistance
-		expected []peer.PeerDistance
+		input         *Neighborhood
+		toAdd         peer.PeerDistance
+		expected      []peer.PeerDistance
+		shouldBeAdded bool
 	}
 
 	tests := []testCase{
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
-			toAdd:    d[2],
-			expected: []peer.PeerDistance{d[0], d[2]},
+				size:      4,
+			},
+			toAdd:         d[2],
+			expected:      []peer.PeerDistance{d[0], d[2]},
+			shouldBeAdded: true,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[3]},
-				size:      4},
-			toAdd:    d[2],
-			expected: []peer.PeerDistance{d[0], d[1], d[3], d[2]},
+				size:      4,
+			},
+			toAdd:         d[2],
+			expected:      []peer.PeerDistance{d[0], d[1], d[3], d[2]},
+			shouldBeAdded: true,
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
-				size:      4},
-			toAdd:    d[3],
-			expected: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
+				size:      4,
+			},
+			toAdd:         d[3],
+			expected:      []peer.PeerDistance{d[0], d[1], d[4], d[2]},
+			shouldBeAdded: false,
 		},
 	}
 
 	for _, test := range tests {
-		test.input.Add(test.toAdd)
+		added := test.input.Add(test.toAdd)
+		assert.Equal(t, test.shouldBeAdded, added)
 		assert.Equal(t, test.expected, test.input.neighbors, "Add")
 	}
 }
@@ -203,7 +222,8 @@ func TestUpdateDistance(t *testing.T) {
 
 	neighborhood := Neighborhood{
 		neighbors: d[1:],
-		size:      4}
+		size:      4,
+	}
 
 	neighborhood.UpdateDistance(d[0].Remote.ID().Bytes(), s.GetBytes())
 
@@ -229,19 +249,22 @@ func TestGetPeers(t *testing.T) {
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{},
-				size:      4},
+				size:      4,
+			},
 			expected: []*peer.Peer{},
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
+				size:      4,
+			},
 			expected: []*peer.Peer{peers[0]},
 		},
 		{
 			input: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[3], d[2]},
-				size:      4},
+				size:      4,
+			},
 			expected: []*peer.Peer{peers[0], peers[1], peers[3], peers[2]},
 		},
 	}

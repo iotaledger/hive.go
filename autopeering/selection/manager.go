@@ -31,6 +31,7 @@ type network interface {
 type peeringRequest struct {
 	peer *peer.Peer
 	salt *salt.Salt
+	back chan bool
 }
 
 type manager struct {
@@ -55,7 +56,6 @@ type manager struct {
 
 	dropChan    chan identity.ID
 	requestChan chan peeringRequest
-	replyChan   chan bool
 
 	wg      sync.WaitGroup
 	closing chan struct{}
@@ -78,7 +78,6 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		rejectionFilter:   NewFilter(),
 		dropChan:          make(chan identity.ID, queueSize),
 		requestChan:       make(chan peeringRequest, queueSize),
-		replyChan:         make(chan bool, 1),
 		closing:           make(chan struct{}),
 		events: Events{
 			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
@@ -132,9 +131,11 @@ func (m *manager) getOutNeighbors() []*peer.Peer {
 
 func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 	var status bool
+
+	back := make(chan bool)
 	select {
-	case m.requestChan <- peeringRequest{p, s}:
-		status = <-m.replyChan
+	case m.requestChan <- peeringRequest{peer: p, salt: s, back: back}:
+		status = <-back
 	default:
 		// a full queue should count as a failed request
 		status = false
@@ -175,8 +176,8 @@ Loop:
 					m.triggerPeeringEvent(true, req.Remote, false)
 					m.dropPeering(p)
 				} else {
-					m.addNeighbor(m.outbound, req)
-					m.triggerPeeringEvent(true, req.Remote, true)
+					added := m.addNeighbor(m.outbound, req)
+					m.triggerPeeringEvent(true, req.Remote, added)
 				}
 			}
 			// call updateOutbound again after the given interval
@@ -307,7 +308,7 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 
 func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	resp = reject
-	defer func() { m.replyChan <- resp }() // assure that a response is always issued
+	defer func() { req.back <- resp }() // assure that a response is always issued
 
 	if !m.isValidNeighbor(req.peer) {
 		return
@@ -325,19 +326,21 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 		return
 	}
 
-	m.addNeighbor(m.inbound, toAccept)
-	resp = accept
+	if m.addNeighbor(m.inbound, toAccept) {
+		resp = accept
+	}
 	return
 }
 
-func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) {
+func (m *manager) addNeighbor(nh *Neighborhood, toAdd peer.PeerDistance) bool {
 	// drop furthest neighbor if necessary
 	if furthest, _ := nh.getFurthest(); furthest.Remote != nil {
 		if p := nh.RemovePeer(furthest.Remote.ID()); p != nil {
 			m.dropPeering(p)
 		}
 	}
-	nh.Add(toAdd)
+
+	return nh.Add(toAdd)
 }
 
 func (m *manager) updateSalt() {

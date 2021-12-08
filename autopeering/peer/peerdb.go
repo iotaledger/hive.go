@@ -181,7 +181,10 @@ func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 
 // UpdateLocalPrivateKey stores the provided key in the database.
 func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
-	return db.store.Set(localFieldKey(dbLocalKey), key.Bytes())
+	if err := db.store.Set(localFieldKey(dbLocalKey), key.Bytes()); err != nil {
+		return err
+	}
+	return db.store.Flush()
 }
 
 // LastPing returns that property for the given peer ID and address.
