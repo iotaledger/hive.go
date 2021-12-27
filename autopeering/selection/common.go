@@ -26,13 +26,14 @@ var (
 )
 
 type options struct {
-	log               *logger.Logger // Logger
-	dropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
-	neighborValidator Validator      // potential neighbor validator
-	useMana           bool
-	manaFunc          mana.Func
-	r                 int
-	ro                float64
+	log                   *logger.Logger // Logger
+	dropOnUpdate          bool           // set true to drop all neighbors when the salt is updated
+	neighborValidator     Validator      // potential neighbor validator
+	useMana               bool
+	manaFunc              mana.Func
+	r                     int
+	ro                    float64
+	neighborBlockDuration time.Duration
 }
 
 // An Option configures the peer selection.
@@ -91,6 +92,12 @@ func R(r int) Option {
 func Ro(ro float64) Option {
 	return optionFunc(func(opts *options) {
 		opts.ro = ro
+	})
+}
+
+func NeighborBlockDuration(blockDuration time.Duration) Option {
+	return optionFunc(func(opts *options) {
+		opts.neighborBlockDuration = blockDuration
 	})
 }
 
