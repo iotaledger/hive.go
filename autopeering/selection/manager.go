@@ -11,6 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -271,8 +272,16 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 		m.rankedPeersMutex.RUnlock()
 	}
 
+	// Filter out blocklisted peers.
+	allowedPeers := make([]*peer.Peer, 0, len(knownPeers))
+	for _, p := range knownPeers {
+		if !m.isBlocklisted(p) {
+			allowedPeers = append(allowedPeers, p)
+		}
+	}
+
 	// sort verified peers by distance
-	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), knownPeers)
+	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), allowedPeers)
 
 	// filter out current neighbors
 	filter := m.getConnectedFilter()
@@ -285,10 +294,6 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 
 	if len(filteredList) == 0 {
 		return
-	}
-	// reset rejectionFilter so that in the next call filteredList is full again
-	if len(filteredList) < 2 {
-		m.rejectionFilter.Clean()
 	}
 
 	// select new candidate
@@ -318,6 +323,10 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	resp = reject
 	defer func() { req.back <- resp }() // assure that a response is always issued
+
+	if m.isBlocklisted(req.peer) {
+		return
+	}
 
 	if !m.isValidNeighbor(req.peer) {
 		return
@@ -460,4 +469,15 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
 		})
 	}
+}
+
+func (m *manager) isBlocklisted(p *peer.Peer) bool {
+	if _, err := m.blocklist.Get(p.ID().String()); err != nil {
+		if errors.Is(err, ttlcache.ErrNotFound) {
+			return true
+		}
+		m.log.Warnw("Failed to retrieve record for peer from blocklist map",
+			"peerId", p.ID())
+	}
+	return false
 }
