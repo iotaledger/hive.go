@@ -23,6 +23,7 @@ const (
 	maxRetries                   = 2
 	logSends                     = true
 	defaultNeighborBlockDuration = 5 * time.Minute
+	defaultNeighborSkipTimeout   = 5 * time.Minute
 )
 
 //  policy for retrying failed network calls
@@ -59,6 +60,7 @@ func New(local *peer.Local, disc DiscoverProtocol, opts ...Option) *Protocol {
 		dropOnUpdate:          false,
 		neighborValidator:     nil,
 		neighborBlockDuration: defaultNeighborBlockDuration,
+		neighborSkipTimeout:   defaultNeighborSkipTimeout,
 	}
 	for _, opt := range opts {
 		opt.apply(args)
@@ -123,7 +125,7 @@ func (p *Protocol) RemoveNeighbor(id identity.ID) {
 // but it also adds the neighbor to the blocklist for certain amount of time to prevent future peering.
 func (p *Protocol) BlockNeighbor(id identity.ID) {
 	if err := p.mgr.blocklist.Set(id.String(), nil); err != nil {
-		p.log.Warnw("Failed to set neighbor to blocklist map", "err", err)
+		p.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
 	}
 	p.mgr.removeNeighbor(id)
 }

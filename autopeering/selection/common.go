@@ -34,6 +34,7 @@ type options struct {
 	r                     int
 	ro                    float64
 	neighborBlockDuration time.Duration
+	neighborSkipTimeout time.Duration
 }
 
 // An Option configures the peer selection.
@@ -98,6 +99,12 @@ func Ro(ro float64) Option {
 func NeighborBlockDuration(blockDuration time.Duration) Option {
 	return optionFunc(func(opts *options) {
 		opts.neighborBlockDuration = blockDuration
+	})
+}
+
+func NeighborSkipTimeout(skipTimeout time.Duration) Option {
+	return optionFunc(func(opts *options) {
+		opts.neighborSkipTimeout = skipTimeout
 	})
 }
 
