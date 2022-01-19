@@ -236,6 +236,7 @@ Loop:
 }
 
 func (m *manager) AddToSkiplist(id identity.ID) {
+	m.log.Info("Adding neighbor to skiplist", "peerId", id)
 	if err := m.skiplist.Set(id.String(), nil); err != nil {
 		m.log.Warnw("Failed to set neighbor to skiplist cache", "err", err)
 	}
