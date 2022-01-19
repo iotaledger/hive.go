@@ -37,13 +37,18 @@ type SerializableSlice interface {
 // If the type doesn't resolve or is not supported in the deserialization context, an error is returned.
 type SerializableReadGuardFunc func(ty uint32) (Serializable, error)
 
+// SerializablePostReadGuardFunc is a function which inspects the read Serializable add runs additional validation against it.
+type SerializablePostReadGuardFunc func(seri Serializable) error
+
 // SerializableWriteGuardFunc is a function that given a Serializable, tells whether the given type is allowed to be serialized.
 type SerializableWriteGuardFunc func(seri Serializable) error
 
 // SerializableGuard defines the guards to de/serialize Serializable.
 type SerializableGuard struct {
-	// The read guard applied when reading objects.
+	// The read guard applied before reading an entire object.
 	ReadGuard SerializableReadGuardFunc
+	// The read guard applied after an object has been read.
+	PostReadGuard SerializablePostReadGuardFunc
 	// The write guard applied when writing objects.
 	WriteGuard SerializableWriteGuardFunc
 }

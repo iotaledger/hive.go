@@ -1041,6 +1041,13 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			seenTypes[ty] = struct{}{}
+
+			if arrayRules.Guards.PostReadGuard != nil {
+				if err := arrayRules.Guards.PostReadGuard(seri); err != nil {
+					d.err = errProducer(err)
+					return d
+				}
+			}
 		}
 
 		if arrayElementValidator != nil {
