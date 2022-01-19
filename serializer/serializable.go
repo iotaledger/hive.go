@@ -87,6 +87,19 @@ func (av ArrayValidationMode) HasMode(mode ArrayValidationMode) bool {
 	return av&mode > 0
 }
 
+// TypePrefixes defines a set of type prefixes.
+type TypePrefixes map[uint32]struct{}
+
+// Subset checks whether every type prefix is a member of other.
+func (typePrefixes TypePrefixes) Subset(other TypePrefixes) bool {
+	for typePrefix := range typePrefixes {
+		if _, has := other[typePrefix]; !has {
+			return false
+		}
+	}
+	return true
+}
+
 // ArrayRules defines rules around a to be deserialized array.
 // Min and Max at 0 define an unbounded array.
 type ArrayRules struct {
@@ -94,6 +107,8 @@ type ArrayRules struct {
 	Min uint
 	// The max array bound.
 	Max uint
+	// A map of types which must occur within the array.
+	MustOccur TypePrefixes
 	// The guards applied while de/serializing Serializables.
 	Guards SerializableGuard
 	// The mode of validation.

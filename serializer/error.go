@@ -24,6 +24,8 @@ var (
 	ErrArrayValidationViolatesTypeUniqueness = errors.New("array elements must be of a unique type")
 	// ErrArrayValidationOrderViolatesLexicalOrder gets returned if the array elements are not in lexical order.
 	ErrArrayValidationOrderViolatesLexicalOrder = errors.New("array elements must be in their lexical order (byte wise)")
+	// ErrArrayValidationTypesNotOccurred gets returned if not all types as specified in an ArrayRules.MustOccur are in an array.
+	ErrArrayValidationTypesNotOccurred = errors.New("not all needed types are present")
 	// ErrDeserializationNotEnoughData gets returned if there is not enough data available to deserialize a given object.
 	ErrDeserializationNotEnoughData = errors.New("not enough data for deserialization")
 	// ErrDeserializationInvalidBoolValue gets returned when a bool value is tried to be read but it is neither 0 or 1.

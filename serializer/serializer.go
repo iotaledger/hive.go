@@ -945,8 +945,13 @@ func (d *Deserializer) ReadSliceOfArraysOf64Bytes(slice *SliceOfArraysOf64Bytes,
 
 // ReadObject reads an object, using the given SerializableReadGuardFunc.
 func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, typeDen TypeDenotationType, serSel SerializableReadGuardFunc, errProducer ErrProducer) *Deserializer {
+	deserializer, _ := d.readObject(target, deSeriMode, deSeriCtx, typeDen, serSel, errProducer)
+	return deserializer
+}
+
+func (d *Deserializer) readObject(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, typeDen TypeDenotationType, serSel SerializableReadGuardFunc, errProducer ErrProducer) (*Deserializer, uint32) {
 	if d.err != nil {
-		return d
+		return d, 0
 	}
 
 	l := len(d.src[d.offset:])
@@ -955,13 +960,13 @@ func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerialization
 	case TypeDenotationUint32:
 		if l < UInt32ByteSize {
 			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
+			return d, 0
 		}
 		ty = binary.LittleEndian.Uint32(d.src[d.offset:])
 	case TypeDenotationByte:
 		if l < OneByte {
 			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
+			return d, 0
 		}
 		ty = uint32(d.src[d.offset : d.offset+1][0])
 	case TypeDenotationNone:
@@ -971,19 +976,19 @@ func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerialization
 	seri, err := serSel(ty)
 	if err != nil {
 		d.err = errProducer(err)
-		return d
+		return d, 0
 	}
 
 	bytesConsumed, err := seri.Deserialize(d.src[d.offset:], deSeriMode, deSeriCtx)
 	if err != nil {
 		d.err = errProducer(err)
-		return d
+		return d, 0
 	}
 
 	d.offset += bytesConsumed
 	d.readSerializableIntoTarget(target, seri)
 
-	return d
+	return d, ty
 }
 
 // ReadSliceOfObjects reads a slice of objects.
@@ -999,6 +1004,7 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 	}
 
 	var arrayElementValidator ElementValidationFunc
+	var seenTypes TypePrefixes
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
 			d.err = errProducer(err)
@@ -1006,6 +1012,7 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		}
 
 		arrayElementValidator = arrayRules.ElementValidationFunc()
+		seenTypes = make(TypePrefixes, 0)
 	}
 
 	if sliceLength == 0 {
@@ -1021,7 +1028,7 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 
 		var seri Serializable
 		// this mutates d.src/d.offset
-		d.ReadObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
+		_, ty := d.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
 			return errProducer(err)
 		})
 
@@ -1032,6 +1039,10 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 
 		bytesConsumed := d.offset - offsetBefore
 
+		if deSeriMode.HasMode(DeSeriModePerformValidation) {
+			seenTypes[ty] = struct{}{}
+		}
+
 		if arrayElementValidator != nil {
 			if err := arrayElementValidator(i, srcBefore[:bytesConsumed]); err != nil {
 				d.err = errProducer(err)
@@ -1040,6 +1051,13 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		}
 
 		seris = append(seris, seri)
+	}
+
+	if deSeriMode.HasMode(DeSeriModePerformValidation) {
+		if !arrayRules.MustOccur.Subset(seenTypes) {
+			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
+			return d
+		}
 	}
 
 	d.readSerializablesIntoTarget(target, seris)
