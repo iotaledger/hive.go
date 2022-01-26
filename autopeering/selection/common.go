@@ -34,7 +34,7 @@ type options struct {
 	r                     int
 	ro                    float64
 	neighborBlockDuration time.Duration
-	neighborSkipTimeout time.Duration
+	neighborSkipTimeout   time.Duration
 }
 
 // An Option configures the peer selection.
@@ -96,12 +96,15 @@ func Ro(ro float64) Option {
 	})
 }
 
+// NeighborBlockDuration sets the amount of time a peer should remain in the blocklist.
 func NeighborBlockDuration(blockDuration time.Duration) Option {
 	return optionFunc(func(opts *options) {
 		opts.neighborBlockDuration = blockDuration
 	})
 }
 
+// NeighborSkipTimeout sets the amount of time for which we should skip the peer
+// and don't try to connect with it after any problem encountered with that peer.
 func NeighborSkipTimeout(skipTimeout time.Duration) Option {
 	return optionFunc(func(opts *options) {
 		opts.neighborSkipTimeout = skipTimeout
