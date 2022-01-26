@@ -504,22 +504,22 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 
 func (m *manager) isInBlocklist(p *peer.Peer) bool {
 	if _, err := m.blocklist.Get(p.ID().String()); err != nil {
-		if errors.Is(err, ttlcache.ErrNotFound) {
-			return true
+		if !errors.Is(err, ttlcache.ErrNotFound) {
+			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
+				"peerId", p.ID())
 		}
-		m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
-			"peerId", p.ID())
+		return false
 	}
-	return false
+	return true
 }
 
 func (m *manager) isInSkiplist(p *peer.Peer) bool {
 	if _, err := m.skiplist.Get(p.ID().String()); err != nil {
-		if errors.Is(err, ttlcache.ErrNotFound) {
-			return true
+		if !errors.Is(err, ttlcache.ErrNotFound) {
+			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
+				"peerId", p.ID())
 		}
-		m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
-			"peerId", p.ID())
+		return false
 	}
-	return false
+	return true
 }
