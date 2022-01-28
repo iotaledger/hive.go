@@ -162,7 +162,7 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 }
 
 func (m *manager) blockNeighbor(id identity.ID) {
-	if err := m.blocklist.Set(id.String(), nil); err != nil {
+	if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
 		m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
 	}
 	m.removeNeighbor(id)
@@ -244,7 +244,7 @@ Loop:
 
 func (m *manager) addToSkiplist(id identity.ID) {
 	m.log.Info("Adding neighbor to skiplist", "peerId", id)
-	if err := m.skiplist.Set(id.String(), nil); err != nil {
+	if err := m.skiplist.Set(id.EncodeBase58(), nil); err != nil {
 		m.log.Warnw("Failed to set neighbor to skiplist cache", "err", err)
 	}
 }
@@ -514,7 +514,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 }
 
 func (m *manager) isInBlocklist(p *peer.Peer) bool {
-	if _, err := m.blocklist.Get(p.ID().String()); err != nil {
+	if _, err := m.blocklist.Get(p.ID().EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
 				"peerId", p.ID())
@@ -525,7 +525,7 @@ func (m *manager) isInBlocklist(p *peer.Peer) bool {
 }
 
 func (m *manager) isInSkiplist(p *peer.Peer) bool {
-	if _, err := m.skiplist.Get(p.ID().String()); err != nil {
+	if _, err := m.skiplist.Get(p.ID().EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
 				"peerId", p.ID())
