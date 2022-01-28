@@ -31,6 +31,7 @@ require (
 
 require (
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/objx v0.3.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )

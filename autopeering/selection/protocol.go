@@ -124,10 +124,7 @@ func (p *Protocol) RemoveNeighbor(id identity.ID) {
 // BlockNeighbor does everything the RemoveNeighbor() does,
 // but it also adds the neighbor to the blocklist for certain amount of time to prevent future peering.
 func (p *Protocol) BlockNeighbor(id identity.ID) {
-	if err := p.mgr.blocklist.Set(id.String(), nil); err != nil {
-		p.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
-	}
-	p.mgr.removeNeighbor(id)
+	p.mgr.blockNeighbor(id)
 }
 
 // HandleMessage responds to incoming neighbor selection messages.

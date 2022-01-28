@@ -42,6 +42,51 @@ func TestMgrNoDuplicates(t *testing.T) {
 		assert.Empty(t, getDuplicates(mgr.getNeighbors()))
 	}
 }
+func TestBlocklistNeighbor(t *testing.T) {
+	const (
+		nNeighbors = 2
+	)
+	SetParameters(Parameters{
+		OutboundNeighborSize:   nNeighbors,
+		InboundNeighborSize:    nNeighbors,
+		SaltLifetime:           testSaltLifetime,
+		OutboundUpdateInterval: testUpdateInterval,
+	})
+	mgrsMap := make(map[identity.ID]*manager)
+	blocklistingMgr := newTestManager("mgr 1", mgrsMap)
+	blocklistedMgr := newTestManager("mgr 2", mgrsMap)
+	blocklistingMgr.start()
+	blocklistedMgr.start()
+	time.Sleep(4 * graceTime)
+	blocklistingMgr.blockNeighbor(blocklistedMgr.getID())
+	t.Run("Blocklisting manager drops Blocklisted neighbor", func(t *testing.T) {
+		assert.Eventually(t, func() bool {
+			for _, p := range blocklistingMgr.getNeighbors() {
+				if p == blocklistedMgr.net.local().Peer {
+					return false
+				}
+			}
+			return true
+		}, time.Second, 10*time.Millisecond)
+	})
+	t.Run("Blocklisting manager doesn't select Blocklisted neighbor for outbound connection", func(t *testing.T) {
+		got := blocklistingMgr.getOutboundPeeringCandidate()
+		assert.Nil(t, got.Remote)
+	})
+	t.Run("Blocklisting manager rejects Blocklisted neighbor on incoming connection", func(t *testing.T) {
+		assert.False(t, blocklistingMgr.requestPeering(blocklistedMgr.net.local().Peer, blocklistedMgr.net.local().GetPublicSalt()))
+	})
+	t.Run("Blocklisted manager stops trying to connect to Blocklisting neighbor after first failure", func(t *testing.T) {
+		blocklistedMgr.cleanSkiplist()
+		resultCh := make(chan peer.PeerDistance, 1)
+		blocklistedMgr.updateOutbound(resultCh)
+		result := <-resultCh
+		assert.Nil(t, result.Remote)
+		assert.True(t, blocklistedMgr.isInSkiplist(blocklistingMgr.net.local().Peer))
+		got := blocklistedMgr.getOutboundPeeringCandidate()
+		assert.Nil(t, got.Remote)
+	})
+}
 
 func TestEvents(t *testing.T) {
 	// we want many drops/connects
@@ -208,8 +253,8 @@ func (n *networkMock) GetKnownPeers() []*peer.Peer {
 func newTestManager(name string, mgrMap map[identity.ID]*manager) *manager {
 	db, _ := peer.NewDB(mapdb.NewMapDB())
 	local := peertest.NewLocal("mock", net.IPv4zero, 0, db)
-	networkMock := &networkMock{loc: local, mgr: mgrMap}
-	m := newManager(networkMock, networkMock.GetKnownPeers, log.Named(name), &options{})
+	nm := &networkMock{loc: local, mgr: mgrMap}
+	m := newManager(nm, nm.GetKnownPeers, log.Named(name), &options{})
 	mgrMap[m.getID()] = m
 	return m
 }
