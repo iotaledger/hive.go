@@ -20,8 +20,10 @@ import (
 )
 
 const (
-	maxRetries = 2
-	logSends   = true
+	maxRetries                   = 2
+	logSends                     = true
+	defaultNeighborBlockDuration = 5 * time.Minute
+	defaultNeighborSkipTimeout   = 5 * time.Minute
 )
 
 //  policy for retrying failed network calls
@@ -54,9 +56,11 @@ type Protocol struct {
 // New creates a new neighbor selection protocol.
 func New(local *peer.Local, disc DiscoverProtocol, opts ...Option) *Protocol {
 	args := &options{
-		log:               logger.NewNopLogger(),
-		dropOnUpdate:      false,
-		neighborValidator: nil,
+		log:                   logger.NewNopLogger(),
+		dropOnUpdate:          false,
+		neighborValidator:     nil,
+		neighborBlockDuration: defaultNeighborBlockDuration,
+		neighborSkipTimeout:   defaultNeighborSkipTimeout,
 	}
 	for _, opt := range opts {
 		opt.apply(args)
@@ -115,6 +119,12 @@ func (p *Protocol) GetOutgoingNeighbors() []*peer.Peer {
 // and the corresponding peering drop is sent. Otherwise the call is ignored.
 func (p *Protocol) RemoveNeighbor(id identity.ID) {
 	p.mgr.removeNeighbor(id)
+}
+
+// BlockNeighbor does everything the RemoveNeighbor() does,
+// but it also adds the neighbor to the blocklist for certain amount of time to prevent future peering.
+func (p *Protocol) BlockNeighbor(id identity.ID) {
+	p.mgr.blockNeighbor(id)
 }
 
 // HandleMessage responds to incoming neighbor selection messages.

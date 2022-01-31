@@ -4,12 +4,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -52,7 +54,8 @@ type manager struct {
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
-	rejectionFilter *Filter
+	skiplist  *ttlcache.Cache
+	blocklist *ttlcache.Cache
 
 	dropChan    chan identity.ID
 	requestChan chan peeringRequest
@@ -62,6 +65,14 @@ type manager struct {
 }
 
 func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, opts *options) *manager {
+	blocklist := ttlcache.NewCache()
+	if err := blocklist.SetTTL(opts.neighborBlockDuration); err != nil {
+		log.Panicw("Failed to set TTL for neighbors blocklist cache", "err", err)
+	}
+	skiplist := ttlcache.NewCache()
+	if err := skiplist.SetTTL(opts.neighborSkipTimeout); err != nil {
+		log.Panicw("Failed to set TTL for neighbors skiplist cache", "err", err)
+	}
 	return &manager{
 		net:               net,
 		getPeersToConnect: peersFunc,
@@ -75,7 +86,8 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		ro:                opts.ro,
 		inbound:           NewNeighborhood(inboundNeighborSize),
 		outbound:          NewNeighborhood(outboundNeighborSize),
-		rejectionFilter:   NewFilter(),
+		skiplist:          skiplist,
+		blocklist:         blocklist,
 		dropChan:          make(chan identity.ID, queueSize),
 		requestChan:       make(chan peeringRequest, queueSize),
 		closing:           make(chan struct{}),
@@ -99,6 +111,12 @@ func (m *manager) start() {
 func (m *manager) close() {
 	close(m.closing)
 	m.wg.Wait()
+	if err := m.blocklist.Close(); err != nil {
+		m.log.Warnw("Failed to close blocklist cache", "err", err)
+	}
+	if err := m.skiplist.Close(); err != nil {
+		m.log.Warnw("Failed to close skiplist cache", "err", err)
+	}
 }
 
 func (m *manager) getID() identity.ID {
@@ -141,6 +159,13 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 		status = false
 	}
 	return status
+}
+
+func (m *manager) blockNeighbor(id identity.ID) {
+	if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
+		m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+	}
+	m.removeNeighbor(id)
 }
 
 func (m *manager) removeNeighbor(id identity.ID) {
@@ -189,7 +214,7 @@ Loop:
 			droppedPeer := m.inbound.RemovePeer(id)
 			if p := m.outbound.RemovePeer(id); p != nil {
 				droppedPeer = p
-				m.rejectionFilter.AddPeer(id)
+				m.addToSkiplist(id)
 				// if not yet updating, trigger an immediate update
 				if updateOutResultChan == nil && updateTimer.Stop() {
 					updateTimer.Reset(0)
@@ -217,6 +242,19 @@ Loop:
 	}
 }
 
+func (m *manager) addToSkiplist(id identity.ID) {
+	m.log.Info("Adding neighbor to skiplist", "peerId", id)
+	if err := m.skiplist.Set(id.EncodeBase58(), nil); err != nil {
+		m.log.Warnw("Failed to set neighbor to skiplist cache", "err", err)
+	}
+}
+
+func (m *manager) cleanSkiplist() {
+	if err := m.skiplist.Purge(); err != nil {
+		m.log.Warnw("Failed to purge neighbor skiplist cache", "err", err)
+	}
+}
+
 func (m *manager) getUpdateTimeout() time.Duration {
 	result := outboundUpdateInterval
 	if m.outbound.IsFull() {
@@ -233,7 +271,30 @@ func (m *manager) getUpdateTimeout() time.Duration {
 func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 	var result peer.PeerDistance
 	defer func() { resultChan <- result }() // assure that a result is always sent to the channel
+	candidate := m.getOutboundPeeringCandidate()
+	if candidate.Remote == nil {
+		return
+	}
 
+	status, err := m.net.PeeringRequest(candidate.Remote, m.getPublicSalt())
+	if err != nil {
+		m.addToSkiplist(candidate.Remote.ID())
+		m.log.Debugw("error requesting peering",
+			"id", candidate.Remote.ID(),
+			"addr", candidate.Remote.Address(), "err", err,
+		)
+		return
+	}
+	if !status {
+		m.addToSkiplist(candidate.Remote.ID())
+		m.triggerPeeringEvent(true, candidate.Remote, false)
+		return
+	}
+
+	result = candidate
+}
+
+func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	knownPeers := m.getPeersToConnect()
 
 	if m.useMana {
@@ -262,53 +323,52 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 		m.rankedPeersMutex.RUnlock()
 	}
 
+	// Filter out blocklisted peers.
+	allowedPeers := make([]*peer.Peer, 0, len(knownPeers))
+	for _, p := range knownPeers {
+		if !m.isInBlocklist(p) {
+			allowedPeers = append(allowedPeers, p)
+		}
+	}
+
 	// sort verified peers by distance
-	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), knownPeers)
+	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), allowedPeers)
 
 	// filter out current neighbors
 	filter := m.getConnectedFilter()
 	if m.neighborValidator != nil {
 		filter.AddCondition(m.neighborValidator.IsValid)
 	}
+	distList = filter.Apply(distList)
 
 	// filter out previous rejections
-	filteredList := m.rejectionFilter.Apply(filter.Apply(distList))
+	filteredList := make([]peer.PeerDistance, 0, len(distList))
+	for _, dist := range distList {
+		if !m.isInSkiplist(dist.Remote) {
+			filteredList = append(filteredList, dist)
+		}
+	}
 
 	if len(filteredList) == 0 {
 		return
 	}
 	// reset rejectionFilter so that in the next call filteredList is full again
 	if len(filteredList) < 2 {
-		m.rejectionFilter.Clean()
+		m.cleanSkiplist()
 	}
 
 	// select new candidate
-	candidate := m.outbound.Select(filteredList)
-	if candidate.Remote == nil {
-		return
-	}
-
-	status, err := m.net.PeeringRequest(candidate.Remote, m.getPublicSalt())
-	if err != nil {
-		m.rejectionFilter.AddPeer(candidate.Remote.ID())
-		m.log.Debugw("error requesting peering",
-			"id", candidate.Remote.ID(),
-			"addr", candidate.Remote.Address(), "err", err,
-		)
-		return
-	}
-	if !status {
-		m.rejectionFilter.AddPeer(candidate.Remote.ID())
-		m.triggerPeeringEvent(true, candidate.Remote, false)
-		return
-	}
-
-	result = candidate
+	candidate = m.outbound.Select(filteredList)
+	return candidate
 }
 
 func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	resp = reject
 	defer func() { req.back <- resp }() // assure that a response is always issued
+
+	if m.isInBlocklist(req.peer) {
+		return
+	}
 
 	if !m.isValidNeighbor(req.peer) {
 		return
@@ -350,7 +410,7 @@ func (m *manager) updateSalt() {
 	m.net.local().SetPrivateSalt(private)
 
 	// clean the rejection filter
-	m.rejectionFilter.Clean()
+	m.cleanSkiplist()
 
 	if !m.dropOnUpdate { // update distance without dropping neighbors
 		m.outbound.UpdateDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes())
@@ -451,4 +511,26 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
 		})
 	}
+}
+
+func (m *manager) isInBlocklist(p *peer.Peer) bool {
+	if _, err := m.blocklist.Get(p.ID().EncodeBase58()); err != nil {
+		if !errors.Is(err, ttlcache.ErrNotFound) {
+			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
+				"peerId", p.ID())
+		}
+		return false
+	}
+	return true
+}
+
+func (m *manager) isInSkiplist(p *peer.Peer) bool {
+	if _, err := m.skiplist.Get(p.ID().EncodeBase58()); err != nil {
+		if !errors.Is(err, ttlcache.ErrNotFound) {
+			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
+				"peerId", p.ID())
+		}
+		return false
+	}
+	return true
 }

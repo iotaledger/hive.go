@@ -26,13 +26,15 @@ var (
 )
 
 type options struct {
-	log               *logger.Logger // Logger
-	dropOnUpdate      bool           // set true to drop all neighbors when the salt is updated
-	neighborValidator Validator      // potential neighbor validator
-	useMana           bool
-	manaFunc          mana.Func
-	r                 int
-	ro                float64
+	log                   *logger.Logger // Logger
+	dropOnUpdate          bool           // set true to drop all neighbors when the salt is updated
+	neighborValidator     Validator      // potential neighbor validator
+	useMana               bool
+	manaFunc              mana.Func
+	r                     int
+	ro                    float64
+	neighborBlockDuration time.Duration
+	neighborSkipTimeout   time.Duration
 }
 
 // An Option configures the peer selection.
@@ -91,6 +93,21 @@ func R(r int) Option {
 func Ro(ro float64) Option {
 	return optionFunc(func(opts *options) {
 		opts.ro = ro
+	})
+}
+
+// NeighborBlockDuration sets the amount of time a peer should remain in the blocklist.
+func NeighborBlockDuration(blockDuration time.Duration) Option {
+	return optionFunc(func(opts *options) {
+		opts.neighborBlockDuration = blockDuration
+	})
+}
+
+// NeighborSkipTimeout sets the amount of time for which we should skip the peer
+// and don't try to connect with it after any problem encountered with that peer.
+func NeighborSkipTimeout(skipTimeout time.Duration) Option {
+	return optionFunc(func(opts *options) {
+		opts.neighborSkipTimeout = skipTimeout
 	})
 }
 

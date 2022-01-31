@@ -11,6 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
+	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 )
 
@@ -49,6 +50,22 @@ func (id ID) String() string {
 	}
 
 	return base58.Encode(id[:8])
+}
+
+// EncodeBase58 returns a full version of the ID as a base58 encoded string.
+func (id ID) EncodeBase58() string {
+	return base58.Encode(id[:])
+}
+
+// DecodeIDBase58 decodes a base58 encoded ID.
+func DecodeIDBase58(s string) (ID, error) {
+	b, err := base58.Decode(s)
+	if err != nil {
+		return ID{}, errors.Wrap(err, "failed to decode ID from base58 string")
+	}
+	var id ID
+	copy(id[:], b)
+	return id, nil
 }
 
 // ParseID parses a hex encoded ID.
