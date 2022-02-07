@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/ReneKroon/ttlcache/v2"
+	"github.com/pkg/errors"
+
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -243,7 +244,7 @@ Loop:
 }
 
 func (m *manager) addToSkiplist(id identity.ID) {
-	m.log.Info("Adding neighbor to skiplist", "peerId", id)
+	m.log.Debugw("Adding neighbor to skiplist", "peerId", id)
 	if err := m.skiplist.Set(id.EncodeBase58(), nil); err != nil {
 		m.log.Warnw("Failed to set neighbor to skiplist cache", "err", err)
 	}

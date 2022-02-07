@@ -1,7 +1,10 @@
 package events
 
 import (
+	"sync/atomic"
+
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	reflectpkg "github.com/iotaledger/hive.go/reflect"
 )
 
 // Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.
@@ -22,31 +25,60 @@ func NewEvent(triggerFunc func(handler interface{}, params ...interface{})) *Eve
 	}
 }
 
+func (ev *Event) attachCallback(callbacks *orderedmap.OrderedMap, closure *Closure, triggerMaxCount ...uint64) {
+
+	callbackFunc := closure.Fnc
+
+	if (len(triggerMaxCount) > 0) && (triggerMaxCount[0] > 0) {
+		// a trigger limit was specified
+		var triggerCount uint64
+
+		// wrap the Closure Function to automatically detach the Closure from the event after exceeding the trigger limit.
+		callbackFunc = reflectpkg.FuncPostCallback(closure.Fnc, func() {
+			if atomic.AddUint64(&triggerCount, 1) >= triggerMaxCount[0] {
+				ev.DetachID(closure.ID)
+			}
+		})
+	}
+
+	callbacks.Set(closure.ID, callbackFunc)
+}
+
 // AttachBefore allows to register a Closure that is executed before the Event triggers.
-func (ev *Event) AttachBefore(closure *Closure) {
+// If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
+func (ev *Event) AttachBefore(closure *Closure, triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
 
-	ev.beforeCallbacks.Set(closure.ID, closure.Fnc)
+	ev.attachCallback(ev.beforeCallbacks, closure, triggerMaxCount...)
 }
 
 // Attach allows to register a Closure that is executed when the Event triggers.
-func (ev *Event) Attach(closure *Closure) {
+// If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
+func (ev *Event) Attach(closure *Closure, triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
 
-	ev.callbacks.Set(closure.ID, closure.Fnc)
+	ev.attachCallback(ev.callbacks, closure, triggerMaxCount...)
 }
 
 // AttachAfter allows to register a Closure that is executed after the Event triggered.
-func (ev *Event) AttachAfter(closure *Closure) {
+// If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
+func (ev *Event) AttachAfter(closure *Closure, triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
 
-	ev.afterCallbacks.Set(closure.ID, closure.Fnc)
+	ev.attachCallback(ev.afterCallbacks, closure, triggerMaxCount...)
+}
+
+// DetachID allows to unregister a Closure ID that was previously registered.
+func (ev *Event) DetachID(closureID uint64) {
+	ev.beforeCallbacks.Delete(closureID)
+	ev.callbacks.Delete(closureID)
+	ev.afterCallbacks.Delete(closureID)
 }
 
 // Detach allows to unregister a Closure that was previously registered.
@@ -55,9 +87,7 @@ func (ev *Event) Detach(closure *Closure) {
 		return
 	}
 
-	ev.beforeCallbacks.Delete(closure.ID)
-	ev.callbacks.Delete(closure.ID)
-	ev.afterCallbacks.Delete(closure.ID)
+	ev.DetachID(closure.ID)
 }
 
 // Trigger calls the registered callbacks with the given parameters.
