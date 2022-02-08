@@ -7,23 +7,23 @@ import (
 	"github.com/iotaledger/hive.go/timedexecutor"
 )
 
-type UnserializableStorableObject interface {
+type StorableObject interface {
 	FromBytes(bytes []byte) (objectstorage.StorableObject, error)
 
 	objectstorage.StorableObject
 }
 
-func FromObjectStorage[T UnserializableStorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
+func FromObjectStorage[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
 	var obj T
 
 	return obj.FromBytes(byteutils.ConcatBytes(key, data))
 }
 
-type ObjectStorage[T UnserializableStorableObject] struct {
+type ObjectStorage[T StorableObject] struct {
 	*objectstorage.ObjectStorage
 }
 
-func NewObjectStorage[T UnserializableStorableObject](store kvstore.KVStore, optionalOptions ...objectstorage.Option) *ObjectStorage[T] {
+func NewObjectStorage[T StorableObject](store kvstore.KVStore, optionalOptions ...objectstorage.Option) *ObjectStorage[T] {
 	return &ObjectStorage[T]{
 		ObjectStorage: objectstorage.New(store, FromObjectStorage[T], optionalOptions...),
 	}
@@ -50,7 +50,7 @@ func (o *ObjectStorage[T]) Load(key []byte) *CachedObject[T] {
 }
 
 func (o *ObjectStorage[T]) Contains(key []byte, options ...objectstorage.ReadOption) (result bool) {
-	return o.ObjectStorage.Contains(key)
+	return o.ObjectStorage.Contains(key, options...)
 }
 
 func (o *ObjectStorage[T]) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) T) *CachedObject[T] {

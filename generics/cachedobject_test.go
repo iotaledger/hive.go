@@ -27,11 +27,12 @@ func TestCachedObject_Consume(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	newTestCachedObject := objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes())
-	newTestCachedObject.Consume(func(t *testObject) {
+	objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes()).Consume(func(t *testObject) {
 		fmt.Println(t)
 	})
 }
+
+// region testObject ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 type testObject struct {
 	key   uint64
@@ -73,4 +74,6 @@ func (t *testObject) ObjectStorageValue() []byte {
 	return marshalutil.New(marshalutil.Uint64Size).WriteUint64(t.value).Bytes()
 }
 
-var _ UnserializableStorableObject = &testObject{}
+var _ StorableObject = &testObject{}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
