@@ -1,0 +1,76 @@
+package generics
+
+import (
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/cockroachdb/errors"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/marshalutil"
+	"github.com/iotaledger/hive.go/objectstorage"
+)
+
+func TestCachedObject_Consume(t *testing.T) {
+	objectStorage := NewObjectStorage[*testObject](mapdb.NewMapDB(), objectstorage.CacheTime(0))
+	defer objectStorage.Shutdown()
+
+	cachedStoredObject1, stored1 := objectStorage.StoreIfAbsent(NewTestObject(1, 3))
+	assert.True(t, stored1)
+	cachedStoredObject1.Release()
+
+	cachedStoredObject2, stored2 := objectStorage.StoreIfAbsent(NewTestObject(3, 1337))
+	assert.True(t, stored2)
+	cachedStoredObject2.Release()
+
+	time.Sleep(2 * time.Second)
+
+	newTestCachedObject := objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes())
+	newTestCachedObject.Consume(func(t *testObject) {
+		fmt.Println(t)
+	})
+}
+
+type testObject struct {
+	key   uint64
+	value uint64
+
+	objectstorage.StorableObjectFlags
+}
+
+func NewTestObject(key, value uint64) *testObject {
+	return &testObject{
+		key:   key,
+		value: value,
+	}
+}
+
+func (t *testObject) FromBytes(bytes []byte) (storableObject objectstorage.StorableObject, err error) {
+	marshalUtil := marshalutil.New(bytes)
+
+	result := &testObject{}
+	if result.key, err = marshalUtil.ReadUint64(); err != nil {
+		return nil, errors.Errorf("failed to read key from MarshalUtil: %w", err)
+	}
+	if result.value, err = marshalUtil.ReadUint64(); err != nil {
+		return nil, errors.Errorf("failed to read value from MarshalUtil: %w", err)
+	}
+
+	return result, nil
+}
+
+func (t *testObject) Update(other objectstorage.StorableObject) {
+	panic("updates disabled")
+}
+
+func (t *testObject) ObjectStorageKey() []byte {
+	return marshalutil.New(marshalutil.Uint64Size).WriteUint64(t.key).Bytes()
+}
+
+func (t *testObject) ObjectStorageValue() []byte {
+	return marshalutil.New(marshalutil.Uint64Size).WriteUint64(t.value).Bytes()
+}
+
+var _ UnserializableStorableObject = &testObject{}
