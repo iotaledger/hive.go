@@ -11,6 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
+	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 )
 
@@ -44,7 +45,27 @@ func (id ID) Bytes() []byte {
 
 // String returns a shortened version of the ID as a base58 encoded string.
 func (id ID) String() string {
+	if idAlias, exists := _idAlias[id]; exists {
+		return "ID(" + idAlias + ")"
+	}
+
 	return base58.Encode(id[:8])
+}
+
+// EncodeBase58 returns a full version of the ID as a base58 encoded string.
+func (id ID) EncodeBase58() string {
+	return base58.Encode(id[:])
+}
+
+// DecodeIDBase58 decodes a base58 encoded ID.
+func DecodeIDBase58(s string) (ID, error) {
+	b, err := base58.Decode(s)
+	if err != nil {
+		return ID{}, errors.Wrap(err, "failed to decode ID from base58 string")
+	}
+	var id ID
+	copy(id[:], b)
+	return id, nil
 }
 
 // ParseID parses a hex encoded ID.
@@ -73,4 +94,18 @@ func RandomID() (id ID, err error) {
 	copy(id[:], idBytes)
 
 	return
+}
+
+// _idAliases contains a list of aliases registered for a set of IDs.
+var _idAlias = make(map[ID]string)
+
+// RegisterIDAlias registers an alias that will modify the String() output of the ID to show a human
+// readable string instead of the base58 encoded version of itself.
+func RegisterIDAlias(id ID, alias string) {
+	_idAlias[id] = alias
+}
+
+// UnregisterIDAliases removes all aliases registered through the RegisterIDAlias function.
+func UnregisterIDAliases() {
+	_idAlias = make(map[ID]string)
 }

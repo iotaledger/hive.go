@@ -25,14 +25,14 @@ func New(args ...interface{}) *MarshalUtil {
 	case 0:
 		return &MarshalUtil{
 			bytes: make([]byte, 1024),
-			size:  1024,
+			size:  0,
 		}
 	case 1:
 		switch param := args[0].(type) {
 		case int:
 			return &MarshalUtil{
 				bytes: make([]byte, param),
-				size:  param,
+				size:  0,
 			}
 		case []byte:
 			return &MarshalUtil{
@@ -96,13 +96,13 @@ func (util *MarshalUtil) ReadSeek(offset int) {
 // being returned.
 func (util *MarshalUtil) Bytes(clone ...bool) []byte {
 	if len(clone) >= 1 && clone[0] {
-		clone := make([]byte, util.writeOffset)
+		clone := make([]byte, util.size)
 		copy(clone, util.bytes)
 
 		return clone
 	}
 
-	return util.bytes[:util.writeOffset]
+	return util.bytes[:util.size]
 }
 
 // DoneReading checks if there are any bytes left to read.
@@ -126,11 +126,11 @@ func (util *MarshalUtil) checkReadCapacity(length int) (readEndOffset int, err e
 func (util *MarshalUtil) expandWriteCapacity(length int) (writeEndOffset int) {
 	writeEndOffset = util.writeOffset + length
 
-	if writeEndOffset > util.size {
-		extendedBytes := make([]byte, writeEndOffset-util.size)
+	if writeEndOffset > len(util.bytes) {
+		extendedBytes := make([]byte, writeEndOffset-len(util.bytes))
 		util.bytes = append(util.bytes, extendedBytes...)
-		util.size = writeEndOffset
 	}
+	util.size = writeEndOffset
 
 	return
 }

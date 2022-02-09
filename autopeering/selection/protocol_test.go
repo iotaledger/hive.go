@@ -66,6 +66,30 @@ func TestProtocol(t *testing.T) {
 		})
 	})
 
+	t.Run("Blocklist", func(t *testing.T) {
+		connA := servertest.NewConn()
+		defer connA.Close()
+		connB := servertest.NewConn()
+		defer connB.Close()
+
+		protA, closeA := newTestProtocol("A", connA)
+		defer closeA()
+		protB, closeB := newTestProtocol("B", connB)
+		defer closeB()
+
+		peerA := getPeer(protA)
+		peerB := getPeer(protB)
+		saltB, _ := salt.NewSalt(100 * time.Second)
+		protA.BlockNeighbor(peerB.ID())
+
+		// request peering to peer A
+		t.Run("B->A", func(t *testing.T) {
+			if accepted, err := protB.PeeringRequest(peerA, saltB); assert.NoError(t, err) {
+				assert.False(t, accepted)
+			}
+		})
+	})
+
 	t.Run("ExpiredSalt", func(t *testing.T) {
 		connA := servertest.NewConn()
 		defer connA.Close()

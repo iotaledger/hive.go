@@ -3,9 +3,10 @@ package selection
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFilterAddPeers(t *testing.T) {
@@ -129,25 +130,29 @@ func TestSelection(t *testing.T) {
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0]},
-				size:      4},
+				size:      4,
+			},
 			expCandidate: d[1].Remote,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[3]},
-				size:      4},
+				size:      4,
+			},
 			expCandidate: d[2].Remote,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[4], d[2]},
-				size:      4},
+				size:      4,
+			},
 			expCandidate: d[3].Remote,
 		},
 		{
 			nh: &Neighborhood{
 				neighbors: []peer.PeerDistance{d[0], d[1], d[2], d[3]},
-				size:      4},
+				size:      4,
+			},
 			expCandidate: nil,
 		},
 	}

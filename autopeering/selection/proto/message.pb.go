@@ -7,12 +7,13 @@
 package proto
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/golang/protobuf/proto"
 	proto1 "github.com/iotaledger/hive.go/autopeering/salt/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -227,13 +228,16 @@ func file_autopeering_selection_proto_message_proto_rawDescGZIP() []byte {
 	return file_autopeering_selection_proto_message_proto_rawDescData
 }
 
-var file_autopeering_selection_proto_message_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_autopeering_selection_proto_message_proto_goTypes = []interface{}{
-	(*PeeringRequest)(nil),  // 0: proto.PeeringRequest
-	(*PeeringResponse)(nil), // 1: proto.PeeringResponse
-	(*PeeringDrop)(nil),     // 2: proto.PeeringDrop
-	(*proto1.Salt)(nil),     // 3: proto.Salt
-}
+var (
+	file_autopeering_selection_proto_message_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_autopeering_selection_proto_message_proto_goTypes  = []interface{}{
+		(*PeeringRequest)(nil),  // 0: proto.PeeringRequest
+		(*PeeringResponse)(nil), // 1: proto.PeeringResponse
+		(*PeeringDrop)(nil),     // 2: proto.PeeringDrop
+		(*proto1.Salt)(nil),     // 3: proto.Salt
+	}
+)
+
 var file_autopeering_selection_proto_message_proto_depIdxs = []int32{
 	3, // 0: proto.PeeringRequest.salt:type_name -> proto.Salt
 	1, // [1:1] is the sub-list for method output_type
