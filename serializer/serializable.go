@@ -22,6 +22,14 @@ type Serializable interface {
 	Serialize(deSeriMode DeSerializationMode, deSeriCtx interface{}) ([]byte, error)
 }
 
+// SerializableWithSize implements Serializable interface and has the extra funtionality of returning the size of the
+// resulting serialized object (ideally without actually serializing it)
+type SerializableWithSize interface {
+	Serializable
+	// Size returns the size of the serialized object
+	Size() int
+}
+
 // Serializables is a slice of Serializable.
 type Serializables []Serializable
 
@@ -316,7 +324,6 @@ func (l LexicalOrdered32ByteArrays) Swap(i, j int) {
 
 // RemoveDupsAndSortByLexicalOrderArrayOf32Bytes returns a new SliceOfArraysOf32Bytes sorted by lexical order and without duplicates.
 func RemoveDupsAndSortByLexicalOrderArrayOf32Bytes(slice SliceOfArraysOf32Bytes) SliceOfArraysOf32Bytes {
-
 	seen := make(map[string]struct{})
 	orderedArray := make(LexicalOrdered32ByteArrays, len(slice))
 
