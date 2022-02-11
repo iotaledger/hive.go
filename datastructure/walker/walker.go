@@ -10,28 +10,30 @@ import (
 
 // Walker implements a generic data structure that simplifies walks over collections or data structures.
 type Walker struct {
-	stack        *list.List
-	seenElements set.Set
-	walkStopped  bool
+	stack           *list.List
+	pushedElements  set.Set
+	walkStopped     bool
+	revisitElements bool
 }
 
 // New is the constructor of the Walker. It accepts an optional boolean flag that controls whether the Walker will visit
 // the same Element multiple times.
 func New(revisitElements ...bool) (walker *Walker) {
-	walker = &Walker{
-		stack: list.New(),
+	return &Walker{
+		stack:           list.New(),
+		pushedElements:  set.New(),
+		revisitElements: len(revisitElements) > 0 && revisitElements[0],
 	}
-
-	if len(revisitElements) == 0 || !revisitElements[0] {
-		walker.seenElements = set.New()
-	}
-
-	return
 }
 
 // HasNext returns true if the Walker has another element that shall be visited.
 func (w *Walker) HasNext() bool {
 	return w.stack.Len() > 0 && !w.walkStopped
+}
+
+// Pushed returns true if the passed element was Pushed to the Walker.
+func (w *Walker) Pushed(element interface{}) bool {
+	return w.pushedElements.Has(element)
 }
 
 // Next returns the next element of the walk.
@@ -44,7 +46,7 @@ func (w *Walker) Next() (nextElement interface{}) {
 
 // Push adds a new element to the walk, which can consequently be retrieved by calling the Next method.
 func (w *Walker) Push(nextElement interface{}) (walker *Walker) {
-	if w.seenElements != nil && !w.seenElements.Add(nextElement) {
+	if !w.pushedElements.Add(nextElement) && !w.revisitElements {
 		return w
 	}
 
