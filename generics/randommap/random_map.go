@@ -4,12 +4,6 @@ import (
 	"github.com/iotaledger/hive.go/datastructure/randommap"
 )
 
-type randomMapEntry[K comparable, V any] struct {
-	key      K
-	value    V
-	keyIndex int
-}
-
 // RandomMap defines a  map with extended ability to return a random entry.
 type RandomMap[K comparable, V any] struct {
 	*randommap.RandomMap
@@ -29,7 +23,7 @@ func (rmap *RandomMap[K, V]) Set(key K, value V) (updated bool) {
 }
 
 // Get returns the value to which the specified key is mapped.
-func (rmap *RandomMap[K, V]) Get(key K) (result interface{}, exists bool) {
+func (rmap *RandomMap[K, V]) Get(key K) (result V, exists bool) {
 	value, exists := rmap.RandomMap.Get(key)
 	if exists {
 		result = value.(V)
@@ -38,7 +32,7 @@ func (rmap *RandomMap[K, V]) Get(key K) (result interface{}, exists bool) {
 }
 
 // Delete removes the mapping for the specified key in the map.
-func (rmap *RandomMap[K, V]) Delete(key interface{}) (result interface{}, exists bool) {
+func (rmap *RandomMap[K, V]) Delete(key K) (result V, exists bool) {
 	value, exists := rmap.RandomMap.Get(key)
 	if exists {
 		result = value.(V)
@@ -54,8 +48,8 @@ func (rmap *RandomMap[K, V]) ForEach(consumer func(key K, value V)) {
 }
 
 // RandomKey returns a random key from the map.
-func (rmap *RandomMap[K, V]) RandomKey() (result interface{}) {
-	return rmap.RandomMap.RandomKey()
+func (rmap *RandomMap[K, V]) RandomKey() (result K) {
+	return rmap.RandomMap.RandomKey().(K)
 }
 
 // RandomEntry returns a random value from the map.

@@ -72,18 +72,8 @@ func (orderedMap *OrderedMap[K, V]) ForEachReverse(consumer func(key K, value V)
 
 }
 
-// Clear removes all elements from the OrderedMap.
-func (orderedMap *OrderedMap[K, V]) Clear() {
-	orderedMap.OrderedMap.Clear()
-}
-
 // Delete deletes the given key (and related value) from the orderedMap.
 // It returns false if the key is not found.
 func (orderedMap *OrderedMap[K, V]) Delete(key K) bool {
 	return orderedMap.OrderedMap.Delete(key)
-}
-
-// Size returns the size of the orderedMap.
-func (orderedMap *OrderedMap[K, V]) Size() int {
-	return orderedMap.OrderedMap.Size()
 }

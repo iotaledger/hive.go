@@ -16,16 +16,6 @@ func New[T any](q *queue.Queue) *Queue[T] {
 	}
 }
 
-// Size returns the size of the queue.
-func (queue *Queue[T]) Size() int {
-	return queue.Queue.Size()
-}
-
-// Capacity returns the capacity of the queue.
-func (queue *Queue[T]) Capacity() int {
-	return queue.Queue.Capacity()
-}
-
 // Offer adds an element to the queue and returns true.
 // If the queue is full, it drops it and returns false.
 func (queue *Queue[T]) Offer(element T) bool {
