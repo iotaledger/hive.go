@@ -952,13 +952,11 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 	if cacheHit {
 		// try to replace the object if its is empty
 		result, updated := objectStorage.updateEmptyCachedObject(cachedObject, object)
-		if updated {
-			return result
+		if !updated {
+			panic("tried to replace non-empty object in cache")
 		}
 
-		// otherwise update and return
-		cachedObject.updateResult(object)
-		return wrapCachedObject(cachedObject, 0)
+		return result
 	}
 
 	// publish the result to the cached object and return

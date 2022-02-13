@@ -1,14 +1,23 @@
-package generics
+package objectstorage
 
-import "github.com/iotaledger/hive.go/objectstorage"
+import (
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/objectstorage"
+)
 
-type CachedObject[T objectstorage.StorableObject] struct {
+type CachedObject[T StorableObject] struct {
 	cachedObject objectstorage.CachedObject
 }
 
-func NewCachedObject[T objectstorage.StorableObject](cachedObject objectstorage.CachedObject) *CachedObject[T] {
+func newCachedObject[T StorableObject](cachedObject objectstorage.CachedObject) *CachedObject[T] {
 	return &CachedObject[T]{
 		cachedObject: cachedObject,
+	}
+}
+
+func NewEmptyCachedObject[T StorableObject](key []byte) (result *CachedObject[T]) {
+	return &CachedObject[T]{
+		cachedObject: objectstorage.NewEmptyCachedObject(key),
 	}
 }
 
@@ -54,4 +63,20 @@ func (c *CachedObject[T]) RTransaction(callback func(object T), identifiers ...i
 			callback(object.(T))
 		}),
 	}
+}
+
+func (c *CachedObject[T]) BatchWrite(batchedMuts kvstore.BatchedMutations) {
+	c.cachedObject.BatchWrite(batchedMuts)
+}
+
+func (c *CachedObject[T]) BatchWriteDone() {
+	c.cachedObject.BatchWriteDone()
+}
+
+func (c *CachedObject[T]) BatchWriteScheduled() bool {
+	return c.cachedObject.BatchWriteScheduled()
+}
+
+func (c *CachedObject[T]) ResetBatchWriteScheduled() {
+	c.cachedObject.ResetBatchWriteScheduled()
 }
