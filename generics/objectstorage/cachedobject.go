@@ -1,9 +1,14 @@
 package objectstorage
 
 import (
+	"strconv"
+
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/stringify"
 )
+
+// region CachedObject //////////////////////////////////////////////////////////////////////////////////////////
 
 type CachedObject[T StorableObject] struct {
 	cachedObject objectstorage.CachedObject
@@ -80,3 +85,39 @@ func (c *CachedObject[T]) BatchWriteScheduled() bool {
 func (c *CachedObject[T]) ResetBatchWriteScheduled() {
 	c.cachedObject.ResetBatchWriteScheduled()
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region CachedObjects //////////////////////////////////////////////////////////////////////////////////////////
+
+// CachedObjects represents a collection of CachedObject objects.
+type CachedObjects[T StorableObject] []*CachedObject[T]
+
+// Consume iterates over the CachedObjects, unwraps them and passes a type-casted version to the consumer (if the object
+// is not empty - it exists). It automatically releases the object when the consumer finishes. It returns true, if at
+// least one object was consumed.
+func (c CachedObjects[T]) Consume(consumer func(T), forceRelease ...bool) (consumed bool) {
+	for _, cachedObject := range c {
+		consumed = cachedObject.Consume(consumer, forceRelease...) || consumed
+	}
+	return
+}
+
+// Release is a utility function that allows us to release all CachedObjects in the collection.
+func (c CachedObjects[T]) Release(force ...bool) {
+	for _, cachedObject := range c {
+		cachedObject.Release(force...)
+	}
+}
+
+// String returns a human readable version of the CachedObjects.
+func (c CachedObjects[T]) String() string {
+	structBuilder := stringify.StructBuilder("CachedObjects")
+	for i, cachedObject := range c {
+		structBuilder.AddField(stringify.StructField(strconv.Itoa(i), cachedObject))
+	}
+
+	return structBuilder.String()
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
