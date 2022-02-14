@@ -23,9 +23,6 @@ type StorableObject interface {
 	// Returns "true" if this object is going to be persisted.
 	ShouldPersist() bool
 
-	// Updates the object with the values of another object "in place" (so it should use a pointer receiver)
-	Update(other StorableObject)
-
 	// ObjectStorageKey returns the bytes, that are used as a key to store the object in the k/v store.
 	ObjectStorageKey() []byte
 

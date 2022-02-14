@@ -1,4 +1,4 @@
-package generics
+package objectstorage
 
 import (
 	"fmt"
@@ -10,11 +10,10 @@ import (
 
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/marshalutil"
-	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 func TestCachedObject_Consume(t *testing.T) {
-	objectStorage := NewObjectStorage[*testObject](mapdb.NewMapDB(), objectstorage.CacheTime(0))
+	objectStorage := New[*testObject](mapdb.NewMapDB(), CacheTime(0))
 	defer objectStorage.Shutdown()
 
 	cachedStoredObject1, stored1 := objectStorage.StoreIfAbsent(NewTestObject(1, 3))
@@ -38,7 +37,7 @@ type testObject struct {
 	key   uint64
 	value uint64
 
-	objectstorage.StorableObjectFlags
+	StorableObjectFlags
 }
 
 func NewTestObject(key, value uint64) *testObject {
@@ -48,7 +47,7 @@ func NewTestObject(key, value uint64) *testObject {
 	}
 }
 
-func (t *testObject) FromBytes(bytes []byte) (storableObject objectstorage.StorableObject, err error) {
+func (t *testObject) FromBytes(bytes []byte) (storableObject StorableObject, err error) {
 	marshalUtil := marshalutil.New(bytes)
 
 	result := &testObject{}
@@ -60,10 +59,6 @@ func (t *testObject) FromBytes(bytes []byte) (storableObject objectstorage.Stora
 	}
 
 	return result, nil
-}
-
-func (t *testObject) Update(other objectstorage.StorableObject) {
-	panic("updates disabled")
 }
 
 func (t *testObject) ObjectStorageKey() []byte {

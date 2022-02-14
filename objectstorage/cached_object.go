@@ -22,6 +22,8 @@ type CachedObject interface {
 	Release(force ...bool)
 	Transaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject
 	RTransaction(callback func(object StorableObject), identifiers ...interface{}) CachedObject
+
+	kvstore.BatchWriteObject
 }
 
 type CachedObjectImpl struct {
@@ -233,23 +235,6 @@ func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool 
 	}
 
 	return false
-}
-
-func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
-	cachedObject.valueMutex.Lock()
-	defer cachedObject.valueMutex.Unlock()
-
-	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
-		cachedObject.value = object
-		cachedObject.blindDelete.UnSet()
-		return
-	}
-
-	cachedObject.value.SetModified(object.IsModified())
-	cachedObject.value.Persist(object.ShouldPersist())
-	cachedObject.value.Delete(object.IsDeleted())
-	cachedObject.value.Update(object)
-	cachedObject.blindDelete.UnSet()
 }
 
 func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {

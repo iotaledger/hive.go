@@ -1,40 +1,41 @@
-package generics
+package objectstorage
 
 import (
 	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/timedexecutor"
 )
 
-type StorableObject interface {
-	FromBytes(bytes []byte) (objectstorage.StorableObject, error)
-
-	objectstorage.StorableObject
-}
-
-func FromObjectStorage[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
-	var obj T
-
-	return obj.FromBytes(byteutils.ConcatBytes(key, data))
-}
-
 type ObjectStorage[T StorableObject] struct {
+	Events *Events
+
 	*objectstorage.ObjectStorage
 }
 
-func NewObjectStorage[T StorableObject](store kvstore.KVStore, optionalOptions ...objectstorage.Option) *ObjectStorage[T] {
-	return &ObjectStorage[T]{
-		ObjectStorage: objectstorage.New(store, FromObjectStorage[T], optionalOptions...),
+func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
+	newObjectStorage = &ObjectStorage[T]{
+		Events: &Events{
+			ObjectEvicted: events.NewEvent(evictionEvent[T]),
+		},
+
+		ObjectStorage: objectstorage.New(store, objectFactory[T], optionalOptions...),
 	}
+
+	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
+		newObjectStorage.Events.ObjectEvicted.Trigger(key, object.(T))
+	}))
+
+	return newObjectStorage
 }
 
 func (o *ObjectStorage[T]) Put(object T) *CachedObject[T] {
-	return NewCachedObject[T](o.ObjectStorage.Put(object))
+	return newCachedObject[T](o.ObjectStorage.Put(object))
 }
 
 func (o *ObjectStorage[T]) Store(object T) *CachedObject[T] {
-	return NewCachedObject[T](o.ObjectStorage.Store(object))
+	return newCachedObject[T](o.ObjectStorage.Store(object))
 }
 
 func (o *ObjectStorage[T]) GetSize() int {
@@ -42,19 +43,19 @@ func (o *ObjectStorage[T]) GetSize() int {
 }
 
 func (o *ObjectStorage[T]) Get(key []byte) *CachedObject[T] {
-	return NewCachedObject[T](o.ObjectStorage.Get(key))
+	return newCachedObject[T](o.ObjectStorage.Get(key))
 }
 
 func (o *ObjectStorage[T]) Load(key []byte) *CachedObject[T] {
-	return NewCachedObject[T](o.ObjectStorage.Load(key))
+	return newCachedObject[T](o.ObjectStorage.Load(key))
 }
 
-func (o *ObjectStorage[T]) Contains(key []byte, options ...objectstorage.ReadOption) (result bool) {
+func (o *ObjectStorage[T]) Contains(key []byte, options ...ReadOption) (result bool) {
 	return o.ObjectStorage.Contains(key, options...)
 }
 
 func (o *ObjectStorage[T]) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) T) *CachedObject[T] {
-	return NewCachedObject[T](o.ObjectStorage.ComputeIfAbsent(key, func(key []byte) objectstorage.StorableObject {
+	return newCachedObject[T](o.ObjectStorage.ComputeIfAbsent(key, func(key []byte) objectstorage.StorableObject {
 		return remappingFunction(key)
 	}))
 }
@@ -74,16 +75,16 @@ func (o *ObjectStorage[T]) Delete(key []byte) {
 func (o *ObjectStorage[T]) StoreIfAbsent(object T) (result *CachedObject[T], stored bool) {
 	untypedObject, stored := o.ObjectStorage.StoreIfAbsent(object)
 
-	return NewCachedObject[T](untypedObject), stored
+	return newCachedObject[T](untypedObject), stored
 }
 
-func (o *ObjectStorage[T]) ForEach(consumer func(key []byte, cachedObject *CachedObject[T]) bool, options ...objectstorage.IteratorOption) {
+func (o *ObjectStorage[T]) ForEach(consumer func(key []byte, cachedObject *CachedObject[T]) bool, options ...IteratorOption) {
 	o.ObjectStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
-		return consumer(key, NewCachedObject[T](cachedObject))
+		return consumer(key, newCachedObject[T](cachedObject))
 	}, options...)
 }
 
-func (o *ObjectStorage[T]) ForEachKeyOnly(consumer func(key []byte) bool, options ...objectstorage.IteratorOption) {
+func (o *ObjectStorage[T]) ForEachKeyOnly(consumer func(key []byte) bool, options ...IteratorOption) {
 	o.ObjectStorage.ForEachKeyOnly(func(key []byte) bool {
 		return consumer(key)
 	}, options...)
@@ -107,4 +108,10 @@ func (o *ObjectStorage[T]) FreeMemory() {
 
 func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
 	return o.ObjectStorage.ReleaseExecutor()
+}
+
+func objectFactory[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
+	var obj T
+
+	return obj.FromBytes(byteutils.ConcatBytes(key, data))
 }
