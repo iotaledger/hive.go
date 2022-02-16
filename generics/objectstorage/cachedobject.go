@@ -31,11 +31,24 @@ func (c *CachedObject[T]) Key() []byte {
 }
 
 func (c *CachedObject[T]) Exists() bool {
-	return c.Exists()
+	return c.cachedObject.Exists()
 }
 
 func (c *CachedObject[T]) Get() (result T) {
 	return c.cachedObject.Get().(T)
+}
+
+func (c *CachedObject[T]) Unwrap() (result T, exists bool) {
+	if !c.Exists() {
+		return
+	}
+	r := c.Get()
+	if r.IsDeleted() {
+		return
+	}
+	result = r
+	exists = true
+	return
 }
 
 func (c *CachedObject[T]) Consume(consumer func(T), forceRelease ...bool) bool {
@@ -92,6 +105,20 @@ func (c *CachedObject[T]) ResetBatchWriteScheduled() {
 
 // CachedObjects represents a collection of CachedObject objects.
 type CachedObjects[T StorableObject] []*CachedObject[T]
+
+// Unwrap is the type-casted equivalent of Get. It returns a slice of unwrapped objects with the object being nil if it
+// does not exist.
+func (c CachedObjects[T]) Unwrap() (unwrappedChildBranches []T) {
+	unwrappedChildBranches = make([]T, 0, len(c))
+	for _, cachedChildBranch := range c {
+		val, exists := cachedChildBranch.Unwrap()
+		if exists {
+			unwrappedChildBranches = append(unwrappedChildBranches, val)
+		}
+	}
+
+	return
+}
 
 // Consume iterates over the CachedObjects, unwraps them and passes a type-casted version to the consumer (if the object
 // is not empty - it exists). It automatically releases the object when the consumer finishes. It returns true, if at

@@ -1,5 +1,6 @@
 package thresholdmap
 
+import "C"
 import (
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
 )
@@ -47,9 +48,9 @@ func (t *ThresholdMap[K, V]) Floor(key K) (floorKey K, floorValue V, exists bool
 
 // Ceiling returns the smallest key that is >= the given key, it's value and a boolean flag indicating if it exists.
 func (t *ThresholdMap[K, V]) Ceiling(key K) (floorKey K, floorValue V, exists bool) {
-	floor, value, exists := t.ThresholdMap.Floor(key)
+	ceil, value, exists := t.ThresholdMap.Ceiling(key)
 	if exists {
-		floorKey = floor.(K)
+		floorKey = ceil.(K)
 		floorValue = value.(V)
 	}
 	return
