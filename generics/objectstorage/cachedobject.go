@@ -43,9 +43,6 @@ func (c *CachedObject[T]) Unwrap() (result T, exists bool) {
 		return
 	}
 	r := c.Get()
-	if r.IsDeleted() {
-		return
-	}
 	result = r
 	exists = true
 	return
@@ -106,15 +103,29 @@ func (c *CachedObject[T]) ResetBatchWriteScheduled() {
 // CachedObjects represents a collection of CachedObject objects.
 type CachedObjects[T StorableObject] []*CachedObject[T]
 
-// Unwrap is the type-casted equivalent of Get. It returns a slice of unwrapped objects with the object being nil if it
-// does not exist.
-func (c CachedObjects[T]) Unwrap() (unwrappedChildBranches []T) {
+// Unwrap is the type-casted equivalent of Get. It returns a slice of unwrapped objects and optionally skips any objects
+// that do not exist or are deleted, sets default type value for missing elements.
+func (c CachedObjects[T]) Unwrap(skip ...bool) (unwrappedChildBranches []T) {
+	skipMissing := false
+	if len(skip) > 0 && skip[0] == true {
+		skipMissing = true
+	}
 	unwrappedChildBranches = make([]T, 0, len(c))
 	for _, cachedChildBranch := range c {
 		val, exists := cachedChildBranch.Unwrap()
-		if exists {
+		if exists || !skipMissing {
 			unwrappedChildBranches = append(unwrappedChildBranches, val)
 		}
+	}
+
+	return
+}
+
+// Exists returns a slice of boolean values to indicate whether element at a given index exists.
+func (c CachedObjects[T]) Exists() (exists []bool) {
+	exists = make([]bool, len(c))
+	for i, cachedChildBranch := range c {
+		exists[i] = cachedChildBranch.Exists()
 	}
 
 	return
