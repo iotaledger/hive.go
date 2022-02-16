@@ -33,7 +33,7 @@ func (rmap *RandomMap[K, V]) Get(key K) (result V, exists bool) {
 
 // Delete removes the mapping for the specified key in the map.
 func (rmap *RandomMap[K, V]) Delete(key K) (result V, exists bool) {
-	value, exists := rmap.RandomMap.Get(key)
+	value, exists := rmap.RandomMap.Delete(key)
 	if exists {
 		result = value.(V)
 	}
@@ -48,13 +48,22 @@ func (rmap *RandomMap[K, V]) ForEach(consumer func(key K, value V)) {
 }
 
 // RandomKey returns a random key from the map.
-func (rmap *RandomMap[K, V]) RandomKey() (result K) {
-	return rmap.RandomMap.RandomKey().(K)
+func (rmap *RandomMap[K, V]) RandomKey() (result K, exists bool) {
+	randKey := rmap.RandomMap.RandomKey()
+	if randKey != nil {
+		return randKey.(K), true
+	}
+	return result, false
 }
 
 // RandomEntry returns a random value from the map.
-func (rmap *RandomMap[K, V]) RandomEntry() (result V) {
-	return rmap.RandomMap.RandomEntry().(V)
+func (rmap *RandomMap[K, V]) RandomEntry() (result V, exists bool) {
+	randEntry := rmap.RandomMap.RandomEntry()
+	if randEntry != nil {
+		return randEntry.(V), true
+	}
+	return result, false
+
 }
 
 // RandomUniqueEntries returns n random and unique values from the map.

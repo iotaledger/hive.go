@@ -34,7 +34,21 @@ func TestRandomMap_RandomUniqueEntries(t *testing.T) {
 	assert.Equal(t, 4, len(result))
 	assert.True(t, containsUniqueElements(result))
 }
+func TestRandomMap_EmptyMap(t *testing.T) {
+	testMap := New[string, string](randommap.New())
+	var emptyResult = []string{}
 
+	result := testMap.RandomUniqueEntries(4)
+	assert.Equal(t, emptyResult, result)
+
+	randEntry, exists := testMap.RandomEntry()
+	assert.False(t, exists)
+	assert.Equal(t, "", randEntry)
+
+	assert.Panics(t, func() {
+		testMap.RandomKey()
+	})
+}
 func containsUniqueElements[V any](list []V) bool {
 	elementSet := set.New(false)
 	for _, element := range list {
