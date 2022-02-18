@@ -1,7 +1,6 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/objectstorage"
@@ -14,13 +13,13 @@ type ObjectStorage[T StorableObject] struct {
 	*objectstorage.ObjectStorage
 }
 
-func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
+func NewWithObjectFactory[T StorableObject](store kvstore.KVStore, objectFactory func([]byte, []byte) (objectstorage.StorableObject, error), optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
 	newObjectStorage = &ObjectStorage[T]{
 		Events: &Events{
 			ObjectEvicted: events.NewEvent(evictionEvent[T]),
 		},
 
-		ObjectStorage: objectstorage.New(store, objectFactory[T], optionalOptions...),
+		ObjectStorage: objectstorage.New(store, objectFactory, optionalOptions...),
 	}
 
 	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
@@ -28,6 +27,10 @@ func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (ne
 	}))
 
 	return newObjectStorage
+}
+
+func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
+	return NewWithObjectFactory[T](store, objectFactory[T], optionalOptions...)
 }
 
 func (o *ObjectStorage[T]) Put(object T) *CachedObject[T] {
@@ -74,8 +77,10 @@ func (o *ObjectStorage[T]) Delete(key []byte) {
 
 func (o *ObjectStorage[T]) StoreIfAbsent(object T) (result *CachedObject[T], stored bool) {
 	untypedObject, stored := o.ObjectStorage.StoreIfAbsent(object)
-
-	return newCachedObject[T](untypedObject), stored
+	if stored {
+		return newCachedObject[T](untypedObject), stored
+	}
+	return nil, stored
 }
 
 func (o *ObjectStorage[T]) ForEach(consumer func(key []byte, cachedObject *CachedObject[T]) bool, options ...IteratorOption) {
@@ -113,5 +118,5 @@ func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.Tim
 func objectFactory[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
 	var obj T
 
-	return obj.FromBytes(byteutils.ConcatBytes(key, data))
+	return obj.FromObjectStorage(key, data)
 }

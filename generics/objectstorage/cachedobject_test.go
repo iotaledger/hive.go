@@ -1,7 +1,6 @@
 package objectstorage
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -26,9 +25,28 @@ func TestCachedObject_Consume(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes()).Consume(func(t *testObject) {
-		fmt.Println(t)
+	objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes()).Consume(func(testObject *testObject) {
+		assert.Equal(t, uint64(1337), testObject.value)
 	})
+	load := objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(4).Bytes())
+
+	_, exists1 := load.Unwrap()
+	assert.False(t, exists1)
+	load.Release()
+
+	load = objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(3).Bytes())
+	value, exists2 := load.Unwrap()
+	assert.True(t, exists2)
+	assert.Equal(t, uint64(1337), value.value)
+	load.Release()
+
+	load = objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(1).Bytes())
+	objectStorage.Load(marshalutil.New(marshalutil.Uint64Size).WriteUint64(1).Bytes()).Consume(func(testObject *testObject) {
+		testObject.Delete()
+	})
+	_, exists3 := load.Unwrap()
+	assert.False(t, exists3)
+	load.Release()
 }
 
 // region testObject ///////////////////////////////////////////////////////////////////////////////////////////////////
