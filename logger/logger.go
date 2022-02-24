@@ -7,10 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/configuration"
-	"github.com/iotaledger/hive.go/typeutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/iotaledger/hive.go/configuration"
+	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // The Logger uses the sugared logger.

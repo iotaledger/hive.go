@@ -3,8 +3,9 @@ package objectstorage
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 	"unsafe"
+
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -23,9 +24,9 @@ type ObjectStorage struct {
 	size               int
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
-	shutdown           typeutils.AtomicBool
+	shutdown           *atomic.Bool
+	releaseExecutor    *atomic.UnsafePointer
 	partitionsManager  *PartitionsManager
-	releaseExecutor    unsafe.Pointer
 
 	Events Events
 }
@@ -37,24 +38,22 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 
 	storageOptions := newOptions(store, optionalOptions)
 
-	result := &ObjectStorage{
+	return &ObjectStorage{
 		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
 		options:           storageOptions,
+		shutdown:          atomic.NewBool(false),
+		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount))),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}
-
-	atomic.StorePointer(&result.releaseExecutor, unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount)))
-
-	return result
 }
 
 func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -62,7 +61,7 @@ func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
 }
 
 func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -70,14 +69,14 @@ func (objectStorage *ObjectStorage) Store(object StorableObject) CachedObject {
 		panic("persistence is disabled - use Put(object StorableObject) instead of Store(object StorableObject)")
 	}
 
-	object.Persist()
-	object.SetModified()
+	object.Persist(true)
+	object.SetModified(true)
 
 	return objectStorage.putObjectInCache(object)
 }
 
 func (objectStorage *ObjectStorage) GetSize() int {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -93,7 +92,7 @@ func (objectStorage *ObjectStorage) GetSize() int {
 }
 
 func (objectStorage *ObjectStorage) Get(key []byte) CachedObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -106,7 +105,7 @@ func (objectStorage *ObjectStorage) Get(key []byte) CachedObject {
 }
 
 func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -118,7 +117,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 	if !cacheHit {
 		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
-			loadedObject.Persist()
+			loadedObject.Persist(true)
 		}
 
 		cachedObject.publishResult(loadedObject)
@@ -128,7 +127,7 @@ func (objectStorage *ObjectStorage) Load(key []byte) CachedObject {
 }
 
 func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) (result bool) {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -151,7 +150,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) 
 }
 
 func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) StorableObject) CachedObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -167,7 +166,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 	} else {
 		loadedObject := objectStorage.LoadObjectFromStore(key)
 		if !typeutils.IsInterfaceNil(loadedObject) {
-			loadedObject.Persist()
+			loadedObject.Persist(true)
 
 			cachedObject.publishResult(loadedObject)
 		} else {
@@ -181,7 +180,7 @@ func (objectStorage *ObjectStorage) ComputeIfAbsent(key []byte, remappingFunctio
 
 // This method deletes an element and return true if the element was deleted.
 func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -190,7 +189,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
-				storableObject.Delete()
+				storableObject.Delete(true)
 				cachedObject.Release(true)
 
 				return true
@@ -214,7 +213,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 
 	objectExistsInStore := objectStorage.ObjectExistsInStore(key)
 	if objectExistsInStore {
-		cachedObject.blindDelete.Set()
+		cachedObject.blindDelete.Store(true)
 	}
 
 	cachedObject.publishResult(nil)
@@ -226,7 +225,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresent(key []byte) bool {
 // DeleteIfPresentAndReturn deletes an element and returns it. If the element does not exist then the return value is
 // nil.
 func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) StorableObject {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -235,7 +234,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) Storabl
 
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
-				storableObject.Delete()
+				storableObject.Delete(true)
 				cachedObject.Release(true)
 
 				return storableObject
@@ -259,7 +258,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) Storabl
 
 	storableObject := objectStorage.LoadObjectFromStore(key)
 	if !typeutils.IsInterfaceNil(storableObject) {
-		storableObject.Delete()
+		storableObject.Delete(true)
 	}
 
 	cachedObject.publishResult(nil)
@@ -271,7 +270,7 @@ func (objectStorage *ObjectStorage) DeleteIfPresentAndReturn(key []byte) Storabl
 // Performs a "blind delete", where we do not check the objects existence.
 // blindDelete is used to delete without accessing the value log.
 func (objectStorage *ObjectStorage) Delete(key []byte) {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -280,7 +279,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 		if storableObject := cachedObject.Get(); !typeutils.IsInterfaceNil(storableObject) {
 			if !storableObject.IsDeleted() {
-				storableObject.Delete()
+				storableObject.Delete(true)
 				cachedObject.Release(true)
 
 				return
@@ -304,7 +303,7 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 		return
 	}
 
-	cachedObject.blindDelete.Set()
+	cachedObject.blindDelete.Store(true)
 	cachedObject.publishResult(nil)
 	cachedObject.Release(true)
 }
@@ -318,7 +317,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	}
 
 	// prevent usage of shutdown storage
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -372,8 +371,8 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	}
 
 	// put object into the prepared cached object
-	object.Persist()
-	object.SetModified()
+	object.Persist(true)
+	object.SetModified(true)
 	existingCachedObject.publishResult(object)
 	existingCachedObject.storeOnCreation()
 
@@ -386,7 +385,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 
 // ForEach calls the consumer function on every object residing within the cache and the underlying persistence layer.
 func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObject CachedObject) bool, options ...IteratorOption) {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -463,7 +462,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 			}
 
 			if !typeutils.IsInterfaceNil(storableObject) {
-				storableObject.Persist()
+				storableObject.Persist(true)
 			}
 
 			cachedObject.publishResult(storableObject)
@@ -491,7 +490,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 // ForEachKeyOnly calls the consumer function on every storage key residing within the cache and the underlying persistence layer.
 func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) bool, options ...IteratorOption) {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -560,7 +559,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 }
 
 func (objectStorage *ObjectStorage) Prune() error {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 
@@ -569,7 +568,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	// mark cached objects as evicted
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
 		cachedObject.cancelScheduledRelease()
-		atomic.AddInt32(&(cachedObject.evicted), 1)
+		cachedObject.evicted.Store(true)
 		if storableObject := cachedObject.Get(); storableObject != nil {
 			storableObject.SetModified(false)
 		}
@@ -597,14 +596,14 @@ func (objectStorage *ObjectStorage) Prune() error {
 }
 
 func (objectStorage *ObjectStorage) Flush() {
-	if objectStorage.shutdown.IsSet() {
+	if objectStorage.shutdown.Load() {
 		panic("trying to access shutdown object storage")
 	}
 	objectStorage.flush(false)
 }
 
 func (objectStorage *ObjectStorage) Shutdown() {
-	objectStorage.shutdown.Set()
+	objectStorage.shutdown.Store(true)
 
 	objectStorage.flush(true)
 
@@ -658,7 +657,7 @@ func (objectStorage *ObjectStorage) FreeMemory() {
 
 // ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
 func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
-	return (*timedexecutor.TimedExecutor)(atomic.LoadPointer(&objectStorage.releaseExecutor))
+	return (*timedexecutor.TimedExecutor)(objectStorage.releaseExecutor.Load())
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
@@ -842,8 +841,8 @@ func (objectStorage *ObjectStorage) updateEmptyCachedObject(cachedObject *Cached
 	cachedObject.waitForInitialResult()
 
 	// prepare object to be stored
-	object.Persist()
-	object.SetModified()
+	object.Persist(true)
+	object.SetModified(true)
 
 	// try to update the object if it is empty or abort otherwise
 	updated = cachedObject.updateEmptyResult(object)
@@ -1069,14 +1068,14 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
 	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks, timedexecutor.DontWaitForShutdown)
 	if !shutdown {
-		atomic.StorePointer(&objectStorage.releaseExecutor, unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
+		objectStorage.releaseExecutor.Store(unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
 	}
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
 	cachedObjects := make([]*CachedObjectImpl, objectStorage.size)
 	var i int
 	objectStorage.deepIterateThroughCachedElements(objectStorage.cachedObjects, func(key []byte, cachedObject *CachedObjectImpl) bool {
-		atomic.StorePointer(&cachedObject.scheduledTask, nil)
+		cachedObject.scheduledTask.Store(nil)
 
 		cachedObjects[i] = cachedObject
 		i++
@@ -1088,7 +1087,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
-		if consumers := atomic.AddInt32(&(cachedObjects[j].consumers), -1); consumers == 0 {
+		if consumers := cachedObjects[j].consumers.Dec(); consumers == 0 {
 			cachedObjects[j].evict()
 		}
 	}

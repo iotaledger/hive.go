@@ -3,8 +3,9 @@ package objectstorage
 import (
 	"math"
 	"sync"
-	"sync/atomic"
 	"unsafe"
+
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/syncutils"
@@ -28,21 +29,27 @@ type CachedObjectImpl struct {
 	key                 []byte
 	objectStorage       *ObjectStorage
 	value               StorableObject
-	consumers           int32
-	published           int32
-	evicted             int32
-	batchWriteScheduled int32
+	consumers           *atomic.Int32
+	published           *atomic.Bool
+	evicted             *atomic.Bool
+	batchWriteScheduled *atomic.Bool
+	scheduledTask       *atomic.UnsafePointer
+	blindDelete         *atomic.Bool
 	wg                  sync.WaitGroup
 	valueMutex          syncutils.RWMutex
-	scheduledTask       unsafe.Pointer
-	blindDelete         typeutils.AtomicBool
 	transactionMutex    syncutils.RWMultiMutex
 }
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		objectStorage: database,
-		key:           key,
+		objectStorage:       database,
+		key:                 key,
+		consumers:           atomic.NewInt32(0),
+		published:           atomic.NewBool(false),
+		evicted:             atomic.NewBool(false),
+		batchWriteScheduled: atomic.NewBool(false),
+		scheduledTask:       atomic.NewUnsafePointer(nil),
+		blindDelete:         atomic.NewBool(false),
 	}
 
 	result.wg.Add(1)
@@ -57,9 +64,13 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectI
 // tangle only returns value transactions in its load operations).
 func NewEmptyCachedObject(key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		key:       key,
-		published: 1,
-		consumers: math.MinInt32,
+		key:                 key,
+		consumers:           atomic.NewInt32(math.MinInt32),
+		published:           atomic.NewBool(true),
+		evicted:             atomic.NewBool(false),
+		batchWriteScheduled: atomic.NewBool(false),
+		scheduledTask:       atomic.NewUnsafePointer(nil),
+		blindDelete:         atomic.NewBool(false),
 	}
 
 	return
@@ -80,7 +91,7 @@ func (cachedObject *CachedObjectImpl) Get() (result StorableObject) {
 
 // Releases the object, to be picked up by the persistence layer (as soon as all consumers are done).
 func (cachedObject *CachedObjectImpl) Release(force ...bool) {
-	consumers := atomic.AddInt32(&(cachedObject.consumers), -1)
+	consumers := cachedObject.consumers.Dec()
 	if consumers > 1 {
 		return
 	}
@@ -91,15 +102,14 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 	if cachedObject.objectStorage.options.cacheTime == 0 || (len(force) >= 1 && force[0]) {
 		// only force release if there is no timer running, so that objects that landed in the cache through normal
 		// loading stay available
-		if atomic.LoadPointer(&cachedObject.scheduledTask) == nil {
+		if cachedObject.scheduledTask.Load() == nil {
 			cachedObject.evict()
 		}
 
 		return
 	}
 
-	atomic.StorePointer(
-		&cachedObject.scheduledTask,
+	cachedObject.scheduledTask.Store(
 		unsafe.Pointer(
 			cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
 				cachedObject.delayedRelease,
@@ -110,9 +120,9 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 }
 
 func (cachedObject *CachedObjectImpl) delayedRelease() {
-	atomic.StorePointer(&cachedObject.scheduledTask, nil)
+	cachedObject.scheduledTask.Store(nil)
 
-	consumers := atomic.LoadInt32(&(cachedObject.consumers))
+	consumers := cachedObject.consumers.Load()
 	if consumers > 1 {
 		return
 	}
@@ -139,7 +149,7 @@ func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject), for
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) Retain() CachedObject {
-	if atomic.AddInt32(&(cachedObject.consumers), 1) == 1 {
+	if cachedObject.consumers.Inc() == 1 {
 		panic("called Retain() on an already released CachedObject")
 	}
 
@@ -210,7 +220,7 @@ func (cachedObject *CachedObjectImpl) RTransaction(callback func(object Storable
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) retain() CachedObject {
-	atomic.AddInt32(&(cachedObject.consumers), 1)
+	cachedObject.consumers.Inc()
 
 	cachedObject.cancelScheduledRelease()
 
@@ -225,10 +235,10 @@ func (cachedObject *CachedObjectImpl) storeOnCreation() {
 }
 
 func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
-	if atomic.AddInt32(&(cachedObject.published), 1) == 1 {
+	if !cachedObject.published.Swap(true) {
+		// was not published before
 		cachedObject.value = result
 		cachedObject.wg.Done()
-
 		return true
 	}
 
@@ -241,7 +251,7 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 
 	if typeutils.IsInterfaceNil(cachedObject.value) || cachedObject.value.IsDeleted() {
 		cachedObject.value = object
-		cachedObject.blindDelete.UnSet()
+		cachedObject.blindDelete.Store(false)
 		return
 	}
 
@@ -249,7 +259,7 @@ func (cachedObject *CachedObjectImpl) updateResult(object StorableObject) {
 	cachedObject.value.Persist(object.ShouldPersist())
 	cachedObject.value.Delete(object.IsDeleted())
 	cachedObject.value.Update(object)
-	cachedObject.blindDelete.UnSet()
+	cachedObject.blindDelete.Store(false)
 }
 
 func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (updated bool) {
@@ -276,7 +286,7 @@ func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (upd
 		panic("invalid argument in call to updateEmptyResult")
 	}
 
-	cachedObject.blindDelete.UnSet()
+	cachedObject.blindDelete.Store(false)
 	updated = true
 
 	return
@@ -289,7 +299,7 @@ func (cachedObject *CachedObjectImpl) waitForInitialResult() *CachedObjectImpl {
 }
 
 func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
-	if scheduledTask := atomic.SwapPointer(&cachedObject.scheduledTask, nil); scheduledTask != nil {
+	if scheduledTask := cachedObject.scheduledTask.Swap(nil); scheduledTask != nil {
 		(*(*timedexecutor.ScheduledTask)(scheduledTask)).Cancel()
 	}
 }
@@ -313,7 +323,7 @@ func (cachedObject *CachedObjectImpl) evict() {
 // If all checks pass, the cachedObject is marshaled and added to the BatchedMutations.
 // Do not call this method for objects that should not be persisted.
 func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMutations) {
-	consumers := atomic.LoadInt32(&(cachedObject.consumers))
+	consumers := cachedObject.consumers.Load()
 	if consumers < 0 {
 		panic("too many unregistered consumers of cached object")
 	}
@@ -322,7 +332,7 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 
 	if typeutils.IsInterfaceNil(storableObject) {
 		// only blind delete if there are no consumers
-		if consumers == 0 && cachedObject.blindDelete.IsSet() {
+		if consumers == 0 && cachedObject.blindDelete.Load() {
 			if err := batchedMuts.Delete(cachedObject.key); err != nil {
 				panic(err)
 			}
@@ -349,12 +359,9 @@ func (cachedObject *CachedObjectImpl) BatchWrite(batchedMuts kvstore.BatchedMuta
 		return
 	}
 
-	if !storableObject.IsModified() {
+	if wasModified := storableObject.SetModified(false); !wasModified {
 		return
 	}
-
-	storableObject.SetModified(false)
-
 	if !storableObject.ShouldPersist() {
 		return
 	}
@@ -380,7 +387,7 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 	defer objectStorage.cacheMutex.Unlock()
 
 	// abort if there are still consumers
-	if consumers := atomic.LoadInt32(&(cachedObject.consumers)); consumers != 0 {
+	if consumers := cachedObject.consumers.Load(); consumers != 0 {
 		return
 	}
 
@@ -390,7 +397,7 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 	}
 
 	// abort if the object was evicted already
-	if atomic.AddInt32(&cachedObject.evicted, 1) != 1 {
+	if cachedObject.evicted.Swap(true) {
 		return
 	}
 
@@ -415,10 +422,10 @@ func (cachedObject *CachedObjectImpl) BatchWriteDone() {
 
 // BatchWriteScheduled returns true if the cachedObject is already scheduled for a BatchWrite operation.
 func (cachedObject *CachedObjectImpl) BatchWriteScheduled() bool {
-	return atomic.AddInt32(&(cachedObject.batchWriteScheduled), 1) != 1
+	return cachedObject.batchWriteScheduled.Swap(true)
 }
 
 // ResetBatchWriteScheduled resets the flag that the cachedObject is scheduled for a BatchWrite operation.
 func (cachedObject *CachedObjectImpl) ResetBatchWriteScheduled() {
-	atomic.StoreInt32(&(cachedObject.batchWriteScheduled), 0)
+	cachedObject.batchWriteScheduled.Store(false)
 }

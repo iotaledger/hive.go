@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/iotaledger/hive.go/typeutils"
+	"go.uber.org/atomic"
 )
 
 const (
@@ -85,7 +84,7 @@ type Client struct {
 	shutdownWaitGroup sync.WaitGroup
 
 	// indicates that the client was shut down
-	shutdownFlag *typeutils.AtomicBool
+	shutdownFlag *atomic.Bool
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	readLimit int64
@@ -167,7 +166,7 @@ func (c *Client) writePump() {
 		close(c.sendChanClosed)
 
 		// mark the client as shutdown
-		c.shutdownFlag.Set()
+		c.shutdownFlag.Store(true)
 
 		// stop the ping ticker
 		pingTicker.Stop()
@@ -224,12 +223,12 @@ func (c *Client) writePump() {
 
 // Send sends a message to the client
 func (c *Client) Send(msg interface{}, dontDrop ...bool) {
-	if c.hub.shutdownFlag.IsSet() {
+	if c.hub.shutdownFlag.Load() {
 		// hub was already shut down
 		return
 	}
 
-	if c.shutdownFlag.IsSet() {
+	if c.shutdownFlag.Load() {
 		// client was already shutdown
 		return
 	}

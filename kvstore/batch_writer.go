@@ -2,8 +2,9 @@ package kvstore
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/syncutils"
 )
@@ -32,8 +33,8 @@ type BatchedWriter struct {
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
 	autoStartOnce  sync.Once
-	running        int32
-	scheduledCount int32
+	running        *atomic.Bool
+	scheduledCount *atomic.Int32
 	batchQueue     chan BatchWriteObject
 }
 
@@ -43,7 +44,8 @@ func NewBatchedWriter(store KVStore) *BatchedWriter {
 		store:          store,
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
-		running:        0,
+		running:        atomic.NewBool(false),
+		scheduledCount: atomic.NewInt32(0),
 		batchQueue:     make(chan BatchWriteObject, BatchWriterQueueSize),
 	}
 }
@@ -56,8 +58,8 @@ func (bw *BatchedWriter) KVStore() KVStore {
 // startBatchWriter starts the batch writer if it was not started yet.
 func (bw *BatchedWriter) startBatchWriter() {
 	bw.startStopMutex.Lock()
-	if atomic.LoadInt32(&bw.running) == 0 {
-		atomic.StoreInt32(&bw.running, 1)
+	if !bw.running.Load() {
+		bw.running.Store(true)
 		go bw.runBatchWriter()
 	}
 	bw.startStopMutex.Unlock()
@@ -66,8 +68,8 @@ func (bw *BatchedWriter) startBatchWriter() {
 // StopBatchWriter stops the batch writer and waits until all enqueued objects are written.
 func (bw *BatchedWriter) StopBatchWriter() {
 	bw.startStopMutex.Lock()
-	if atomic.LoadInt32(&bw.running) != 0 {
-		atomic.StoreInt32(&bw.running, 0)
+	if bw.running.Load() {
+		bw.running.Store(false)
 
 		bw.writeWg.Wait()
 	}
@@ -78,13 +80,13 @@ func (bw *BatchedWriter) StopBatchWriter() {
 // It also starts the batch writer if not done yet.
 func (bw *BatchedWriter) Enqueue(object BatchWriteObject) {
 	bw.autoStartOnce.Do(func() {
-		if atomic.LoadInt32(&bw.running) == 0 {
+		if !bw.running.Load() {
 			bw.startBatchWriter()
 		}
 	})
 
 	// abort if the BatchWriter has been stopped
-	if atomic.LoadInt32(&bw.running) == 0 {
+	if !bw.running.Load() {
 		return
 	}
 
@@ -94,7 +96,7 @@ func (bw *BatchedWriter) Enqueue(object BatchWriteObject) {
 	}
 
 	// queue object
-	atomic.AddInt32(&bw.scheduledCount, 1)
+	bw.scheduledCount.Inc()
 	bw.batchQueue <- object
 }
 
@@ -102,7 +104,7 @@ func (bw *BatchedWriter) Enqueue(object BatchWriteObject) {
 func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
-	for atomic.LoadInt32(&bw.running) == 1 || atomic.LoadInt32(&bw.scheduledCount) != 0 {
+	for bw.running.Load() || bw.scheduledCount.Load() != 0 {
 		var batchedMuts BatchedMutations
 
 		writtenValues := make([]BatchWriteObject, BatchWriterBatchSize)
@@ -118,7 +120,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 				}
 
 				objectToPersist.ResetBatchWriteScheduled()
-				atomic.AddInt32(&bw.scheduledCount, -1)
+				bw.scheduledCount.Dec()
 
 				objectToPersist.BatchWrite(batchedMuts)
 				writtenValues[writtenValuesCounter] = objectToPersist
