@@ -2,8 +2,27 @@ package thresholdmap
 
 import "C"
 import (
+	"github.com/iotaledger/hive.go/datastructure/genericcomparator"
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
 )
+
+// region Mode /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Mode encodes different modes of function for the ThresholdMap that specifies if the defines keys act as upper or
+// lower thresholds.
+type Mode bool
+
+const (
+	// LowerThresholdMode interprets the keys of the ThresholdMap as lower thresholds which means that querying the map
+	// will return the value of the largest node whose key is <= than the queried value.
+	LowerThresholdMode = true
+
+	// UpperThresholdMode interprets the keys of the ThresholdMap as upper thresholds which means that querying the map
+	// will return the value of the smallest node whose key is >= than the queried value.
+	UpperThresholdMode = false
+)
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region ThresholdMap /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14,9 +33,9 @@ type ThresholdMap[K comparable, V any] struct {
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
 // to support custom key types.
-func New[K comparable, V any](thresholdMap *thresholdmap.ThresholdMap) *ThresholdMap[K, V] {
+func New[K comparable, V any](mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap[K, V] {
 	return &ThresholdMap[K, V]{
-		ThresholdMap: thresholdMap,
+		ThresholdMap: thresholdmap.New(thresholdmap.Mode(mode), optionalComparator...),
 	}
 }
 

@@ -10,9 +10,9 @@ type Queue[T any] struct {
 }
 
 // New creates a new queue with the specified capacity.
-func New[T any](q *queue.Queue) *Queue[T] {
+func New[T any](capacity int) *Queue[T] {
 	return &Queue[T]{
-		Queue: q,
+		Queue: queue.New(capacity),
 	}
 }
 

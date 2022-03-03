@@ -13,8 +13,8 @@ type Walker[T any] struct {
 
 // New is the constructor of the Walker. It accepts an optional boolean flag that controls whether the Walker will visit
 // the same Element multiple times.
-func New[T any](walker *walker.Walker) *Walker[T] {
-	return &Walker[T]{Walker: walker}
+func New[T any](revisitElements ...bool) *Walker[T] {
+	return &Walker[T]{Walker: walker.New(revisitElements...)}
 }
 
 // HasNext returns true if the Walker has another element that shall be visited.

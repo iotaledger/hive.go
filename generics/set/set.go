@@ -24,6 +24,6 @@ type Set[T comparable] interface {
 }
 
 // New returns a new Set that is thread safe if the optional threadSafe parameter is set to true.
-func New[T comparable](s set.Set) Set[T] {
-	return newGenericSet[T](s)
+func New[T comparable](threadSafe ...bool) Set[T] {
+	return newGenericSet[T](set.New(threadSafe...))
 }

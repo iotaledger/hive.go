@@ -5,12 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/datastructure/randommap"
 	"github.com/iotaledger/hive.go/datastructure/set"
 )
 
 func TestRandomMap_RandomUniqueEntries(t *testing.T) {
-	testMap := New[string, string](randommap.New())
+	testMap := New[string, string]()
 	// key and value are the same for the sake of the test
 	keysAndValues := []string{"a", "b", "c", "d"}
 	// fill randomMap
@@ -35,7 +34,7 @@ func TestRandomMap_RandomUniqueEntries(t *testing.T) {
 	assert.True(t, containsUniqueElements(result))
 }
 func TestRandomMap_EmptyMap(t *testing.T) {
-	testMap := New[string, string](randommap.New())
+	testMap := New[string, string]()
 	var emptyResult = []string{}
 
 	result := testMap.RandomUniqueEntries(4)

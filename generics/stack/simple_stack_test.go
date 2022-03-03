@@ -20,7 +20,7 @@ func BenchmarkList(b *testing.B) {
 }
 
 func BenchmarkStack(b *testing.B) {
-	stack := New[int](stack2.New())
+	stack := New[int]()
 
 	b.ResetTimer()
 

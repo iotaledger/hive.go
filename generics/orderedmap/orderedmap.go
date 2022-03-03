@@ -10,9 +10,9 @@ type OrderedMap[K comparable, V any] struct {
 }
 
 // New returns a new *OrderedMap.
-func New[K comparable, V any](orderedMap *orderedmap.OrderedMap) *OrderedMap[K, V] {
+func New[K comparable, V any]() *OrderedMap[K, V] {
 	return &OrderedMap[K, V]{
-		OrderedMap: orderedMap,
+		OrderedMap: orderedmap.New(),
 	}
 }
 

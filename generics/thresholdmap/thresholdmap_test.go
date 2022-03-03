@@ -4,12 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
 )
 
 func Test(t *testing.T) {
-	thresholdMap := New[int, int](thresholdmap.New(thresholdmap.LowerThresholdMode))
+	thresholdMap := New[int, int](LowerThresholdMode)
 
 	thresholdMap.Set(1, 2)
 	assert.Equal(t, thresholdMap.Size(), 1)

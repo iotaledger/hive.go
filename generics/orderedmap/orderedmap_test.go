@@ -7,12 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 )
 
 func TestOrderedMap_Size(t *testing.T) {
-	orderedMap := New[int, int](orderedmap.New())
+	orderedMap := New[int, int]()
 
 	assert.Equal(t, 0, orderedMap.Size())
 
@@ -35,7 +33,7 @@ func TestOrderedMap_Size(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	orderedMap := New[int, int](orderedmap.New())
+	orderedMap := New[int, int]()
 	require.NotNil(t, orderedMap)
 
 	assert.Equal(t, 0, orderedMap.Size())
@@ -46,7 +44,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSetGetDelete(t *testing.T) {
-	orderedMap := New[string, string](orderedmap.New())
+	orderedMap := New[string, string]()
 	require.NotNil(t, orderedMap)
 
 	// when adding the first new key,value pair, we must return true
@@ -99,7 +97,7 @@ func TestSetGetDelete(t *testing.T) {
 }
 
 func TestForEach(t *testing.T) {
-	orderedMap := New[string, int](orderedmap.New())
+	orderedMap := New[string, int]()
 	require.NotNil(t, orderedMap)
 
 	testElements := []Element[string, int]{
@@ -126,7 +124,7 @@ func TestForEach(t *testing.T) {
 }
 
 func TestConcurrencySafe(t *testing.T) {
-	orderedMap := New[string, int](orderedmap.New())
+	orderedMap := New[string, int]()
 	require.NotNil(t, orderedMap)
 
 	// initialize a slice of 100 elements

@@ -24,6 +24,6 @@ type Stack[T any] interface {
 }
 
 // New returns a new Stack that is thread safe if the optional threadSafe parameter is set to true.
-func New[T any](s stack.Stack) Stack[T] {
-	return newGenericStack[T](s)
+func New[T any](threadSafe ...bool) Stack[T] {
+	return newGenericStack[T](stack.New(threadSafe...))
 }

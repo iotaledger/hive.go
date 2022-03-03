@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/marshalutil"
 )
@@ -65,6 +66,10 @@ func NewTestObject(key, value uint64) *testObject {
 	}
 }
 
+func (t *testObject) FromObjectStorage(key, value []byte) (storableObject StorableObject, err error) {
+	return t.FromBytes(byteutils.ConcatBytes(key, value))
+
+}
 func (t *testObject) FromBytes(bytes []byte) (storableObject StorableObject, err error) {
 	marshalUtil := marshalutil.New(bytes)
 

@@ -6,19 +6,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/iotaledger/hive.go/datastructure/queue"
 )
 
 func TestNewQueue(t *testing.T) {
-	q := New[int](queue.New(2))
+	q := New[int](2)
 	require.NotNil(t, q)
 	assert.Equal(t, 0, q.Size())
 	assert.Equal(t, 2, q.Capacity())
 }
 
 func TestQueueOfferPoll(t *testing.T) {
-	q := New[int](queue.New(2))
+	q := New[int](2)
 	require.NotNil(t, q)
 
 	// offer element to queue
@@ -52,7 +50,7 @@ func TestQueueOfferPoll(t *testing.T) {
 }
 
 func TestQueueOfferConcurrencySafe(t *testing.T) {
-	q := New[int](queue.New(100))
+	q := New[int](100)
 	require.NotNil(t, q)
 
 	// let 10 workers fill the queue
@@ -87,7 +85,7 @@ func TestQueueOfferConcurrencySafe(t *testing.T) {
 }
 
 func TestQueuePollConcurrencySafe(t *testing.T) {
-	q := New[int](queue.New(100))
+	q := New[int](100)
 	require.NotNil(t, q)
 
 	for j := 0; j < 100; j++ {
