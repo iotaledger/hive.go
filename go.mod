@@ -8,6 +8,7 @@ require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.4.2
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220309063734-061146d8ff30
 	github.com/knadh/koanf v1.3.3
 	github.com/kr/text v0.2.0
 	github.com/linxGnu/grocksdb v1.6.42
