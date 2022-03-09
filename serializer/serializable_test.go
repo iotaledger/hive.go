@@ -2,12 +2,12 @@ package serializer_test
 
 import (
 	"errors"
+	"fmt"
+	"math/rand"
 	"sort"
 	"testing"
 
-	"github.com/iotaledger/hive.go/serializer"
-	"github.com/iotaledger/hive.go/testutil"
-
+	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +22,20 @@ const (
 
 var (
 	ErrUnknownDummyType = errors.New("unknown example type")
+
+	dummyTypeArrayRules = &serializer.ArrayRules{
+		Guards: serializer.SerializableGuard{
+			ReadGuard: DummyTypeSelector,
+			WriteGuard: func(seri serializer.Serializable) error {
+				switch seri.(type) {
+				case *A:
+				case *B:
+					return ErrUnknownDummyType
+				}
+				return nil
+			},
+		},
+	}
 )
 
 func DummyTypeSelector(dummyType uint32) (serializer.Serializable, error) {
@@ -37,8 +51,20 @@ func DummyTypeSelector(dummyType uint32) (serializer.Serializable, error) {
 	return seri, nil
 }
 
+type Keyer interface {
+	GetKey() [aKeyLength]byte
+}
+
 type A struct {
 	Key [aKeyLength]byte
+}
+
+func (a *A) String() string {
+	return "A"
+}
+
+func (a *A) GetKey() [16]byte {
+	return a.Key
 }
 
 func (a *A) MarshalJSON() ([]byte, error) {
@@ -49,35 +75,82 @@ func (a *A) UnmarshalJSON(i []byte) error {
 	panic("implement me")
 }
 
-func (a *A) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode) (int, error) {
+func (a *A) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(a.Key[:], data[:aKeyLength])
 	return typeALength, nil
 }
 
-func (a *A) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error) {
+func (a *A) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	var b [typeALength]byte
 	b[0] = TypeA
 	copy(b[serializer.SmallTypeDenotationByteSize:], a.Key[:])
 	return b[:], nil
 }
 
+type As []*A
+
+func (a As) ToSerializables() serializer.Serializables {
+	seris := make(serializer.Serializables, len(a))
+	for i, x := range a {
+		seris[i] = x
+	}
+	return seris
+}
+
+func (a *As) FromSerializables(seris serializer.Serializables) {
+	*a = make(As, len(seris))
+	for i, seri := range seris {
+		(*a)[i] = seri.(*A)
+	}
+}
+
+type Keyers []Keyer
+
+func (k Keyers) ToSerializables() serializer.Serializables {
+	seris := make(serializer.Serializables, len(k))
+	for i, x := range k {
+		seris[i] = x.(serializer.Serializable)
+	}
+	return seris
+}
+
+func (k *Keyers) FromSerializables(seris serializer.Serializables) {
+	*k = make(Keyers, len(seris))
+	for i, seri := range seris {
+		(*k)[i] = seri.(Keyer)
+	}
+}
+
+// RandBytes returns length amount random bytes.
+func RandBytes(length int) []byte {
+	var b []byte
+	for i := 0; i < length; i++ {
+		b = append(b, byte(rand.Intn(256)))
+	}
+	return b
+}
+
 func randSerializedA() []byte {
 	var b [typeALength]byte
 	b[0] = TypeA
-	keyData := testutil.RandBytes(aKeyLength)
+	keyData := RandBytes(aKeyLength)
 	copy(b[serializer.SmallTypeDenotationByteSize:], keyData)
 	return b[:]
 }
 
 func randA() *A {
 	var k [aKeyLength]byte
-	copy(k[:], testutil.RandBytes(aKeyLength))
+	copy(k[:], RandBytes(aKeyLength))
 	return &A{Key: k}
 }
 
 type B struct {
 	Name [bNameLength]byte
+}
+
+func (b *B) String() string {
+	return "B"
 }
 
 func (b *B) MarshalJSON() ([]byte, error) {
@@ -88,13 +161,13 @@ func (b *B) UnmarshalJSON(i []byte) error {
 	panic("implement me")
 }
 
-func (b *B) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode) (int, error) {
+func (b *B) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(b.Name[:], data[:bNameLength])
 	return typeBLength, nil
 }
 
-func (b *B) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error) {
+func (b *B) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	var bf [typeBLength]byte
 	bf[0] = TypeB
 	copy(bf[serializer.SmallTypeDenotationByteSize:], b.Name[:])
@@ -103,14 +176,14 @@ func (b *B) Serialize(deSeriMode serializer.DeSerializationMode) ([]byte, error)
 
 func randB() *B {
 	var n [bNameLength]byte
-	copy(n[:], testutil.RandBytes(bNameLength))
+	copy(n[:], RandBytes(bNameLength))
 	return &B{Name: n}
 }
 
 func TestDeserializeA(t *testing.T) {
 	seriA := randSerializedA()
 	objA := &A{}
-	bytesRead, err := objA.Deserialize(seriA, serializer.DeSeriModePerformValidation)
+	bytesRead, err := objA.Deserialize(seriA, serializer.DeSeriModePerformValidation, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, len(seriA), bytesRead)
 	assert.Equal(t, seriA[serializer.SmallTypeDenotationByteSize:], objA.Key[:])
@@ -283,9 +356,8 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -295,6 +367,7 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -305,13 +378,28 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 				{1, 1, 3},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
+			valid: false,
+		},
+		{
+			name: "not ok - dups with reduction",
+			args: [][]byte{
+				{1, 1, 1},
+				{1, 1, 2},
+				{1, 1, 3},
+			},
+			ar: &serializer.ArrayRules{
+				UniquenessSliceFunc: func(next []byte) []byte {
+					return next[:2]
+				},
+			},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.ElementUniqueValidator()
+			arrayElementValidator := tt.ar.ElementUniqueValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -398,9 +486,8 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -410,6 +497,7 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -419,6 +507,7 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{1, 1, 2},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -428,13 +517,14 @@ func TestArrayRules_LexicalOrderValidator(t *testing.T) {
 				{1, 1, 2},
 				{3, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.LexicalOrderValidator()
+			arrayElementValidator := tt.ar.LexicalOrderValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -455,9 +545,8 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 		name  string
 		args  [][]byte
 		valid bool
+		ar    *serializer.ArrayRules
 	}
-
-	arrayRules := serializer.ArrayRules{}
 
 	tests := []test{
 		{
@@ -467,6 +556,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{2, 3, 1},
 				{3, 2, 1},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -476,6 +566,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 2},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: true,
 		},
 		{
@@ -486,6 +577,7 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 3},
 				{1, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
 			valid: false,
 		},
 		{
@@ -495,13 +587,28 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{1, 1, 2},
 				{3, 1, 3},
 			},
+			ar:    &serializer.ArrayRules{},
+			valid: false,
+		},
+		{
+			name: "not ok - dups with reduction",
+			args: [][]byte{
+				{1, 1, 1},
+				{1, 1, 2},
+				{1, 1, 3},
+			},
+			ar: &serializer.ArrayRules{
+				UniquenessSliceFunc: func(next []byte) []byte {
+					return next[:2]
+				},
+			},
 			valid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			arrayElementValidator := arrayRules.LexicalOrderWithoutDupsValidator()
+			arrayElementValidator := tt.ar.LexicalOrderWithoutDupsValidator()
 
 			valid := true
 			for i := range tt.args {
@@ -514,5 +621,94 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 
 			assert.Equal(t, tt.valid, valid)
 		})
+	}
+}
+
+func TestArrayRules_AtMostOneOfEachTypeValidatorValidator(t *testing.T) {
+	type test struct {
+		name  string
+		args  [][]byte
+		valid bool
+		ar    *serializer.ArrayRules
+		ty    serializer.TypeDenotationType
+	}
+
+	tests := []test{
+		{
+			name: "ok - types unique - byte",
+			args: [][]byte{
+				{1, 1, 1},
+				{2, 2, 2},
+				{3, 3, 3},
+			},
+			valid: true,
+			ar:    &serializer.ArrayRules{},
+			ty:    serializer.TypeDenotationByte,
+		},
+		{
+			name: "ok - types unique - uint32",
+			args: [][]byte{
+				{1, 1, 1, 1},
+				{2, 2, 2, 2},
+				{3, 3, 3, 3},
+			},
+			valid: true,
+			ar:    &serializer.ArrayRules{},
+			ty:    serializer.TypeDenotationUint32,
+		},
+		{
+			name: "not ok - types not unique - byte",
+			args: [][]byte{
+				{1, 1, 1},
+				{1, 2, 2},
+				{3, 3, 3},
+			},
+			valid: false,
+			ar:    &serializer.ArrayRules{},
+			ty:    serializer.TypeDenotationByte,
+		},
+		{
+			name: "not ok - types not unique - uint32",
+			args: [][]byte{
+				{1, 1, 1, 1},
+				{2, 2, 2, 2},
+				{1, 1, 1, 1},
+			},
+			valid: false,
+			ar:    &serializer.ArrayRules{},
+			ty:    serializer.TypeDenotationUint32,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			arrayElementValidator := tt.ar.AtMostOneOfEachTypeValidator(tt.ty)
+
+			valid := true
+			for i := range tt.args {
+				element := tt.args[i]
+
+				if err := arrayElementValidator(i, element); err != nil {
+					valid = false
+				}
+			}
+
+			assert.Equal(t, tt.valid, valid)
+		})
+	}
+}
+
+func TestSerializableSlice(t *testing.T) {
+	keyers := make(Keyers, 0)
+
+	seris := make(serializer.Serializables, 5)
+	for i := range seris {
+		seris[i] = randA()
+	}
+
+	keyers.FromSerializables(seris)
+
+	for _, a := range keyers {
+		fmt.Println(a.GetKey())
 	}
 }
