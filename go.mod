@@ -10,6 +10,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/knadh/koanf v1.4.0
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220309063734-061146d8ff30
 	github.com/kr/text v0.2.0
 	github.com/linxGnu/grocksdb v1.6.46
 	github.com/mr-tron/base58 v1.2.0
