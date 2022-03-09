@@ -11,7 +11,7 @@ type BatchCollector struct {
 	batchSize            int
 	writtenValues        []BatchWriteObject
 	writtenValuesCounter int
-	commited             bool
+	committed            bool
 }
 
 // newBatchCollector creates a new BatchCollector that is used to collect objects that should be written.
@@ -22,14 +22,14 @@ func newBatchCollector(batchedMuts BatchedMutations, scheduledCount *atomic.Int3
 		batchSize:            batchSize,
 		writtenValues:        make([]BatchWriteObject, batchSize),
 		writtenValuesCounter: 0,
-		commited:             false,
+		committed:            false,
 	}
 }
 
 // Add adds an object to the batch.
 // It returns true in case the batch size is reached.
 func (br *BatchCollector) Add(objectToPersist BatchWriteObject) (batchSizeReached bool) {
-	if br.commited {
+	if br.committed {
 		panic("mutations were already committed")
 	}
 
@@ -45,10 +45,10 @@ func (br *BatchCollector) Add(objectToPersist BatchWriteObject) (batchSizeReache
 
 // Commit applies the collected mutations.
 func (br *BatchCollector) Commit() error {
-	if br.commited {
+	if br.committed {
 		panic("mutations were already committed")
 	}
-	br.commited = true
+	br.committed = true
 
 	if br.writtenValuesCounter == 0 {
 		// nothing to commit
