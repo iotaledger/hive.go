@@ -114,3 +114,22 @@ func GetIterDirection(iterDirection ...IterDirection) IterDirection {
 	}
 	return direction
 }
+
+// Copy copies the content from the source to the target KVStore.
+func Copy(source KVStore, target KVStore) error {
+
+	var innerErr error
+	source.Iterate([]byte{}, func(key, value Value) bool {
+		if err := target.Set(key, value); err != nil {
+			innerErr = err
+		}
+
+		return innerErr == nil
+	})
+
+	if innerErr != nil {
+		return innerErr
+	}
+
+	return target.Flush()
+}
