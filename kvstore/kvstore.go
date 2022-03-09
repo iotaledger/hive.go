@@ -119,7 +119,7 @@ func GetIterDirection(iterDirection ...IterDirection) IterDirection {
 func Copy(source KVStore, target KVStore) error {
 
 	var innerErr error
-	source.Iterate([]byte{}, func(key, value Value) bool {
+	source.Iterate(EmptyPrefix, func(key, value Value) bool {
 		if err := target.Set(key, value); err != nil {
 			innerErr = err
 		}
