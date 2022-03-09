@@ -1,4 +1,5 @@
 // 3rd-party code from: https://github.com/golang/go/blob/master/src/crypto/cipher/xor_generic.go
+//go:build !amd64 && !ppc64 && !ppc64le
 // +build !amd64,!ppc64,!ppc64le
 
 package byteutils

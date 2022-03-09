@@ -1,7 +1,7 @@
 package events
 
 import (
-	"sync/atomic"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 	reflectpkg "github.com/iotaledger/hive.go/reflect"
@@ -31,11 +31,11 @@ func (ev *Event) attachCallback(callbacks *orderedmap.OrderedMap, closure *Closu
 
 	if (len(triggerMaxCount) > 0) && (triggerMaxCount[0] > 0) {
 		// a trigger limit was specified
-		var triggerCount uint64
+		triggerCount := atomic.NewUint64(0)
 
 		// wrap the Closure Function to automatically detach the Closure from the event after exceeding the trigger limit.
 		callbackFunc = reflectpkg.FuncPostCallback(closure.Fnc, func() {
-			if atomic.AddUint64(&triggerCount, 1) >= triggerMaxCount[0] {
+			if triggerCount.Inc() >= triggerMaxCount[0] {
 				ev.DetachID(closure.ID)
 			}
 		})

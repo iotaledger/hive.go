@@ -522,7 +522,7 @@ func TestStorableObjectFlags(t *testing.T) {
 	testObject := newTestObject("Batman", 44)
 
 	assert.Equal(t, false, testObject.IsModified())
-	testObject.SetModified()
+	testObject.SetModified(true)
 	assert.Equal(t, true, testObject.IsModified())
 	testObject.SetModified(false)
 	assert.Equal(t, false, testObject.IsModified())
@@ -530,7 +530,7 @@ func TestStorableObjectFlags(t *testing.T) {
 	assert.Equal(t, true, testObject.IsModified())
 
 	assert.Equal(t, false, testObject.IsDeleted())
-	testObject.Delete()
+	testObject.Delete(true)
 	assert.Equal(t, true, testObject.IsDeleted())
 	testObject.Delete(false)
 	assert.Equal(t, false, testObject.IsDeleted())
@@ -538,7 +538,7 @@ func TestStorableObjectFlags(t *testing.T) {
 	assert.Equal(t, true, testObject.IsDeleted())
 
 	assert.Equal(t, false, testObject.ShouldPersist())
-	testObject.Persist()
+	testObject.Persist(true)
 	assert.Equal(t, true, testObject.ShouldPersist())
 	testObject.Persist(false)
 	assert.Equal(t, false, testObject.ShouldPersist())
