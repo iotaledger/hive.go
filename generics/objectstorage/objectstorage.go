@@ -13,14 +13,14 @@ type ObjectStorage[T StorableObject] struct {
 	*objectstorage.ObjectStorage
 }
 
-func NewWithObjectFactory[T StorableObject](store kvstore.KVStore, objectFactory func([]byte, []byte) (StorableObject, error), optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
+func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
 	newObjectStorage = &ObjectStorage[T]{
 		Events: &Events{
 			ObjectEvicted: events.NewEvent(evictionEvent[T]),
 		},
 
-		ObjectStorage: objectstorage.New(store, func(key, data []byte) (result objectstorage.StorableObject, err error) {
-			return objectFactory(key, data)
+		ObjectStorage: objectstorage.New(store, func(key []byte, data []byte) (result objectstorage.StorableObject, err error) {
+			return objectFactory[T](key, data)
 		}, optionalOptions...),
 	}
 
@@ -29,10 +29,6 @@ func NewWithObjectFactory[T StorableObject](store kvstore.KVStore, objectFactory
 	}))
 
 	return newObjectStorage
-}
-
-func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
-	return NewWithObjectFactory[T](store, objectFactory[T], optionalOptions...)
 }
 
 func (o *ObjectStorage[T]) Put(object T) *CachedObject[T] {

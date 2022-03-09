@@ -16,7 +16,6 @@ import (
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
 type ObjectStorage struct {
-	objectFactory      StorableObjectFactory
 	cachedObjects      map[string]interface{}
 	cacheMutex         syncutils.RWMutex
 	options            *Options
@@ -35,10 +34,9 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 
-	storageOptions := newOptions(store, optionalOptions)
+	storageOptions := newOptions(store, objectFactory, optionalOptions)
 
 	result := &ObjectStorage{
-		objectFactory:     objectFactory,
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
 		options:           storageOptions,
@@ -453,7 +451,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 
 			if objectStorage.options.keysOnly {
 				var err error
-				if storableObject, err = objectStorage.objectFactory(key, nil); err != nil {
+				if storableObject, err = objectStorage.options.objectFactory(key, nil); err != nil {
 					return true
 				}
 			} else {
@@ -982,7 +980,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 			return nil
 		}
 
-		object, err := objectStorage.objectFactory(key, nil)
+		object, err := objectStorage.options.objectFactory(key, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -1053,7 +1051,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) unmarshalObject(key []byte, data []byte) StorableObject {
-	object, err := objectStorage.objectFactory(key, data)
+	object, err := objectStorage.options.objectFactory(key, data)
 	if err != nil {
 		panic(err)
 	}
