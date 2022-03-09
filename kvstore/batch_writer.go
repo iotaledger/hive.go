@@ -36,6 +36,7 @@ type BatchedWriter struct {
 	running        *atomic.Bool
 	scheduledCount *atomic.Int32
 	batchQueue     chan BatchWriteObject
+	flushChan      chan struct{}
 }
 
 // NewBatchedWriter creates a new BatchedWriter instance.
@@ -47,6 +48,7 @@ func NewBatchedWriter(store KVStore) *BatchedWriter {
 		running:        atomic.NewBool(false),
 		scheduledCount: atomic.NewInt32(0),
 		batchQueue:     make(chan BatchWriteObject, BatchWriterQueueSize),
+		flushChan:      make(chan struct{}),
 	}
 }
 
@@ -100,45 +102,83 @@ func (bw *BatchedWriter) Enqueue(object BatchWriteObject) {
 	bw.batchQueue <- object
 }
 
+// Flush sends a signal to flush all the queued elements.
+func (bw *BatchedWriter) Flush() {
+	if bw.running.Load() {
+		select {
+		case bw.flushChan <- struct{}{}:
+		default:
+			// another flush request is already queued => no need to block
+		}
+	}
+}
+
 // runBatchWriter collects objects in batches and persists them to the KVStore.
 func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
 	for bw.running.Load() || bw.scheduledCount.Load() != 0 {
-		var batchedMuts BatchedMutations
 
-		writtenValues := make([]BatchWriteObject, BatchWriterBatchSize)
+		batchCollector := newBatchCollector(bw.store.Batched(), bw.scheduledCount, BatchWriterBatchSize)
 		batchWriterTimeoutChan := time.After(BatchWriterBatchTimeout)
-		writtenValuesCounter := 0
-	CollectValues:
-		for writtenValuesCounter < BatchWriterBatchSize {
-			select {
-			case objectToPersist := <-bw.batchQueue:
+		shouldFlush := false
 
-				if batchedMuts == nil && bw.store != nil {
-					batchedMuts = bw.store.Batched()
+	CollectValues:
+		for {
+			select {
+
+			// an element was added to the queue
+			case objectToPersist := <-bw.batchQueue:
+				if batchCollector.Add(objectToPersist) {
+					// batch size was reached => apply the mutations
+					if err := batchCollector.Commit(); err != nil {
+						panic(err)
+					}
+					break CollectValues
 				}
 
-				objectToPersist.ResetBatchWriteScheduled()
-				bw.scheduledCount.Dec()
+			// flush was triggered
+			case <-bw.flushChan:
+				shouldFlush = true
+				break CollectValues
 
-				objectToPersist.BatchWrite(batchedMuts)
-				writtenValues[writtenValuesCounter] = objectToPersist
-				writtenValuesCounter++
-
+			// batch timeout was reached
 			case <-batchWriterTimeoutChan:
+				// apply the collected mutations
+				if err := batchCollector.Commit(); err != nil {
+					panic(err)
+				}
 				break CollectValues
 			}
 		}
 
-		if batchedMuts != nil {
-			if err := batchedMuts.Commit(); err != nil {
-				panic(err)
-			}
-		}
+		if shouldFlush {
+			// flush was triggered, collect all remaining elements from the queue and commit them.
 
-		for i := 0; i < writtenValuesCounter; i++ {
-			writtenValues[i].BatchWriteDone()
+		FlushValues:
+			for {
+				select {
+
+				// pick the next element from the queue
+				case objectToPersist := <-bw.batchQueue:
+					if batchCollector.Add(objectToPersist) {
+						// batch size was reached => apply the mutations
+						if err := batchCollector.Commit(); err != nil {
+							panic(err)
+						}
+						// create a new collector to batch the remaining elements
+						batchCollector = newBatchCollector(bw.store.Batched(), bw.scheduledCount, BatchWriterBatchSize)
+					}
+
+				// no elements left
+				default:
+					// apply the collected mutations
+					if err := batchCollector.Commit(); err != nil {
+						panic(err)
+					}
+					break FlushValues
+				}
+			}
 		}
 	}
 

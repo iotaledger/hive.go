@@ -1092,6 +1092,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 		}
 	}
 
+	objectStorage.options.batchedWriterInstance.Flush()
 	objectStorage.cachedObjectsEmpty.Wait()
 }
 
