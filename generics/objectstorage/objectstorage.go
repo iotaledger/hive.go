@@ -19,9 +19,7 @@ func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (ne
 			ObjectEvicted: events.NewEvent(evictionEvent[T]),
 		},
 
-		ObjectStorage: objectstorage.New(store, func(key []byte, data []byte) (result objectstorage.StorableObject, err error) {
-			return objectFactory[T](key, data)
-		}, optionalOptions...),
+		ObjectStorage: objectstorage.New(store, objectFactory[T], optionalOptions...),
 	}
 
 	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
@@ -113,7 +111,7 @@ func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.Tim
 	return o.ObjectStorage.ReleaseExecutor()
 }
 
-func objectFactory[T StorableObject](key, data []byte) (result StorableObject, err error) {
+func objectFactory[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
 	var obj T
 
 	return obj.FromObjectStorage(key, data)

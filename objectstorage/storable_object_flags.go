@@ -10,16 +10,16 @@ type StorableObjectFlags struct {
 	modified atomic.Bool
 }
 
-func (of *StorableObjectFlags) SetModified(modified bool) (wasSet bool) {
-	return of.modified.Swap(modified)
+func (of *StorableObjectFlags) SetModified(modified ...bool) (wasSet bool) {
+	return of.modified.Swap(len(modified) == 0 || modified[0])
 }
 
 func (of *StorableObjectFlags) IsModified() bool {
 	return of.modified.Load()
 }
 
-func (of *StorableObjectFlags) Delete(delete bool) (wasSet bool) {
-	wasSet = of.delete.Swap(delete)
+func (of *StorableObjectFlags) Delete(delete ...bool) (wasSet bool) {
+	wasSet = of.delete.Swap(len(delete) == 0 || delete[0])
 	of.modified.Store(true)
 	return wasSet
 }
@@ -28,8 +28,8 @@ func (of *StorableObjectFlags) IsDeleted() bool {
 	return of.delete.Load()
 }
 
-func (of *StorableObjectFlags) Persist(persist bool) (wasSet bool) {
-	if persist {
+func (of *StorableObjectFlags) Persist(persist ...bool) (wasSet bool) {
+	if len(persist) == 0 || persist[0] {
 		wasSet = of.persist.Swap(true)
 		of.delete.Store(false)
 	} else {
