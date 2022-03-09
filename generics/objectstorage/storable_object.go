@@ -7,3 +7,5 @@ type StorableObject interface {
 
 	objectstorage.StorableObject
 }
+
+type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)

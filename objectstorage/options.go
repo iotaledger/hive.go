@@ -14,6 +14,7 @@ import (
 
 type Options struct {
 	store                      kvstore.KVStore
+	objectFactory              StorableObjectFactory
 	batchedWriterInstance      *kvstore.BatchedWriter
 	cacheTime                  time.Duration
 	keyPartitions              []int
@@ -26,9 +27,10 @@ type Options struct {
 	onEvictionCallback         func(cachedObject CachedObject)
 }
 
-func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
+func newOptions(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions []Option) *Options {
 	result := &Options{
 		store:                      store,
+		objectFactory:              objectFactory,
 		cacheTime:                  0,
 		persistenceEnabled:         true,
 		releaseExecutorWorkerCount: 1,
@@ -48,6 +50,12 @@ func newOptions(store kvstore.KVStore, optionalOptions []Option) *Options {
 }
 
 type Option func(*Options)
+
+func WithObjectFactory(objectFactory StorableObjectFactory) Option {
+	return func(args *Options) {
+		args.objectFactory = objectFactory
+	}
+}
 
 func CacheTime(duration time.Duration) Option {
 	return func(args *Options) {

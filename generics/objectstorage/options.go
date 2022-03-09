@@ -16,6 +16,12 @@ type (
 	IteratorOptions = objectstorage.IteratorOptions
 )
 
+func WithObjectFactory(objectFactory StorableObjectFactory) Option {
+	return objectstorage.WithObjectFactory(func(key []byte, data []byte) (result objectstorage.StorableObject, err error) {
+		return objectFactory(key, data)
+	})
+}
+
 func CacheTime(duration time.Duration) Option {
 	return objectstorage.CacheTime(duration)
 }
