@@ -21,11 +21,53 @@ type BatchWriteObject interface {
 	ResetBatchWriteScheduled()
 }
 
-const (
-	BatchWriterQueueSize    = BatchWriterBatchSize
-	BatchWriterBatchSize    = 10000
-	BatchWriterBatchTimeout = 500 * time.Millisecond
-)
+// the default options applied to the BatchedWriter.
+var defaultOptions = []Option{
+	WithQueueSize(10000),
+	WithBatchSize(10000),
+	WithBatchTimeout(500 * time.Millisecond),
+}
+
+// Options define options for the BatchedWriter.
+type Options struct {
+	// the size of the batch queue.
+	queueSize int
+	// the maximum amount of elements in the batch.
+	batchSize int
+	// the timeout for collecting elements for the batch.
+	batchTimeout time.Duration
+}
+
+// applies the given Option.
+func (so *Options) apply(opts ...Option) {
+	for _, opt := range opts {
+		opt(so)
+	}
+}
+
+// WithQueueSize defines the size of the batch queue.
+func WithQueueSize(queueSize int) Option {
+	return func(opts *Options) {
+		opts.queueSize = queueSize
+	}
+}
+
+// WithBatchSize defines the maximum amount of elements in the batch.
+func WithBatchSize(batchSize int) Option {
+	return func(opts *Options) {
+		opts.batchSize = batchSize
+	}
+}
+
+// WithBatchTimeout defines the timeout for collecting elements for the batch.
+func WithBatchTimeout(batchTimeout time.Duration) Option {
+	return func(opts *Options) {
+		opts.batchTimeout = batchTimeout
+	}
+}
+
+// Option is a function setting a BatchedWriter option.
+type Option func(opts *Options)
 
 // BatchedWriter persists BatchWriteObjects in batches to a KVStore.
 type BatchedWriter struct {
@@ -37,18 +79,25 @@ type BatchedWriter struct {
 	scheduledCount *atomic.Int32
 	batchQueue     chan BatchWriteObject
 	flushChan      chan struct{}
+	opts           *Options
 }
 
 // NewBatchedWriter creates a new BatchedWriter instance.
-func NewBatchedWriter(store KVStore) *BatchedWriter {
+func NewBatchedWriter(store KVStore, opts ...Option) *BatchedWriter {
+
+	options := &Options{}
+	options.apply(defaultOptions...)
+	options.apply(opts...)
+
 	return &BatchedWriter{
 		store:          store,
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
 		running:        atomic.NewBool(false),
 		scheduledCount: atomic.NewInt32(0),
-		batchQueue:     make(chan BatchWriteObject, BatchWriterQueueSize),
+		batchQueue:     make(chan BatchWriteObject, options.queueSize),
 		flushChan:      make(chan struct{}),
+		opts:           options,
 	}
 }
 
@@ -119,8 +168,8 @@ func (bw *BatchedWriter) runBatchWriter() {
 
 	for bw.running.Load() || bw.scheduledCount.Load() != 0 {
 
-		batchCollector := newBatchCollector(bw.store.Batched(), bw.scheduledCount, BatchWriterBatchSize)
-		batchWriterTimeoutChan := time.After(BatchWriterBatchTimeout)
+		batchCollector := newBatchCollector(bw.store.Batched(), bw.scheduledCount, bw.opts.batchSize)
+		batchWriterTimeoutChan := time.After(bw.opts.batchTimeout)
 		shouldFlush := false
 
 	CollectValues:
@@ -167,7 +216,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 							panic(err)
 						}
 						// create a new collector to batch the remaining elements
-						batchCollector = newBatchCollector(bw.store.Batched(), bw.scheduledCount, BatchWriterBatchSize)
+						batchCollector = newBatchCollector(bw.store.Batched(), bw.scheduledCount, bw.opts.batchSize)
 					}
 
 				// no elements left
