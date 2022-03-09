@@ -1,10 +1,12 @@
 package events
 
 import (
-	"sync/atomic"
+	"go.uber.org/atomic"
 )
 
-var idCounter uint64
+var (
+	idCounter = atomic.NewUint64(0)
+)
 
 type Closure struct {
 	ID  uint64
@@ -13,7 +15,7 @@ type Closure struct {
 
 func NewClosure(f interface{}) *Closure {
 	closure := &Closure{
-		ID:  atomic.AddUint64(&idCounter, 1),
+		ID:  idCounter.Inc(),
 		Fnc: f,
 	}
 

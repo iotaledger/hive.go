@@ -1,56 +1,44 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/typeutils"
+	"go.uber.org/atomic"
 )
 
 type StorableObjectFlags struct {
-	persist  typeutils.AtomicBool
-	delete   typeutils.AtomicBool
-	modified typeutils.AtomicBool
+	persist  atomic.Bool
+	delete   atomic.Bool
+	modified atomic.Bool
 }
 
-func (testObject *StorableObjectFlags) SetModified(modified ...bool) {
-	if len(modified) >= 1 {
-		testObject.modified.SetTo(modified[0])
+func (of *StorableObjectFlags) SetModified(modified bool) (wasSet bool) {
+	return of.modified.Swap(modified)
+}
+
+func (of *StorableObjectFlags) IsModified() bool {
+	return of.modified.Load()
+}
+
+func (of *StorableObjectFlags) Delete(delete bool) (wasSet bool) {
+	wasSet = of.delete.Swap(delete)
+	of.modified.Store(true)
+	return wasSet
+}
+
+func (of *StorableObjectFlags) IsDeleted() bool {
+	return of.delete.Load()
+}
+
+func (of *StorableObjectFlags) Persist(persist bool) (wasSet bool) {
+	if persist {
+		wasSet = of.persist.Swap(true)
+		of.delete.Store(false)
 	} else {
-		testObject.modified.Set()
+		wasSet = of.persist.Swap(false)
 	}
-}
-
-func (testObject *StorableObjectFlags) IsModified() bool {
-	return testObject.modified.IsSet()
-}
-
-func (testObject *StorableObjectFlags) Delete(delete ...bool) {
-	if len(delete) >= 1 {
-		testObject.delete.SetTo(delete[0])
-	} else {
-		testObject.delete.Set()
-	}
-
-	testObject.modified.Set()
-}
-
-func (testObject *StorableObjectFlags) IsDeleted() bool {
-	return testObject.delete.IsSet()
-}
-
-func (testObject *StorableObjectFlags) Persist(persist ...bool) {
-	if len(persist) >= 1 {
-		if persist[0] {
-			testObject.persist.Set()
-			testObject.delete.UnSet()
-		} else {
-			testObject.persist.UnSet()
-		}
-	} else {
-		testObject.persist.Set()
-		testObject.delete.UnSet()
-	}
+	return wasSet
 }
 
 // ShouldPersist returns "true" if this object is going to be persisted.
-func (testObject *StorableObjectFlags) ShouldPersist() bool {
-	return testObject.persist.IsSet()
+func (of *StorableObjectFlags) ShouldPersist() bool {
+	return of.persist.Load()
 }

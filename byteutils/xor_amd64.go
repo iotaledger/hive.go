@@ -1,4 +1,5 @@
 // 3rd-party code from: https://github.com/golang/go/blob/master/src/crypto/cipher/xor_amd64.go
+//go:build amd64
 // +build amd64
 
 package byteutils
