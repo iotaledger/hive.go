@@ -2,76 +2,101 @@ package syncutils
 
 import (
 	"sync"
+
+	"github.com/iotaledger/hive.go/datastructure/set"
 )
 
 // region MultiMutex ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+// MultiMutex is a mutex that allows to lock multiple entities exclusively.
+// Entities are represented by interface{} identifiers and can be presented in arbitrary order.
+// Goroutine 1        Goroutine 2        Goroutine 3
+//   Lock(a,c)           		-          Lock(c,b) <- blocking
+//        work            Lock(b)   	        wait
+// Unlock(a,c)               work   	        wait
+//           -          Unlock(b)   	        wait
+//           -                  -   	   Lock(c,b) <- successful
 type MultiMutex struct {
-	locks     map[interface{}]empty
+	locks     set.Set
 	locksCond *sync.Cond
-	initOnce  sync.Once
 }
 
+// NewMultiMutex creates a new MultiMutex.
 func NewMultiMutex() *MultiMutex {
 	return &MultiMutex{
-		locks: make(map[interface{}]empty),
-		locksCond: &sync.Cond{
-			L: &sync.Mutex{},
-		},
+		locks:     set.New(),
+		locksCond: sync.NewCond(&sync.Mutex{}),
 	}
 }
 
-// LockEntity locks all locks that are required for the given LockEntity.
-func (mutex *MultiMutex) LockEntity(entity LockableEntity) {
-	mutex.Lock(entity.Locks()...)
+// LockEntity locks all locks that are required for the given LockableEntity.
+func (m *MultiMutex) LockEntity(entity LockableEntity) {
+	m.Lock(entity.Locks()...)
 }
 
-// UnlockEntity unlocks all locks that are required for the given LockEntity.
-func (mutex *MultiMutex) UnlockEntity(entity LockableEntity) {
-	mutex.Unlock(entity.Locks()...)
+// UnlockEntity unlocks all locks that are required for the given LockableEntity.
+func (m *MultiMutex) UnlockEntity(entity LockableEntity) {
+	m.Unlock(entity.Locks()...)
 }
 
-func (mutex *MultiMutex) Lock(identifiers ...interface{}) {
-	mutex.initOnce.Do(func() {
-		mutex.locks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
-	})
-
-	mutex.locksCond.L.Lock()
-
-AcquireLocks:
-	for i, identifier := range identifiers {
-		if _, isLocked := mutex.locks[identifier]; !isLocked {
-			mutex.locks[identifier] = void
-		} else {
-			for j := 0; j < i; j++ {
-				delete(mutex.locks, identifiers[j])
-			}
-
-			if i > 0 {
-				mutex.locksCond.Broadcast()
-			}
-			mutex.locksCond.Wait()
-
-			goto AcquireLocks
+func (m *MultiMutex) allLocksFree(ids []interface{}) bool {
+	for _, id := range ids {
+		if m.locks.Has(id) {
+			return false
 		}
 	}
 
-	mutex.locksCond.L.Unlock()
+	return true
 }
 
-func (mutex *MultiMutex) Unlock(identifiers ...interface{}) {
-	mutex.initOnce.Do(func() {
-		mutex.locks = make(map[interface{}]empty)
-		mutex.locksCond = &sync.Cond{L: &sync.Mutex{}}
-	})
+func (m *MultiMutex) Lock(ids ...interface{}) {
+	m.locksCond.L.Lock()
 
-	mutex.locksCond.L.Lock()
-	for _, identifier := range identifiers {
-		delete(mutex.locks, identifier)
+	for !m.allLocksFree(ids) {
+		m.locksCond.Wait()
 	}
-	mutex.locksCond.L.Unlock()
-	mutex.locksCond.Broadcast()
+
+	// Acquire all locks.
+	for _, id := range ids {
+		m.locks.Add(id)
+	}
+
+	// AcquireLocks:
+	// 	for i, identifier := range ids {
+	// 		// Loop and function are only exited if all locks could be acquired.
+	// 		if m.locks.Add(identifier) {
+	// 			continue
+	// 		}
+	//
+	// 		// Remove previously, optimistically added locks because they are not actually locked.
+	// 		// We need to wait and repeat the whole process again until we can acquire all locks at once.
+	// 		for j := 0; j < i; j++ {
+	// 			m.locks.Delete(ids[j])
+	// 		}
+	//
+	// 		// TODO: Why wake up others? We should only be waiting on locks that are currently in use.
+	// 		// As soon as something gets Unlocked we wake up and try to acquire all locks again.
+	// 		// This process might actually create lock contention on locksCond.L: whenever we unlock e.g. a message, we will check
+	// 		// for all currently waiting routines whether we can now lock all of them.
+	// 		// Maybe we can introduce a cond for each key so that we only wake up relevant routines.
+	// 		if i > 0 {
+	// 			m.locksCond.Broadcast()
+	// 		}
+	// 		m.locksCond.Wait()
+	//
+	// 		goto AcquireLocks
+	// 	}
+
+	m.locksCond.L.Unlock()
+}
+
+func (m *MultiMutex) Unlock(identifiers ...interface{}) {
+	m.locksCond.L.Lock()
+	for _, identifier := range identifiers {
+		m.locks.Delete(identifier)
+	}
+	m.locksCond.L.Unlock()
+	m.locksCond.Broadcast()
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

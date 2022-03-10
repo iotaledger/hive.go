@@ -2,13 +2,16 @@ package syncutils
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkMultiMutex(b *testing.B) {
-	var mutex MultiMutex
+	mutex := NewMultiMutex()
 
 	for i := 0; i < b.N; i++ {
 		mutex.Lock(i)
@@ -44,7 +47,7 @@ func BenchmarkMutex_Parallel(b *testing.B) {
 }
 
 func BenchmarkMultiMutex_Parallel(b *testing.B) {
-	var mutex MultiMutex
+	mutex := NewMultiMutex()
 
 	var wg sync.WaitGroup
 
@@ -174,4 +177,86 @@ func TestMultiMutex_LockNested(t *testing.T) {
 	go doSth()
 
 	wg.Wait()
+}
+
+func TestMultiMutex_Lock2(t *testing.T) {
+	mutex := NewMultiMutex()
+
+	acquireLockAndPrint(mutex, 1, 3)
+	acquireLockAndPrint(mutex, 2)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		acquireLockAndPrint(mutex, 2, 3)
+		wg.Done()
+	}()
+
+	fmt.Println("Waiting...")
+	time.Sleep(time.Second)
+
+	mutex.Unlock(2, 3)
+
+	wg.Wait()
+}
+
+func acquireLockAndPrint(m *MultiMutex, ids ...interface{}) {
+	m.Lock(ids...)
+	// fmt.Println("Locked", ids)
+}
+
+func TestMultiMutexMassiveParallel(t *testing.T) {
+	mutex := NewMultiMutex()
+
+	N := 20000
+	var wg sync.WaitGroup
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func(i int) {
+			// Access L random locks.
+			L := 100
+			ids := make([]interface{}, 0, L)
+			for _, x := range rand.Perm(L) {
+				ids = append(ids, x)
+			}
+			acquireLockAndPrint(mutex, ids...)
+
+			// work
+			time.Sleep(100 * time.Nanosecond)
+			mutex.Unlock(ids...)
+
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, 0, mutex.locks.Size())
+}
+
+func BenchmarkMultiMutexMassiveParallel(b *testing.B) {
+	mutex := NewMultiMutex()
+
+	var wg sync.WaitGroup
+	wg.Add(b.N)
+	for i := 0; i < b.N; i++ {
+		go func(i int) {
+			// Access L random locks.
+			L := 100
+			ids := make([]interface{}, 0, L)
+			for _, x := range rand.Perm(L) {
+				ids = append(ids, x)
+			}
+			mutex.Lock(ids...)
+			// work
+			// time.Sleep(100 * time.Nanosecond)
+			mutex.Unlock(ids...)
+
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	// assert.Equal(t, 0, mutex.locks.Size())
 }
