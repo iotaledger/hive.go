@@ -3,6 +3,7 @@ package syncutils
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func TestMultiMutex_Lock(t *testing.T) {
 		metadataStorageMutex
 	)
 
-	var mutex MultiMutex
+	mutex := NewMultiMutex()
 
 	mutex.Lock(transactionStorageMutex, metadataStorageMutex)
 	fmt.Println("Test")
@@ -138,7 +139,7 @@ func TestMultiMutex_LockNested(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	var mutex MultiMutex
+	mutex := NewMultiMutex()
 
 	doSth := func() {
 		mutex.Lock(some, someOther)
@@ -231,32 +232,42 @@ func TestMultiMutexMassiveParallel(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, 0, mutex.locks.Size())
+	assert.Equal(t, 0, len(mutex.locks))
 }
 
 func BenchmarkMultiMutexMassiveParallel(b *testing.B) {
-	mutex := NewMultiMutex()
+	threads := 4 * runtime.GOMAXPROCS(0)
+
+	ids := make([][][]interface{}, b.N)
+	for i := 0; i < b.N; i++ {
+		ids[i] = make([][]interface{}, threads)
+		for t := 0; t < threads; t++ {
+			// Access L random locks.
+			L := 50
+			ids[i][t] = make([]interface{}, L)
+			for j, x := range rand.Perm(L) {
+				ids[i][t][j] = x
+			}
+		}
+	}
+	b.ResetTimer()
 
 	var wg sync.WaitGroup
-	wg.Add(b.N)
 	for i := 0; i < b.N; i++ {
-		go func(i int) {
-			// Access L random locks.
-			L := 100
-			ids := make([]interface{}, 0, L)
-			for _, x := range rand.Perm(L) {
-				ids = append(ids, x)
-			}
-			mutex.Lock(ids...)
-			// work
-			// time.Sleep(100 * time.Nanosecond)
-			mutex.Unlock(ids...)
+		mutex := NewMultiMutex()
+		wg.Add(threads)
+		for t := 0; t < threads; t++ {
+			go func(i, t int) {
 
-			wg.Done()
-		}(i)
+				mutex.Lock(ids[i][t][:10]...)
+				// work
+				// time.Sleep(100 * time.Nanosecond)
+				mutex.Unlock(ids[i][t][:10]...)
+
+				wg.Done()
+			}(i, t)
+		}
+
 	}
-
 	wg.Wait()
-
-	// assert.Equal(t, 0, mutex.locks.Size())
 }
