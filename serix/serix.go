@@ -64,12 +64,7 @@ func NewAPI() *API {
 }
 
 var (
-	serializerType         = reflect.TypeOf((*Serializable)(nil)).Elem()
-	deserializerType       = reflect.TypeOf((*Deserializable)(nil)).Elem()
-	bytesValidatorType     = reflect.TypeOf((*BytesValidator)(nil)).Elem()
-	syntacticValidatorType = reflect.TypeOf((*SyntacticValidator)(nil)).Elem()
-	bytesType              = reflect.TypeOf([]byte(nil))
-	byteType               = reflect.TypeOf(byte(0))
+	bytesType = reflect.TypeOf([]byte(nil))
 )
 
 type options struct {
