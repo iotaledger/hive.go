@@ -68,3 +68,7 @@ require (
 	github.com/stretchr/objx v0.3.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
+
+replace (
+	"github.com/iotaledger/hive.go/serializer/v2" => ./serializer
+)
