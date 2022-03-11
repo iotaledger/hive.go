@@ -186,6 +186,7 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		return seri.WriteBool(value.Bool(), func(err error) error {
 			return errors.Wrap(err, "failed to write bool value to serializer")
 		}).Serialize()
+
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		seri := serializer.NewSerializer()
