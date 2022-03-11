@@ -15,27 +15,27 @@ import (
 )
 
 type Serializable interface {
-	Serialize(ctx context.Context, opts ...Option) ([]byte, error)
+	Serialize() ([]byte, error)
 }
 
 type Deserializable interface {
-	Deserialize(ctx context.Context, b []byte, opts ...Option) (int, error)
+	Deserialize(b []byte) (int, error)
 }
 
 type BytesValidator interface {
-	ValidateBytes(context.Context, []byte) error
+	ValidateBytes([]byte) error
 }
 
 type SyntacticValidator interface {
-	Validate(context.Context) error
+	Validate() error
 }
 
 type ArrayRulesProvider interface {
 	ArrayRules() *serializer.ArrayRules
 }
 
-type ObjectTypeProvider interface {
-	ObjectType() uint32
+type ObjectCodeProvider interface {
+	ObjectCode() uint32
 }
 
 type LengthPrefixTypeProvider interface {
@@ -48,12 +48,17 @@ type TypeDenotationTypeProvider interface {
 
 type API struct {
 	typesRegistryMutex sync.RWMutex
-	typesRegistry      map[interface{}]map[uint32]interface{}
+	typesRegistry      map[reflect.Type]*objectsMapping
+}
+
+type objectsMapping struct {
+	fromCodeToType map[uint32]reflect.Type
+	fromTypeToCode map[reflect.Type]uint32
 }
 
 func NewAPI() *API {
 	api := &API{
-		typesRegistry: map[interface{}]map[uint32]interface{}{},
+		typesRegistry: map[reflect.Type]*objectsMapping{},
 	}
 	return api
 }
@@ -91,62 +96,80 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	if !value.IsValid() {
 		return nil, nil
 	}
-	return api.encode(ctx, value, opts...)
+	opt := &options{}
+	for _, o := range opts {
+		o(opt)
+	}
+	return api.encode(ctx, value, opt)
 }
 
-func (api *API) encode(ctx context.Context, value reflect.Value, opts ...Option) ([]byte, error) {
+func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) ([]byte, error) {
 	valueI := value.Interface()
-	if validator, ok := valueI.(SyntacticValidator); ok {
-		if err := validator.Validate(ctx); err != nil {
-			return nil, errors.Wrap(err, "pre-serialization syntactic validation failed")
+	if !opts.noValidation {
+		if validator, ok := valueI.(SyntacticValidator); ok {
+			if err := validator.Validate(); err != nil {
+				return nil, errors.Wrap(err, "pre-serialization syntactic validation failed")
+			}
 		}
 	}
 	var bytes []byte
 	if serializable, ok := valueI.(Serializable); ok {
 		var err error
-		bytes, err = serializable.Serialize(ctx, opts...)
+		bytes, err = serializable.Serialize()
 		if err != nil {
 			return nil, errors.Wrap(err, "object failed to serialize itself")
 		}
 	} else {
 		var err error
-		bytes, err = api.encodeBasedOnType(ctx, value, opts...)
+		bytes, err = api.encodeBasedOnType(ctx, value, valueI, opts)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}
-	if bytesValidator, ok := valueI.(BytesValidator); ok {
-		if err := bytesValidator.ValidateBytes(ctx, bytes); err != nil {
-			return nil, errors.Wrap(err, "post-serialization bytes validation failed")
+	if !opts.noValidation {
+		if bytesValidator, ok := valueI.(BytesValidator); ok {
+			if err := bytesValidator.ValidateBytes(bytes); err != nil {
+				return nil, errors.Wrap(err, "post-serialization bytes validation failed")
+			}
 		}
 	}
 
 	return bytes, nil
 }
 
-func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, opts ...Option) ([]byte, error) {
-	value = deReferencePointer(value)
-	valueI := value.Interface()
+func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valueI interface{}, opts *options) ([]byte, error) {
 	switch value.Kind() {
-	case reflect.Struct:
+	case reflect.Ptr:
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteUint256(valueBigInt, func(err error) error {
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
-		} else if valueTime, ok := valueI.(time.Time); ok {
+		}
+		return api.encode(ctx, value.Elem(), opts)
+
+	case reflect.Struct:
+		if valueTime, ok := valueI.(time.Time); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteTime(valueTime, func(err error) error {
 				return errors.Wrap(err, "failed to write time to serializer")
 			}).Serialize()
 		}
-		return api.encodeStruct(ctx, value, opts...)
+		return api.encodeStruct(ctx, value, opts)
 	case reflect.Slice:
-		return api.encodeSlice(ctx, value, opts...)
+		return api.encodeSlice(ctx, value, valueI, value.Type(), opts)
 	case reflect.Array:
-		return api.encodeSlice(ctx, sliceFromArray(value), opts...)
+		value = sliceFromArray(value)
+		valueType := value.Type()
+		if valueType.AssignableTo(bytesType) {
+			seri := serializer.NewSerializer()
+			return seri.WriteBytes(value.Bytes(), func(err error) error {
+				return errors.Wrap(err, "failed to write array of bytes to serializer")
+			}).Serialize()
+		}
+		return api.encodeSlice(ctx, value, valueI, valueType, opts)
 	case reflect.Interface:
-		return nil, nil
+		return api.encodeInterface(ctx, value, opts)
 	case reflect.String:
 		if lptp, ok := valueI.(LengthPrefixTypeProvider); ok {
 			seri := serializer.NewSerializer()
@@ -182,49 +205,133 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 	return sliceValue
 }
 
-func (api *API) encodeStruct(ctx context.Context, value reflect.Value, opts ...Option) ([]byte, error) {
+func (api *API) encodeInterface(ctx context.Context, value reflect.Value, opts *options) ([]byte, error) {
 	valueType := value.Type()
-	structFields := make([]*structField, 0, value.NumField())
-	for i := 0; i < value.NumField(); i++ {
-		fieldReflect := valueType.Field(i)
-		if fieldReflect.PkgPath != "" {
+	elemValue := value.Elem()
+	if !elemValue.IsValid() {
+		return nil, errors.Errorf("can't serialize interface %s it must have underlying value", valueType)
+	}
+	mapping := api.getObjectsMapping(valueType)
+	if mapping == nil {
+		return nil, errors.Errorf("interface %s isn't registered", valueType)
+	}
+	elemType := elemValue.Type()
+	if _, exists := mapping.fromTypeToCode[elemType]; !exists {
+		return nil, errors.Errorf("underlying type %s hasn't been registered for interface type %s",
+			elemType, valueType)
+	}
+	encodedBytes, err := api.encode(ctx, elemValue, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode interface element %s", elemType)
+	}
+	return encodedBytes, nil
+}
+
+func (api *API) getObjectsMapping(iType reflect.Type) *objectsMapping {
+	api.typesRegistryMutex.RLock()
+	defer api.typesRegistryMutex.RUnlock()
+	return api.typesRegistry[iType]
+}
+
+func (api *API) encodeStruct(ctx context.Context, value reflect.Value, opts *options) ([]byte, error) {
+	valueType := value.Type()
+	structFields, err := parseStructType(valueType)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't parse struct type %s", valueType)
+	}
+	if len(structFields) == 0 {
+		return nil, nil
+	}
+	s := serializer.NewSerializer()
+	for _, sField := range structFields {
+		fieldValue := value.Field(sField.index)
+		var fieldBytes []byte
+		if sField.settings.isPayload {
+			if fieldValue.IsNil() {
+				s.WritePayloadLength(0, func(err error) error {
+					return errors.Wrapf(err,
+						"failed to write zero payload length for struct field %s to serializer",
+						sField.name,
+					)
+				})
+				continue
+			}
+			payloadBytes, err := api.encode(ctx, fieldValue, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to serialize payload struct field %s", sField.name)
+			}
+			s.WritePayloadLength(len(payloadBytes), func(err error) error {
+				return errors.Wrapf(err,
+					"failed to write payload length for struct field %s to serializer",
+					sField.name,
+				)
+			})
+			fieldBytes = payloadBytes
+		}
+		if fieldBytes == nil {
+			var err error
+			fieldBytes, err = api.encode(ctx, fieldValue, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
+			}
+		}
+		s.WriteBytes(fieldBytes, func(err error) error {
+			return errors.Wrapf(err,
+				"failed to write serialized struct field bytes to serializer, field=%s",
+				sField.name,
+			)
+		})
+	}
+	return nil, nil
+}
+
+type structField struct {
+	name     string
+	index    int
+	fType    reflect.Type
+	settings *tagSettings
+}
+
+type tagSettings struct {
+	position  int
+	isPayload bool
+}
+
+func parseStructType(structType reflect.Type) ([]*structField, error) {
+	structFields := make([]*structField, 0, structType.NumField())
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if field.PkgPath != "" {
 			continue
 		}
-		tag, ok := fieldReflect.Tag.Lookup("seri")
+		tag, ok := field.Tag.Lookup("seri")
 		if !ok {
 			continue
 		}
 		tSettings, err := parseStructTag(tag)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, fieldReflect.Name)
+			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
+		}
+		if tSettings.isPayload {
+			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
+				return nil, errors.Errorf(
+					"struct field %s is invalid: "+
+						"'payload' setting can only be used with pointers or interfaces, got %s",
+					field.Name, field.Type.Kind())
+			}
+
 		}
 		structFields = append(structFields, &structField{
+			name:     field.Name,
+			index:    i,
+			fType:    field.Type,
 			settings: tSettings,
-			value:    value.Field(i),
 		})
 	}
 	sort.Slice(structFields, func(i, j int) bool {
 		return structFields[i].settings.position < structFields[j].settings.position
 	})
-	if len(structFields) == 0 {
-		return nil, nil
-	}
-	//s := serializer.NewSerializer()
-	//for _, sField := range structFields {
-	//
-	//}
-	return nil, nil
-}
-
-type structField struct {
-	settings *tagSettings
-	value    reflect.Value
-}
-
-type tagSettings struct {
-	position    int
-	isPayload   bool
-	isVarLength bool
+	return structFields, nil
 }
 
 func parseStructTag(tag string) (*tagSettings, error) {
@@ -248,8 +355,6 @@ func parseStructTag(tag string) (*tagSettings, error) {
 		switch currentPart {
 		case "payload":
 			settings.isPayload = true
-		case "varLength":
-			settings.isVarLength = true
 		default:
 			return nil, errors.Errorf("unknown tag part: %s", currentPart)
 		}
@@ -258,18 +363,20 @@ func parseStructTag(tag string) (*tagSettings, error) {
 	return settings, nil
 }
 
-func (api *API) encodeSlice(ctx context.Context, value reflect.Value, opts ...Option) ([]byte, error) {
-	if value.Type().AssignableTo(bytesType) {
+func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, opts *options) ([]byte, error) {
+	lptp, ok := valueI.(LengthPrefixTypeProvider)
+	if !ok {
+		return nil, errors.Errorf("slice type %s must implement LengthPrefixTypeProvider interface", valueType)
+	}
+	lengthPrefixType := lptp.LengthPrefixType()
+
+	if valueType.AssignableTo(bytesType) {
 		seri := serializer.NewSerializer()
-		seri.WriteBytes(value.Bytes(), func(err error) error {
+		seri.WriteVariableByteSlice(value.Bytes(), lengthPrefixType, func(err error) error {
 			return errors.Wrap(err, "failed to write bytes to serializer")
 		})
 		return seri.Serialize()
 	}
-	return nil, nil
-}
-
-func (api *API) encodeMap(ctx context.Context, value reflect.Value, opts ...Option) ([]byte, error) {
 	return nil, nil
 }
 
@@ -285,13 +392,31 @@ func (api *API) DecodeJSON(b []byte, obj interface{}) error {
 	return nil
 }
 
-func (api *API) RegisterObjects(iType interface{}, objs ...ObjectTypeProvider) *API {
-	mapping := make(map[uint32]interface{}, len(objs))
+func (api *API) RegisterObjects(iType interface{}, objs ...ObjectCodeProvider) error {
+	ptrType := reflect.TypeOf(iType)
+	if ptrType == nil {
+		return errors.New("'iType' is a nil interface, it's need to be a pointer to an interface")
+	}
+	if ptrType.Kind() != reflect.Ptr {
+		return errors.Errorf("'iType' parameter must be a pointer, got %s", ptrType.Kind())
+	}
+	iTypeReflect := ptrType.Elem()
+	if iTypeReflect.Kind() != reflect.Interface {
+		return errors.Errorf(
+			"'iType' pointer must contain an interface, got %s", iTypeReflect.Kind())
+	}
+	mapping := &objectsMapping{
+		fromCodeToType: make(map[uint32]reflect.Type, len(objs)),
+		fromTypeToCode: make(map[reflect.Type]uint32, len(objs)),
+	}
 	for _, obj := range objs {
-		mapping[obj.ObjectType()] = obj
+		objCode := obj.ObjectCode()
+		objType := reflect.TypeOf(obj)
+		mapping.fromCodeToType[objCode] = objType
+		mapping.fromTypeToCode[objType] = objCode
 	}
 	api.typesRegistryMutex.Lock()
 	defer api.typesRegistryMutex.Unlock()
-	api.typesRegistry[iType] = mapping
-	return api
+	api.typesRegistry[iTypeReflect] = mapping
+	return nil
 }

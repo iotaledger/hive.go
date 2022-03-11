@@ -433,8 +433,8 @@ func (s *Serializer) WritePayload(payload Serializable, deSeriMode DeSerializati
 	}
 
 	if payload == nil {
-		if err := binary.Write(&s.buf, binary.LittleEndian, uint32(0)); err != nil {
-			s.err = errProducer(fmt.Errorf("unable to serialize zero payload length: %w", err))
+		if err := s.writePayloadLength(0); err != nil {
+			s.err = errProducer(err)
 		}
 		return s
 	}
@@ -451,10 +451,8 @@ func (s *Serializer) WritePayload(payload Serializable, deSeriMode DeSerializati
 		s.err = errProducer(fmt.Errorf("unable to serialize payload: %w", err))
 		return s
 	}
-
-	if err := binary.Write(&s.buf, binary.LittleEndian, uint32(len(payloadBytes))); err != nil {
-		s.err = errProducer(fmt.Errorf("unable to serialize payload length: %w", err))
-		return s
+	if err := s.writePayloadLength(len(payloadBytes)); err != nil {
+		s.err = errProducer(err)
 	}
 
 	if _, err := s.buf.Write(payloadBytes); err != nil {
@@ -462,6 +460,24 @@ func (s *Serializer) WritePayload(payload Serializable, deSeriMode DeSerializati
 	}
 
 	return s
+}
+
+// WritePayloadLength write payload length token into serializer.
+func (s *Serializer) WritePayloadLength(length int, errProducer ErrProducer) *Serializer {
+	if s.err != nil {
+		return s
+	}
+	if err := s.writePayloadLength(length); err != nil {
+		s.err = errProducer(err)
+	}
+	return s
+}
+
+func (s *Serializer) writePayloadLength(length int) error {
+	if err := binary.Write(&s.buf, binary.LittleEndian, uint32(length)); err != nil {
+		return fmt.Errorf("unable to serialize payload length: %w", err)
+	}
+	return nil
 }
 
 // WriteString writes the given string to the Serializer.
