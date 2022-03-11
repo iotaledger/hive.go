@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/logger"
-	"github.com/iotaledger/hive.go/typeutils"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
@@ -39,7 +39,7 @@ type Hub struct {
 	ctxCancel context.CancelFunc
 
 	// indicates that the websocket hub was shut down
-	shutdownFlag *typeutils.AtomicBool
+	shutdownFlag *atomic.Bool
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	clientReadLimit int64
@@ -64,14 +64,14 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		unregister:            make(chan *Client, 1),
 		ctx:                   ctx,
 		ctxCancel:             ctxCancel,
-		shutdownFlag:          typeutils.NewAtomicBool(),
+		shutdownFlag:          atomic.NewBool(false),
 		clientReadLimit:       clientReadLimit,
 	}
 }
 
 // BroadcastMsg sends a message to all clients.
 func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
-	if h.shutdownFlag.IsSet() {
+	if h.shutdownFlag.Load() {
 		// hub was already shut down
 		return
 	}
@@ -129,7 +129,7 @@ func (h *Hub) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			h.shutdownFlag.Set()
+			h.shutdownFlag.Store(true)
 			h.ctxCancel()
 
 			for client := range h.clients {
@@ -206,7 +206,7 @@ func (h *Hub) Run(ctx context.Context) {
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
 func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
-	if h.shutdownFlag.IsSet() {
+	if h.shutdownFlag.Load() {
 		// hub was already shut down
 		return
 	}
@@ -231,7 +231,7 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 		sendChan:       make(chan interface{}, h.clientSendChannelSize),
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
-		shutdownFlag:   typeutils.NewAtomicBool(),
+		shutdownFlag:   atomic.NewBool(false),
 		readLimit:      h.clientReadLimit,
 	}
 

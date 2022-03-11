@@ -1,4 +1,5 @@
 // 3rd-party code from: https://github.com/golang/go/blob/master/src/crypto/cipher/xor_ppc64x.go
+//go:build ppc64 || ppc64le
 // +build ppc64 ppc64le
 
 package byteutils

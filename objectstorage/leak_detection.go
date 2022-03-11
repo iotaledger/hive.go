@@ -5,8 +5,9 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/typeutils"
 
@@ -37,8 +38,8 @@ type LeakDetectionWrapperImpl struct {
 	*CachedObjectImpl
 
 	internalId       int64
+	released         *atomic.Bool
 	retainTime       time.Time
-	released         int32
 	retainCallStack  *reflect.CallStack
 	releaseCallStack *reflect.CallStack
 }
@@ -77,12 +78,15 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) RTransaction(callback func(
 	return wrappedCachedObject
 }
 
-var internalIdCounter int64
+var (
+	internalIdCounter = atomic.NewInt64(0)
+)
 
 func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
 	return &LeakDetectionWrapperImpl{
 		CachedObjectImpl: cachedObject,
-		internalId:       atomic.AddInt64(&internalIdCounter, 1),
+		internalId:       internalIdCounter.Inc(),
+		released:         atomic.NewBool(false),
 	}
 }
 
@@ -127,7 +131,8 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) retain() CachedObject {
 }
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Release(force ...bool) {
-	if atomic.AddInt32(&(wrappedCachedObject.released), 1) != 1 {
+	if wrappedCachedObject.released.Swap(true) {
+		// was already released before
 		reportCachedObjectClosedTooOften(wrappedCachedObject, reflect.GetExternalCallers("objectstorage", 0))
 	} else {
 		baseCachedObject := wrappedCachedObject.CachedObjectImpl
@@ -161,7 +166,7 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) GetReleaseCallStack() *refl
 }
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) WasReleased() bool {
-	return atomic.LoadInt32(&wrappedCachedObject.released) != 0
+	return wrappedCachedObject.released.Load()
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
