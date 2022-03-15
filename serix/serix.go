@@ -68,15 +68,26 @@ var (
 )
 
 type options struct {
-	noValidation    bool
+	validation      bool
 	lexicalOrdering bool
+}
+
+func (o *options) toMode() serializer.DeSerializationMode {
+	mode := serializer.DeSeriModeNoValidation
+	if o.validation {
+		mode |= serializer.DeSeriModePerformValidation
+	}
+	if o.lexicalOrdering {
+		mode |= serializer.DeSeriModePerformLexicalOrdering
+	}
+	return mode
 }
 
 type Option func(o *options)
 
-func WithNoValidation() Option {
+func WithValidation() Option {
 	return func(o *options) {
-		o.noValidation = true
+		o.validation = true
 	}
 }
 
@@ -100,7 +111,7 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 
 func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) ([]byte, error) {
 	valueI := value.Interface()
-	if !opts.noValidation {
+	if opts.validation {
 		if validator, ok := valueI.(SyntacticValidator); ok {
 			if err := validator.Validate(); err != nil {
 				return nil, errors.Wrap(err, "pre-serialization syntactic validation failed")
@@ -121,7 +132,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) 
 			return nil, errors.WithStack(err)
 		}
 	}
-	if !opts.noValidation {
+	if opts.validation {
 		if bytesValidator, ok := valueI.(BytesValidator); ok {
 			if err := bytesValidator.ValidateBytes(bytes); err != nil {
 				return nil, errors.Wrap(err, "post-serialization bytes validation failed")
@@ -188,9 +199,9 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		return seri.WriteNum(valueI, func(err error) error {
 			return errors.Wrap(err, "failed to write number value to serializer")
 		}).Serialize()
+	default:
+		return nil, errors.Errorf("can't encode type %T, unsupported kind %s", valueI, value.Kind())
 	}
-	return nil, nil
-
 }
 
 func sliceFromArray(arrValue reflect.Value) reflect.Value {
@@ -373,7 +384,26 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 		})
 		return seri.Serialize()
 	}
-	return nil, nil
+	sliceLen := value.Len()
+	data := make([][]byte, sliceLen)
+	for i := 0; i < sliceLen; i++ {
+		elemValue := value.Index(i)
+		elemBytes, err := api.encode(ctx, elemValue, opts)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode element with index %d of slice %s", i, valueType)
+		}
+		data[i] = elemBytes
+	}
+	var arrayRules *serializer.ArrayRules
+	if ruler, ok := valueI.(ArrayRulesProvider); ok {
+		arrayRules = ruler.ArrayRules()
+	}
+	seri := serializer.NewSerializer()
+	return seri.WriteSliceOfByteSlices(data, opts.toMode(), lengthPrefixType, arrayRules, func(err error) error {
+		return errors.Wrapf(err,
+			"serializer failed to write slice of objects %s as slice of byte slices", valueType,
+		)
+	}).Serialize()
 }
 
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) error {
