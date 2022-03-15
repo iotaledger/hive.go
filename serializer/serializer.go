@@ -282,7 +282,7 @@ func (s *Serializer) Write32BytesArraySlice(slice SliceOfArraysOf32Bytes, deSeri
 		data[i] = slice[i][:]
 	}
 
-	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
+	return s.WriteSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
 }
 
 // Write64BytesArraySlice writes a slice of arrays of 64 bytes to the Serializer.
@@ -296,7 +296,7 @@ func (s *Serializer) Write64BytesArraySlice(slice SliceOfArraysOf64Bytes, deSeri
 		data[i] = slice[i][:]
 	}
 
-	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
+	return s.WriteSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
 }
 
 // WriteSliceOfObjects writes Serializables into the Serializer.
@@ -324,10 +324,14 @@ func (s *Serializer) WriteSliceOfObjects(source interface{}, deSeriMode DeSerial
 		data[i] = ser
 	}
 
-	return s.writeSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
+	return s.WriteSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
 }
 
-func (s *Serializer) writeSliceOfByteSlices(data [][]byte, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, sliceRules *ArrayRules, errProducer ErrProducer) *Serializer {
+// WriteSliceOfByteSlices writes slice of []byte into the Serializer.
+func (s *Serializer) WriteSliceOfByteSlices(data [][]byte, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, sliceRules *ArrayRules, errProducer ErrProducer) *Serializer {
+	if s.err != nil {
+		return s
+	}
 	var eleValFunc ElementValidationFunc
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if err := sliceRules.CheckBounds(uint(len(data))); err != nil {
