@@ -31,7 +31,8 @@ func Test(t *testing.T) {
 
 	dataFlow1 := New(x, y)
 	fmt.Println(dataFlow1.Run(1))
+	fmt.Println(dataFlow1.Run(7))
 
-	dataFlow2 := New(x, y, z)
+	dataFlow2 := New(dataFlow1.ChainedCommand(), z)
 	fmt.Println(dataFlow2.Run(1))
 }
