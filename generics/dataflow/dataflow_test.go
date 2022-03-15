@@ -1,62 +1,37 @@
 package dataflow
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/errors"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test(t *testing.T) {
-	step1 := func(params *int) (err error) {
-		assert.Equal(t, 0, *params)
+	x := func(param int, next func(int) error) error {
+		fmt.Println("x START", param)
+		defer fmt.Println("x END")
 
-		*params++
-
-		return
+		return next(param + 1)
 	}
 
-	step2 := func(params *int) (err error) {
-		assert.Equal(t, 1, *params)
+	y := func(param int, next func(int) error) error {
+		fmt.Println("y START", param)
+		defer fmt.Println("y END")
 
-		*params++
-
-		return
+		return next(param + 2)
 	}
 
-	step3 := func(params *int) (err error) {
-		assert.Equal(t, 2, *params)
+	z := func(param int, next func(int) error) error {
+		fmt.Println("z START", param)
+		defer fmt.Println("z END")
 
-		return errors.Errorf("something went wrong")
+		return errors.Errorf("FAILED")
 	}
 
-	{
-		start := 0
+	dataFlow1 := New(x, y)
+	fmt.Println(dataFlow1.Run(1))
 
-		var successResult *int
-		New(step1, step2).OnSuccess(func(params *int) {
-			successResult = params
-		}).OnError(func(err error, params *int) {
-			t.Fail()
-		}).Run(&start)
-
-		assert.Equal(t, 2, *successResult)
-	}
-
-	{
-		start := 0
-
-		triggered := false
-		New(step1, step2, step3).OnSuccess(func(params *int) {
-			t.Fail()
-		}).OnError(func(err error, params *int) {
-			triggered = true
-
-			assert.Error(t, err)
-			assert.Equal(t, 2, *params)
-		}).Run(&start)
-
-		assert.True(t, triggered)
-	}
-
+	dataFlow2 := New(x, y, z)
+	fmt.Println(dataFlow2.Run(1))
 }

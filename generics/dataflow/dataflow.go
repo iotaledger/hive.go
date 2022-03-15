@@ -1,48 +1,51 @@
 package dataflow
 
-type DataFlow[T any] struct {
-	steps           []Step[T]
-	errorCallback   ErrorCallback[T]
-	successCallback SuccessCallback[T]
+import (
+	"github.com/iotaledger/hive.go/generics/stack"
+)
+
+type ChainedCommand[T any] func(param T, next func(param T) error) error
+
+type Dataflow[T any] struct {
+	steps []ChainedCommand[T]
 }
 
-func New[T any](steps ...Step[T]) *DataFlow[T] {
-	return &DataFlow[T]{
+func New[T any](steps ...ChainedCommand[T]) *Dataflow[T] {
+	return &Dataflow[T]{
 		steps: steps,
 	}
 }
 
-func (d *DataFlow[T]) OnSuccess(callback SuccessCallback[T]) (dataFlow *DataFlow[T]) {
-	d.successCallback = callback
-
-	return d
+func (d *Dataflow[T]) Run(param T) error {
+	return newCallstack[T](d.steps...).call(param)
 }
 
-func (d *DataFlow[T]) OnError(callback ErrorCallback[T]) (dataFlow *DataFlow[T]) {
-	d.errorCallback = callback
-
-	return d
+type callstack[T any] struct {
+	chainedCommands stack.Stack[ChainedCommand[T]]
 }
 
-func (d *DataFlow[T]) Run(params T) (success bool) {
-	for _, step := range d.steps {
-		if err := step(params); err != nil {
-			if d.errorCallback != nil {
-				d.errorCallback(err, params)
-			}
-			return false
-		}
+func newCallstack[T any](steps ...ChainedCommand[T]) *callstack[T] {
+	chainedCommands := stack.New[ChainedCommand[T]](false)
+
+	stepCount := len(steps)
+	for i := 0; i < stepCount; i++ {
+		chainedCommands.Push(steps[stepCount-i-1])
 	}
 
-	if d.successCallback != nil {
-		d.successCallback(params)
+	return &callstack[T]{
+		chainedCommands: chainedCommands,
 	}
-
-	return true
 }
 
-type Step[T any] func(params T) (err error)
+func (n *callstack[T]) call(param T) (err error) {
+	if n.chainedCommands.IsEmpty() {
+		return nil
+	}
 
-type ErrorCallback[T any] func(err error, params T)
+	step, exists := n.chainedCommands.Pop()
+	if !exists {
+		return nil
+	}
 
-type SuccessCallback[T any] func(params T)
+	return step(param, n.call)
+}
