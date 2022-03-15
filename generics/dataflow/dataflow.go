@@ -1,6 +1,5 @@
 package dataflow
 
-// DataFlow represents a set of steps that are executed in a sequence.
 type DataFlow[T any] struct {
 	steps           []Step[T]
 	errorCallback   ErrorCallback[T]
