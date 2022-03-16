@@ -80,7 +80,13 @@ func (d *DataFlow[T]) WithTerminationCallback(callback Callback[T]) *DataFlow[T]
 // parentheses).
 func (d *DataFlow[T]) ChainedCommand(param T, next Next[T]) error {
 	return d.appendCommand(func(param T, done Next[T]) error {
-		done(param)
+		if next == nil {
+			return done(param)
+		}
+
+		if err := done(param); err != nil {
+			return err
+		}
 
 		return next(param)
 	}).Run(param)
@@ -136,5 +142,9 @@ type Next[T any] func(param T) error
 type Callback[T any] func(param T)
 
 type ErrorCallback[T any] func(err error, param T)
+
+func EmptyNext[T any](param T) error {
+	return nil
+}
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
