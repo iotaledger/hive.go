@@ -215,10 +215,11 @@ func (api *API) getInterfaceRegistry(iType reflect.Type) *interfaceRegistry {
 }
 
 type structField struct {
-	name     string
-	index    int
-	fType    reflect.Type
-	settings *tagSettings
+	name             string
+	index            int
+	fType            reflect.Type
+	isEmbeddedStruct bool
+	settings         *tagSettings
 }
 
 type tagSettings struct {
@@ -230,7 +231,11 @@ func parseStructType(structType reflect.Type) ([]*structField, error) {
 	structFields := make([]*structField, 0, structType.NumField())
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		if field.PkgPath != "" {
+		isUnexported := field.PkgPath != ""
+		isEmbedded := field.Anonymous
+		isStruct := isUnderlyingStruct(field.Type)
+		isEmbeddedStruct := isEmbedded && isStruct
+		if isUnexported && !isEmbeddedStruct {
 			continue
 		}
 		tag, ok := field.Tag.Lookup("seri")
@@ -248,19 +253,32 @@ func parseStructType(structType reflect.Type) ([]*structField, error) {
 						"'payload' setting can only be used with pointers or interfaces, got %s",
 					field.Name, field.Type.Kind())
 			}
+			if isEmbeddedStruct {
+				return nil, errors.Errorf(
+					"struct field %s is invalid: 'payload' setting can't be used with embedded structs",
+					field.Name)
+			}
 
 		}
 		structFields = append(structFields, &structField{
-			name:     field.Name,
-			index:    i,
-			fType:    field.Type,
-			settings: tSettings,
+			name:             field.Name,
+			index:            i,
+			fType:            field.Type,
+			isEmbeddedStruct: isEmbeddedStruct,
+			settings:         tSettings,
 		})
 	}
 	sort.Slice(structFields, func(i, j int) bool {
 		return structFields[i].settings.position < structFields[j].settings.position
 	})
 	return structFields, nil
+}
+
+func isUnderlyingStruct(t reflect.Type) bool {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Struct
 }
 
 func parseStructTag(tag string) (*tagSettings, error) {
