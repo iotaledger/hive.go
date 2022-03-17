@@ -22,7 +22,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) 
 	var bytes []byte
 	if serializable, ok := valueI.(Serializable); ok {
 		var err error
-		bytes, err = serializable.Serialize()
+		bytes, err = serializable.Encode()
 		if err != nil {
 			return nil, errors.Wrap(err, "object failed to serialize itself")
 		}
@@ -97,8 +97,8 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 			return errors.Wrap(err, "failed to write bool value to serializer")
 		}).Serialize()
 
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		seri := serializer.NewSerializer()
 		return seri.WriteNum(valueI, func(err error) error {
 			return errors.Wrap(err, "failed to write number value to serializer")
@@ -144,21 +144,21 @@ func (api *API) encodeStruct(ctx context.Context, value reflect.Value, valueI in
 	return s.Serialize()
 }
 
-func (api *API) encodeStructFields(ctx context.Context,s *serializer.Serializer, value reflect.Value, opts *options) error {
+func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer, value reflect.Value, opts *options) error {
 	valueType := value.Type()
 	structFields, err := parseStructType(valueType)
 	if err != nil {
-		return  errors.Wrapf(err, "can't parse struct type %s", valueType)
+		return errors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
 	if len(structFields) == 0 {
-		return  nil
+		return nil
 	}
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
 		if sField.isEmbeddedStruct {
-			if err := api.encodeStructFields(ctx, s,fieldValue, opts); err!= nil {
-				return  errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
+			if err := api.encodeStructFields(ctx, s, fieldValue, opts); err != nil {
+				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}
 			continue
 		}
@@ -175,7 +175,7 @@ func (api *API) encodeStructFields(ctx context.Context,s *serializer.Serializer,
 			}
 			payloadBytes, err := api.encode(ctx, fieldValue, opts)
 			if err != nil {
-				return  errors.Wrapf(err, "failed to serialize payload struct field %s", sField.name)
+				return errors.Wrapf(err, "failed to serialize payload struct field %s", sField.name)
 			}
 			s.WritePayloadLength(len(payloadBytes), func(err error) error {
 				return errors.Wrapf(err,
@@ -187,7 +187,7 @@ func (api *API) encodeStructFields(ctx context.Context,s *serializer.Serializer,
 		} else {
 			b, err := api.encode(ctx, fieldValue, opts)
 			if err != nil {
-				return  errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
+				return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
 			}
 			fieldBytes = b
 		}
@@ -227,7 +227,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 		}
 		data[i] = elemBytes
 	}
-	var arrayRules *serializer.ArrayRules
+	arrayRules := &serializer.ArrayRules{}
 	if ruler, ok := valueI.(ArrayRulesProvider); ok {
 		arrayRules = ruler.ArrayRules()
 	}
