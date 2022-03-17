@@ -35,7 +35,7 @@ type ArrayRulesProvider interface {
 }
 
 type ObjectCodeProvider interface {
-	ObjectCode() uint32
+	ObjectCode() interface{}
 }
 
 type LengthPrefixTypeProvider interface {
@@ -48,17 +48,18 @@ type TypeDenotationTypeProvider interface {
 
 type API struct {
 	typesRegistryMutex sync.RWMutex
-	typesRegistry      map[reflect.Type]*objectsMapping
+	typesRegistry      map[reflect.Type]*interfaceRegistry
 }
 
-type objectsMapping struct {
-	fromCodeToType map[uint32]reflect.Type
-	fromTypeToCode map[reflect.Type]uint32
+type interfaceRegistry struct {
+	fromCodeToType map[interface{}]reflect.Type
+	fromTypeToCode map[reflect.Type]interface{}
+	typeDenotation serializer.TypeDenotationType
 }
 
 func NewAPI() *API {
 	api := &API{
-		typesRegistry: map[reflect.Type]*objectsMapping{},
+		typesRegistry: map[reflect.Type]*interfaceRegistry{},
 	}
 	return api
 }
@@ -153,23 +154,61 @@ func (api *API) RegisterObjects(iType interface{}, objs ...ObjectCodeProvider) e
 		return errors.Errorf(
 			"'iType' pointer must contain an interface, got %s", iTypeReflect.Kind())
 	}
-	mapping := &objectsMapping{
-		fromCodeToType: make(map[uint32]reflect.Type, len(objs)),
-		fromTypeToCode: make(map[reflect.Type]uint32, len(objs)),
+	if len(objs) == 0 {
+		return nil
 	}
-	for _, obj := range objs {
-		objCode := obj.ObjectCode()
+	iRegistry := &interfaceRegistry{
+		fromCodeToType: make(map[interface{}]reflect.Type, len(objs)),
+		fromTypeToCode: make(map[reflect.Type]interface{}, len(objs)),
+	}
+
+	for i := range objs {
+		obj := objs[i]
+		objTypeDenotation, objCode, err := getTypeDenotationAndObjectCode(obj)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get type denotation for object %T", obj)
+		}
+		if i == 0 {
+			iRegistry.typeDenotation = objTypeDenotation
+		} else {
+			if iRegistry.typeDenotation != objTypeDenotation {
+				firstObj := objs[0]
+				return errors.Errorf(
+					"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
+					firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
+				)
+			}
+		}
 		objType := reflect.TypeOf(obj)
-		mapping.fromCodeToType[objCode] = objType
-		mapping.fromTypeToCode[objType] = objCode
+		iRegistry.fromCodeToType[objCode] = objType
+		iRegistry.fromTypeToCode[objType] = objCode
 	}
 	api.typesRegistryMutex.Lock()
 	defer api.typesRegistryMutex.Unlock()
-	api.typesRegistry[iTypeReflect] = mapping
+	api.typesRegistry[iTypeReflect] = iRegistry
 	return nil
 }
 
-func (api *API) getObjectsMapping(iType reflect.Type) *objectsMapping {
+func getTypeDenotationAndObjectCode(obj ObjectCodeProvider) (serializer.TypeDenotationType, interface{}, error) {
+	objCode := obj.ObjectCode()
+	objCodeType := reflect.TypeOf(objCode)
+	if objCodeType == nil {
+		return 0, nil, errors.Errorf("can't detect object code type for object %T", obj)
+	}
+	var objTypeDenotation serializer.TypeDenotationType
+	switch objCodeType.Kind() {
+	case reflect.Uint32:
+		objTypeDenotation = serializer.TypeDenotationUint32
+	case reflect.Uint8:
+		objTypeDenotation = serializer.TypeDenotationByte
+	default:
+		return 0, nil, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
+			objCodeType, objCodeType.Kind())
+	}
+	return objTypeDenotation, objCodeType, nil
+}
+
+func (api *API) getInterfaceRegistry(iType reflect.Type) *interfaceRegistry {
 	api.typesRegistryMutex.RLock()
 	defer api.typesRegistryMutex.RUnlock()
 	return api.typesRegistry[iType]

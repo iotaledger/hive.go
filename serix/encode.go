@@ -114,12 +114,12 @@ func (api *API) encodeInterface(ctx context.Context, value reflect.Value, opts *
 	if !elemValue.IsValid() {
 		return nil, errors.Errorf("can't serialize interface %s it must have underlying value", valueType)
 	}
-	mapping := api.getObjectsMapping(valueType)
-	if mapping == nil {
+	registry := api.getInterfaceRegistry(valueType)
+	if registry == nil {
 		return nil, errors.Errorf("interface %s isn't registered", valueType)
 	}
 	elemType := elemValue.Type()
-	if _, exists := mapping.fromTypeToCode[elemType]; !exists {
+	if _, exists := registry.fromTypeToCode[elemType]; !exists {
 		return nil, errors.Errorf("underlying type %s hasn't been registered for interface type %s",
 			elemType, valueType)
 	}
