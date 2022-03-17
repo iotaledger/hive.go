@@ -7,7 +7,7 @@ import (
 func BenchmarkEvent_Trigger(b *testing.B) {
 	event := New[int]()
 
-	event.AttachSync(NewClosure(func(param1 int) {
+	event.Hook(NewClosure(func(param1 int) {
 		// do nothing just get called
 	}))
 
