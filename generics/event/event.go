@@ -11,6 +11,7 @@ type Event[T any] struct {
 	beforeCallbacks *orderedmap.OrderedMap[uint64, func(T)]
 	callbacks       *orderedmap.OrderedMap[uint64, func(T)]
 	afterCallbacks  *orderedmap.OrderedMap[uint64, func(T)]
+	asyncCallbacks  *orderedmap.OrderedMap[uint64, func(T)]
 }
 
 func New[T any]() (newEvent *Event[T]) {
@@ -18,12 +19,23 @@ func New[T any]() (newEvent *Event[T]) {
 		beforeCallbacks: orderedmap.New[uint64, func(T)](),
 		callbacks:       orderedmap.New[uint64, func(T)](),
 		afterCallbacks:  orderedmap.New[uint64, func(T)](),
+		asyncCallbacks:  orderedmap.New[uint64, func(T)](),
 	}
 }
 
-// AttachBefore allows to register a Closure that is executed before the Event triggers.
+// AttachSyncBefore allows to register a Closure that is executed before the Event triggers.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
-func (e *Event[T]) AttachBefore(closure *Closure[T], triggerMaxCount ...uint64) {
+func (e *Event[T]) Attach(closure *Closure[T], triggerMaxCount ...uint64) {
+	if closure == nil {
+		return
+	}
+
+	e.attachCallback(e.asyncCallbacks, closure, triggerMaxCount...)
+}
+
+// AttachSyncBefore allows to register a Closure that is executed before the Event triggers.
+// If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
+func (e *Event[T]) AttachSyncBefore(closure *Closure[T], triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
@@ -31,9 +43,9 @@ func (e *Event[T]) AttachBefore(closure *Closure[T], triggerMaxCount ...uint64) 
 	e.attachCallback(e.beforeCallbacks, closure, triggerMaxCount...)
 }
 
-// Attach allows to register a Closure that is executed when the Event triggers.
+// AttachSync allows to register a Closure that is executed when the Event triggers.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
-func (e *Event[T]) Attach(closure *Closure[T], triggerMaxCount ...uint64) {
+func (e *Event[T]) AttachSync(closure *Closure[T], triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
@@ -41,9 +53,9 @@ func (e *Event[T]) Attach(closure *Closure[T], triggerMaxCount ...uint64) {
 	e.attachCallback(e.callbacks, closure, triggerMaxCount...)
 }
 
-// AttachAfter allows to register a Closure that is executed after the Event triggered.
+// AttachSyncAfter allows to register a Closure that is executed after the Event triggered.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
-func (e *Event[T]) AttachAfter(closure *Closure[T], triggerMaxCount ...uint64) {
+func (e *Event[T]) AttachSyncAfter(closure *Closure[T], triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}
@@ -76,6 +88,17 @@ func (e *Event[T]) Trigger(event T) {
 			return true
 		})
 	}
+
+	e.triggerAsyncCallbacks(event)
+}
+
+func (e *Event[T]) triggerAsyncCallbacks(event T) {
+	e.asyncCallbacks.ForEach(func(closureID uint64, callback func(T)) bool {
+		// TODO: submit jobs to some worker pool
+		go callback(event)
+
+		return true
+	})
 }
 
 func (e *Event[T]) attachCallback(callbacks *orderedmap.OrderedMap[uint64, func(T)], closure *Closure[T], triggerMaxCount ...uint64) {

@@ -52,6 +52,7 @@ func (d *DataFlow[T]) Run(param T) (err error) {
 	return err
 }
 
+// WithSuccessCallback modifies the DataFlow to execute a callback after all its commands have been executed.
 func (d *DataFlow[T]) WithSuccessCallback(callback Callback[T]) *DataFlow[T] {
 	d.successCallback = callback
 
