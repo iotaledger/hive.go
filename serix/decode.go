@@ -19,7 +19,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, opts 
 	var bytesRead int
 	if deserializable, ok := valueI.(Deserializable); ok {
 		var err error
-		bytesRead, err = deserializable.Deserialize(b)
+		bytesRead, err = deserializable.Decode(b)
 		if err != nil {
 			return 0, errors.Wrap(err, "object failed to deserialize itself")
 		}

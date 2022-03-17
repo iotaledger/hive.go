@@ -15,11 +15,11 @@ import (
 )
 
 type Serializable interface {
-	Serialize() ([]byte, error)
+	Encode() ([]byte, error)
 }
 
 type Deserializable interface {
-	Deserialize(b []byte) (int, error)
+	Decode(b []byte) (int, error)
 }
 
 type BytesValidator interface {
@@ -229,6 +229,7 @@ type tagSettings struct {
 
 func parseStructType(structType reflect.Type) ([]*structField, error) {
 	structFields := make([]*structField, 0, structType.NumField())
+	seenPositions := make(map[int]struct{})
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		isUnexported := field.PkgPath != ""
@@ -246,6 +247,10 @@ func parseStructType(structType reflect.Type) ([]*structField, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
 		}
+		if _, exists := seenPositions[tSettings.position]; exists {
+			return nil, errors.Errorf("struct field with dupicated position number %d", tSettings.position)
+		}
+		seenPositions[tSettings.position] = struct{}{}
 		if tSettings.isPayload {
 			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
 				return nil, errors.Errorf(
