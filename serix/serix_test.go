@@ -14,6 +14,7 @@ var (
 	ctx                = context.Background()
 	defaultArrayRules  = &serializer.ArrayRules{}
 	defaultErrProducer = func(err error) error { return err }
+	defaultWriteGuard  = func(seri serializer.Serializable) error { return nil }
 )
 
 type Bool bool
@@ -39,34 +40,13 @@ func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx int
 	return ser.Serialize()
 }
 
-type Slice16LengthType []Bool
+type SliceLengthType16 []Bool
 
-func (sl Slice16LengthType) LengthPrefixType() serializer.SeriLengthPrefixType {
+func (sl SliceLengthType16) LengthPrefixType() serializer.SeriLengthPrefixType {
 	return serializer.SeriLengthPrefixTypeAsUint16
 }
 
-func (sl Slice16LengthType) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	ser := serializer.NewSerializer()
-	ser.WriteSliceOfObjects(sl, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixTypeAsUint16, defaultArrayRules, defaultErrProducer)
-	return ser.Serialize()
-}
-
-func (sl Slice16LengthType) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (sl Slice16LengthType) MarshalJSON() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (sl Slice16LengthType) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (sl Slice16LengthType) ToSerializables() serializer.Serializables {
+func (sl SliceLengthType16) ToSerializables() serializer.Serializables {
 	serializables := make(serializer.Serializables, len(sl))
 	for i, b := range sl {
 		serializables[i] = b
@@ -74,7 +54,7 @@ func (sl Slice16LengthType) ToSerializables() serializer.Serializables {
 	return serializables
 }
 
-func (sl Slice16LengthType) FromSerializables(seris serializer.Serializables) {
+func (sl SliceLengthType16) FromSerializables(seris serializer.Serializables) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -91,25 +71,52 @@ type SimpleStruct struct {
 	String String16LengthType `seri:"2"`
 }
 
-func (ss *SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
+type Interface interface {
+	Method()
+}
+
+type InterfaceImpl struct{}
+
+func (ii *InterfaceImpl) Method() {}
+
+func (ii *InterfaceImpl) ObjectCode() interface{} {
+	return uint32(1)
+}
+
+func (ii *InterfaceImpl) MarshalJSON() ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ii *InterfaceImpl) UnmarshalJSON(bytes []byte) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
+	//TODO implement me
 	ser := serializer.NewSerializer()
-	ser.WriteBool(ss.Bool, defaultErrProducer)
-	ser.WriteNum(ss.Num, defaultErrProducer)
-	ser.WriteString(string(ss.String), serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
+	ser.WriteNum(ii.ObjectCode(), defaultErrProducer)
 	return ser.Serialize()
 }
 
-func (ss *SimpleStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
-	panic("implement me")
+type StructWithInterface struct {
+	Interface Interface `seri:"0"`
 }
 
-func (ss *SimpleStruct) MarshalJSON() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
-}
+type BytesArray16 [16]byte
 
-func (ss *SimpleStruct) UnmarshalJSON(bytes []byte) error {
+type BytesSliceLengthType32 []byte
+
+func (b BytesSliceLengthType32) LengthPrefixType() serializer.SeriLengthPrefixType {
 	//TODO implement me
-	panic("implement me")
+	return serializer.SeriLengthPrefixTypeAsUint32
+}
+func init() {
+	testAPI.RegisterObjects((*Interface)(nil), (*InterfaceImpl)(nil))
 }
