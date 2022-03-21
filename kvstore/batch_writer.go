@@ -96,7 +96,7 @@ func NewBatchedWriter(store KVStore, opts ...Option) *BatchedWriter {
 		running:        atomic.NewBool(false),
 		scheduledCount: atomic.NewInt32(0),
 		batchQueue:     make(chan BatchWriteObject, options.queueSize),
-		flushChan:      make(chan struct{}),
+		flushChan:      make(chan struct{}, 1), // must be buffered with size 1 since no receiver is actively waiting.
 		opts:           options,
 	}
 }
