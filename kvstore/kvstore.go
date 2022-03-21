@@ -133,3 +133,49 @@ func Copy(source KVStore, target KVStore) error {
 
 	return target.Flush()
 }
+
+// CopyBatched copies the content from the source to the target KVStore in batches.
+// If batchSize is not specified, everything is copied in a single batch.
+func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
+
+	batchedSize := 0
+	if len(batchSize) > 0 {
+		batchedSize = batchSize[0]
+	}
+
+	// init batched mutation
+	currentBatchSize := 0
+	batchedMutation := target.Batched()
+
+	var innerErr error
+	source.Iterate(EmptyPrefix, func(key, value Value) bool {
+		currentBatchSize++
+
+		if err := batchedMutation.Set(key, value); err != nil {
+			innerErr = err
+		}
+
+		if batchedSize != 0 && currentBatchSize >= batchedSize {
+			if err := batchedMutation.Commit(); err != nil {
+				innerErr = err
+			}
+
+			// init new batched mutation
+			currentBatchSize = 0
+			batchedMutation = target.Batched()
+		}
+
+		return innerErr == nil
+	})
+
+	if innerErr != nil {
+		batchedMutation.Cancel()
+		return innerErr
+	}
+
+	if err := batchedMutation.Commit(); err != nil {
+		return err
+	}
+
+	return target.Flush()
+}
