@@ -28,7 +28,7 @@ type ObjectStorage struct {
 	releaseExecutor    *atomic.UnsafePointer
 	partitionsManager  *PartitionsManager
 
-	Events Events
+	Events *Events
 }
 
 type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
@@ -46,7 +46,7 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 		shutdown:          atomic.NewBool(false),
 		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount))),
 
-		Events: Events{
+		Events: &Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
 		},
 	}

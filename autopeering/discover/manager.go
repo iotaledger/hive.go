@@ -35,7 +35,7 @@ type manager struct {
 	active       []*mpeer
 	replacements []*mpeer
 
-	events Events
+	events *Events
 	net    network
 	log    *logger.Logger
 
@@ -48,7 +48,7 @@ func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager 
 		masters:      wrapPeers(masters),
 		active:       make([]*mpeer, 0, maxManaged),
 		replacements: make([]*mpeer, 0, maxReplacements),
-		events: Events{
+		events: &Events{
 			PeerDiscovered: events.NewEvent(peerDiscovered),
 			PeerDeleted:    events.NewEvent(peerDeleted),
 		},

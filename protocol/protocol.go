@@ -21,7 +21,7 @@ type Events struct {
 // Protocol encapsulates the logic of parsing and sending protocol messages.
 type Protocol struct {
 	// Holds events for sent/received messages and generic errors.
-	Events Events
+	Events *Events
 	// message registry
 	msgRegistry *message.Registry
 	// lock during concurrent reads
@@ -52,7 +52,7 @@ func New(r *message.Registry) *Protocol {
 
 	protocol := &Protocol{
 		msgRegistry: r,
-		Events: Events{
+		Events: &Events{
 			Received: receiveHandlers,
 			Error:    events.NewEvent(events.ErrorCaller),
 		},

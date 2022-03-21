@@ -19,7 +19,7 @@ type Plugin struct {
 	Node    *Node
 	Name    string
 	Status  int
-	Events  pluginEvents
+	Events  *pluginEvents
 	log     *logger.Logger
 	logOnce sync.Once
 	deps    interface{}
@@ -33,7 +33,7 @@ func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback)
 		Name:   name,
 		Status: status,
 		deps:   deps,
-		Events: pluginEvents{
+		Events: &pluginEvents{
 			Init:      events.NewEvent(pluginAndDepCaller),
 			Configure: events.NewEvent(pluginCaller),
 			Run:       events.NewEvent(pluginCaller),

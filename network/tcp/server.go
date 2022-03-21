@@ -12,7 +12,7 @@ import (
 type TCPServer struct {
 	socket      net.Listener
 	socketMutex syncutils.RWMutex
-	Events      tcpServerEvents
+	Events      *tcpServerEvents
 }
 
 func (srv *TCPServer) GetSocket() net.Listener {
@@ -66,7 +66,7 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 
 func NewServer() *TCPServer {
 	return &TCPServer{
-		Events: tcpServerEvents{
+		Events: &tcpServerEvents{
 			Start:    events.NewEvent(events.VoidCaller),
 			Shutdown: events.NewEvent(events.VoidCaller),
 			Connect:  events.NewEvent(network.ManagedConnectionCaller),

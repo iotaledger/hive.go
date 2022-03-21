@@ -1,17 +1,18 @@
 package udp
 
 import (
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/syncutils"
 	"net"
 	"strconv"
+
+	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/syncutils"
 )
 
 type UDPServer struct {
 	socket            net.PacketConn
 	socketMutex       syncutils.RWMutex
 	ReceiveBufferSize int
-	Events            udpServerEvents
+	Events            *udpServerEvents
 }
 
 func (srv *UDPServer) GetSocket() net.PacketConn {
@@ -60,7 +61,7 @@ func (srv *UDPServer) Listen(address string, port int) {
 func NewServer(receiveBufferSize int) *UDPServer {
 	return &UDPServer{
 		ReceiveBufferSize: receiveBufferSize,
-		Events: udpServerEvents{
+		Events: &udpServerEvents{
 			Start:       events.NewEvent(events.VoidCaller),
 			Shutdown:    events.NewEvent(events.VoidCaller),
 			ReceiveData: events.NewEvent(udpAddrAndDataCaller),

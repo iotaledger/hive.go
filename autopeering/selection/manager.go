@@ -51,7 +51,7 @@ type manager struct {
 	r                int
 	ro               float64
 
-	events   Events
+	events   *Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
@@ -92,7 +92,7 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		dropChan:          make(chan identity.ID, queueSize),
 		requestChan:       make(chan peeringRequest, queueSize),
 		closing:           make(chan struct{}),
-		events: Events{
+		events: &Events{
 			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
 			OutgoingPeering: events.NewEvent(peeringCaller),
 			IncomingPeering: events.NewEvent(peeringCaller),

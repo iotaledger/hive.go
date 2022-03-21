@@ -5,14 +5,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/events"
 	"go.uber.org/atomic"
+
+	"github.com/iotaledger/hive.go/events"
 )
 
 // ManagedConnection provides a wrapper for a net.Conn to be used together with events.
 type ManagedConnection struct {
 	net.Conn
-	Events ManagedConnectionEvents
+	Events *ManagedConnectionEvents
 
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -25,7 +26,7 @@ type ManagedConnection struct {
 func NewManagedConnection(conn net.Conn) *ManagedConnection {
 	return &ManagedConnection{
 		Conn: conn,
-		Events: ManagedConnectionEvents{
+		Events: &ManagedConnectionEvents{
 			ReceiveData: events.NewEvent(events.ByteSliceCaller),
 			Close:       events.NewEvent(events.VoidCaller),
 			Error:       events.NewEvent(events.ErrorCaller),

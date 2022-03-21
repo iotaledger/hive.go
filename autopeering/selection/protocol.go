@@ -96,7 +96,7 @@ func (p *Protocol) Close() {
 }
 
 // Events returns all the events that are triggered during the neighbor selection.
-func (p *Protocol) Events() Events {
+func (p *Protocol) Events() *Events {
 	return p.mgr.events
 }
 
