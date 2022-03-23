@@ -1,6 +1,5 @@
 package thresholdmap
 
-import "C"
 import (
 	"github.com/iotaledger/hive.go/datastructure/genericcomparator"
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
