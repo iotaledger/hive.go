@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/pkg/errors"
+
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) ([]byte, error) {
@@ -47,8 +48,8 @@ func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) 
 func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valueI interface{}, opts *options) ([]byte, error) {
 	switch value.Kind() {
 	case reflect.Ptr:
+		seri := serializer.NewSerializer()
 		if valueBigInt, ok := valueI.(*big.Int); ok {
-			seri := serializer.NewSerializer()
 			return seri.WriteUint256(valueBigInt, func(err error) error {
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
@@ -56,7 +57,15 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		if value.IsNil() {
 			return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
 		}
-		return api.encode(ctx, value.Elem(), opts)
+		api.writeObjectCode(valueI, seri)
+		valueBytes, err := api.encode(ctx, value.Elem(), opts)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to serialize pointer value")
+		}
+		seri.WriteBytes(valueBytes, func(err error) error {
+			return errors.Wrapf(err, "failed to write serialized pointer value bytes to serializer")
+		})
+		return seri.Serialize()
 
 	case reflect.Struct:
 		if valueTime, ok := valueI.(time.Time); ok {
@@ -132,12 +141,7 @@ func (api *API) encodeInterface(ctx context.Context, value reflect.Value, opts *
 
 func (api *API) encodeStruct(ctx context.Context, value reflect.Value, valueI interface{}, opts *options) ([]byte, error) {
 	s := serializer.NewSerializer()
-	if codeProvider, ok := valueI.(ObjectCodeProvider); ok {
-		objectCode := codeProvider.ObjectCode()
-		s.WriteNum(objectCode, func(err error) error {
-			return errors.Wrap(err, "failed to write object type code into serializer")
-		})
-	}
+	api.writeObjectCode(valueI, s)
 	if err := api.encodeStructFields(ctx, s, value, opts); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -237,4 +241,13 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 			"serializer failed to write slice of objects %s as slice of byte slices", valueType,
 		)
 	}).Serialize()
+}
+
+func (api *API) writeObjectCode(valueI interface{}, s *serializer.Serializer) {
+	if codeProvider, ok := valueI.(ObjectCodeProvider); ok {
+		objectCode := codeProvider.ObjectCode()
+		s.WriteNum(objectCode, func(err error) error {
+			return errors.Wrap(err, "failed to write object type code into serializer")
+		})
+	}
 }
