@@ -244,7 +244,7 @@ func parseStructType(structType reflect.Type) ([]*structField, error) {
 		if isUnexported && !isEmbeddedStruct {
 			continue
 		}
-		tag, ok := field.Tag.Lookup("seri")
+		tag, ok := field.Tag.Lookup("serix")
 		if !ok {
 			continue
 		}
