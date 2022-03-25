@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -48,8 +49,6 @@ func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) 
 func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valueI interface{}, opts *options) ([]byte, error) {
 	switch value.Kind() {
 	case reflect.Ptr:
-		// reset the option not to propagate prefix type from the tag
-		opts.isLengthPrefixType = false
 		seri := serializer.NewSerializer()
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			return seri.WriteUint256(valueBigInt, func(err error) error {
@@ -70,8 +69,6 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		return seri.Serialize()
 
 	case reflect.Struct:
-		// reset the option not to propagate prefix type from the tag
-		opts.isLengthPrefixType = false
 		if valueTime, ok := valueI.(time.Time); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteTime(valueTime, func(err error) error {
@@ -81,9 +78,9 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		return api.encodeStruct(ctx, value, valueI, opts)
 	case reflect.Slice:
 		return api.encodeSlice(ctx, value, valueI, value.Type(), opts)
+	case reflect.Map:
+		return api.encodeMap(ctx, value, valueI, value.Type(), opts)
 	case reflect.Array:
-		// reset the option not to propagate prefix type from the tag
-		opts.isLengthPrefixType = false
 		value = sliceFromArray(value)
 		valueType := value.Type()
 		if valueType.AssignableTo(bytesType) {
@@ -94,23 +91,11 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		}
 		return api.encodeSlice(ctx, value, valueI, valueType, opts)
 	case reflect.Interface:
-		// reset the option not to propagate prefix type from the tag
-		opts.isLengthPrefixType = false
 		return api.encodeInterface(ctx, value, opts)
 	case reflect.String:
-		// TODO
-		lptp, ok := valueI.(LengthPrefixTypeProvider)
-		if !ok && !opts.isLengthPrefixType {
-			return nil, errors.New(
-				`in order to serialize "string" type in must implement LengthPrefixTypeProvider interface or have a 'lengthPrefixType' struct tag`,
-			)
-		}
-		var lengthPrefixType serializer.SeriLengthPrefixType
-		if ok {
-			lengthPrefixType = lptp.LengthPrefixType()
-		}
-		if opts.isLengthPrefixType {
-			lengthPrefixType = opts.lengthPrefixType
+		lengthPrefixType, err := determineLengthPrefixType(valueI, opts, value.Type())
+		if err != nil {
+			return nil, err
 		}
 		seri := serializer.NewSerializer()
 		return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
@@ -206,11 +191,13 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 			})
 			fieldBytes = payloadBytes
 		} else {
+			newOpts := &options{}
 			if sField.settings.isLengthPrefixType {
-				opts.lengthPrefixType = sField.settings.lengthPrefixType
-				opts.isLengthPrefixType = true
+				newOpts.lengthPrefixType = sField.settings.lengthPrefixType
+				newOpts.isLengthPrefixType = true
 			}
-			b, err := api.encode(ctx, fieldValue, opts)
+
+			b, err := api.encode(ctx, fieldValue, newOpts)
 			if err != nil {
 				return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
 			}
@@ -230,18 +217,11 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
 	opts *options) ([]byte, error) {
 
-	lptp, ok := valueI.(LengthPrefixTypeProvider)
-	if !ok && !opts.isLengthPrefixType {
-		return nil, errors.Errorf("slice type %s must implement LengthPrefixTypeProvider interface  or have a 'lengthPrefixType' struct tag", valueType)
+	lengthPrefixType, err := determineLengthPrefixType(valueI, opts, valueType)
+	if err != nil {
+		return nil, err
 	}
-
-	var lengthPrefixType serializer.SeriLengthPrefixType
-	if ok {
-		lengthPrefixType = lptp.LengthPrefixType()
-	}
-	if opts.isLengthPrefixType {
-		lengthPrefixType = opts.lengthPrefixType
-	}
+	serializationMode := opts.toMode()
 
 	if valueType.AssignableTo(bytesType) {
 		seri := serializer.NewSerializer()
@@ -254,7 +234,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 	data := make([][]byte, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		elemValue := value.Index(i)
-		elemBytes, err := api.encode(ctx, elemValue, opts)
+		elemBytes, err := api.encode(ctx, elemValue, new(options))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode element with index %d of slice %s", i, valueType)
 		}
@@ -265,11 +245,68 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 		arrayRules = ruler.ArrayRules()
 	}
 	seri := serializer.NewSerializer()
-	return seri.WriteSliceOfByteSlices(data, opts.toMode(), lengthPrefixType, arrayRules, func(err error) error {
+	return seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
 		return errors.Wrapf(err,
 			"serializer failed to write slice of objects %s as slice of byte slices", valueType,
 		)
 	}).Serialize()
+}
+
+func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
+	opts *options) ([]byte, error) {
+
+	lengthPrefixType, err := determineLengthPrefixType(valueI, opts, valueType)
+	if err != nil {
+		return nil, err
+	}
+	serializationMode := opts.toMode()
+
+	mapLen := value.Len()
+	mapKeys := value.MapKeys()
+
+	// each entry in data slice contains concatenated bytes of key + value
+	data := make([][]byte, mapLen)
+	for i, mapK := range mapKeys {
+		mapV := value.MapIndex(mapK)
+
+		mapKBytes, err := api.encode(ctx, mapK, new(options))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode map key %s of map %s", mapK.String(), valueType)
+		}
+
+		mapVBytes, err := api.encode(ctx, mapV, new(options))
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode map value with key %s of map %s", mapK.String(), valueType)
+		}
+		data[i] = byteutils.ConcatBytes(mapKBytes, mapVBytes)
+	}
+	arrayRules := &serializer.ArrayRules{}
+	if ruler, ok := valueI.(ArrayRulesProvider); ok {
+		arrayRules = ruler.ArrayRules()
+	}
+	seri := serializer.NewSerializer()
+	return seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
+		return errors.Wrapf(err,
+			"serializer failed to write map %s as slice of byte slices", valueType,
+		)
+	}).Serialize()
+}
+
+func determineLengthPrefixType(valueI interface{}, opts *options, valueType reflect.Type) (serializer.SeriLengthPrefixType, error) {
+	lptp, ok := valueI.(LengthPrefixTypeProvider)
+	if !ok && !opts.isLengthPrefixType {
+		return 0, errors.Errorf("type %s must implement LengthPrefixTypeProvider interface or have a 'lengthPrefixType' struct tag", valueType)
+	}
+
+	var lengthPrefixType serializer.SeriLengthPrefixType
+	if ok {
+		lengthPrefixType = lptp.LengthPrefixType()
+	}
+	if opts.isLengthPrefixType {
+		lengthPrefixType = opts.lengthPrefixType
+	}
+	return lengthPrefixType, nil
 }
 
 func (api *API) writeObjectCode(valueI interface{}, s *serializer.Serializer) {
