@@ -66,17 +66,17 @@ func (s String16LengthType) LengthPrefixType() serializer.SeriLengthPrefixType {
 }
 
 type SimpleStruct struct {
-	Bool   bool               `seri:"0"`
-	Num    int64              `seri:"1"`
-	String String16LengthType `seri:"2"`
+	Bool   bool               `serix:"0"`
+	Num    int64              `serix:"1"`
+	String String16LengthType `serix:"2"`
 }
 
 type SimpleStructWithTags struct {
-	Bool      bool     `seri:"0"`
-	Num       int64    `seri:"1"`
-	String    string   `seri:"2,lengthPrefixType:uint16"`
-	ByteSlice []byte   `seri:"3,lengthPrefixType:uint32"`
-	ByteArray [32]byte `seri:"4"`
+	Bool      bool     `serix:"0"`
+	Num       int64    `serix:"1"`
+	String    string   `serix:"2,lengthPrefixType:uint16"`
+	ByteSlice []byte   `serix:"3,lengthPrefixType:uint32"`
+	ByteArray [32]byte `serix:"4"`
 }
 
 type Interface interface {
@@ -114,7 +114,7 @@ func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, de
 }
 
 type StructWithInterface struct {
-	Interface Interface `seri:"0"`
+	Interface Interface `serix:"0"`
 }
 
 type BytesArray16 [16]byte
