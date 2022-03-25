@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/pkg/errors"
+
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 type Serializable interface {
@@ -85,8 +86,10 @@ func WithLexicalOrdering() Option {
 }
 
 type options struct {
-	validation      bool
-	lexicalOrdering bool
+	validation         bool
+	lexicalOrdering    bool
+	isLengthPrefixType bool
+	lengthPrefixType   serializer.SeriLengthPrefixType
 }
 
 func (o *options) toMode() serializer.DeSerializationMode {
@@ -223,8 +226,10 @@ type structField struct {
 }
 
 type tagSettings struct {
-	position  int
-	isPayload bool
+	position           int
+	isPayload          bool
+	isLengthPrefixType bool
+	lengthPrefixType   serializer.SeriLengthPrefixType
 }
 
 func parseStructType(structType reflect.Type) ([]*structField, error) {
@@ -304,15 +309,40 @@ func parseStructTag(tag string) (*tagSettings, error) {
 		if _, ok := seenParts[currentPart]; ok {
 			return nil, errors.Errorf("duplicated tag part: %s", currentPart)
 		}
-		switch currentPart {
+		keyValue := strings.Split(currentPart, ":")
+		switch keyValue[0] {
 		case "payload":
 			settings.isPayload = true
+		case "lengthPrefixType":
+			if len(keyValue) != 2 {
+				return nil, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
+			}
+			lengthPrefixType, err := parseLengthPrefixType(keyValue[1])
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
+			}
+			settings.isLengthPrefixType = true
+			settings.lengthPrefixType = lengthPrefixType
 		default:
 			return nil, errors.Errorf("unknown tag part: %s", currentPart)
 		}
 		seenParts[currentPart] = struct{}{}
 	}
 	return settings, nil
+}
+
+func parseLengthPrefixType(prefixTypeRaw string) (serializer.SeriLengthPrefixType, error) {
+	switch prefixTypeRaw {
+	case "byte", "uint8":
+		return serializer.SeriLengthPrefixTypeAsByte, nil
+	case "uint16":
+		return serializer.SeriLengthPrefixTypeAsUint16, nil
+	case "uint32":
+		return serializer.SeriLengthPrefixTypeAsUint32, nil
+	default:
+		return serializer.SeriLengthPrefixTypeAsByte, errors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+	}
+
 }
 
 func sliceFromArray(arrValue reflect.Value) reflect.Value {

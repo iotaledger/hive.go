@@ -48,6 +48,8 @@ func (api *API) encode(ctx context.Context, value reflect.Value, opts *options) 
 func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valueI interface{}, opts *options) ([]byte, error) {
 	switch value.Kind() {
 	case reflect.Ptr:
+		// reset the option not to propagate prefix type from the tag
+		opts.isLengthPrefixType = false
 		seri := serializer.NewSerializer()
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			return seri.WriteUint256(valueBigInt, func(err error) error {
@@ -68,6 +70,8 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		return seri.Serialize()
 
 	case reflect.Struct:
+		// reset the option not to propagate prefix type from the tag
+		opts.isLengthPrefixType = false
 		if valueTime, ok := valueI.(time.Time); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteTime(valueTime, func(err error) error {
@@ -78,6 +82,8 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 	case reflect.Slice:
 		return api.encodeSlice(ctx, value, valueI, value.Type(), opts)
 	case reflect.Array:
+		// reset the option not to propagate prefix type from the tag
+		opts.isLengthPrefixType = false
 		value = sliceFromArray(value)
 		valueType := value.Type()
 		if valueType.AssignableTo(bytesType) {
@@ -88,18 +94,29 @@ func (api *API) encodeBasedOnType(ctx context.Context, value reflect.Value, valu
 		}
 		return api.encodeSlice(ctx, value, valueI, valueType, opts)
 	case reflect.Interface:
+		// reset the option not to propagate prefix type from the tag
+		opts.isLengthPrefixType = false
 		return api.encodeInterface(ctx, value, opts)
 	case reflect.String:
-		if lptp, ok := valueI.(LengthPrefixTypeProvider); ok {
-			seri := serializer.NewSerializer()
-			return seri.WriteString(value.String(), lptp.LengthPrefixType(), func(err error) error {
-				return errors.Wrap(err, "failed to write string value to serializer")
-			}).Serialize()
-		} else {
+		// TODO
+		lptp, ok := valueI.(LengthPrefixTypeProvider)
+		if !ok && !opts.isLengthPrefixType {
 			return nil, errors.New(
-				`in order to serialize "string" type in must implement LengthPrefixTypeProvider interface`,
+				`in order to serialize "string" type in must implement LengthPrefixTypeProvider interface or have a 'lengthPrefixType' struct tag`,
 			)
 		}
+		var lengthPrefixType serializer.SeriLengthPrefixType
+		if ok {
+			lengthPrefixType = lptp.LengthPrefixType()
+		}
+		if opts.isLengthPrefixType {
+			lengthPrefixType = opts.lengthPrefixType
+		}
+		seri := serializer.NewSerializer()
+		return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
+			return errors.Wrap(err, "failed to write string value to serializer")
+		}).Serialize()
+
 	case reflect.Bool:
 		seri := serializer.NewSerializer()
 		return seri.WriteBool(value.Bool(), func(err error) error {
@@ -189,6 +206,10 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 			})
 			fieldBytes = payloadBytes
 		} else {
+			if sField.settings.isLengthPrefixType {
+				opts.lengthPrefixType = sField.settings.lengthPrefixType
+				opts.isLengthPrefixType = true
+			}
 			b, err := api.encode(ctx, fieldValue, opts)
 			if err != nil {
 				return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
@@ -208,11 +229,19 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
 	opts *options) ([]byte, error) {
+
 	lptp, ok := valueI.(LengthPrefixTypeProvider)
-	if !ok {
-		return nil, errors.Errorf("slice type %s must implement LengthPrefixTypeProvider interface", valueType)
+	if !ok && !opts.isLengthPrefixType {
+		return nil, errors.Errorf("slice type %s must implement LengthPrefixTypeProvider interface  or have a 'lengthPrefixType' struct tag", valueType)
 	}
-	lengthPrefixType := lptp.LengthPrefixType()
+
+	var lengthPrefixType serializer.SeriLengthPrefixType
+	if ok {
+		lengthPrefixType = lptp.LengthPrefixType()
+	}
+	if opts.isLengthPrefixType {
+		lengthPrefixType = opts.lengthPrefixType
+	}
 
 	if valueType.AssignableTo(bytesType) {
 		seri := serializer.NewSerializer()

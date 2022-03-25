@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 func TestEncode_Slice(t *testing.T) {
@@ -30,6 +31,25 @@ func TestEncode_Struct(t *testing.T) {
 		s.WriteBool(testObj.Bool, defaultErrProducer)
 		s.WriteNum(testObj.Num, defaultErrProducer)
 		s.WriteString(string(testObj.String), testObj.String.LengthPrefixType(), defaultErrProducer)
+	}
+	testEncode(t, testObj, manualSerialization)
+}
+
+func TestEncode_StructWithTags(t *testing.T) {
+	t.Parallel()
+	testObj := &SimpleStructWithTags{
+		Bool:      true,
+		Num:       10,
+		String:    "foo",
+		ByteSlice: []byte{1, 2, 3},
+		ByteArray: [32]byte{},
+	}
+	manualSerialization := func(s *serializer.Serializer) {
+		s.WriteBool(testObj.Bool, defaultErrProducer)
+		s.WriteNum(testObj.Num, defaultErrProducer)
+		s.WriteString(testObj.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
+		s.WriteVariableByteSlice(testObj.ByteSlice, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer)
+		s.WriteBytes(testObj.ByteArray[:], defaultErrProducer)
 	}
 	testEncode(t, testObj, manualSerialization)
 }
