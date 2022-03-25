@@ -71,6 +71,14 @@ type SimpleStruct struct {
 	String String16LengthType `seri:"2"`
 }
 
+type SimpleStructWithTags struct {
+	Bool      bool     `seri:"0"`
+	Num       int64    `seri:"1"`
+	String    string   `seri:"2,lengthPrefixType:uint16"`
+	ByteSlice []byte   `seri:"3,lengthPrefixType:uint32"`
+	ByteArray [32]byte `seri:"4"`
+}
+
 type Interface interface {
 	Method()
 }
