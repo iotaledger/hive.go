@@ -47,6 +47,10 @@ type TypeDenotationTypeProvider interface {
 	TypeDenotation() serializer.TypeDenotationType
 }
 
+type LexicalOrderingProvider interface {
+	LexicalOrdering() bool
+}
+
 type API struct {
 	typesRegistryMutex sync.RWMutex
 	typesRegistry      map[reflect.Type]*interfaceRegistry
@@ -79,17 +83,8 @@ func WithValidation() Option {
 	}
 }
 
-func WithLexicalOrdering() Option {
-	return func(o *options) {
-		o.lexicalOrdering = true
-	}
-}
-
 type options struct {
-	validation         bool
-	lexicalOrdering    bool
-	isLengthPrefixType bool
-	lengthPrefixType   serializer.SeriLengthPrefixType
+	validation bool
 }
 
 func (o *options) toMode() serializer.DeSerializationMode {
@@ -97,10 +92,36 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	if o.validation {
 		mode |= serializer.DeSeriModePerformValidation
 	}
-	if o.lexicalOrdering {
-		mode |= serializer.DeSeriModePerformLexicalOrdering
-	}
 	return mode
+}
+
+type typeSettings struct {
+	lengthPrefixType *serializer.SeriLengthPrefixType
+	objectCode       *interface{}
+	lexicalOrdering  *bool
+}
+
+func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
+	if ts.lengthPrefixType == nil {
+		if lptp, ok := valueI.(LengthPrefixTypeProvider); ok {
+			lengthType := lptp.LengthPrefixType()
+			ts.lengthPrefixType = &lengthType
+		}
+	}
+
+	if ts.objectCode == nil {
+		if codeProvider, ok := valueI.(ObjectCodeProvider); ok {
+			objectCode := codeProvider.ObjectCode()
+			ts.objectCode = &objectCode
+		}
+	}
+
+	if ts.lexicalOrdering == nil {
+		if lop, ok := valueI.(LexicalOrderingProvider); ok {
+			lexicalOrdering := lop.LexicalOrdering()
+			ts.lexicalOrdering = &lexicalOrdering
+		}
+	}
 }
 
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
@@ -112,7 +133,8 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	for _, o := range opts {
 		o(opt)
 	}
-	return api.encode(ctx, value, opt)
+	ts := new(typeSettings)
+	return api.encode(ctx, value, ts, opt)
 }
 
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) error {
@@ -226,10 +248,9 @@ type structField struct {
 }
 
 type tagSettings struct {
-	position           int
-	isPayload          bool
-	isLengthPrefixType bool
-	lengthPrefixType   serializer.SeriLengthPrefixType
+	position         int
+	isPayload        bool
+	lengthPrefixType *serializer.SeriLengthPrefixType
 }
 
 func parseStructType(structType reflect.Type) ([]*structField, error) {
@@ -309,8 +330,9 @@ func parseStructTag(tag string) (*tagSettings, error) {
 		if _, ok := seenParts[currentPart]; ok {
 			return nil, errors.Errorf("duplicated tag part: %s", currentPart)
 		}
-		keyValue := strings.Split(currentPart, ":")
-		switch keyValue[0] {
+		keyValue := strings.Split(currentPart, "=")
+		partName := keyValue[0]
+		switch partName {
 		case "payload":
 			settings.isPayload = true
 		case "lengthPrefixType":
@@ -321,12 +343,11 @@ func parseStructTag(tag string) (*tagSettings, error) {
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
 			}
-			settings.isLengthPrefixType = true
-			settings.lengthPrefixType = lengthPrefixType
+			settings.lengthPrefixType = &lengthPrefixType
 		default:
 			return nil, errors.Errorf("unknown tag part: %s", currentPart)
 		}
-		seenParts[currentPart] = struct{}{}
+		seenParts[partName] = struct{}{}
 	}
 	return settings, nil
 }
@@ -351,4 +372,9 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 	sliceValue := reflect.MakeSlice(sliceType, arrType.Len(), arrType.Len())
 	reflect.Copy(sliceValue, arrValue)
 	return sliceValue
+}
+
+type keyValuePair struct {
+	Key   interface{} `serix:"0"`
+	Value interface{} `serix:"1"`
 }

@@ -74,8 +74,8 @@ type SimpleStruct struct {
 type SimpleStructWithTags struct {
 	Bool      bool     `serix:"0"`
 	Num       int64    `serix:"1"`
-	String    string   `serix:"2,lengthPrefixType:uint16"`
-	ByteSlice []byte   `serix:"3,lengthPrefixType:uint32"`
+	String    string   `serix:"2,lengthPrefixType=uint16"`
+	ByteSlice []byte   `serix:"3,lengthPrefixType=uint32"`
 	ByteArray [32]byte `serix:"4"`
 }
 
@@ -125,6 +125,7 @@ func (b BytesSliceLengthType32) LengthPrefixType() serializer.SeriLengthPrefixTy
 	//TODO implement me
 	return serializer.SeriLengthPrefixTypeAsUint32
 }
+
 func init() {
 	testAPI.RegisterObjects((*Interface)(nil), (*InterfaceImpl)(nil))
 }
