@@ -12,7 +12,7 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-func (api *API) encode(ctx context.Context, value reflect.Value, ts *typeSettings, opts *options) ([]byte, error) {
+func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
 	valueI := value.Interface()
 	if opts.validation {
 		if validator, ok := valueI.(SyntacticValidator); ok {
@@ -47,11 +47,11 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts *typeSetting
 }
 
 func (api *API) encodeBasedOnType(
-	ctx context.Context, value reflect.Value, valueI interface{}, ts *typeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
 ) ([]byte, error) {
 	switch value.Kind() {
 	case reflect.Ptr:
-		ts.fillFromImplementations(valueI)
+		ts = ts.fillFromImplementations(valueI)
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteUint256(valueBigInt, func(err error) error {
@@ -91,12 +91,12 @@ func (api *API) encodeBasedOnType(
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, ts, opts)
 	case reflect.String:
-		ts.fillFromImplementations(valueI)
+		ts = ts.fillFromImplementations(valueI)
 		var lengthPrefixType serializer.SeriLengthPrefixType
-		if ts.lengthPrefixType == nil {
+		lengthPrefixType, set := ts.LengthPrefixType()
+		if !set {
 			return nil, errors.Errorf("in order to serialize 'string' type no LengthPrefixType was provided")
 		}
-		lengthPrefixType = *ts.lengthPrefixType
 		seri := serializer.NewSerializer()
 		return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
 			return errors.Wrap(err, "failed to write string value to serializer")
@@ -120,7 +120,7 @@ func (api *API) encodeBasedOnType(
 	}
 }
 
-func (api *API) encodeInterface(ctx context.Context, value reflect.Value, ts *typeSettings, opts *options) ([]byte, error) {
+func (api *API) encodeInterface(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
 	valueType := value.Type()
 	elemValue := value.Elem()
 	if !elemValue.IsValid() {
@@ -143,12 +143,12 @@ func (api *API) encodeInterface(ctx context.Context, value reflect.Value, ts *ty
 }
 
 func (api *API) encodeStruct(
-	ctx context.Context, value reflect.Value, valueI interface{}, ts *typeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	ts.fillFromImplementations(valueI)
+	ts = ts.fillFromImplementations(valueI)
 	s := serializer.NewSerializer()
-	if ts.objectCode != nil {
-		s.WriteNum(*ts.objectCode, func(err error) error {
+	if objectCode := ts.ObjectCode(); objectCode != nil {
+		s.WriteNum(objectCode, func(err error) error {
 			return errors.Wrap(err, "failed to write object type code into serializer")
 		})
 	}
@@ -177,7 +177,6 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 			continue
 		}
 		var fieldBytes []byte
-		fieldTS := new(typeSettings)
 		if sField.settings.isPayload {
 			if fieldValue.IsNil() {
 				s.WritePayloadLength(0, func(err error) error {
@@ -188,7 +187,7 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 				})
 				continue
 			}
-			payloadBytes, err := api.encode(ctx, fieldValue, fieldTS, opts)
+			payloadBytes, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
 			if err != nil {
 				return errors.Wrapf(err, "failed to serialize payload struct field %s", sField.name)
 			}
@@ -200,8 +199,7 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 			})
 			fieldBytes = payloadBytes
 		} else {
-			fieldTS.lengthPrefixType = sField.settings.lengthPrefixType
-			b, err := api.encode(ctx, fieldValue, fieldTS, opts)
+			b, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
 			if err != nil {
 				return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
 			}
@@ -219,14 +217,12 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 }
 
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
-	ts *typeSettings, opts *options) ([]byte, error) {
-	ts.fillFromImplementations(valueI)
-	var lengthPrefixType serializer.SeriLengthPrefixType
-	if ts.lengthPrefixType == nil {
+	ts TypeSettings, opts *options) ([]byte, error) {
+	ts = ts.fillFromImplementations(valueI)
+	lengthPrefixType, set := ts.LengthPrefixType()
+	if !set {
 		return nil, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
-
 	}
-	lengthPrefixType = *ts.lengthPrefixType
 
 	if valueType.AssignableTo(bytesType) {
 		seri := serializer.NewSerializer()
@@ -239,19 +235,20 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 	data := make([][]byte, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		elemValue := value.Index(i)
-		elemBytes, err := api.encode(ctx, elemValue, new(typeSettings), opts)
+		elemBytes, err := api.encode(ctx, elemValue, TypeSettings{}, opts)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode element with index %d of slice %s", i, valueType)
 		}
 		data[i] = elemBytes
 	}
-	arrayRules := ts.arrayRules
+	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
 		arrayRules = new(serializer.ArrayRules)
 	}
 	seri := serializer.NewSerializer()
 	serializationMode := opts.toMode()
-	if ts.lexicalOrdering != nil && *ts.lexicalOrdering {
+	lexicalOrdering, set := ts.LexicalOrdering()
+	if set && lexicalOrdering {
 		serializationMode |= serializer.DeSeriModePerformLexicalOrdering
 	}
 	return seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
@@ -262,8 +259,8 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 }
 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
-	ts *typeSettings, opts *options) ([]byte, error) {
-	ts.fillFromImplementations(valueI)
+	ts TypeSettings, opts *options) ([]byte, error) {
+	ts = ts.fillFromImplementations(valueI)
 	size := value.Len()
 	keys := value.MapKeys()
 
@@ -276,19 +273,18 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueI inter
 		}
 	}
 	valueSlice := reflect.ValueOf(slice)
-	if ts.lexicalOrdering == nil {
-		lexicalOrdering := true
-		ts.lexicalOrdering = &lexicalOrdering
+	ts = ts.WithLexicalOrdering(true)
+	arrayRules := ts.ArrayRules()
+	if arrayRules == nil {
+		arrayRules = new(serializer.ArrayRules)
 	}
-	if ts.arrayRules == nil {
-		ts.arrayRules = new(serializer.ArrayRules)
-	}
-	ts.arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
+	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
+	ts = ts.WithArrayRules(arrayRules)
 	b, err := api.encodeSlice(ctx, valueSlice, slice, valueSlice.Type(), ts, opts)
 	return b, errors.Wrapf(err, "failed to encode slice built from map %s", valueType)
 }
 
-func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap, ts *typeSettings, opts *options) ([]byte, error) {
+func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap, ts TypeSettings, opts *options) ([]byte, error) {
 	size := om.Size()
 
 	slice := make([]*keyValuePair, size)
