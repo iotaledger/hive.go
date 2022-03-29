@@ -83,8 +83,15 @@ func WithValidation() Option {
 	}
 }
 
+func WithTypeSettings(ts TypeSettings) Option {
+	return func(o *options) {
+		o.ts = ts
+	}
+}
+
 type options struct {
 	validation bool
+	ts         TypeSettings
 }
 
 func (o *options) toMode() serializer.DeSerializationMode {
@@ -95,14 +102,56 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
-type typeSettings struct {
+type TypeSettings struct {
 	lengthPrefixType *serializer.SeriLengthPrefixType
-	objectCode       *interface{}
+	objectCode       interface{}
 	lexicalOrdering  *bool
 	arrayRules       *serializer.ArrayRules
 }
 
-func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
+func (ts TypeSettings) WithLengthPrefixType(lpt serializer.SeriLengthPrefixType) TypeSettings {
+	ts.lengthPrefixType = &lpt
+	return ts
+}
+
+func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool) {
+	if ts.lengthPrefixType == nil {
+		return 0, false
+	}
+	return *ts.lengthPrefixType, true
+}
+
+func (ts TypeSettings) WithObjectCode(code interface{}) TypeSettings {
+	ts.objectCode = code
+	return ts
+}
+
+func (ts TypeSettings) ObjectCode() interface{} {
+	return ts.objectCode
+}
+
+func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
+	ts.lexicalOrdering = &val
+	return ts
+}
+
+func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
+	if ts.lexicalOrdering == nil {
+		return false, false
+	}
+	return *ts.lexicalOrdering, true
+}
+
+func (ts TypeSettings) WithArrayRules(rules *serializer.ArrayRules) TypeSettings {
+	ts.arrayRules = rules
+	return ts
+}
+
+func (ts TypeSettings) ArrayRules() *serializer.ArrayRules {
+	return ts.arrayRules
+}
+
+func (ts TypeSettings) fillFromImplementations(valueI interface{}) TypeSettings {
 	if ts.lengthPrefixType == nil {
 		if lptp, ok := valueI.(LengthPrefixTypeProvider); ok {
 			lengthType := lptp.LengthPrefixType()
@@ -113,7 +162,7 @@ func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
 	if ts.objectCode == nil {
 		if codeProvider, ok := valueI.(ObjectCodeProvider); ok {
 			objectCode := codeProvider.ObjectCode()
-			ts.objectCode = &objectCode
+			ts.objectCode = objectCode
 		}
 	}
 
@@ -130,6 +179,7 @@ func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
 			ts.arrayRules = ar
 		}
 	}
+	return ts
 }
 
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
@@ -141,8 +191,7 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	for _, o := range opts {
 		o(opt)
 	}
-	ts := new(typeSettings)
-	return api.encode(ctx, value, ts, opt)
+	return api.encode(ctx, value, opt.ts, opt)
 }
 
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) error {
@@ -252,17 +301,17 @@ type structField struct {
 	index            int
 	fType            reflect.Type
 	isEmbeddedStruct bool
-	settings         *tagSettings
+	settings         tagSettings
 }
 
 type tagSettings struct {
-	position         int
-	isPayload        bool
-	lengthPrefixType *serializer.SeriLengthPrefixType
+	position  int
+	isPayload bool
+	ts        TypeSettings
 }
 
-func parseStructType(structType reflect.Type) ([]*structField, error) {
-	structFields := make([]*structField, 0, structType.NumField())
+func parseStructType(structType reflect.Type) ([]structField, error) {
+	structFields := make([]structField, 0, structType.NumField())
 	seenPositions := make(map[int]struct{})
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -299,7 +348,7 @@ func parseStructType(structType reflect.Type) ([]*structField, error) {
 			}
 
 		}
-		structFields = append(structFields, &structField{
+		structFields = append(structFields, structField{
 			name:             field.Name,
 			index:            i,
 			fType:            field.Type,
@@ -320,23 +369,23 @@ func isUnderlyingStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct
 }
 
-func parseStructTag(tag string) (*tagSettings, error) {
+func parseStructTag(tag string) (tagSettings, error) {
 	if tag == "" {
-		return nil, errors.New("struct tag is empty")
+		return tagSettings{}, errors.New("struct tag is empty")
 	}
 	parts := strings.Split(tag, ",")
 	positionPart := parts[0]
 	position, err := strconv.Atoi(positionPart)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse position number from the first part of the tag")
+		return tagSettings{}, errors.Wrap(err, "failed to parse position number from the first part of the tag")
 	}
-	settings := &tagSettings{}
+	settings := tagSettings{}
 	settings.position = position
 	parts = parts[1:]
 	seenParts := map[string]struct{}{}
 	for _, currentPart := range parts {
 		if _, ok := seenParts[currentPart]; ok {
-			return nil, errors.Errorf("duplicated tag part: %s", currentPart)
+			return tagSettings{}, errors.Errorf("duplicated tag part: %s", currentPart)
 		}
 		keyValue := strings.Split(currentPart, "=")
 		partName := keyValue[0]
@@ -345,15 +394,15 @@ func parseStructTag(tag string) (*tagSettings, error) {
 			settings.isPayload = true
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
-				return nil, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
+				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
 			}
 			lengthPrefixType, err := parseLengthPrefixType(keyValue[1])
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
+				return tagSettings{}, errors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
 			}
-			settings.lengthPrefixType = &lengthPrefixType
+			settings.ts = settings.ts.WithLengthPrefixType(lengthPrefixType)
 		default:
-			return nil, errors.Errorf("unknown tag part: %s", currentPart)
+			return tagSettings{}, errors.Errorf("unknown tag part: %s", currentPart)
 		}
 		seenParts[partName] = struct{}{}
 	}
@@ -371,7 +420,6 @@ func parseLengthPrefixType(prefixTypeRaw string) (serializer.SeriLengthPrefixTyp
 	default:
 		return serializer.SeriLengthPrefixTypeAsByte, errors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
 	}
-
 }
 
 func sliceFromArray(arrValue reflect.Value) reflect.Value {
