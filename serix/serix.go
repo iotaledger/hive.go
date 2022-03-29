@@ -99,6 +99,7 @@ type typeSettings struct {
 	lengthPrefixType *serializer.SeriLengthPrefixType
 	objectCode       *interface{}
 	lexicalOrdering  *bool
+	arrayRules       *serializer.ArrayRules
 }
 
 func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
@@ -120,6 +121,13 @@ func (ts *typeSettings) fillFromImplementations(valueI interface{}) {
 		if lop, ok := valueI.(LexicalOrderingProvider); ok {
 			lexicalOrdering := lop.LexicalOrdering()
 			ts.lexicalOrdering = &lexicalOrdering
+		}
+	}
+
+	if ts.arrayRules == nil {
+		if arp, ok := valueI.(ArrayRulesProvider); ok {
+			ar := arp.ArrayRules()
+			ts.arrayRules = ar
 		}
 	}
 }
