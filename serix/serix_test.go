@@ -2,9 +2,14 @@ package serix_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"testing"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serix"
+	"github.com/stretchr/testify/require"
 )
 
 const defaultSeriMode = serializer.DeSeriModePerformValidation
@@ -40,13 +45,9 @@ func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx int
 	return ser.Serialize()
 }
 
-type SliceLengthType16 []Bool
+type Bools []Bool
 
-func (sl SliceLengthType16) LengthPrefixType() serializer.SeriLengthPrefixType {
-	return serializer.SeriLengthPrefixTypeAsUint16
-}
-
-func (sl SliceLengthType16) ToSerializables() serializer.Serializables {
+func (sl Bools) ToSerializables() serializer.Serializables {
 	serializables := make(serializer.Serializables, len(sl))
 	for i, b := range sl {
 		serializables[i] = b
@@ -54,29 +55,19 @@ func (sl SliceLengthType16) ToSerializables() serializer.Serializables {
 	return serializables
 }
 
-func (sl SliceLengthType16) FromSerializables(seris serializer.Serializables) {
+func (sl Bools) FromSerializables(seris serializer.Serializables) {
 	//TODO implement me
 	panic("implement me")
 }
 
-type String16LengthType string
-
-func (s String16LengthType) LengthPrefixType() serializer.SeriLengthPrefixType {
-	return serializer.SeriLengthPrefixTypeAsUint16
-}
-
 type SimpleStruct struct {
-	Bool   bool               `serix:"0"`
-	Num    int64              `serix:"1"`
-	String String16LengthType `serix:"2"`
+	Bool   bool   `serix:"0"`
+	Num    int64  `serix:"1"`
+	String string `serix:"2,lengthPrefixType=uint16"`
 }
 
-type SimpleStructWithTags struct {
-	Bool      bool     `serix:"0"`
-	Num       int64    `serix:"1"`
-	String    string   `serix:"2,lengthPrefixType=uint16"`
-	ByteSlice []byte   `serix:"3,lengthPrefixType=uint32"`
-	ByteArray [32]byte `serix:"4"`
+func (ss SimpleStruct) ObjectCode() interface{} {
+	return uint32(0)
 }
 
 type Interface interface {
@@ -119,13 +110,97 @@ type StructWithInterface struct {
 
 type BytesArray16 [16]byte
 
-type BytesSliceLengthType32 []byte
+type StructWithEmbeddedStructs struct {
+	//unexportedStruct `serix:"0"`
+	ExportedStruct `serix:"1,nest"`
+}
 
-func (b BytesSliceLengthType32) LengthPrefixType() serializer.SeriLengthPrefixType {
+type unexportedStruct struct {
+	Foo int64 `serix:"0"`
+}
+
+type ExportedStruct struct {
+	Bar int64 `serix:"0"`
+}
+
+func (es ExportedStruct) MarshalJSON() ([]byte, error) {
 	//TODO implement me
-	return serializer.SeriLengthPrefixTypeAsUint32
+	panic("implement me")
+}
+
+func (es ExportedStruct) UnmarshalJSON(bytes []byte) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (es ExportedStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (es ExportedStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
+	s := serializer.NewSerializer()
+	s.WriteNum(es.ObjectCode(), defaultErrProducer)
+	s.WriteNum(es.Bar, defaultErrProducer)
+	return s.Serialize()
+}
+
+func (es ExportedStruct) ObjectCode() interface{} {
+	return uint32(3)
 }
 
 func init() {
-	testAPI.RegisterObjects((*Interface)(nil), (*InterfaceImpl)(nil))
+	testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
+}
+
+type S struct {
+	SubS
+	SubSs
+	Foo string
+}
+
+type SubS struct {
+}
+
+func (ss SubS) MarshalJSON() ([]byte, error) {
+	return json.Marshal("subs")
+}
+
+func (ss *SubS) UnmarshalJSON(b []byte) error {
+	fmt.Println(string(b))
+	return nil
+}
+
+type SubSs struct {
+}
+
+func (ss SubSs) MarshalJSON() ([]byte, error) {
+	return json.Marshal("subss")
+}
+
+func (ss *SubSs) UnmarshalJSON(b []byte) error {
+	fmt.Println(string(b))
+	return nil
+}
+
+func TestTMP(t *testing.T) {
+	s := S{SubS: SubS{}, Foo: "foo"}
+	var i interface{}
+	i = s
+	m, ok := i.(json.Marshaler)
+	t.Log(m, ok)
+	b, err := json.Marshal(s)
+	require.NoError(t, err)
+	t.Log(string(b))
+	newS := new(S)
+	err = json.Unmarshal(b, newS)
+	require.NoError(t, err)
+	t.Logf("%+v", newS)
+	st := reflect.TypeOf(s)
+	sv := reflect.ValueOf(s)
+	mm, ok := st.MethodByName("marshalJSON")
+	t.Log(mm, ok)
+	mmv := sv.MethodByName("marshalJSON")
+	t.Log(mmv)
+
 }

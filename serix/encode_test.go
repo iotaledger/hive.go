@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iotaledger/hive.go/serix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,11 +14,13 @@ import (
 
 func TestEncode_Slice(t *testing.T) {
 	t.Parallel()
-	testObj := SliceLengthType16{true, false, true, true}
+	testObj := Bools{true, false, true, true}
+	lenType := serializer.SeriLengthPrefixTypeAsUint16
 	manualSerialization := func(s *serializer.Serializer) {
-		s.WriteSliceOfObjects(testObj, defaultSeriMode, nil, testObj.LengthPrefixType(), defaultArrayRules, defaultErrProducer)
+		s.WriteSliceOfObjects(testObj, defaultSeriMode, nil, lenType, defaultArrayRules, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	ts := serix.TypeSettings{}.WithLengthPrefixType(lenType)
+	testEncode(t, manualSerialization, testObj, serix.WithTypeSettings(ts))
 }
 
 func TestEncode_Struct(t *testing.T) {
@@ -25,33 +28,15 @@ func TestEncode_Struct(t *testing.T) {
 	testObj := &SimpleStruct{
 		Bool:   true,
 		Num:    10,
-		String: String16LengthType("foo"),
+		String: "foo",
 	}
 	manualSerialization := func(s *serializer.Serializer) {
+		s.WriteNum(testObj.ObjectCode(), defaultErrProducer)
 		s.WriteBool(testObj.Bool, defaultErrProducer)
 		s.WriteNum(testObj.Num, defaultErrProducer)
-		s.WriteString(string(testObj.String), testObj.String.LengthPrefixType(), defaultErrProducer)
+		s.WriteString(string(testObj.String), serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
-}
-
-func TestEncode_StructWithTags(t *testing.T) {
-	t.Parallel()
-	testObj := &SimpleStructWithTags{
-		Bool:      true,
-		Num:       10,
-		String:    "foo",
-		ByteSlice: []byte{1, 2, 3},
-		ByteArray: [32]byte{},
-	}
-	manualSerialization := func(s *serializer.Serializer) {
-		s.WriteBool(testObj.Bool, defaultErrProducer)
-		s.WriteNum(testObj.Num, defaultErrProducer)
-		s.WriteString(testObj.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
-		s.WriteVariableByteSlice(testObj.ByteSlice, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer)
-		s.WriteBytes(testObj.ByteArray[:], defaultErrProducer)
-	}
-	testEncode(t, testObj, manualSerialization)
+	testEncode(t, manualSerialization, testObj)
 }
 
 func TestEncode_Interface(t *testing.T) {
@@ -62,7 +47,7 @@ func TestEncode_Interface(t *testing.T) {
 	manualSerialization := func(s *serializer.Serializer) {
 		s.WriteObject(testObj.Interface.(serializer.Serializable), defaultSeriMode, nil, defaultWriteGuard, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	testEncode(t, manualSerialization, testObj)
 }
 
 func TestEncode_BytesArray(t *testing.T) {
@@ -71,16 +56,18 @@ func TestEncode_BytesArray(t *testing.T) {
 	manualSerialization := func(s *serializer.Serializer) {
 		s.WriteBytes(testObj[:], defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	testEncode(t, manualSerialization, testObj)
 }
 
 func TestEncode_BytesSlice(t *testing.T) {
 	t.Parallel()
-	testObj := BytesSliceLengthType32{1, 2, 3, 4, 5}
+	testObj := []byte{1, 2, 3, 4, 5}
+	lenType := serializer.SeriLengthPrefixTypeAsUint32
 	manualSerialization := func(s *serializer.Serializer) {
-		s.WriteVariableByteSlice(testObj[:], testObj.LengthPrefixType(), defaultErrProducer)
+		s.WriteVariableByteSlice(testObj, lenType, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	ts := serix.TypeSettings{}.WithLengthPrefixType(lenType)
+	testEncode(t, manualSerialization, testObj, serix.WithTypeSettings(ts))
 }
 
 func TestEncode_Pointer(t *testing.T) {
@@ -93,7 +80,7 @@ func TestEncode_BigInt(t *testing.T) {
 	manualSerialization := func(s *serializer.Serializer) {
 		s.WriteUint256(testObj, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	testEncode(t, manualSerialization, testObj)
 }
 
 func TestEncode_Time(t *testing.T) {
@@ -102,14 +89,31 @@ func TestEncode_Time(t *testing.T) {
 	manualSerialization := func(s *serializer.Serializer) {
 		s.WriteTime(testObj, defaultErrProducer)
 	}
-	testEncode(t, testObj, manualSerialization)
+	testEncode(t, manualSerialization, testObj)
 }
 
 func TestEncode_Payload(t *testing.T) {
 
 }
 
-func TestEncode_EmbeddedStruct(t *testing.T) {
+func TestEncode_EmbeddedStructs(t *testing.T) {
+	t.Parallel()
+	testObj := &StructWithEmbeddedStructs{
+		//unexportedStruct: unexportedStruct{Foo: 1},
+		ExportedStruct: ExportedStruct{Bar: 2},
+	}
+	manualSerialization := func(s *serializer.Serializer) {
+		//s.WriteNum(testObj.unexportedStruct.Foo, defaultErrProducer)
+		s.WriteObject(testObj.ExportedStruct, defaultSeriMode, nil, defaultWriteGuard, defaultErrProducer)
+	}
+	testEncode(t, manualSerialization, testObj)
+}
+
+func TestEncode_Map(t *testing.T) {
+
+}
+
+func TestEncode_OrderedMap(t *testing.T) {
 
 }
 
@@ -131,8 +135,8 @@ func TestEncode_ArrayRules(t *testing.T) {
 
 type SerializationFunc func(s *serializer.Serializer)
 
-func testEncode(t testing.TB, testObj interface{}, manualSerializationFn SerializationFunc) {
-	got, err := testAPI.Encode(ctx, testObj)
+func testEncode(t testing.TB, manualSerializationFn SerializationFunc, testObj interface{}, opts ...serix.Option) {
+	got, err := testAPI.Encode(ctx, testObj, opts...)
 	require.NoError(t, err)
 	ser := serializer.NewSerializer()
 	manualSerializationFn(ser)

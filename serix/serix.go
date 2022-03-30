@@ -31,32 +31,15 @@ type SyntacticValidator interface {
 	Validate() error
 }
 
-type ArrayRulesProvider interface {
-	ArrayRules() *serializer.ArrayRules
-}
-
-type ObjectCodeProvider interface {
-	ObjectCode() interface{}
-}
-
-type LengthPrefixTypeProvider interface {
-	LengthPrefixType() serializer.SeriLengthPrefixType
-}
-
-type TypeDenotationTypeProvider interface {
-	TypeDenotation() serializer.TypeDenotationType
-}
-
-type LexicalOrderingProvider interface {
-	LexicalOrdering() bool
-}
-
 type API struct {
-	typesRegistryMutex sync.RWMutex
-	typesRegistry      map[reflect.Type]*interfaceRegistry
+	interfacesRegistryMutex sync.RWMutex
+	interfacesRegistry      map[reflect.Type]*interfaceObjects
+
+	typeSettingsRegistryMutex sync.RWMutex
+	typeSettingsRegistry      map[reflect.Type]TypeSettings
 }
 
-type interfaceRegistry struct {
+type interfaceObjects struct {
 	fromCodeToType map[interface{}]reflect.Type
 	fromTypeToCode map[reflect.Type]interface{}
 	typeDenotation serializer.TypeDenotationType
@@ -64,7 +47,8 @@ type interfaceRegistry struct {
 
 func NewAPI() *API {
 	api := &API{
-		typesRegistry: map[reflect.Type]*interfaceRegistry{},
+		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
+		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
 	}
 	return api
 }
@@ -151,33 +135,18 @@ func (ts TypeSettings) ArrayRules() *serializer.ArrayRules {
 	return ts.arrayRules
 }
 
-func (ts TypeSettings) fillFromImplementations(valueI interface{}) TypeSettings {
+func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.lengthPrefixType == nil {
-		if lptp, ok := valueI.(LengthPrefixTypeProvider); ok {
-			lengthType := lptp.LengthPrefixType()
-			ts.lengthPrefixType = &lengthType
-		}
+		ts.lengthPrefixType = other.lengthPrefixType
 	}
-
 	if ts.objectCode == nil {
-		if codeProvider, ok := valueI.(ObjectCodeProvider); ok {
-			objectCode := codeProvider.ObjectCode()
-			ts.objectCode = objectCode
-		}
+		ts.objectCode = other.objectCode
 	}
-
 	if ts.lexicalOrdering == nil {
-		if lop, ok := valueI.(LexicalOrderingProvider); ok {
-			lexicalOrdering := lop.LexicalOrdering()
-			ts.lexicalOrdering = &lexicalOrdering
-		}
+		ts.lexicalOrdering = other.lexicalOrdering
 	}
-
 	if ts.arrayRules == nil {
-		if arp, ok := valueI.(ArrayRulesProvider); ok {
-			ar := arp.ArrayRules()
-			ts.arrayRules = ar
-		}
+		ts.arrayRules = other.arrayRules
 	}
 	return ts
 }
@@ -223,7 +192,27 @@ func (api *API) DecodeJSON(b []byte, obj interface{}) error {
 	return nil
 }
 
-func (api *API) RegisterObjects(iType interface{}, objs ...ObjectCodeProvider) error {
+func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return errors.New("'obj' is a nil interface, it's need to be a valid non-interface type")
+	}
+	if isUnderlyingInterface(objType) {
+		return errors.New("'obj' is a pointer to an interface, it's need to be a valid non-interface type")
+	}
+	api.typeSettingsRegistryMutex.Lock()
+	defer api.typeSettingsRegistryMutex.Unlock()
+	api.typeSettingsRegistry[objType] = ts
+	return nil
+}
+
+func (api *API) getTypeSettings(objType reflect.Type) TypeSettings {
+	api.typeSettingsRegistryMutex.RLock()
+	defer api.typeSettingsRegistryMutex.RUnlock()
+	return api.typeSettingsRegistry[objType]
+}
+
+func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
 	ptrType := reflect.TypeOf(iType)
 	if ptrType == nil {
 		return errors.New("'iType' is a nil interface, it's need to be a pointer to an interface")
@@ -239,14 +228,15 @@ func (api *API) RegisterObjects(iType interface{}, objs ...ObjectCodeProvider) e
 	if len(objs) == 0 {
 		return nil
 	}
-	iRegistry := &interfaceRegistry{
+	iRegistry := &interfaceObjects{
 		fromCodeToType: make(map[interface{}]reflect.Type, len(objs)),
 		fromTypeToCode: make(map[reflect.Type]interface{}, len(objs)),
 	}
 
 	for i := range objs {
 		obj := objs[i]
-		objTypeDenotation, objCode, err := getTypeDenotationAndObjectCode(obj)
+		objType := reflect.TypeOf(obj)
+		objTypeDenotation, objCode, err := api.getTypeDenotationAndObjectCode(objType)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get type denotation for object %T", obj)
 		}
@@ -261,21 +251,36 @@ func (api *API) RegisterObjects(iType interface{}, objs ...ObjectCodeProvider) e
 				)
 			}
 		}
-		objType := reflect.TypeOf(obj)
 		iRegistry.fromCodeToType[objCode] = objType
 		iRegistry.fromTypeToCode[objType] = objCode
 	}
-	api.typesRegistryMutex.Lock()
-	defer api.typesRegistryMutex.Unlock()
-	api.typesRegistry[iTypeReflect] = iRegistry
+	api.interfacesRegistryMutex.Lock()
+	defer api.interfacesRegistryMutex.Unlock()
+	api.interfacesRegistry[iTypeReflect] = iRegistry
 	return nil
 }
 
-func getTypeDenotationAndObjectCode(obj ObjectCodeProvider) (serializer.TypeDenotationType, interface{}, error) {
-	objCode := obj.ObjectCode()
-	objCodeType := reflect.TypeOf(objCode)
+func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, interface{}, error) {
+	ts := api.getTypeSettings(objType)
+	objectCode := ts.ObjectCode()
+	if objectCode == nil {
+		return 0, nil, errors.Errorf(
+			"type settings for object %s doesn't contain object code, "+
+				"you must register object with its type settings first",
+			objType,
+		)
+	}
+	objTypeDenotation, err := getTypeDenotationType(objectCode)
+	if err != nil {
+		return 0, nil, errors.WithStack(err)
+	}
+	return objTypeDenotation, objectCode, nil
+}
+
+func getTypeDenotationType(objectCode interface{}) (serializer.TypeDenotationType, error) {
+	objCodeType := reflect.TypeOf(objectCode)
 	if objCodeType == nil {
-		return 0, nil, errors.Errorf("can't detect object code type for object %T", obj)
+		return 0, errors.New("can't detect type denotation type: object code is nil interface")
 	}
 	var objTypeDenotation serializer.TypeDenotationType
 	switch objCodeType.Kind() {
@@ -284,16 +289,17 @@ func getTypeDenotationAndObjectCode(obj ObjectCodeProvider) (serializer.TypeDeno
 	case reflect.Uint8:
 		objTypeDenotation = serializer.TypeDenotationByte
 	default:
-		return 0, nil, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
+		return 0, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
 			objCodeType, objCodeType.Kind())
 	}
-	return objTypeDenotation, objCodeType, nil
+
+	return objTypeDenotation, nil
 }
 
-func (api *API) getInterfaceRegistry(iType reflect.Type) *interfaceRegistry {
-	api.typesRegistryMutex.RLock()
-	defer api.typesRegistryMutex.RUnlock()
-	return api.typesRegistry[iType]
+func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
+	api.interfacesRegistryMutex.RLock()
+	defer api.interfacesRegistryMutex.RUnlock()
+	return api.interfacesRegistry[iType]
 }
 
 type structField struct {
@@ -372,6 +378,13 @@ func isUnderlyingStruct(t reflect.Type) bool {
 		t = t.Elem()
 	}
 	return t.Kind() == reflect.Struct
+}
+
+func isUnderlyingInterface(t reflect.Type) bool {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Interface
 }
 
 func parseStructTag(tag string) (tagSettings, error) {
