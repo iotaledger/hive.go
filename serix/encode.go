@@ -49,9 +49,11 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 func (api *API) encodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
 ) ([]byte, error) {
+	valueType := value.Type()
+	globalTS := api.getTypeSettings(valueType)
+	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
-		ts = ts.fillFromImplementations(valueI)
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			seri := serializer.NewSerializer()
 			return seri.WriteUint256(valueBigInt, func(err error) error {
@@ -73,26 +75,23 @@ func (api *API) encodeBasedOnType(
 				return errors.Wrap(err, "failed to write time to serializer")
 			}).Serialize()
 		}
-		return api.encodeStruct(ctx, value, valueI, ts, opts)
+		return api.encodeStruct(ctx, value, valueType, ts, opts)
 	case reflect.Slice:
-		return api.encodeSlice(ctx, value, valueI, value.Type(), ts, opts)
+		return api.encodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Map:
-		return api.encodeMap(ctx, value, valueI, value.Type(), ts, opts)
+		return api.encodeMap(ctx, value, valueType, ts, opts)
 	case reflect.Array:
 		value = sliceFromArray(value)
-		valueType := value.Type()
 		if valueType.AssignableTo(bytesType) {
 			seri := serializer.NewSerializer()
 			return seri.WriteBytes(value.Bytes(), func(err error) error {
 				return errors.Wrap(err, "failed to write array of bytes to serializer")
 			}).Serialize()
 		}
-		return api.encodeSlice(ctx, value, valueI, valueType, ts, opts)
+		return api.encodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Interface:
-		return api.encodeInterface(ctx, value, ts, opts)
+		return api.encodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
-		ts = ts.fillFromImplementations(valueI)
-		var lengthPrefixType serializer.SeriLengthPrefixType
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
 			return nil, errors.Errorf("in order to serialize 'string' type no LengthPrefixType was provided")
@@ -120,13 +119,14 @@ func (api *API) encodeBasedOnType(
 	}
 }
 
-func (api *API) encodeInterface(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
-	valueType := value.Type()
+func (api *API) encodeInterface(
+	ctx context.Context, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
+) ([]byte, error) {
 	elemValue := value.Elem()
 	if !elemValue.IsValid() {
 		return nil, errors.Errorf("can't serialize interface %s it must have underlying value", valueType)
 	}
-	registry := api.getInterfaceRegistry(valueType)
+	registry := api.getInterfaceObjects(valueType)
 	if registry == nil {
 		return nil, errors.Errorf("interface %s isn't registered", valueType)
 	}
@@ -143,23 +143,23 @@ func (api *API) encodeInterface(ctx context.Context, value reflect.Value, ts Typ
 }
 
 func (api *API) encodeStruct(
-	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	ts = ts.fillFromImplementations(valueI)
 	s := serializer.NewSerializer()
 	if objectCode := ts.ObjectCode(); objectCode != nil {
 		s.WriteNum(objectCode, func(err error) error {
 			return errors.Wrap(err, "failed to write object type code into serializer")
 		})
 	}
-	if err := api.encodeStructFields(ctx, s, value, opts); err != nil {
+	if err := api.encodeStructFields(ctx, s, value, valueType, opts); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return s.Serialize()
 }
 
-func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer, value reflect.Value, opts *options) error {
-	valueType := value.Type()
+func (api *API) encodeStructFields(
+	ctx context.Context, s *serializer.Serializer, value reflect.Value, valueType reflect.Type, opts *options,
+) error {
 	structFields, err := parseStructType(valueType)
 	if err != nil {
 		return errors.Wrapf(err, "can't parse struct type %s", valueType)
@@ -171,7 +171,7 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
 		if sField.isEmbeddedStruct && !sField.settings.nest {
-			if err := api.encodeStructFields(ctx, s, fieldValue, opts); err != nil {
+			if err := api.encodeStructFields(ctx, s, fieldValue, sField.fType, opts); err != nil {
 				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}
 			continue
@@ -216,9 +216,8 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 
 }
 
-func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
+func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-	ts = ts.fillFromImplementations(valueI)
 	lengthPrefixType, set := ts.LengthPrefixType()
 	if !set {
 		return nil, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
@@ -258,9 +257,8 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueI int
 	}).Serialize()
 }
 
-func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type,
+func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-	ts = ts.fillFromImplementations(valueI)
 	size := value.Len()
 	keys := value.MapKeys()
 
@@ -280,7 +278,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueI inter
 	}
 	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
 	ts = ts.WithArrayRules(arrayRules)
-	b, err := api.encodeSlice(ctx, valueSlice, slice, valueSlice.Type(), ts, opts)
+	b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
 	return b, errors.Wrapf(err, "failed to encode slice built from map %s", valueType)
 }
 
@@ -298,6 +296,6 @@ func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap,
 		return true
 	})
 	valueSlice := reflect.ValueOf(slice)
-	b, err := api.encodeSlice(ctx, valueSlice, slice, valueSlice.Type(), ts, opts)
+	b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
 	return b, errors.Wrap(err, "failed to encode slice built from an OrderedMap")
 }
