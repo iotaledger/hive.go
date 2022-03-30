@@ -170,7 +170,7 @@ func (api *API) encodeStructFields(ctx context.Context, s *serializer.Serializer
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbeddedStruct {
+		if sField.isEmbeddedStruct && !sField.settings.nest {
 			if err := api.encodeStructFields(ctx, s, fieldValue, opts); err != nil {
 				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}

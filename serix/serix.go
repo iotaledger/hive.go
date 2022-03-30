@@ -307,6 +307,7 @@ type structField struct {
 type tagSettings struct {
 	position  int
 	isPayload bool
+	nest      bool
 	ts        TypeSettings
 }
 
@@ -346,7 +347,11 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 					"struct field %s is invalid: 'payload' setting can't be used with embedded structs",
 					field.Name)
 			}
-
+		}
+		if tSettings.nest && isUnexported {
+			return nil, errors.Errorf(
+				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
+				field.Name)
 		}
 		structFields = append(structFields, structField{
 			name:             field.Name,
@@ -392,6 +397,8 @@ func parseStructTag(tag string) (tagSettings, error) {
 		switch partName {
 		case "payload":
 			settings.isPayload = true
+		case "nest":
+			settings.nest = true
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
