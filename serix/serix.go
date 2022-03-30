@@ -45,11 +45,18 @@ type interfaceObjects struct {
 	typeDenotation serializer.TypeDenotationType
 }
 
+var (
+	api     *API
+	apiOnce sync.Once
+)
+
 func NewAPI() *API {
-	api := &API{
-		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
-		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
-	}
+	apiOnce.Do(func() { // <-- atomic, does not allow repeating
+		api = &API{
+			interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
+			typeSettingsRegistry: map[reflect.Type]TypeSettings{},
+		}
+	})
 	return api
 }
 
