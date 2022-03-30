@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 	"github.com/pkg/errors"
+
+	"github.com/iotaledger/hive.go/datastructure/orderedmap"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -82,7 +83,7 @@ func (api *API) encodeBasedOnType(
 		return api.encodeMap(ctx, value, valueType, ts, opts)
 	case reflect.Array:
 		value = sliceFromArray(value)
-		if valueType.AssignableTo(bytesType) {
+		if value.Type().AssignableTo(bytesType) {
 			seri := serializer.NewSerializer()
 			return seri.WriteBytes(value.Bytes(), func(err error) error {
 				return errors.Wrap(err, "failed to write array of bytes to serializer")
