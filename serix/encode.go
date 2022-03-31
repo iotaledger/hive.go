@@ -9,8 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/datastructure/orderedmap"
-
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -62,9 +60,9 @@ func (api *API) encodeBasedOnType(
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
 		}
-		if valueOrderedMap, ok := valueI.(*orderedmap.OrderedMap); ok {
-			return api.encodeOrderedMap(ctx, valueOrderedMap, ts, opts)
-		}
+		//if valueOrderedMap, ok := valueI.(*orderedmap.OrderedMap[K comparable, V any]); ok {
+		//	return api.encodeOrderedMap(ctx, valueOrderedMap, ts, opts)
+		//}
 		elemValue := reflect.Indirect(value)
 		if !elemValue.IsValid() {
 			return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
@@ -261,26 +259,21 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
+	size := value.Len()
+	data := make([][]byte, size)
+	iter := value.MapRange()
+	for i := 0; iter.Next(); i++ {
+		key := iter.Key()
+		elem := iter.Value()
+		b, err := api.encodeMapKVPair(ctx, key, elem, opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		data[i] = b
+	}
 	lengthPrefixType, set := ts.LengthPrefixType()
 	if !set {
 		return nil, errors.Errorf("no LengthPrefixType was provided for map type %s", valueType)
-	}
-	size := value.Len()
-	keys := value.MapKeys()
-	data := make([][]byte, size)
-	for i, key := range keys {
-		keyBytes, err := api.encode(ctx, key, TypeSettings{}, opts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode key of map %s", valueType)
-		}
-		elem := value.MapIndex(key)
-		elemBytes, err := api.encode(ctx, elem, TypeSettings{}, opts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode element of map %s", valueType)
-		}
-		buf := bytes.NewBuffer(keyBytes)
-		buf.Write(elemBytes)
-		data[i] = buf.Bytes()
 	}
 	ts = ts.WithLexicalOrdering(true)
 	arrayRules := ts.ArrayRules()
@@ -298,21 +291,33 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}).Serialize()
 }
 
-func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap, ts TypeSettings, opts *options) ([]byte, error) {
-	//size := om.Size()
-	//
-	//slice := make([]*keyValuePair, size)
-	//var i int
-	//om.ForEach(func(key, value interface{}) bool {
-	//	slice[i] = &keyValuePair{
-	//		Key:   key,
-	//		Value: value,
-	//	}
-	//	i++
-	//	return true
-	//})
-	//valueSlice := reflect.ValueOf(slice)
-	//b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
-	//return b, errors.Wrap(err, "failed to encode slice built from an OrderedMap")
-	return nil, nil
+//func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap[K, V], ts TypeSettings, opts *options) ([]byte, error) {
+//	size := om.Size()
+//	var i int
+//	om.ForEach(func(key K, value V) bool {
+//		slice[i] = &keyValuePair{
+//			Key:   key,
+//			Value: value,
+//		}
+//		i++
+//		return true
+//	})
+//	valueSlice := reflect.ValueOf(slice)
+//	b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
+//	return b, errors.Wrap(err, "failed to encode slice built from an OrderedMap")
+//	return nil, nil
+//}
+
+func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
+	keyBytes, err := api.encode(ctx, key, TypeSettings{}, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+	}
+	elemBytes, err := api.encode(ctx, val, TypeSettings{}, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode map element of type %s", val.Type())
+	}
+	buf := bytes.NewBuffer(keyBytes)
+	buf.Write(elemBytes)
+	return buf.Bytes(), nil
 }
