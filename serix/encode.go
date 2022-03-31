@@ -51,7 +51,7 @@ func (api *API) encodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
 ) ([]byte, error) {
 	valueType := value.Type()
-	globalTS := api.getTypeSettings(valueType)
+	globalTS, _ := api.getTypeSettings(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -64,19 +64,16 @@ func (api *API) encodeBasedOnType(
 		if valueOrderedMap, ok := valueI.(*orderedmap.OrderedMap); ok {
 			return api.encodeOrderedMap(ctx, valueOrderedMap, ts, opts)
 		}
-		if value.IsNil() {
+		elemValue := reflect.Indirect(value)
+		if !elemValue.IsValid() {
 			return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
 		}
-		return api.encode(ctx, value.Elem(), ts, opts)
+		if elemValue.Kind() == reflect.Struct {
+			return api.encodeStruct(ctx, elemValue, elemValue.Interface(), elemValue.Type(), ts, opts)
+		}
 
 	case reflect.Struct:
-		if valueTime, ok := valueI.(time.Time); ok {
-			seri := serializer.NewSerializer()
-			return seri.WriteTime(valueTime, func(err error) error {
-				return errors.Wrap(err, "failed to write time to serializer")
-			}).Serialize()
-		}
-		return api.encodeStruct(ctx, value, valueType, ts, opts)
+		return api.encodeStruct(ctx, value, valueI, valueType, ts, opts)
 	case reflect.Slice:
 		return api.encodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Map:
@@ -117,8 +114,8 @@ func (api *API) encodeBasedOnType(
 			return errors.Wrap(err, "failed to write number value to serializer")
 		}).Serialize()
 	default:
-		return nil, errors.Errorf("can't encode type %T, unsupported kind %s", valueI, value.Kind())
 	}
+	return nil, errors.Errorf("can't encode: unsupported type %T", valueI)
 }
 
 func (api *API) encodeInterface(
@@ -145,8 +142,14 @@ func (api *API) encodeInterface(
 }
 
 func (api *API) encodeStruct(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
+	if valueTime, ok := valueI.(time.Time); ok {
+		seri := serializer.NewSerializer()
+		return seri.WriteTime(valueTime, func(err error) error {
+			return errors.Wrap(err, "failed to write time to serializer")
+		}).Serialize()
+	}
 	s := serializer.NewSerializer()
 	if objectCode := ts.ObjectCode(); objectCode != nil {
 		s.WriteNum(objectCode, func(err error) error {

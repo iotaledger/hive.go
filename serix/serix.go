@@ -199,19 +199,18 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	if objType == nil {
 		return errors.New("'obj' is a nil interface, it's need to be a valid non-interface type")
 	}
-	if isUnderlyingInterface(objType) {
-		return errors.New("'obj' is a pointer to an interface, it's need to be a valid non-interface type")
-	}
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
 	api.typeSettingsRegistry[objType] = ts
 	return nil
 }
 
-func (api *API) getTypeSettings(objType reflect.Type) TypeSettings {
+func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
+	objType = deRefPointer(objType)
 	api.typeSettingsRegistryMutex.RLock()
 	defer api.typeSettingsRegistryMutex.RUnlock()
-	return api.typeSettingsRegistry[objType]
+	ts, ok := api.typeSettingsRegistry[objType]
+	return ts, ok
 }
 
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
@@ -263,12 +262,18 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 }
 
 func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, interface{}, error) {
-	ts := api.getTypeSettings(objType)
+	ts, exists := api.getTypeSettings(objType)
+	if !exists {
+		return 0, nil, errors.Errorf(
+			"no type settings was found for object %s"+
+				"you must register object with its type settings first",
+			objType,
+		)
+	}
 	objectCode := ts.ObjectCode()
 	if objectCode == nil {
 		return 0, nil, errors.Errorf(
-			"type settings for object %s doesn't contain object code, "+
-				"you must register object with its type settings first",
+			"type settings for object %s doesn't contain object code",
 			objType,
 		)
 	}
@@ -375,20 +380,6 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 	return structFields, nil
 }
 
-func isUnderlyingStruct(t reflect.Type) bool {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t.Kind() == reflect.Struct
-}
-
-func isUnderlyingInterface(t reflect.Type) bool {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	return t.Kind() == reflect.Interface
-}
-
 func parseStructTag(tag string) (tagSettings, error) {
 	if tag == "" {
 		return tagSettings{}, errors.New("struct tag is empty")
@@ -455,4 +446,16 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 type keyValuePair struct {
 	Key   interface{} `serix:"0"`
 	Value interface{} `serix:"1"`
+}
+
+func isUnderlyingStruct(t reflect.Type) bool {
+	t = deRefPointer(t)
+	return t.Kind() == reflect.Struct
+}
+
+func deRefPointer(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
 }

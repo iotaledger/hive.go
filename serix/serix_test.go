@@ -2,14 +2,12 @@ package serix_test
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"reflect"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serix"
-	"github.com/stretchr/testify/require"
 )
 
 const defaultSeriMode = serializer.DeSeriModePerformValidation
@@ -66,9 +64,7 @@ type SimpleStruct struct {
 	String string `serix:"2,lengthPrefixType=uint16"`
 }
 
-func (ss SimpleStruct) ObjectCode() interface{} {
-	return uint32(0)
-}
+var simpleStructObjectCode = uint32(0)
 
 type Interface interface {
 	Method()
@@ -76,11 +72,9 @@ type Interface interface {
 
 type InterfaceImpl struct{}
 
-func (ii *InterfaceImpl) Method() {}
+var interfaceImplObjectCode = uint32(1)
 
-func (ii *InterfaceImpl) ObjectCode() interface{} {
-	return uint32(1)
-}
+func (ii *InterfaceImpl) Method() {}
 
 func (ii *InterfaceImpl) MarshalJSON() ([]byte, error) {
 	//TODO implement me
@@ -100,7 +94,7 @@ func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerial
 func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	//TODO implement me
 	ser := serializer.NewSerializer()
-	ser.WriteNum(ii.ObjectCode(), defaultErrProducer)
+	ser.WriteNum(interfaceImplObjectCode, defaultErrProducer)
 	return ser.Serialize()
 }
 
@@ -111,8 +105,8 @@ type StructWithInterface struct {
 type BytesArray16 [16]byte
 
 type StructWithEmbeddedStructs struct {
-	//unexportedStruct `serix:"0"`
-	ExportedStruct `serix:"1,nest"`
+	unexportedStruct `serix:"0"`
+	ExportedStruct   `serix:"1,nest"`
 }
 
 type unexportedStruct struct {
@@ -122,6 +116,8 @@ type unexportedStruct struct {
 type ExportedStruct struct {
 	Bar int64 `serix:"0"`
 }
+
+var exportedStructObjectCode = uint32(3)
 
 func (es ExportedStruct) MarshalJSON() ([]byte, error) {
 	//TODO implement me
@@ -138,69 +134,30 @@ func (es ExportedStruct) Deserialize(data []byte, deSeriMode serializer.DeSerial
 	panic("implement me")
 }
 
-func (es ExportedStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WriteNum(es.ObjectCode(), defaultErrProducer)
-	s.WriteNum(es.Bar, defaultErrProducer)
-	return s.Serialize()
-}
-
-func (es ExportedStruct) ObjectCode() interface{} {
-	return uint32(3)
-}
-
-func init() {
-	testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
-}
-
-type S struct {
-	SubS
-	SubSs
-	Foo string
-}
-
-type SubS struct {
-}
-
-func (ss SubS) MarshalJSON() ([]byte, error) {
-	return json.Marshal("subs")
-}
-
-func (ss *SubS) UnmarshalJSON(b []byte) error {
-	fmt.Println(string(b))
-	return nil
-}
-
-type SubSs struct {
-}
-
-func (ss SubSs) MarshalJSON() ([]byte, error) {
-	return json.Marshal("subss")
-}
-
-func (ss *SubSs) UnmarshalJSON(b []byte) error {
-	fmt.Println(string(b))
-	return nil
-}
-
-func TestTMP(t *testing.T) {
-	s := S{SubS: SubS{}, Foo: "foo"}
-	var i interface{}
-	i = s
-	m, ok := i.(json.Marshaler)
-	t.Log(m, ok)
-	b, err := json.Marshal(s)
-	require.NoError(t, err)
-	t.Log(string(b))
-	newS := new(S)
-	err = json.Unmarshal(b, newS)
-	require.NoError(t, err)
-	t.Logf("%+v", newS)
-	st := reflect.TypeOf(s)
-	sv := reflect.ValueOf(s)
-	mm, ok := st.MethodByName("marshalJSON")
-	t.Log(mm, ok)
-	mmv := sv.MethodByName("marshalJSON")
-	t.Log(mmv)
-
+func TestMain(m *testing.M) {
+	exitCode := func() int {
+		if err := testAPI.RegisterTypeSettings(
+			SimpleStruct{},
+			serix.TypeSettings{}.WithObjectCode(simpleStructObjectCode),
+		); err != nil {
+			log.Panic(err)
+		}
+		if err := testAPI.RegisterTypeSettings(
+			InterfaceImpl{},
+			serix.TypeSettings{}.WithObjectCode(interfaceImplObjectCode),
+		); err != nil {
+			log.Panic(err)
+		}
+		if err := testAPI.RegisterTypeSettings(
+			ExportedStruct{},
+			serix.TypeSettings{}.WithObjectCode(exportedStructObjectCode),
+		); err != nil {
+			log.Panic(err)
+		}
+		if err := testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil)); err != nil {
+			log.Panic(err)
+		}
+		return m.Run()
+	}()
+	os.Exit(exitCode)
 }
