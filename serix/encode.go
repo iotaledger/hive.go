@@ -86,7 +86,7 @@ func (api *API) encodeBasedOnType(
 		sliceValueType := sliceValue.Type()
 		if sliceValueType.AssignableTo(bytesType) {
 			seri := serializer.NewSerializer()
-			return seri.WriteBytes(value.Bytes(), func(err error) error {
+			return seri.WriteBytes(sliceValue.Bytes(), func(err error) error {
 				return errors.Wrap(err, "failed to write array of bytes to serializer")
 			}).Serialize()
 		}
