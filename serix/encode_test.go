@@ -31,7 +31,7 @@ func TestEncode_Struct(t *testing.T) {
 		String: "foo",
 	}
 	manualSerialization := func(s *serializer.Serializer) {
-		s.WriteNum(testObj.ObjectCode(), defaultErrProducer)
+		s.WriteNum(simpleStructObjectCode, defaultErrProducer)
 		s.WriteBool(testObj.Bool, defaultErrProducer)
 		s.WriteNum(testObj.Num, defaultErrProducer)
 		s.WriteString(string(testObj.String), serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
@@ -99,12 +99,13 @@ func TestEncode_Payload(t *testing.T) {
 func TestEncode_EmbeddedStructs(t *testing.T) {
 	t.Parallel()
 	testObj := &StructWithEmbeddedStructs{
-		//unexportedStruct: unexportedStruct{Foo: 1},
-		ExportedStruct: ExportedStruct{Bar: 2},
+		unexportedStruct: unexportedStruct{Foo: 1},
+		ExportedStruct:   ExportedStruct{Bar: 2},
 	}
 	manualSerialization := func(s *serializer.Serializer) {
-		//s.WriteNum(testObj.unexportedStruct.Foo, defaultErrProducer)
-		s.WriteObject(testObj.ExportedStruct, defaultSeriMode, nil, defaultWriteGuard, defaultErrProducer)
+		s.WriteNum(testObj.unexportedStruct.Foo, defaultErrProducer)
+		s.WriteNum(exportedStructObjectCode, defaultErrProducer)
+		s.WriteNum(testObj.ExportedStruct.Bar, defaultErrProducer)
 	}
 	testEncode(t, manualSerialization, testObj)
 }
