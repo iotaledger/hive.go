@@ -215,11 +215,18 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 }
 
 func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
-	objType = deRefPointer(objType)
 	api.typeSettingsRegistryMutex.RLock()
 	defer api.typeSettingsRegistryMutex.RUnlock()
 	ts, ok := api.typeSettingsRegistry[objType]
-	return ts, ok
+	if ok {
+		return ts, true
+	}
+	if objType.Kind() == reflect.Ptr {
+		objType = objType.Elem()
+		ts, ok = api.typeSettingsRegistry[objType]
+		return ts, ok
+	}
+	return TypeSettings{}, false
 }
 
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
