@@ -245,9 +245,13 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 	if len(objs) == 0 {
 		return nil
 	}
-	iRegistry := &interfaceObjects{
-		fromCodeToType: make(map[interface{}]reflect.Type, len(objs)),
-		fromTypeToCode: make(map[reflect.Type]interface{}, len(objs)),
+
+	iRegistry, exists := api.interfacesRegistry[iTypeReflect]
+	if !exists {
+		iRegistry = &interfaceObjects{
+			fromCodeToType: make(map[interface{}]reflect.Type, len(objs)),
+			fromTypeToCode: make(map[reflect.Type]interface{}, len(objs)),
+		}
 	}
 
 	for i := range objs {
@@ -259,14 +263,12 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 		}
 		if i == 0 {
 			iRegistry.typeDenotation = objTypeDenotation
-		} else {
-			if iRegistry.typeDenotation != objTypeDenotation {
-				firstObj := objs[0]
-				return errors.Errorf(
-					"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
-					firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
-				)
-			}
+		} else if iRegistry.typeDenotation != objTypeDenotation {
+			firstObj := objs[0]
+			return errors.Errorf(
+				"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
+				firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
+			)
 		}
 		iRegistry.fromCodeToType[objCode] = objType
 		iRegistry.fromTypeToCode[objType] = objCode
