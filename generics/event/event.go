@@ -123,4 +123,5 @@ func (e *Event[T]) detachID(closureID uint64) {
 	e.beforeHooks.Delete(closureID)
 	e.hooks.Delete(closureID)
 	e.afterHooks.Delete(closureID)
+	e.eventHandlers.Delete(closureID)
 }
