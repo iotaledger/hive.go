@@ -82,14 +82,15 @@ func (api *API) encodeBasedOnType(
 	case reflect.Map:
 		return api.encodeMap(ctx, value, valueType, ts, opts)
 	case reflect.Array:
-		value = sliceFromArray(value)
-		if value.Type().AssignableTo(bytesType) {
+		sliceValue := sliceFromArray(value)
+		sliceValueType := sliceValue.Type()
+		if sliceValueType.AssignableTo(bytesType) {
 			seri := serializer.NewSerializer()
 			return seri.WriteBytes(value.Bytes(), func(err error) error {
 				return errors.Wrap(err, "failed to write array of bytes to serializer")
 			}).Serialize()
 		}
-		return api.encodeSlice(ctx, value, valueType, ts, opts)
+		return api.encodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
