@@ -153,6 +153,15 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	return ts
 }
 
+func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
+	mode := opts.toMode()
+	lexicalOrdering, set := ts.LexicalOrdering()
+	if set && lexicalOrdering {
+		mode |= serializer.DeSeriModePerformLexicalOrdering
+	}
+	return mode
+}
+
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
@@ -441,11 +450,6 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 	sliceValue := reflect.MakeSlice(sliceType, arrType.Len(), arrType.Len())
 	reflect.Copy(sliceValue, arrValue)
 	return sliceValue
-}
-
-type keyValuePair struct {
-	Key   interface{} `serix:"0"`
-	Value interface{} `serix:"1"`
 }
 
 func isUnderlyingStruct(t reflect.Type) bool {

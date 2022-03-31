@@ -1,6 +1,7 @@
 package serix
 
 import (
+	"bytes"
 	"context"
 	"math/big"
 	"reflect"
@@ -250,11 +251,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 		arrayRules = new(serializer.ArrayRules)
 	}
 	seri := serializer.NewSerializer()
-	serializationMode := opts.toMode()
-	lexicalOrdering, set := ts.LexicalOrdering()
-	if set && lexicalOrdering {
-		serializationMode |= serializer.DeSeriModePerformLexicalOrdering
-	}
+	serializationMode := ts.toMode(opts)
 	return seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
 		return errors.Wrapf(err,
 			"serializer failed to write slice of objects %s as slice of byte slices", valueType,
@@ -264,18 +261,27 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
+	lengthPrefixType, set := ts.LengthPrefixType()
+	if !set {
+		return nil, errors.Errorf("no LengthPrefixType was provided for map type %s", valueType)
+	}
 	size := value.Len()
 	keys := value.MapKeys()
-
-	slice := make([]*keyValuePair, size)
+	data := make([][]byte, size)
 	for i, key := range keys {
-		mapValue := value.MapIndex(key)
-		slice[i] = &keyValuePair{
-			Key:   key.Interface(),
-			Value: mapValue.Interface(),
+		keyBytes, err := api.encode(ctx, key, TypeSettings{}, opts)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode key of map %s", valueType)
 		}
+		elem := value.MapIndex(key)
+		elemBytes, err := api.encode(ctx, elem, TypeSettings{}, opts)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode element of map %s", valueType)
+		}
+		buf := bytes.NewBuffer(keyBytes)
+		buf.Write(elemBytes)
+		data[i] = buf.Bytes()
 	}
-	valueSlice := reflect.ValueOf(slice)
 	ts = ts.WithLexicalOrdering(true)
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
@@ -283,24 +289,30 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
 	ts = ts.WithArrayRules(arrayRules)
-	b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
-	return b, errors.Wrapf(err, "failed to encode slice built from map %s", valueType)
+	serializationMode := ts.toMode(opts)
+	seri := serializer.NewSerializer()
+	return seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
+		return errors.Wrapf(err,
+			"serializer failed to write map of objects %s as slice of byte slices", valueType,
+		)
+	}).Serialize()
 }
 
 func (api *API) encodeOrderedMap(ctx context.Context, om *orderedmap.OrderedMap, ts TypeSettings, opts *options) ([]byte, error) {
-	size := om.Size()
-
-	slice := make([]*keyValuePair, size)
-	var i int
-	om.ForEach(func(key, value interface{}) bool {
-		slice[i] = &keyValuePair{
-			Key:   key,
-			Value: value,
-		}
-		i++
-		return true
-	})
-	valueSlice := reflect.ValueOf(slice)
-	b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
-	return b, errors.Wrap(err, "failed to encode slice built from an OrderedMap")
+	//size := om.Size()
+	//
+	//slice := make([]*keyValuePair, size)
+	//var i int
+	//om.ForEach(func(key, value interface{}) bool {
+	//	slice[i] = &keyValuePair{
+	//		Key:   key,
+	//		Value: value,
+	//	}
+	//	i++
+	//	return true
+	//})
+	//valueSlice := reflect.ValueOf(slice)
+	//b, err := api.encodeSlice(ctx, valueSlice, valueSlice.Type(), ts, opts)
+	//return b, errors.Wrap(err, "failed to encode slice built from an OrderedMap")
+	return nil, nil
 }
