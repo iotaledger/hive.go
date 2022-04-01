@@ -466,6 +466,65 @@ func isUnderlyingStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct
 }
 
+type iterableMeta struct {
+	sizeMethodIndex    int
+	forEachMethodIndex int
+	iterFuncType       reflect.Type
+}
+
+func getOrderedMapMeta(t reflect.Type) (iterableMeta, bool) {
+	if t.Kind() == reflect.Interface {
+		return iterableMeta{}, false
+	}
+	forEachMethod, ok := t.MethodByName("ForEach")
+	if !ok {
+		return iterableMeta{}, false
+	}
+	sizeMethod, ok := t.MethodByName("Size")
+	if !ok {
+		return iterableMeta{}, false
+	}
+	sizeType := sizeMethod.Type
+	if sizeType.NumIn() != 1 {
+		return iterableMeta{}, false
+	}
+	if sizeType.NumOut() != 1 {
+		return iterableMeta{}, false
+	}
+	if sizeType.Out(0) != reflect.TypeOf(int(0)) {
+		return iterableMeta{}, false
+	}
+	forEachType := forEachMethod.Type
+	if forEachType.NumIn() != 2 {
+		return iterableMeta{}, false
+	}
+	if forEachType.NumOut() != 1 {
+		return iterableMeta{}, false
+	}
+	if forEachType.Out(0) != reflect.TypeOf(true) {
+		return iterableMeta{}, false
+	}
+	iterFuncType := forEachType.In(1)
+	if iterFuncType.Kind() != reflect.Func {
+		return iterableMeta{}, false
+	}
+	if iterFuncType.NumIn() != 2 {
+		return iterableMeta{}, false
+	}
+	if iterFuncType.NumOut() != 1 {
+		return iterableMeta{}, false
+	}
+	if iterFuncType.Out(0) != reflect.TypeOf(true) {
+		return iterableMeta{}, false
+	}
+	im := iterableMeta{
+		sizeMethodIndex:    sizeMethod.Index,
+		forEachMethodIndex: forEachMethod.Index,
+		iterFuncType:       iterFuncType,
+	}
+	return im, true
+}
+
 func deRefPointer(t reflect.Type) reflect.Type {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
