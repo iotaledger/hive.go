@@ -35,7 +35,7 @@ func (t AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (e
 	for i := 0; i < int(elementCount); i++ {
 		var element T
 
-		if element, err = element.NewFromMarshalUtil(marshalUtil); err != nil {
+		if element, err = element.Unmarshal(marshalUtil); err != nil {
 			return errors.Errorf("failed to parse TransactionID: %w", err)
 		}
 		t.Add(element)
@@ -176,6 +176,6 @@ func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 type AdvancedSetElement[T any] interface {
 	comparable
 
-	NewFromMarshalUtil(util *marshalutil.MarshalUtil) (new T, err error)
+	Unmarshal(util *marshalutil.MarshalUtil) (new T, err error)
 	Bytes() (serialized []byte)
 }
