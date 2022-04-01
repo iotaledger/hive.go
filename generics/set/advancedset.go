@@ -9,11 +9,11 @@ import (
 	"github.com/iotaledger/hive.go/types"
 )
 
-type AdvancedSet[T AdvancedSetElement] struct {
+type AdvancedSet[T AdvancedSetElement[T]] struct {
 	*orderedmap.OrderedMap[T, types.Empty]
 }
 
-func NewAdvancedSet[T AdvancedSetElement](elements ...T) (new *AdvancedSet[T]) {
+func NewAdvancedSet[T AdvancedSetElement[T]](elements ...T) (new *AdvancedSet[T]) {
 	new = &AdvancedSet[T]{orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
 		new.Set(element, types.Void)
@@ -34,7 +34,8 @@ func (t AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (e
 
 	for i := 0; i < int(elementCount); i++ {
 		var element T
-		if err = element.FromMarshalUtil(marshalUtil); err != nil {
+
+		if element, err = element.NewFromMarshalUtil(marshalUtil); err != nil {
 			return errors.Errorf("failed to parse TransactionID: %w", err)
 		}
 		t.Add(element)
@@ -172,9 +173,9 @@ func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 	return walker.New[T](false).PushAll(t.Slice()...)
 }
 
-type AdvancedSetElement interface {
+type AdvancedSetElement[T any] interface {
 	comparable
 
-	FromMarshalUtil(util *marshalutil.MarshalUtil) (err error)
+	NewFromMarshalUtil(util *marshalutil.MarshalUtil) (new T, err error)
 	Bytes() (serialized []byte)
 }
