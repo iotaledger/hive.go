@@ -32,5 +32,10 @@ func RocksDB(t *testing.T) (kvstore.KVStore, error) {
 	counter := databaseCounter[t.Name()]
 	databaseCounterMutex.Unlock()
 
-	return rocksdb.New(db).WithRealm([]byte(t.Name() + strconv.Itoa(counter))), nil
+	storeWithRealm, err := rocksdb.New(db).WithRealm([]byte(t.Name() + strconv.Itoa(counter)))
+	if err != nil {
+		return nil, err
+	}
+
+	return storeWithRealm, nil
 }
