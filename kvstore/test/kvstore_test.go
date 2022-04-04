@@ -813,7 +813,13 @@ func TestStoreClosed(t *testing.T) {
 		store, err := testStore(t, dbImplementation, prefix)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
+		batchedMutation, err := store.Batched()
+		require.NoError(t, err, "used db: %s", dbImplementation)
+
 		require.NoError(t, store.Close(), "used db: %s", dbImplementation)
+
+		err = batchedMutation.Commit()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
 
 		_, err = store.WithRealm(kvstore.EmptyPrefix)
 		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)

@@ -3,9 +3,8 @@ package badger
 import (
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/dgraph-io/badger/v2"
+	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/byteutils"
@@ -281,6 +280,7 @@ func (s *badgerStore) Batched() (kvstore.BatchedMutations, error) {
 		dbPrefix:         s.dbPrefix,
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
+		closed:           s.closed,
 	}, nil
 }
 
@@ -292,6 +292,7 @@ type batchedMutations struct {
 	setOperations    map[string]kvstore.Value
 	deleteOperations map[string]types.Empty
 	operationsMutex  sync.Mutex
+	closed           *atomic.Bool
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
@@ -327,6 +328,10 @@ func (b *batchedMutations) Cancel() {
 }
 
 func (b *batchedMutations) Commit() error {
+	if b.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	writeBatch := b.store.NewWriteBatch()
 
 	b.operationsMutex.Lock()

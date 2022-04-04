@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
 	"go.etcd.io/bbolt"
 	"go.uber.org/atomic"
 
@@ -285,6 +284,7 @@ func (s *boltStore) Batched() (kvstore.BatchedMutations, error) {
 		bucket:           s.Realm(),
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
+		closed:           s.closed,
 	}, nil
 }
 
@@ -296,6 +296,7 @@ type batchedMutations struct {
 	bucket           []byte
 	setOperations    map[string]kvstore.Value
 	deleteOperations map[string]types.Empty
+	closed           *atomic.Bool
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
@@ -331,6 +332,10 @@ func (b *batchedMutations) Cancel() {
 }
 
 func (b *batchedMutations) Commit() (err error) {
+	if b.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	b.Lock()
 	defer b.Unlock()
 

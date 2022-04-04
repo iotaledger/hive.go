@@ -176,6 +176,7 @@ func (s *mapDB) Batched() (kvstore.BatchedMutations, error) {
 		kvStore:          s,
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
+		closed:           s.closed,
 	}, nil
 }
 
@@ -190,6 +191,7 @@ type batchedMutations struct {
 	kvStore          *mapDB
 	setOperations    map[string]kvstore.Value
 	deleteOperations map[string]types.Empty
+	closed           *atomic.Bool
 
 	sets    []kvtuple
 	deletes []kvtuple
@@ -228,6 +230,10 @@ func (b *batchedMutations) Cancel() {
 }
 
 func (b *batchedMutations) Commit() error {
+	if b.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	b.Lock()
 	b.kvStore.Lock()
 	defer b.kvStore.Unlock()
