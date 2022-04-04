@@ -45,7 +45,7 @@ func (t AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (e
 }
 
 func (t *AdvancedSet[T]) IsEmpty() (empty bool) {
-	return t == nil || t.OrderedMap == nil || t.OrderedMap.Size() == 0
+	return t.OrderedMap.Size() == 0
 }
 
 func (t *AdvancedSet[T]) Add(element T) (added bool) {
@@ -74,10 +74,6 @@ func (t *AdvancedSet[T]) DeleteAll(other *AdvancedSet[T]) (removedElements *Adva
 }
 
 func (t *AdvancedSet[T]) ForEach(callback func(element T) (err error)) (err error) {
-	if t.OrderedMap == nil {
-		return nil
-	}
-
 	t.OrderedMap.ForEach(func(element T, _ types.Empty) bool {
 		if err = callback(element); err != nil {
 			return false
@@ -143,9 +139,6 @@ func (t *AdvancedSet[T]) Slice() (slice []T) {
 
 func (t *AdvancedSet[T]) Bytes() (serialized []byte) {
 	marshalUtil := marshalutil.New()
-	if t.OrderedMap == nil {
-		return marshalUtil.WriteUint64(0).Bytes()
-	}
 
 	marshalUtil.WriteUint64(uint64(t.Size()))
 	_ = t.ForEach(func(element T) (err error) {
