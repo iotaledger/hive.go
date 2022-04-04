@@ -2,8 +2,9 @@ package bolt
 
 import (
 	"bytes"
-	"errors"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"go.etcd.io/bbolt"
 	"go.uber.org/atomic"

@@ -4,10 +4,12 @@
 package rocksdb
 
 import (
-	"errors"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/linxGnu/grocksdb"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -38,7 +40,7 @@ func (s *rocksDBStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 		instance: s.instance,
 		closed:   s.closed,
 		dbPrefix: realm,
-	}
+	}, nil
 }
 
 func (s *rocksDBStore) Realm() []byte {
@@ -315,5 +317,5 @@ func (b *batchedMutations) Commit() error {
 	return b.store.db.Write(b.store.wo, writeBatch)
 }
 
-var _ kvstore.KVStore = &rocksDB{}
+var _ kvstore.KVStore = &rocksDBStore{}
 var _ kvstore.BatchedMutations = &batchedMutations{}

@@ -1,8 +1,9 @@
 package kvstore
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 var (

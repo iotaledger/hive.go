@@ -1,8 +1,9 @@
 package badger
 
 import (
-	"errors"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/dgraph-io/badger/v2"
 	"go.uber.org/atomic"

@@ -1,9 +1,10 @@
 package objectstorage
 
 import (
-	"errors"
 	"sync"
 	"unsafe"
+
+	"github.com/pkg/errors"
 
 	"go.uber.org/atomic"
 

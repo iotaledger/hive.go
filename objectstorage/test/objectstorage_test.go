@@ -2,7 +2,6 @@ package test
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strconv"
@@ -10,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
