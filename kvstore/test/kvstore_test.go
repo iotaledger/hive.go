@@ -12,6 +12,7 @@ import (
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
+	bucket_store "github.com/iotaledger/hive.go/kvstore/bucket"
 	"github.com/iotaledger/hive.go/kvstore/debug"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/kvstore/pebble"
@@ -56,6 +57,13 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvsto
 		db, err := rocksdb.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		return rocksdb.New(db).WithRealm(realm)
+
+	case "bucket":
+		bucket, err := bucket_store.New([]kvstore.KVStore{mapdb.NewMapDB(), mapdb.NewMapDB(), mapdb.NewMapDB()}, bucket_store.WithDeleteKeyInOtherBucketsOnSet(true))
+		if err != nil {
+			panic(err)
+		}
+		return bucket.WithRealm(realm)
 
 	case "debug":
 		return debug.New(mapdb.NewMapDB(), func(command debug.Command, parameters ...[]byte) {
