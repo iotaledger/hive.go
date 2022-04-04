@@ -23,20 +23,20 @@ type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
 
-type BytesValidator interface {
-	ValidateBytes([]byte) error
-}
-
-type SyntacticValidator interface {
-	Validate() error
-}
-
 type API struct {
 	interfacesRegistryMutex sync.RWMutex
 	interfacesRegistry      map[reflect.Type]*interfaceObjects
 
 	typeSettingsRegistryMutex sync.RWMutex
 	typeSettingsRegistry      map[reflect.Type]TypeSettings
+
+	validatorsRegistryMutex sync.RWMutex
+	validatorsRegistry      map[reflect.Type]validators
+}
+
+type validators struct {
+	bytesValidator     reflect.Value
+	syntacticValidator reflect.Value
 }
 
 type interfaceObjects struct {
@@ -51,6 +51,7 @@ func NewAPI() *API {
 	api := &API{
 		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
 		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
+		validatorsRegistry:   map[reflect.Type]validators{},
 	}
 	return api
 }
@@ -59,6 +60,8 @@ var (
 	bytesType     = reflect.TypeOf([]byte(nil))
 	bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
 	timeType      = reflect.TypeOf(time.Time{})
+	errorType     = reflect.TypeOf((*error)(nil)).Elem()
+	boolType      = reflect.TypeOf(false)
 )
 
 type Option func(o *options)
@@ -203,10 +206,134 @@ func (api *API) DecodeJSON(b []byte, obj interface{}) error {
 	return nil
 }
 
+func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn interface{}, syntacticValidatorFn interface{}) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return errors.New("'obj' is a nil interface, it's need to be a valid type")
+	}
+	bytesValidatorValue, err := parseValidatorFunc(objType, bytesValidatorFn)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse bytesValidatorFn")
+	}
+	syntacticValidatorValue, err := parseValidatorFunc(objType, syntacticValidatorFn)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse syntacticValidatorFn")
+	}
+	vldtrs := validators{}
+	if bytesValidatorValue.IsValid() {
+		if err := checkBytesValidatorSignature(bytesValidatorValue); err != nil {
+			return errors.WithStack(err)
+		}
+		vldtrs.bytesValidator = bytesValidatorValue
+	}
+	if syntacticValidatorValue.IsValid() {
+		if err := checkSyntacticValidatorSignature(syntacticValidatorValue); err != nil {
+			return errors.WithStack(err)
+		}
+		vldtrs.syntacticValidator = syntacticValidatorValue
+	}
+	api.validatorsRegistryMutex.Lock()
+	defer api.validatorsRegistryMutex.Unlock()
+	api.validatorsRegistry[objType] = vldtrs
+	return nil
+}
+
+func parseValidatorFunc(obType reflect.Type, validatorFn interface{}) (reflect.Value, error) {
+	if validatorFn == nil {
+		return reflect.Value{}, nil
+	}
+	funcValue := reflect.ValueOf(validatorFn)
+	if !funcValue.IsValid() || funcValue.IsZero() {
+		return reflect.Value{}, nil
+	}
+	if funcValue.Kind() != reflect.Func {
+		return reflect.Value{}, errors.Errorf(
+			"validator must be a function, got %T(%s)", validatorFn, funcValue.Kind(),
+		)
+	}
+	funcType := funcValue.Type()
+	if funcType.NumIn() == 0 {
+		return reflect.Value{}, errors.Errorf("validator func must have at least one argument")
+	}
+	firstArgumentType := funcType.In(0)
+	if firstArgumentType != obType {
+		return reflect.Value{}, errors.Errorf(
+			"validator func's first argument must have the same type as the object it's been registered for, "+
+				"argumentType=%s, objectType=%s", firstArgumentType, obType,
+		)
+	}
+	if funcType.NumOut() != 1 {
+		return reflect.Value{}, errors.Errorf("validator func must have one return value, got %d", funcType.NumOut())
+	}
+	returnType := funcType.Out(0)
+	if returnType != errorType {
+		return reflect.Value{}, errors.Errorf("validator func must have 'error' return type, got %s", returnType)
+	}
+	return funcValue, nil
+}
+
+func checkBytesValidatorSignature(funcValue reflect.Value) error {
+	funcType := funcValue.Type()
+	if funcType.NumIn() != 2 {
+		return errors.Errorf("bytesValidatorFn must have two arguments, got %d", funcType.NumIn())
+	}
+	secondArgumentType := funcType.In(1)
+	if secondArgumentType != bytesType {
+		return errors.Errorf("bytesValidatorFn's second argument must be bytes, got %s", secondArgumentType)
+	}
+	return nil
+}
+
+func checkSyntacticValidatorSignature(funcValue reflect.Value) error {
+	funcType := funcValue.Type()
+	if funcType.NumIn() != 1 {
+		return errors.Errorf("syntacticValidatorFn must have one argument, got %d", funcType.NumIn())
+	}
+	return nil
+}
+
+func (api *API) callBytesValidator(value reflect.Value, valueType reflect.Type, bytes []byte) error {
+	api.validatorsRegistryMutex.RLock()
+	defer api.validatorsRegistryMutex.RUnlock()
+	bytesValidator := api.validatorsRegistry[valueType].bytesValidator
+	if !bytesValidator.IsValid() {
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+			value = value.Elem()
+			bytesValidator = api.validatorsRegistry[valueType].bytesValidator
+		}
+	}
+	if bytesValidator.IsValid() {
+		if err := bytesValidator.Call([]reflect.Value{value, reflect.ValueOf(bytes)})[0].Interface().(error); err != nil {
+			return errors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
+		}
+	}
+	return nil
+}
+
+func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Type) error {
+	api.validatorsRegistryMutex.RLock()
+	defer api.validatorsRegistryMutex.RUnlock()
+	syntacticValidator := api.validatorsRegistry[valueType].syntacticValidator
+	if !syntacticValidator.IsValid() {
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+			value = value.Elem()
+			syntacticValidator = api.validatorsRegistry[valueType].syntacticValidator
+		}
+	}
+	if syntacticValidator.IsValid() {
+		if err := syntacticValidator.Call([]reflect.Value{value})[0].Interface().(error); err != nil {
+			return errors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
+		}
+	}
+	return nil
+}
+
 func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return errors.New("'obj' is a nil interface, it's need to be a valid non-interface type")
+		return errors.New("'obj' is a nil interface, it's need to be a valid type")
 	}
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
