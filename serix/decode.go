@@ -9,11 +9,10 @@ import (
 
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, opts *options) (int, error) {
 	valueI := value.Interface()
+	valueType := value.Type()
 	if opts.validation {
-		if bytesValidator, ok := valueI.(BytesValidator); ok {
-			if err := bytesValidator.ValidateBytes(b); err != nil {
-				return 0, errors.Wrap(err, "pre-deserialization bytes validation failed")
-			}
+		if err := api.callBytesValidator(value, valueType, b); err != nil {
+			return 0, errors.Wrap(err, "pre-deserialization validation failed")
 		}
 	}
 	var bytesRead int
@@ -31,10 +30,8 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, opts 
 		}
 	}
 	if opts.validation {
-		if validator, ok := valueI.(SyntacticValidator); ok {
-			if err := validator.Validate(); err != nil {
-				return 0, errors.Wrap(err, "post-deserialization syntactic validation failed")
-			}
+		if err := api.callSyntacticValidator(value, valueType); err != nil {
+			return 0, errors.Wrap(err, "post-deserialization validation failed")
 		}
 	}
 

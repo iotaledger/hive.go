@@ -14,11 +14,10 @@ import (
 
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
 	valueI := value.Interface()
+	valueType := value.Type()
 	if opts.validation {
-		if validator, ok := valueI.(SyntacticValidator); ok {
-			if err := validator.Validate(); err != nil {
-				return nil, errors.Wrap(err, "pre-serialization syntactic validation failed")
-			}
+		if err := api.callSyntacticValidator(value, valueType); err != nil {
+			return nil, errors.Wrap(err, "pre-serialization validation failed")
 		}
 	}
 	var bytes []byte
@@ -30,16 +29,14 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		}
 	} else {
 		var err error
-		bytes, err = api.encodeBasedOnType(ctx, value, valueI, ts, opts)
+		bytes, err = api.encodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}
 	if opts.validation {
-		if bytesValidator, ok := valueI.(BytesValidator); ok {
-			if err := bytesValidator.ValidateBytes(bytes); err != nil {
-				return nil, errors.Wrap(err, "post-serialization bytes validation failed")
-			}
+		if err := api.callBytesValidator(value, valueType, bytes); err != nil {
+			return nil, errors.Wrap(err, "post-serialization validation failed")
 		}
 	}
 
@@ -47,9 +44,8 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 }
 
 func (api *API) encodeBasedOnType(
-	ctx context.Context, value reflect.Value, valueI interface{}, ts TypeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	valueType := value.Type()
 	globalTS, _ := api.getTypeSettings(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
