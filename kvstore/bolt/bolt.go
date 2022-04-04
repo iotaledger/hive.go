@@ -30,11 +30,11 @@ func New(db *bbolt.DB) kvstore.KVStore {
 	}
 }
 
-func (s *boltStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *boltStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	return &boltStore{
 		instance: s.instance,
 		bucket:   realm,
-	}
+	}, nil
 }
 
 func (s *boltStore) Realm() kvstore.Realm {
@@ -42,10 +42,6 @@ func (s *boltStore) Realm() kvstore.Realm {
 		return []byte("bolt")
 	}
 	return s.bucket
-}
-
-// Shutdown marks the store as shutdown.
-func (s *boltStore) Shutdown() {
 }
 
 // getIterFuncs returns the function pointers for the iteration based on the given settings.
@@ -215,7 +211,15 @@ func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	})
 }
 
-func (s *boltStore) Batched() kvstore.BatchedMutations {
+func (s *boltStore) Flush() error {
+	return s.instance.Sync()
+}
+
+func (s *boltStore) Close() error {
+	return s.instance.Close()
+}
+
+func (s *boltStore) Batched() (kvstore.BatchedMutations, error) {
 	// we don't use BoltDB's Batch(), because it basically is only
 	// a way to let BoltDB decide how to make a batched update itself,
 	// which is only useful if Batch() is called from multiple goroutines.
@@ -227,15 +231,7 @@ func (s *boltStore) Batched() kvstore.BatchedMutations {
 		bucket:           s.Realm(),
 		setOperations:    make(map[string]kvstore.Value),
 		deleteOperations: make(map[string]types.Empty),
-	}
-}
-
-func (s *boltStore) Flush() error {
-	return s.instance.Sync()
-}
-
-func (s *boltStore) Close() error {
-	return s.instance.Close()
+	}, nil
 }
 
 // batchedMutations is a wrapper to do a batched update on a BoltDB.
@@ -346,3 +342,6 @@ func (b *batchedMutations) Commit() (err error) {
 
 	return
 }
+
+var _ kvstore.KVStore = &boltStore{}
+var _ kvstore.BatchedMutations = &batchedMutations{}

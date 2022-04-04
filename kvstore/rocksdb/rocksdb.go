@@ -27,7 +27,7 @@ func New(db *RocksDB) kvstore.KVStore {
 	}
 }
 
-func (s *rocksDBStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *rocksDBStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	return &rocksDBStore{
 		instance: s.instance,
 		dbPrefix: realm,
@@ -41,10 +41,6 @@ func (s *rocksDBStore) Realm() []byte {
 // builds a key usable using the realm and the given prefix.
 func (s *rocksDBStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
-}
-
-// Shutdown marks the store as shutdown.
-func (s *rocksDBStore) Shutdown() {
 }
 
 // getIterFuncs returns the function pointers for the iteration based on the given settings.
@@ -189,22 +185,22 @@ func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return s.instance.db.Write(s.instance.wo, writeBatch)
 }
 
-func (s *rocksDBStore) Batched() kvstore.BatchedMutations {
-	return &batchedMutations{
-		kvStore:          s,
-		store:            s.instance,
-		dbPrefix:         s.dbPrefix,
-		setOperations:    make(map[string]kvstore.Value),
-		deleteOperations: make(map[string]types.Empty),
-	}
-}
-
 func (s *rocksDBStore) Flush() error {
 	return s.instance.Flush()
 }
 
 func (s *rocksDBStore) Close() error {
 	return s.instance.Close()
+}
+
+func (s *rocksDBStore) Batched() (kvstore.BatchedMutations, error) {
+	return &batchedMutations{
+		kvStore:          s,
+		store:            s.instance,
+		dbPrefix:         s.dbPrefix,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
+	}, nil
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a rocksDB.
@@ -266,3 +262,6 @@ func (b *batchedMutations) Commit() error {
 
 	return b.store.db.Write(b.store.wo, writeBatch)
 }
+
+var _ kvstore.KVStore = &rocksDB{}
+var _ kvstore.BatchedMutations = &batchedMutations{}

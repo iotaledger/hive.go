@@ -24,11 +24,11 @@ func New(db *pebble.DB) kvstore.KVStore {
 	}
 }
 
-func (s *pebbleStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *pebbleStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	return &pebbleStore{
 		instance: s.instance,
 		dbPrefix: realm,
-	}
+	}, nil
 }
 
 func (s *pebbleStore) Realm() []byte {
@@ -38,10 +38,6 @@ func (s *pebbleStore) Realm() []byte {
 // builds a key usable for the pebble instance using the realm and the given prefix.
 func (s *pebbleStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
-}
-
-// Shutdown marks the store as shutdown.
-func (s *pebbleStore) Shutdown() {
 }
 
 func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
@@ -184,22 +180,22 @@ func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return s.instance.DeleteRange(start, end, pebble.NoSync)
 }
 
-func (s *pebbleStore) Batched() kvstore.BatchedMutations {
-	return &batchedMutations{
-		kvStore:          s,
-		store:            s.instance,
-		dbPrefix:         s.dbPrefix,
-		setOperations:    make(map[string]kvstore.Value),
-		deleteOperations: make(map[string]types.Empty),
-	}
-}
-
 func (s *pebbleStore) Flush() error {
 	return s.instance.Flush()
 }
 
 func (s *pebbleStore) Close() error {
 	return s.instance.Close()
+}
+
+func (s *pebbleStore) Batched() (kvstore.BatchedMutations, error) {
+	return &batchedMutations{
+		kvStore:          s,
+		store:            s.instance,
+		dbPrefix:         s.dbPrefix,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
+	}, nil
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a pebbleDB.
@@ -266,3 +262,6 @@ func (b *batchedMutations) Commit() error {
 
 	return writeBatch.Commit(pebble.NoSync)
 }
+
+var _ kvstore.KVStore = &pebbleStore{}
+var _ kvstore.BatchedMutations = &batchedMutations{}

@@ -168,7 +168,11 @@ func (bw *BatchedWriter) runBatchWriter() {
 
 	for bw.running.Load() || bw.scheduledCount.Load() != 0 {
 
-		batchCollector := newBatchCollector(bw.store.Batched(), bw.scheduledCount, bw.opts.batchSize)
+		batchedMutation, err := bw.store.Batched()
+		if err != nil {
+			panic(err)
+		}
+		batchCollector := newBatchCollector(batchedMutation, bw.scheduledCount, bw.opts.batchSize)
 		batchWriterTimeoutChan := time.After(bw.opts.batchTimeout)
 		shouldFlush := false
 
@@ -215,8 +219,13 @@ func (bw *BatchedWriter) runBatchWriter() {
 						if err := batchCollector.Commit(); err != nil {
 							panic(err)
 						}
+
 						// create a new collector to batch the remaining elements
-						batchCollector = newBatchCollector(bw.store.Batched(), bw.scheduledCount, bw.opts.batchSize)
+						batchedMutation, err := bw.store.Batched()
+						if err != nil {
+							panic(err)
+						}
+						batchCollector = newBatchCollector(batchedMutation, bw.scheduledCount, bw.opts.batchSize)
 					}
 
 				// no elements left

@@ -25,19 +25,15 @@ func NewMapDB() kvstore.KVStore {
 	}
 }
 
-func (s *mapDB) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *mapDB) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	return &mapDB{
 		m:     s.m, // use the same underlying map
 		realm: realm,
-	}
+	}, nil
 }
 
 func (s *mapDB) Realm() kvstore.Realm {
 	return byteutils.ConcatBytes(s.realm)
-}
-
-// Shutdown marks the store as shutdown.
-func (s *mapDB) Shutdown() {
 }
 
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
@@ -113,20 +109,20 @@ func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	return nil
 }
 
-func (s *mapDB) Batched() kvstore.BatchedMutations {
-	return &batchedMutations{
-		kvStore:          s,
-		setOperations:    make(map[string]kvstore.Value),
-		deleteOperations: make(map[string]types.Empty),
-	}
-}
-
 func (s *mapDB) Flush() error {
 	return nil
 }
 
 func (s *mapDB) Close() error {
 	return nil
+}
+
+func (s *mapDB) Batched() (kvstore.BatchedMutations, error) {
+	return &batchedMutations{
+		kvStore:          s,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
+	}, nil
 }
 
 type kvtuple struct {
@@ -199,3 +195,6 @@ func (b *batchedMutations) Commit() error {
 
 	return nil
 }
+
+var _ kvstore.KVStore = &mapDB{}
+var _ kvstore.BatchedMutations = &batchedMutations{}

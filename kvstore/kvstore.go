@@ -54,13 +54,10 @@ type BatchedMutations interface {
 // KVStore persists, deletes and retrieves data.
 type KVStore interface {
 	// WithRealm is a factory method for using the same underlying storage with a different realm.
-	WithRealm(realm Realm) KVStore
+	WithRealm(realm Realm) (KVStore, error)
 
 	// Realm returns the configured realm.
 	Realm() Realm
-
-	// Shutdown marks the store as shutdown.
-	Shutdown()
 
 	// Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 	// Optionally the direction for the iteration can be passed (default: IterDirectionForward).
@@ -88,14 +85,14 @@ type KVStore interface {
 	// DeletePrefix deletes all the entries matching the given key prefix.
 	DeletePrefix(prefix KeyPrefix) error
 
-	// Batched returns a BatchedMutations interface to execute batched mutations.
-	Batched() BatchedMutations
-
 	// Flush persists all outstanding write operations to disc.
 	Flush() error
 
 	// Close closes the database file handles.
 	Close() error
+
+	// Batched returns a BatchedMutations interface to execute batched mutations.
+	Batched() (BatchedMutations, error)
 }
 
 // GetIterDirection returns the direction to use for an iteration.
@@ -145,7 +142,10 @@ func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
 
 	// init batched mutation
 	currentBatchSize := 0
-	batchedMutation := target.Batched()
+	batchedMutation, err := target.Batched()
+	if err != nil {
+		return err
+	}
 
 	var innerErr error
 	source.Iterate(EmptyPrefix, func(key, value Value) bool {
@@ -162,7 +162,10 @@ func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
 
 			// init new batched mutation
 			currentBatchSize = 0
-			batchedMutation = target.Batched()
+			batchedMutation, err = target.Batched()
+			if err != nil {
+				innerErr = err
+			}
 		}
 
 		return innerErr == nil

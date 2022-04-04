@@ -37,7 +37,7 @@ const (
 	usedDatabase = dbMapDB
 )
 
-func testStorage(t require.TestingT, realm []byte) kvstore.KVStore {
+func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbBadger:
 		dir, err := ioutil.TempDir("", "database.badger")
@@ -165,8 +165,11 @@ func TestConcurrentCreateDelete(t *testing.T) {
 // TestTransaction tests if Transactions with the same identifier can not run in parallel and that Transactions and
 // RTransactions wait for each other.
 func TestTransaction(t *testing.T) {
+	storage, err := testStorage(t, []byte("TestStoreIfAbsentStorage"))
+	require.NoError(t, err)
+
 	// initialize ObjectStorage
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	objects := objectstorage.New(storage, testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -309,7 +312,11 @@ func TestComputeIfAbsentReturningNil(t *testing.T) {
 	testCount := 50
 
 	// initialize ObjectStorage
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	storage, err := testStorage(t, []byte("TestStoreIfAbsentStorage"))
+	require.NoError(t, err)
+
+	// initialize ObjectStorage
+	objects := objectstorage.New(storage, testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -408,7 +415,11 @@ func TestComputeIfAbsentReturningNil(t *testing.T) {
 }
 
 func TestPrefixIteration(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
+	storage, err := testStorage(t, []byte("TestStoreIfAbsentStorage"))
+	require.NoError(t, err)
+
+	// initialize ObjectStorage
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -496,7 +507,11 @@ func TestPrefixIteration(t *testing.T) {
 }
 
 func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("Nakamoto")), testObjectFactory,
+	storage, err := testStorage(t, []byte("Nakamoto"))
+	require.NoError(t, err)
+
+	// initialize ObjectStorage
+	objects := objectstorage.New(storage, testObjectFactory,
 		objectstorage.PartitionKey(1, 1, 1),
 		objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
@@ -547,9 +562,11 @@ func TestStorableObjectFlags(t *testing.T) {
 }
 
 func BenchmarkStore(b *testing.B) {
+	storage, err := testStorage(b, []byte("TestObjectStorage"))
+	require.NoError(b, err)
 
 	// create our storage
-	objects := objectstorage.New(testStorage(b, []byte("TestObjectStorage")), testObjectFactory)
+	objects := objectstorage.New(storage, testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		b.Error(err)
 	}
@@ -564,7 +581,10 @@ func BenchmarkStore(b *testing.B) {
 }
 
 func BenchmarkLoad(b *testing.B) {
-	objects := objectstorage.New(testStorage(b, []byte("TestObjectStorage")), testObjectFactory)
+	storage, err := testStorage(b, []byte("TestObjectStorage"))
+	require.NoError(b, err)
+
+	objects := objectstorage.New(storage, testObjectFactory)
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(newTestObject("Hans"+strconv.Itoa(i), uint32(i))).Release()
@@ -582,7 +602,10 @@ func BenchmarkLoad(b *testing.B) {
 }
 
 func BenchmarkLoadCachingEnabled(b *testing.B) {
-	objects := objectstorage.New(testStorage(b, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
+	storage, err := testStorage(b, []byte("TestObjectStorage"))
+	require.NoError(b, err)
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.CacheTime(500*time.Millisecond))
 
 	for i := 0; i < b.N; i++ {
 		objects.Store(newTestObject("Hans"+strconv.Itoa(0), uint32(i)))
@@ -598,7 +621,10 @@ func BenchmarkLoadCachingEnabled(b *testing.B) {
 }
 
 func TestStoreIfAbsent(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreIfAbsentStorage")), testObjectFactory)
+	storage, err := testStorage(t, []byte("TestStoreIfAbsentStorage"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory)
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -626,7 +652,10 @@ func TestStoreOnCreation(t *testing.T) {
 	//
 	// without StoreOnCreation
 	//
-	objects := objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(false), objectstorage.CacheTime(2*time.Second))
+	storage, err := testStorage(t, []byte("TestStoreOnCreation"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.StoreOnCreation(false), objectstorage.CacheTime(2*time.Second))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -653,7 +682,10 @@ func TestStoreOnCreation(t *testing.T) {
 	//
 	// with StoreOnCreation
 	//
-	objects = objectstorage.New(testStorage(t, []byte("TestStoreOnCreation")), testObjectFactory, objectstorage.StoreOnCreation(true), objectstorage.CacheTime(2*time.Second))
+	storage, err = testStorage(t, []byte("TestStoreOnCreation"))
+	require.NoError(t, err)
+
+	objects = objectstorage.New(storage, testObjectFactory, objectstorage.StoreOnCreation(true), objectstorage.CacheTime(2*time.Second))
 	if err := objects.Prune(); err != nil {
 		t.Error(err)
 	}
@@ -681,7 +713,10 @@ func TestStoreOnCreation(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
+	storage, err := testStorage(t, []byte("TestObjectStorage"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory)
 	objects.Store(newTestObject("Hans", 33)).Release()
 
 	cachedObject := objects.Load([]byte("Hans"))
@@ -703,7 +738,10 @@ func TestDelete(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
+	storage, err := testStorage(t, []byte("TestObjectStorage"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory)
 	objects.Store(newTestObject("Hans", 33)).Release()
 
 	var wg sync.WaitGroup
@@ -747,7 +785,10 @@ func TestStoreIfAbsentTriggersOnce(t *testing.T) {
 		workerCount := 50
 
 		// initialize testObject storage
-		objectsStorage := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true), objectstorage.LeakDetectionEnabled(true, objectstorage.LeakDetectionOptions{
+		storage, err := testStorage(t, []byte("TestObjectStorage"))
+		require.NoError(t, err)
+
+		objectsStorage := objectstorage.New(storage, testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true), objectstorage.LeakDetectionEnabled(true, objectstorage.LeakDetectionOptions{
 			MaxConsumersPerObject: 100,
 			MaxConsumerHoldTime:   5 * time.Second,
 		}))
@@ -787,7 +828,10 @@ func TestStoreIfAbsentTriggersOnce(t *testing.T) {
 }
 
 func TestEvictionBug(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true))
+	storage, err := testStorage(t, []byte("TestObjectStorage"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory, objectstorage.CacheTime(0), objectstorage.PersistenceEnabled(true))
 
 	testCount := 12001 // fails (if not, make the number bigger)
 
@@ -844,7 +888,10 @@ func TestEvictionBug(t *testing.T) {
 }
 
 func TestDeleteAndCreate(t *testing.T) {
-	objects := objectstorage.New(testStorage(t, []byte("TestObjectStorage")), testObjectFactory)
+	storage, err := testStorage(t, []byte("TestObjectStorage"))
+	require.NoError(t, err)
+
+	objects := objectstorage.New(storage, testObjectFactory)
 
 	for i := 0; i < 5000; i++ {
 		objects.Store(newTestObject("Hans", 33)).Release()
@@ -882,7 +929,8 @@ func TestDeleteAndCreate(t *testing.T) {
 
 func TestForEachWithPrefix(t *testing.T) {
 
-	storage := testStorage(t, []byte("TestForEachWithPrefix"))
+	storage, err := testStorage(t, []byte("TestForEachWithPrefix"))
+	require.NoError(t, err)
 
 	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
@@ -926,7 +974,8 @@ func TestForEachWithPrefix(t *testing.T) {
 
 func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
-	storage := testStorage(t, []byte("TestForEachKeyOnlyWithPrefix"))
+	storage, err := testStorage(t, []byte("TestForEachKeyOnlyWithPrefix"))
+	require.NoError(t, err)
 
 	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {
@@ -969,7 +1018,8 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 
 func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 
-	storage := testStorage(t, []byte("TestPrefixIterationWithPrefixSkippingCache"))
+	storage, err := testStorage(t, []byte("TestPrefixIterationWithPrefixSkippingCache"))
+	require.NoError(t, err)
 
 	objects := objectstorage.New(storage, testObjectFactory, objectstorage.PartitionKey(1, 1), objectstorage.LeakDetectionEnabled(true))
 	if err := objects.Prune(); err != nil {

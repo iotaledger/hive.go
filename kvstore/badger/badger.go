@@ -25,11 +25,11 @@ func New(db *badger.DB) kvstore.KVStore {
 	}
 }
 
-func (s *badgerStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *badgerStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	return &badgerStore{
 		instance: s.instance,
 		dbPrefix: realm,
-	}
+	}, nil
 }
 
 func (s *badgerStore) Realm() []byte {
@@ -39,10 +39,6 @@ func (s *badgerStore) Realm() []byte {
 // builds a key usable for the badger instance using the realm and the given prefix.
 func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix {
 	return byteutils.ConcatBytes(s.dbPrefix, prefix)
-}
-
-// Shutdown marks the store as shutdown.
-func (s *badgerStore) Shutdown() {
 }
 
 // getIterFuncs returns the function pointers for the iteration based on the given settings.
@@ -216,22 +212,22 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	})
 }
 
-func (s *badgerStore) Batched() kvstore.BatchedMutations {
-	return &batchedMutations{
-		kvStore:          s,
-		store:            s.instance,
-		dbPrefix:         s.dbPrefix,
-		setOperations:    make(map[string]kvstore.Value),
-		deleteOperations: make(map[string]types.Empty),
-	}
-}
-
 func (s *badgerStore) Flush() error {
 	return s.instance.Sync()
 }
 
 func (s *badgerStore) Close() error {
 	return s.instance.Close()
+}
+
+func (s *badgerStore) Batched() (kvstore.BatchedMutations, error) {
+	return &batchedMutations{
+		kvStore:          s,
+		store:            s.instance,
+		dbPrefix:         s.dbPrefix,
+		setOperations:    make(map[string]kvstore.Value),
+		deleteOperations: make(map[string]types.Empty),
+	}, nil
 }
 
 // batchedMutations is a wrapper around a WriteBatch of a BadgerDB.
@@ -298,3 +294,6 @@ func (b *batchedMutations) Commit() error {
 
 	return writeBatch.Flush()
 }
+
+var _ kvstore.KVStore = &badgerStore{}
+var _ kvstore.BatchedMutations = &batchedMutations{}
