@@ -99,7 +99,7 @@ func (d *DAGMutex[T]) unregisterMutex(id T) (mutex *sync.RWMutex) {
 
 	mutex, mutexExists := d.mutexes[id]
 	if !mutexExists {
-		panic(fmt.Errorf("called Unlock or RUnlock too often for entity with %s", id))
+		panic(fmt.Errorf("called Unlock or RUnlock too often for entity with %v", id))
 	}
 
 	d.consumerCounter[id]--
