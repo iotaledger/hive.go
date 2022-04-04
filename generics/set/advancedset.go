@@ -1,8 +1,11 @@
 package set
 
 import (
+	"strings"
+
 	"github.com/cockroachdb/errors"
 
+	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/generics/orderedmap"
 	"github.com/iotaledger/hive.go/generics/walker"
 	"github.com/iotaledger/hive.go/marshalutil"
@@ -150,16 +153,12 @@ func (t *AdvancedSet[T]) Bytes() (serialized []byte) {
 }
 
 func (t *AdvancedSet[T]) String() (humanReadable string) {
-	/*
-		elementStrings := generics.Map(t.Slice(), T.String)
-		if len(elementStrings) == 0 {
-			return "AdvancedSet()"
-		}
+	elementStrings := lo.Map(t.Slice(), T.String)
+	if len(elementStrings) == 0 {
+		return "AdvancedSet()"
+	}
 
-		return "AdvancedSet(" + strings.Join(elementStrings, ", ") + ")"
-	*/
-
-	return ""
+	return "AdvancedSet(" + strings.Join(elementStrings, ", ") + ")"
 }
 
 func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
@@ -171,4 +170,5 @@ type AdvancedSetElement[T any] interface {
 
 	Unmarshal(util *marshalutil.MarshalUtil) (new T, err error)
 	Bytes() (serialized []byte)
+	String() (humanReadable string)
 }
