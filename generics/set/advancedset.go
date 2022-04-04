@@ -45,7 +45,7 @@ func (t AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (e
 }
 
 func (t *AdvancedSet[T]) IsEmpty() (empty bool) {
-	return t.OrderedMap == nil || t.OrderedMap.Size() == 0
+	return t == nil || t.OrderedMap == nil || t.OrderedMap.Size() == 0
 }
 
 func (t *AdvancedSet[T]) Add(element T) (added bool) {
