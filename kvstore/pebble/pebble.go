@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/pebble"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -14,6 +15,7 @@ import (
 // pebbleStore implements the KVStore interface around a pebble instance.
 type pebbleStore struct {
 	instance *pebble.DB
+	closed   *atomic.Bool
 	dbPrefix []byte
 }
 
@@ -21,12 +23,18 @@ type pebbleStore struct {
 func New(db *pebble.DB) kvstore.KVStore {
 	return &pebbleStore{
 		instance: db,
+		closed:   atomic.NewBool(false),
 	}
 }
 
 func (s *pebbleStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &pebbleStore{
 		instance: s.instance,
+		closed:   s.closed,
 		dbPrefix: realm,
 	}, nil
 }
@@ -69,6 +77,10 @@ func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	start, end := s.getIterBounds(prefix)
 
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
@@ -91,6 +103,10 @@ func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 // IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	start, end := s.getIterBounds(prefix)
 
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
@@ -111,10 +127,18 @@ func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 }
 
 func (s *pebbleStore) Clear() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 
 	if err != nil {
@@ -134,10 +158,18 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *pebbleStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Set(byteutils.ConcatBytes(s.dbPrefix, key), value, pebble.NoSync)
 }
 
 func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
+	if s.closed.Load() {
+		return false, kvstore.ErrStoreClosed
+	}
+
 	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 	if err == pebble.ErrNotFound {
 		return false, nil
@@ -155,10 +187,18 @@ func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *pebbleStore) Delete(key kvstore.Key) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Delete(byteutils.ConcatBytes(s.dbPrefix, key), pebble.NoSync)
 }
 
 func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	start, end := s.getIterBounds(prefix)
 
 	if start == nil {
@@ -181,14 +221,27 @@ func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 }
 
 func (s *pebbleStore) Flush() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Flush()
 }
 
 func (s *pebbleStore) Close() error {
+	if s.closed.Swap(true) {
+		// was already closed
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Close()
 }
 
 func (s *pebbleStore) Batched() (kvstore.BatchedMutations, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &batchedMutations{
 		kvStore:          s,
 		store:            s.instance,

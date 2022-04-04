@@ -8,6 +8,7 @@ import (
 var (
 	// ErrKeyNotFound is returned when an op. doesn't find the given key.
 	ErrKeyNotFound = errors.New("key not found")
+	ErrStoreClosed = errors.New("trying to access closed kvstore")
 
 	EmptyPrefix = KeyPrefix{}
 )

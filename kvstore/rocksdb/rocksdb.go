@@ -18,18 +18,25 @@ import (
 type rocksDBStore struct {
 	instance *RocksDB
 	dbPrefix []byte
+	closed   *atomic.Bool
 }
 
 // New creates a new KVStore with the underlying RocksDB.
 func New(db *RocksDB) kvstore.KVStore {
 	return &rocksDBStore{
 		instance: db,
+		closed:   atomic.NewBool(false),
 	}
 }
 
 func (s *rocksDBStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &rocksDBStore{
 		instance: s.instance,
+		closed:   s.closed,
 		dbPrefix: realm,
 	}
 }
@@ -86,6 +93,10 @@ func (s *rocksDBStore) getIterFuncs(it *grocksdb.Iterator, keyPrefix []byte, ite
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
@@ -114,6 +125,10 @@ func (s *rocksDBStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.It
 // IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	it := s.instance.db.NewIterator(s.instance.ro)
 	defer it.Close()
 
@@ -136,10 +151,18 @@ func (s *rocksDBStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstor
 }
 
 func (s *rocksDBStore) Clear() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *rocksDBStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	v, err := s.instance.db.GetBytes(s.instance.ro, byteutils.ConcatBytes(s.dbPrefix, key))
 	if err != nil {
 		return nil, err
@@ -151,10 +174,18 @@ func (s *rocksDBStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *rocksDBStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.db.Put(s.instance.wo, byteutils.ConcatBytes(s.dbPrefix, key), value)
 }
 
 func (s *rocksDBStore) Has(key kvstore.Key) (bool, error) {
+	if s.closed.Load() {
+		return false, kvstore.ErrStoreClosed
+	}
+
 	v, err := s.instance.db.Get(s.instance.ro, byteutils.ConcatBytes(s.dbPrefix, key))
 	defer v.Free()
 	if err != nil {
@@ -164,10 +195,18 @@ func (s *rocksDBStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *rocksDBStore) Delete(key kvstore.Key) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.db.Delete(s.instance.wo, byteutils.ConcatBytes(s.dbPrefix, key))
 }
 
 func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	keyPrefix := s.buildKeyPrefix(prefix)
 
 	writeBatch := grocksdb.NewWriteBatch()
@@ -186,14 +225,27 @@ func (s *rocksDBStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 }
 
 func (s *rocksDBStore) Flush() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Flush()
 }
 
 func (s *rocksDBStore) Close() error {
+	if s.closed.Swap(true) {
+		// was already closed
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Close()
 }
 
 func (s *rocksDBStore) Batched() (kvstore.BatchedMutations, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &batchedMutations{
 		kvStore:          s,
 		store:            s.instance,

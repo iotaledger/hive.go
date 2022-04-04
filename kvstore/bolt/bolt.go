@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"go.etcd.io/bbolt"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -20,6 +21,7 @@ const (
 // boltStore implements the KVStore interface around a BoltDB instance.
 type boltStore struct {
 	instance *bbolt.DB
+	closed   *atomic.Bool
 	bucket   []byte
 }
 
@@ -27,12 +29,18 @@ type boltStore struct {
 func New(db *bbolt.DB) kvstore.KVStore {
 	return &boltStore{
 		instance: db,
+		closed:   atomic.NewBool(false),
 	}
 }
 
 func (s *boltStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &boltStore{
 		instance: s.instance,
+		closed:   s.closed,
 		bucket:   realm,
 	}, nil
 }
@@ -117,12 +125,20 @@ func (s boltStore) iterate(prefix kvstore.KeyPrefix, copyValues bool, kvConsumer
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *boltStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.iterate(prefix, true, kvConsumerFunc, iterDirection...)
 }
 
 // IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	// same as with values but we simply don't copy them
 	return s.iterate(prefix, false, func(key kvstore.Key, _ kvstore.Value) bool {
 		return consumerFunc(key)
@@ -130,6 +146,10 @@ func (s *boltStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.I
 }
 
 func (s *boltStore) Clear() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		if tx.Bucket(s.Realm()) == nil {
 			return nil
@@ -139,6 +159,10 @@ func (s *boltStore) Clear() error {
 }
 
 func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	var value []byte
 	if err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
@@ -160,6 +184,10 @@ func (s *boltStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(s.Realm())
 		if err != nil {
@@ -170,6 +198,10 @@ func (s *boltStore) Set(key kvstore.Key, value kvstore.Value) error {
 }
 
 func (s *boltStore) Has(key kvstore.Key) (bool, error) {
+	if s.closed.Load() {
+		return false, kvstore.ErrStoreClosed
+	}
+
 	var has bool
 	err := s.instance.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
@@ -183,6 +215,10 @@ func (s *boltStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *boltStore) Delete(key kvstore.Key) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -196,6 +232,10 @@ func (s *boltStore) Delete(key kvstore.Key) error {
 }
 
 func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(s.Realm())
 		if b == nil {
@@ -212,14 +252,27 @@ func (s *boltStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 }
 
 func (s *boltStore) Flush() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Sync()
 }
 
 func (s *boltStore) Close() error {
+	if s.closed.Swap(true) {
+		// was already closed
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Close()
 }
 
 func (s *boltStore) Batched() (kvstore.BatchedMutations, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	// we don't use BoltDB's Batch(), because it basically is only
 	// a way to let BoltDB decide how to make a batched update itself,
 	// which is only useful if Batch() is called from multiple goroutines.

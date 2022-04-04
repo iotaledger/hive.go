@@ -805,3 +805,50 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 		require.Equal(t, count, verifyCount, "used db: %s", dbImplementation)
 	}
 }
+
+func TestStoreClosed(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	for _, dbImplementation := range dbImplementations {
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err, "used db: %s", dbImplementation)
+
+		require.NoError(t, store.Close(), "used db: %s", dbImplementation)
+
+		_, err = store.WithRealm(kvstore.EmptyPrefix)
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Iterate(kvstore.EmptyPrefix, func(key, value kvstore.Value) bool { return true })
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.IterateKeys(kvstore.EmptyPrefix, func(key kvstore.Key) bool { return true })
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Clear()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Get(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Set(kvstore.Key{0}, []byte{1})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Has(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Delete(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.DeletePrefix(kvstore.EmptyPrefix)
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Flush()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Close()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Batched()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/byteutils"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -15,6 +16,7 @@ import (
 // badgerStore implements the KVStore interface around a BadgerDB instance.
 type badgerStore struct {
 	instance *badger.DB
+	closed   *atomic.Bool
 	dbPrefix []byte
 }
 
@@ -22,12 +24,18 @@ type badgerStore struct {
 func New(db *badger.DB) kvstore.KVStore {
 	return &badgerStore{
 		instance: db,
+		closed:   atomic.NewBool(false),
 	}
 }
 
 func (s *badgerStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &badgerStore{
 		instance: s.instance,
+		closed:   s.closed,
 		dbPrefix: realm,
 	}, nil
 }
@@ -82,6 +90,10 @@ func (s *badgerStore) getIterFuncs(it *badger.Iterator, keyPrefix []byte, iterDi
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyValueConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		keyPrefix := s.buildKeyPrefix(prefix)
 
@@ -116,6 +128,10 @@ func (s *badgerStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 // IterateKeys iterates over all keys with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys.
 // Optionally the direction for the iteration can be passed (default: IterDirectionForward).
 func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorKeyConsumerFunc, iterDirection ...kvstore.IterDirection) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.View(func(txn *badger.Txn) (err error) {
 		keyPrefix := s.buildKeyPrefix(prefix)
 
@@ -143,10 +159,18 @@ func (s *badgerStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 }
 
 func (s *badgerStore) Clear() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.DeletePrefix(kvstore.EmptyPrefix)
 }
 
 func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	var value []byte
 	err := s.instance.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
@@ -164,12 +188,20 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 }
 
 func (s *badgerStore) Set(key kvstore.Key, value kvstore.Value) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Set(byteutils.ConcatBytes(s.dbPrefix, key), value)
 	})
 }
 
 func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
+	if s.closed.Load() {
+		return false, kvstore.ErrStoreClosed
+	}
+
 	err := s.instance.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 		return err
@@ -184,6 +216,10 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 }
 
 func (s *badgerStore) Delete(key kvstore.Key) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	err := s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
 	})
@@ -194,6 +230,10 @@ func (s *badgerStore) Delete(key kvstore.Key) error {
 }
 
 func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Update(func(txn *badger.Txn) (err error) {
 		iteratorOptions := badger.DefaultIteratorOptions
 		iteratorOptions.Prefix = s.buildKeyPrefix(prefix)
@@ -213,14 +253,27 @@ func (s *badgerStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 }
 
 func (s *badgerStore) Flush() error {
+	if s.closed.Load() {
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Sync()
 }
 
 func (s *badgerStore) Close() error {
+	if s.closed.Swap(true) {
+		// was already closed
+		return kvstore.ErrStoreClosed
+	}
+
 	return s.instance.Close()
 }
 
 func (s *badgerStore) Batched() (kvstore.BatchedMutations, error) {
+	if s.closed.Load() {
+		return nil, kvstore.ErrStoreClosed
+	}
+
 	return &batchedMutations{
 		kvStore:          s,
 		store:            s.instance,
