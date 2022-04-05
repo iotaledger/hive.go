@@ -211,11 +211,11 @@ func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn interface{}
 	if objType == nil {
 		return errors.New("'obj' is a nil interface, it's need to be a valid type")
 	}
-	bytesValidatorValue, err := parseValidatorFunc(objType, bytesValidatorFn)
+	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse bytesValidatorFn")
 	}
-	syntacticValidatorValue, err := parseValidatorFunc(objType, syntacticValidatorFn)
+	syntacticValidatorValue, err := parseValidatorFunc(syntacticValidatorFn)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse syntacticValidatorFn")
 	}
@@ -227,7 +227,7 @@ func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn interface{}
 		vldtrs.bytesValidator = bytesValidatorValue
 	}
 	if syntacticValidatorValue.IsValid() {
-		if err := checkSyntacticValidatorSignature(syntacticValidatorValue); err != nil {
+		if err := checkSyntacticValidatorSignature(objType, syntacticValidatorValue); err != nil {
 			return errors.WithStack(err)
 		}
 		vldtrs.syntacticValidator = syntacticValidatorValue
@@ -238,7 +238,7 @@ func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn interface{}
 	return nil
 }
 
-func parseValidatorFunc(obType reflect.Type, validatorFn interface{}) (reflect.Value, error) {
+func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 	if validatorFn == nil {
 		return reflect.Value{}, nil
 	}
@@ -252,15 +252,8 @@ func parseValidatorFunc(obType reflect.Type, validatorFn interface{}) (reflect.V
 		)
 	}
 	funcType := funcValue.Type()
-	if funcType.NumIn() == 0 {
-		return reflect.Value{}, errors.Errorf("validator func must have at least one argument")
-	}
-	firstArgumentType := funcType.In(0)
-	if firstArgumentType != obType {
-		return reflect.Value{}, errors.Errorf(
-			"validator func's first argument must have the same type as the object it's been registered for, "+
-				"argumentType=%s, objectType=%s", firstArgumentType, obType,
-		)
+	if funcType.NumIn() != 1 {
+		return reflect.Value{}, errors.Errorf("validator func must have one argument")
 	}
 	if funcType.NumOut() != 1 {
 		return reflect.Value{}, errors.Errorf("validator func must have one return value, got %d", funcType.NumOut())
@@ -274,20 +267,21 @@ func parseValidatorFunc(obType reflect.Type, validatorFn interface{}) (reflect.V
 
 func checkBytesValidatorSignature(funcValue reflect.Value) error {
 	funcType := funcValue.Type()
-	if funcType.NumIn() != 2 {
-		return errors.Errorf("bytesValidatorFn must have two arguments, got %d", funcType.NumIn())
-	}
-	secondArgumentType := funcType.In(1)
-	if secondArgumentType != bytesType {
-		return errors.Errorf("bytesValidatorFn's second argument must be bytes, got %s", secondArgumentType)
+	argumentType := funcType.In(0)
+	if argumentType != bytesType {
+		return errors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
 	}
 	return nil
 }
 
-func checkSyntacticValidatorSignature(funcValue reflect.Value) error {
+func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect.Value) error {
 	funcType := funcValue.Type()
-	if funcType.NumIn() != 1 {
-		return errors.Errorf("syntacticValidatorFn must have one argument, got %d", funcType.NumIn())
+	argumentType := funcType.In(0)
+	if argumentType != objectType {
+		return errors.Errorf(
+			"bytesValidatorFn's argument have the same type as object it was registered for",
+			argumentType,
+		)
 	}
 	return nil
 }
@@ -593,58 +587,61 @@ func isUnderlyingStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct
 }
 
-type iterableMeta struct {
+type orderedMapMeta struct {
 	sizeMethodIndex    int
 	forEachMethodIndex int
 	iterFuncType       reflect.Type
 }
 
-func getOrderedMapMeta(t reflect.Type) (iterableMeta, bool) {
+func getOrderedMapMeta(t reflect.Type) (orderedMapMeta, bool) {
+	if !strings.Contains(t.String(), "orderedmap.OrderedMap") {
+		return orderedMapMeta{}, false
+	}
 	if t.Kind() == reflect.Interface {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	forEachMethod, ok := t.MethodByName("ForEach")
 	if !ok {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	sizeMethod, ok := t.MethodByName("Size")
 	if !ok {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	sizeType := sizeMethod.Type
 	if sizeType.NumIn() != 1 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if sizeType.NumOut() != 1 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if sizeType.Out(0) != reflect.TypeOf(int(0)) {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	forEachType := forEachMethod.Type
 	if forEachType.NumIn() != 2 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if forEachType.NumOut() != 1 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if forEachType.Out(0) != reflect.TypeOf(true) {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	iterFuncType := forEachType.In(1)
 	if iterFuncType.Kind() != reflect.Func {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if iterFuncType.NumIn() != 2 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if iterFuncType.NumOut() != 1 {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
 	if iterFuncType.Out(0) != reflect.TypeOf(true) {
-		return iterableMeta{}, false
+		return orderedMapMeta{}, false
 	}
-	im := iterableMeta{
+	im := orderedMapMeta{
 		sizeMethodIndex:    sizeMethod.Index,
 		forEachMethodIndex: forEachMethod.Index,
 		iterFuncType:       iterFuncType,
