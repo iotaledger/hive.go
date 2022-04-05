@@ -287,19 +287,18 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 	return nil
 }
 
-func (api *API) callBytesValidator(value reflect.Value, valueType reflect.Type, bytes []byte) error {
+func (api *API) callBytesValidator(valueType reflect.Type, bytes []byte) error {
 	api.validatorsRegistryMutex.RLock()
 	defer api.validatorsRegistryMutex.RUnlock()
 	bytesValidator := api.validatorsRegistry[valueType].bytesValidator
 	if !bytesValidator.IsValid() {
 		if valueType.Kind() == reflect.Ptr {
 			valueType = valueType.Elem()
-			value = value.Elem()
 			bytesValidator = api.validatorsRegistry[valueType].bytesValidator
 		}
 	}
 	if bytesValidator.IsValid() {
-		if err := bytesValidator.Call([]reflect.Value{value, reflect.ValueOf(bytes)})[0].Interface().(error); err != nil {
+		if err, _ := bytesValidator.Call([]reflect.Value{reflect.ValueOf(bytes)})[0].Interface().(error); err != nil {
 			return errors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
 		}
 	}
@@ -318,7 +317,7 @@ func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Ty
 		}
 	}
 	if syntacticValidator.IsValid() {
-		if err := syntacticValidator.Call([]reflect.Value{value})[0].Interface().(error); err != nil {
+		if err, _ := syntacticValidator.Call([]reflect.Value{value})[0].Interface().(error); err != nil {
 			return errors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
 		}
 	}

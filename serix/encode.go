@@ -35,7 +35,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		}
 	}
 	if opts.validation {
-		if err := api.callBytesValidator(value, valueType, bytes); err != nil {
+		if err := api.callBytesValidator(valueType, bytes); err != nil {
 			return nil, errors.Wrap(err, "post-serialization validation failed")
 		}
 	}
