@@ -11,7 +11,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, opts 
 	valueI := value.Interface()
 	valueType := value.Type()
 	if opts.validation {
-		if err := api.callBytesValidator(value, valueType, b); err != nil {
+		if err := api.callBytesValidator(valueType, b); err != nil {
 			return 0, errors.Wrap(err, "pre-deserialization validation failed")
 		}
 	}
