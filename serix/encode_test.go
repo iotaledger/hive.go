@@ -118,6 +118,10 @@ func TestEncode_OrderedMap(t *testing.T) {
 
 }
 
+func TestEncode_ThresholdMap(t *testing.T) {
+
+}
+
 func TestEncode_Serializable(t *testing.T) {
 
 }
