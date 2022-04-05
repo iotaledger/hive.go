@@ -269,9 +269,9 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 }
 
 func (api *API) encodeOrderedMap(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta iterableMeta, ts TypeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta orderedMapMeta, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	if value.Kind() == reflect.Pointer && value.IsNil() {
+	if value.IsZero() {
 		return encodeSliceOfBytes(nil, valueType, ts, opts)
 	}
 	size := value.Method(typeMeta.sizeMethodIndex).Call(nil)[0].Int()
