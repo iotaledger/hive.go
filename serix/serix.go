@@ -279,8 +279,9 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 	argumentType := funcType.In(0)
 	if argumentType != objectType {
 		return errors.Errorf(
-			"bytesValidatorFn's argument have the same type as object it was registered for",
-			argumentType,
+			"syntacticValidatorFn's argument must have the same type as the object it was registered for, "+
+				"objectType=%s, argumentType=%s",
+			objectType, argumentType,
 		)
 	}
 	return nil
@@ -587,66 +588,156 @@ func isUnderlyingStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct
 }
 
-type orderedMapMeta struct {
+type iterableMeta struct {
 	sizeMethodIndex    int
 	forEachMethodIndex int
 	iterFuncType       reflect.Type
 }
 
-func getOrderedMapMeta(t reflect.Type) (orderedMapMeta, bool) {
+func parseOrderedMapMeta(t reflect.Type) (iterableMeta, bool) {
 	if !strings.Contains(t.String(), "orderedmap.OrderedMap") {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
 	if t.Kind() == reflect.Interface {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
-	forEachMethod, ok := t.MethodByName("ForEach")
+	sizeMethodIndex, ok := parseSizeMethod(t)
 	if !ok {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
-	sizeMethod, ok := t.MethodByName("Size")
+	forEeachMethodIndex, iterFuncType, ok := parseForEachMethod(t)
 	if !ok {
-		return orderedMapMeta{}, false
-	}
-	sizeType := sizeMethod.Type
-	if sizeType.NumIn() != 1 {
-		return orderedMapMeta{}, false
-	}
-	if sizeType.NumOut() != 1 {
-		return orderedMapMeta{}, false
-	}
-	if sizeType.Out(0) != reflect.TypeOf(int(0)) {
-		return orderedMapMeta{}, false
-	}
-	forEachType := forEachMethod.Type
-	if forEachType.NumIn() != 2 {
-		return orderedMapMeta{}, false
-	}
-	if forEachType.NumOut() != 1 {
-		return orderedMapMeta{}, false
-	}
-	if forEachType.Out(0) != reflect.TypeOf(true) {
-		return orderedMapMeta{}, false
-	}
-	iterFuncType := forEachType.In(1)
-	if iterFuncType.Kind() != reflect.Func {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
 	if iterFuncType.NumIn() != 2 {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
 	if iterFuncType.NumOut() != 1 {
-		return orderedMapMeta{}, false
+		return iterableMeta{}, false
 	}
-	if iterFuncType.Out(0) != reflect.TypeOf(true) {
-		return orderedMapMeta{}, false
+	if iterFuncType.Out(0) != boolType {
+		return iterableMeta{}, false
 	}
-	im := orderedMapMeta{
-		sizeMethodIndex:    sizeMethod.Index,
-		forEachMethodIndex: forEachMethod.Index,
+	im := iterableMeta{
+		sizeMethodIndex:    sizeMethodIndex,
+		forEachMethodIndex: forEeachMethodIndex,
 		iterFuncType:       iterFuncType,
 	}
 	return im, true
+}
+
+type thresholdMapMeta struct {
+	iterableMeta
+	mapElemMeta mapElemMeta
+}
+
+func parseThresholdMapMeta(t reflect.Type) (thresholdMapMeta, bool) {
+	if !strings.Contains(t.String(), "thresholdmap.ThresholdMap") {
+		return thresholdMapMeta{}, false
+	}
+	if t.Kind() == reflect.Interface {
+		return thresholdMapMeta{}, false
+	}
+	sizeMethodIndex, ok := parseSizeMethod(t)
+	if !ok {
+		return thresholdMapMeta{}, false
+	}
+	forEeachMethodIndex, iterFuncType, ok := parseForEachMethod(t)
+	if !ok {
+		return thresholdMapMeta{}, false
+	}
+	if iterFuncType.NumIn() != 1 {
+		return thresholdMapMeta{}, false
+	}
+	if iterFuncType.NumOut() != 1 {
+		return thresholdMapMeta{}, false
+	}
+	if iterFuncType.Out(0) != boolType {
+		return thresholdMapMeta{}, false
+	}
+	iterFuncArg := iterFuncType.In(0)
+	iterFuncArgMeta, ok := parseThresholdMapElemMeta(iterFuncArg)
+	if !ok {
+		return thresholdMapMeta{}, false
+	}
+	im := thresholdMapMeta{
+		iterableMeta: iterableMeta{
+			sizeMethodIndex:    sizeMethodIndex,
+			forEachMethodIndex: forEeachMethodIndex,
+			iterFuncType:       iterFuncType,
+		},
+		mapElemMeta: iterFuncArgMeta,
+	}
+	return im, true
+}
+
+type mapElemMeta struct {
+	keyMethodIndex   int
+	valueMethodIndex int
+}
+
+func parseThresholdMapElemMeta(t reflect.Type) (mapElemMeta, bool) {
+	parseMethod := func(methodName string) (int, bool) {
+		method, ok := t.MethodByName(methodName)
+		if !ok {
+			return 0, false
+		}
+		methodType := method.Type
+		if methodType.NumIn() != 1 {
+			return 0, false
+		}
+		if methodType.NumOut() != 1 {
+			return 0, false
+		}
+		return method.Index, true
+	}
+	keyMethodIndex, ok := parseMethod("Key")
+	if !ok {
+		return mapElemMeta{}, false
+	}
+	valueMethodIndex, ok := parseMethod("Value")
+	if !ok {
+		return mapElemMeta{}, false
+	}
+	meta := mapElemMeta{
+		keyMethodIndex:   keyMethodIndex,
+		valueMethodIndex: valueMethodIndex,
+	}
+	return meta, true
+
+}
+func parseSizeMethod(t reflect.Type) (methodIndex int, ok bool) {
+	sizeMethod, ok := t.MethodByName("Size")
+	if !ok {
+		return 0, false
+	}
+	sizeType := sizeMethod.Type
+	if sizeType.NumIn() != 1 {
+		return 0, false
+	}
+	if sizeType.NumOut() != 1 {
+		return 0, false
+	}
+	if sizeType.Out(0) != reflect.TypeOf(int(0)) {
+		return 0, false
+	}
+	return sizeMethod.Index, true
+}
+
+func parseForEachMethod(t reflect.Type) (methodIndex int, iterFunc reflect.Type, ok bool) {
+	forEachMethod, ok := t.MethodByName("ForEach")
+	if !ok {
+		return 0, nil, false
+	}
+	forEachType := forEachMethod.Type
+	if forEachType.NumIn() != 2 {
+		return 0, nil, false
+	}
+	iterFuncType := forEachType.In(1)
+	if iterFuncType.Kind() != reflect.Func {
+		return 0, nil, false
+	}
+	return forEachMethod.Index, iterFuncType, true
 }
 
 func deRefPointer(t reflect.Type) reflect.Type {

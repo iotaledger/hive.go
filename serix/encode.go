@@ -56,8 +56,11 @@ func (api *API) encodeBasedOnType(
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
 		}
-		if omm, ok := getOrderedMapMeta(valueType); ok {
+		if omm, ok := parseOrderedMapMeta(valueType); ok {
 			return api.encodeOrderedMap(ctx, value, valueType, omm, ts, opts)
+		}
+		if tmm, ok := parseThresholdMapMeta(valueType); ok {
+			return api.encodeThresholdMap(ctx, value, valueType, tmm, ts, opts)
 		}
 		elemValue := reflect.Indirect(value)
 		if !elemValue.IsValid() {
@@ -269,7 +272,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 }
 
 func (api *API) encodeOrderedMap(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta orderedMapMeta, ts TypeSettings, opts *options,
+	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta iterableMeta, ts TypeSettings, opts *options,
 ) ([]byte, error) {
 	if value.IsZero() {
 		return encodeSliceOfBytes(nil, valueType, ts, opts)
@@ -277,18 +280,52 @@ func (api *API) encodeOrderedMap(
 	size := value.Method(typeMeta.sizeMethodIndex).Call(nil)[0].Int()
 	data := make([][]byte, size)
 	var i int
+	var iterErr error
 	iterFunc := reflect.MakeFunc(typeMeta.iterFuncType, func(args []reflect.Value) (results []reflect.Value) {
 		keyValue, elemValue := args[0], args[1]
 		b, err := api.encodeMapKVPair(ctx, keyValue, elemValue, opts)
 		if err != nil {
+			iterErr = errors.WithStack(err)
 			return []reflect.Value{reflect.ValueOf(false)}
 		}
 		data[i] = b
 		i++
 		return []reflect.Value{reflect.ValueOf(true)}
 	})
-	if ok := value.Method(typeMeta.forEachMethodIndex).Call([]reflect.Value{iterFunc})[0].Bool(); !ok {
-		return nil, errors.Errorf("ordered map %s elements encoding failed", valueType)
+	value.Method(typeMeta.forEachMethodIndex).Call([]reflect.Value{iterFunc})
+	if iterErr != nil {
+		return nil, errors.WithStack(iterErr)
+	}
+
+	return encodeSliceOfBytes(data, valueType, ts, opts)
+}
+
+func (api *API) encodeThresholdMap(
+	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta thresholdMapMeta, ts TypeSettings, opts *options,
+) ([]byte, error) {
+	if value.IsZero() {
+		return encodeSliceOfBytes(nil, valueType, ts, opts)
+	}
+	size := value.Method(typeMeta.sizeMethodIndex).Call(nil)[0].Int()
+	data := make([][]byte, size)
+	var i int
+	var iterErr error
+	iterFunc := reflect.MakeFunc(typeMeta.iterFuncType, func(args []reflect.Value) (results []reflect.Value) {
+		kvPair := args[0]
+		key := kvPair.Method(typeMeta.mapElemMeta.keyMethodIndex).Call(nil)[0]
+		elem := kvPair.Method(typeMeta.mapElemMeta.valueMethodIndex).Call(nil)[0]
+		b, err := api.encodeMapKVPair(ctx, key, elem, opts)
+		if err != nil {
+			iterErr = errors.WithStack(err)
+			return []reflect.Value{reflect.ValueOf(false)}
+		}
+		data[i] = b
+		i++
+		return []reflect.Value{reflect.ValueOf(true)}
+	})
+	value.Method(typeMeta.forEachMethodIndex).Call([]reflect.Value{iterFunc})
+	if iterErr != nil {
+		return nil, errors.WithStack(iterErr)
 	}
 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
