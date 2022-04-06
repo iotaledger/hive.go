@@ -92,7 +92,7 @@ func TestEncode_Time(t *testing.T) {
 	testEncode(t, manualSerialization, testObj)
 }
 
-func TestEncode_Payload(t *testing.T) {
+func TestEncode_Optional(t *testing.T) {
 
 }
 
@@ -115,10 +115,6 @@ func TestEncode_Map(t *testing.T) {
 }
 
 func TestEncode_OrderedMap(t *testing.T) {
-
-}
-
-func TestEncode_ThresholdMap(t *testing.T) {
 
 }
 

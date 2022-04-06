@@ -457,10 +457,10 @@ type structField struct {
 }
 
 type tagSettings struct {
-	position  int
-	isPayload bool
-	nest      bool
-	ts        TypeSettings
+	position   int
+	isOptional bool
+	nest       bool
+	ts         TypeSettings
 }
 
 func parseStructType(structType reflect.Type) ([]structField, error) {
@@ -487,16 +487,16 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 			return nil, errors.Errorf("struct field with dupicated position number %d", tSettings.position)
 		}
 		seenPositions[tSettings.position] = struct{}{}
-		if tSettings.isPayload {
+		if tSettings.isOptional {
 			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
 				return nil, errors.Errorf(
 					"struct field %s is invalid: "+
-						"'payload' setting can only be used with pointers or interfaces, got %s",
+						"'optional' setting can only be used with pointers or interfaces, got %s",
 					field.Name, field.Type.Kind())
 			}
 			if isEmbeddedStruct {
 				return nil, errors.Errorf(
-					"struct field %s is invalid: 'payload' setting can't be used with embedded structs",
+					"struct field %s is invalid: 'optional' setting can't be used with embedded structs",
 					field.Name)
 			}
 		}
@@ -540,8 +540,8 @@ func parseStructTag(tag string) (tagSettings, error) {
 		keyValue := strings.Split(currentPart, "=")
 		partName := keyValue[0]
 		switch partName {
-		case "payload":
-			settings.isPayload = true
+		case "optional":
+			settings.isOptional = true
 		case "nest":
 			settings.nest = true
 		case "lengthPrefixType":
@@ -625,86 +625,6 @@ func parseOrderedMapMeta(t reflect.Type) (iterableMeta, bool) {
 	return im, true
 }
 
-type thresholdMapMeta struct {
-	iterableMeta
-	mapElemMeta mapElemMeta
-}
-
-func parseThresholdMapMeta(t reflect.Type) (thresholdMapMeta, bool) {
-	if !strings.Contains(t.String(), "thresholdmap.ThresholdMap") {
-		return thresholdMapMeta{}, false
-	}
-	if t.Kind() == reflect.Interface {
-		return thresholdMapMeta{}, false
-	}
-	sizeMethodIndex, ok := parseSizeMethod(t)
-	if !ok {
-		return thresholdMapMeta{}, false
-	}
-	forEeachMethodIndex, iterFuncType, ok := parseForEachMethod(t)
-	if !ok {
-		return thresholdMapMeta{}, false
-	}
-	if iterFuncType.NumIn() != 1 {
-		return thresholdMapMeta{}, false
-	}
-	if iterFuncType.NumOut() != 1 {
-		return thresholdMapMeta{}, false
-	}
-	if iterFuncType.Out(0) != boolType {
-		return thresholdMapMeta{}, false
-	}
-	iterFuncArg := iterFuncType.In(0)
-	iterFuncArgMeta, ok := parseThresholdMapElemMeta(iterFuncArg)
-	if !ok {
-		return thresholdMapMeta{}, false
-	}
-	im := thresholdMapMeta{
-		iterableMeta: iterableMeta{
-			sizeMethodIndex:    sizeMethodIndex,
-			forEachMethodIndex: forEeachMethodIndex,
-			iterFuncType:       iterFuncType,
-		},
-		mapElemMeta: iterFuncArgMeta,
-	}
-	return im, true
-}
-
-type mapElemMeta struct {
-	keyMethodIndex   int
-	valueMethodIndex int
-}
-
-func parseThresholdMapElemMeta(t reflect.Type) (mapElemMeta, bool) {
-	parseMethod := func(methodName string) (int, bool) {
-		method, ok := t.MethodByName(methodName)
-		if !ok {
-			return 0, false
-		}
-		methodType := method.Type
-		if methodType.NumIn() != 1 {
-			return 0, false
-		}
-		if methodType.NumOut() != 1 {
-			return 0, false
-		}
-		return method.Index, true
-	}
-	keyMethodIndex, ok := parseMethod("Key")
-	if !ok {
-		return mapElemMeta{}, false
-	}
-	valueMethodIndex, ok := parseMethod("Value")
-	if !ok {
-		return mapElemMeta{}, false
-	}
-	meta := mapElemMeta{
-		keyMethodIndex:   keyMethodIndex,
-		valueMethodIndex: valueMethodIndex,
-	}
-	return meta, true
-
-}
 func parseSizeMethod(t reflect.Type) (methodIndex int, ok bool) {
 	sizeMethod, ok := t.MethodByName("Size")
 	if !ok {
