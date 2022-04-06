@@ -2,6 +2,8 @@ package serix_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -98,6 +100,10 @@ func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, de
 	return ser.Serialize()
 }
 
+type StructWithOptionalField struct {
+	Optional *ExportedStruct `serix:"0,optional"`
+}
+
 type StructWithInterface struct {
 	Interface Interface `serix:"0"`
 }
@@ -134,6 +140,29 @@ func (es ExportedStruct) Deserialize(data []byte, deSeriMode serializer.DeSerial
 	panic("implement me")
 }
 
+type CustomSerializable int
+
+func (cs CustomSerializable) Encode() ([]byte, error) {
+	b := []byte(fmt.Sprintf("int: %d", cs))
+	return b, nil
+}
+
+type ObjectForSyntacticValidation struct{}
+
+var errSyntacticValidation = errors.New("syntactic validation failed")
+
+func SyntacticValidation(obj ObjectForSyntacticValidation) error {
+	return errSyntacticValidation
+}
+
+type ObjectForBytesValidation struct{}
+
+var errBytesValidation = errors.New("bytes validation failed")
+
+func BytesValidation([]byte) error {
+	return errBytesValidation
+}
+
 func TestMain(m *testing.M) {
 	exitCode := func() int {
 		if err := testAPI.RegisterTypeSettings(
@@ -155,6 +184,12 @@ func TestMain(m *testing.M) {
 			log.Panic(err)
 		}
 		if err := testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil)); err != nil {
+			log.Panic(err)
+		}
+		if err := testAPI.RegisterValidators(ObjectForSyntacticValidation{}, nil, SyntacticValidation); err != nil {
+			log.Panic(err)
+		}
+		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
 			log.Panic(err)
 		}
 		return m.Run()
