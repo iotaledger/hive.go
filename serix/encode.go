@@ -59,9 +59,6 @@ func (api *API) encodeBasedOnType(
 		if omm, ok := parseOrderedMapMeta(valueType); ok {
 			return api.encodeOrderedMap(ctx, value, valueType, omm, ts, opts)
 		}
-		if tmm, ok := parseThresholdMapMeta(valueType); ok {
-			return api.encodeThresholdMap(ctx, value, valueType, tmm, ts, opts)
-		}
 		elemValue := reflect.Indirect(value)
 		if !elemValue.IsValid() {
 			return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
@@ -180,27 +177,26 @@ func (api *API) encodeStructFields(
 			continue
 		}
 		var fieldBytes []byte
-		if sField.settings.isPayload {
+		if sField.settings.isOptional {
 			if fieldValue.IsNil() {
 				s.WritePayloadLength(0, func(err error) error {
 					return errors.Wrapf(err,
-						"failed to write zero payload length for struct field %s to serializer",
+						"failed to write zero length for an optional struct field %s to serializer",
 						sField.name,
 					)
 				})
 				continue
 			}
-			payloadBytes, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
+			fieldBytes, err = api.encode(ctx, fieldValue, sField.settings.ts, opts)
 			if err != nil {
-				return errors.Wrapf(err, "failed to serialize payload struct field %s", sField.name)
+				return errors.Wrapf(err, "failed to serialize optional struct field %s", sField.name)
 			}
-			s.WritePayloadLength(len(payloadBytes), func(err error) error {
+			s.WritePayloadLength(len(fieldBytes), func(err error) error {
 				return errors.Wrapf(err,
-					"failed to write payload length for struct field %s to serializer",
+					"failed to write length for an optional struct field %s to serializer",
 					sField.name,
 				)
 			})
-			fieldBytes = payloadBytes
 		} else {
 			b, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
 			if err != nil {
@@ -284,37 +280,6 @@ func (api *API) encodeOrderedMap(
 	iterFunc := reflect.MakeFunc(typeMeta.iterFuncType, func(args []reflect.Value) (results []reflect.Value) {
 		keyValue, elemValue := args[0], args[1]
 		b, err := api.encodeMapKVPair(ctx, keyValue, elemValue, opts)
-		if err != nil {
-			iterErr = errors.WithStack(err)
-			return []reflect.Value{reflect.ValueOf(false)}
-		}
-		data[i] = b
-		i++
-		return []reflect.Value{reflect.ValueOf(true)}
-	})
-	value.Method(typeMeta.forEachMethodIndex).Call([]reflect.Value{iterFunc})
-	if iterErr != nil {
-		return nil, errors.WithStack(iterErr)
-	}
-
-	return encodeSliceOfBytes(data, valueType, ts, opts)
-}
-
-func (api *API) encodeThresholdMap(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta thresholdMapMeta, ts TypeSettings, opts *options,
-) ([]byte, error) {
-	if value.IsZero() {
-		return encodeSliceOfBytes(nil, valueType, ts, opts)
-	}
-	size := value.Method(typeMeta.sizeMethodIndex).Call(nil)[0].Int()
-	data := make([][]byte, size)
-	var i int
-	var iterErr error
-	iterFunc := reflect.MakeFunc(typeMeta.iterFuncType, func(args []reflect.Value) (results []reflect.Value) {
-		kvPair := args[0]
-		key := kvPair.Method(typeMeta.mapElemMeta.keyMethodIndex).Call(nil)[0]
-		elem := kvPair.Method(typeMeta.mapElemMeta.valueMethodIndex).Call(nil)[0]
-		b, err := api.encodeMapKVPair(ctx, key, elem, opts)
 		if err != nil {
 			iterErr = errors.WithStack(err)
 			return []reflect.Value{reflect.ValueOf(false)}
