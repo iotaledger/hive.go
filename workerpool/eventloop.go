@@ -70,7 +70,7 @@ func (e *EventLoop) TrySubmit(f func()) (added bool) {
 	return false
 }
 
-// Run starts the EventLoop.
+// Start starts the EventLoop (non-blocking).
 func (e *EventLoop) Start() {
 	e.mutex.Lock()
 
@@ -93,7 +93,7 @@ func (e *EventLoop) Run() {
 	e.wait.Wait()
 }
 
-// Run stops the EventLoop.
+// Stop stops the EventLoop.
 func (e *EventLoop) Stop() {
 	e.mutex.Lock()
 
@@ -107,7 +107,7 @@ func (e *EventLoop) Stop() {
 	e.mutex.Unlock()
 }
 
-// Run stops the EventLoop and waits for its shutdown.
+// StopAndWait stops the EventLoop and waits for its shutdown.
 func (e *EventLoop) StopAndWait() {
 	e.Stop()
 	e.wait.Wait()
