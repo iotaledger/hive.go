@@ -177,25 +177,24 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
-func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) error {
+func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) (int, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
-		return errors.New("invalid value for destination")
+		return 0, errors.New("invalid value for destination")
 	}
 	if value.Kind() != reflect.Ptr {
-		return errors.Errorf(
+		return 0, errors.Errorf(
 			"can't decode, the destination object must be a pointer, got: %T(%s)", obj, value.Kind(),
 		)
 	}
 	if value.IsNil() {
-		return errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
+		return 0, errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
 	}
 	opt := &options{}
 	for _, o := range opts {
 		o(opt)
 	}
-	_, err := api.decode(ctx, b, value, opt)
-	return errors.WithStack(err)
+	return api.decode(ctx, b, value, opt)
 }
 
 func (api *API) EncodeJSON(obj interface{}) ([]byte, error) {
