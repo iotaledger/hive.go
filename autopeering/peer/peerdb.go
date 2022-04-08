@@ -114,12 +114,14 @@ func (db *DB) expirer() {
 // expireNodes iterates over the database and deletes all nodes that have not
 // been seen (i.e. received a pong from) for some time.
 func (db *DB) expireNodes() error {
-	var (
-		threshold   = time.Now().Add(-peerExpiration).Unix()
-		latestPong  = make(map[identity.ID]int64)
-		batchedMuts = db.store.Batched()
-	)
-	err := db.store.Iterate(kvstore.KeyPrefix(dbNodePrefix), func(key kvstore.Key, value kvstore.Value) bool {
+	threshold := time.Now().Add(-peerExpiration).Unix()
+	latestPong := make(map[identity.ID]int64)
+	batchedMuts, err := db.store.Batched()
+	if err != nil {
+		return err
+	}
+
+	err = db.store.Iterate(kvstore.KeyPrefix(dbNodePrefix), func(key kvstore.Key, value kvstore.Value) bool {
 		var id identity.ID
 		copy(id[:], key[len(dbNodePrefix):])
 

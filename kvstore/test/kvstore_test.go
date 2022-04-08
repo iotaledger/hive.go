@@ -31,7 +31,7 @@ var (
 	}
 )
 
-func testStore(t require.TestingT, dbImplementation string, realm []byte) kvstore.KVStore {
+func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvstore.KVStore, error) {
 	switch dbImplementation {
 
 	case "badger":
@@ -94,7 +94,8 @@ func TestSetAndGet(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
 		for _, entry := range testEntries {
 			err := store.Set(entry.Key, entry.Value)
@@ -117,7 +118,8 @@ func TestSetAndGetEmptyValue(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
 		expectedValue := []byte{}
 
@@ -142,7 +144,8 @@ func TestDelete(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
 		for _, entry := range testEntries {
 			err := store.Set(entry.Key, entry.Value)
@@ -172,11 +175,15 @@ func TestRealm(t *testing.T) {
 
 	prefix := kvstore.EmptyPrefix
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
 		realm := kvstore.Realm("realm")
-		realmStore := store.WithRealm(realm)
-		tmpStore := store.WithRealm(kvstore.Realm("tmp"))
+		realmStore, err := store.WithRealm(realm)
+		require.NoError(t, err)
+
+		tmpStore, err := store.WithRealm(kvstore.Realm("tmp"))
+		require.NoError(t, err)
 
 		for _, entry := range testEntries {
 			err := realmStore.Set(entry.Key, entry.Value)
@@ -190,7 +197,8 @@ func TestRealm(t *testing.T) {
 		}
 		require.Equal(t, len(testEntries), countKeys(t, tmpStore), "used db: %s", dbImplementation)
 
-		realmStore2 := store.WithRealm(realm)
+		realmStore2, err := store.WithRealm(realm)
+		require.NoError(t, err)
 
 		for _, entry := range testEntries {
 			has, err := realmStore2.Has(entry.Key)
@@ -203,7 +211,7 @@ func TestRealm(t *testing.T) {
 		}
 
 		// when clearing "realm" the keys in "tmp" should still be there
-		err := realmStore.Clear()
+		err = realmStore.Clear()
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
 		require.Equal(t, 0, countKeys(t, realmStore), "used db: %s", dbImplementation)
@@ -221,7 +229,9 @@ func TestClear(t *testing.T) {
 
 	prefix := kvstore.EmptyPrefix
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
+
 		require.EqualValues(t, 0, countKeys(t, store), "used db: %s", dbImplementation)
 
 		for _, entry := range testEntries {
@@ -231,7 +241,7 @@ func TestClear(t *testing.T) {
 		require.Equal(t, len(testEntries), countKeys(t, store), "used db: %s", dbImplementation)
 
 		// check that Clear removes all the keys
-		err := store.Clear()
+		err = store.Clear()
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		require.EqualValues(t, 0, countKeys(t, store), "used db: %s", dbImplementation)
 	}
@@ -241,10 +251,10 @@ func TestIterate(t *testing.T) {
 
 	prefix := kvstore.EmptyPrefix
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 100
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 100
 
 		insertedValues := make(map[string]string)
 
@@ -276,10 +286,10 @@ func TestIterateDirection(t *testing.T) {
 
 	for _, dbImplementation := range dbImplementations {
 
-		store := testStore(t, dbImplementation, prefix)
-		count := 9
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 9
 
 		insertedValues := make(map[string]string)
 
@@ -383,10 +393,10 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 
 	for _, dbImplementation := range dbImplementations {
 
-		store := testStore(t, dbImplementation, prefix)
-		count := 9
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 9
 
 		insertedValues := make(map[string]string)
 
@@ -480,10 +490,10 @@ func TestIteratePrefix(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 100
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 100
 
 		insertedValues := make(map[string]string)
 
@@ -521,10 +531,10 @@ func TestIteratePrefixKeyOnly(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 100
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 100
 
 		insertedValues := make(map[string]string)
 
@@ -560,10 +570,10 @@ func TestDeletePrefix(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 1000
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 1000
 
 		insertedValues := make(map[string]string)
 
@@ -605,10 +615,10 @@ func TestDeletePrefixIsEmpty(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 100
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 100
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
@@ -634,10 +644,10 @@ func TestSetAndOverwrite(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
-		count := 100
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		var err error
+		count := 100
 
 		for i := 0; i < count; i++ {
 			str := strconv.FormatInt(int64(i), 10)
@@ -658,7 +668,8 @@ func TestSetAndOverwrite(t *testing.T) {
 		// Check that we checked the correct amount of entries
 		require.Equal(t, count, verifyCount, "used db: %s", dbImplementation)
 
-		batch := store.Batched()
+		batch, err := store.Batched()
+		require.NoError(t, err)
 
 		// Batch edit all to value 1
 		for i := 0; i < count; i++ {
@@ -689,15 +700,17 @@ func TestBatchedWithSetAndDelete(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		err := store.Set([]byte("testKey1"), []byte{42})
+		err = store.Set([]byte("testKey1"), []byte{42})
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
 		err = store.Set([]byte("testKey2"), []byte{13})
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
-		batch := store.Batched()
+		batch, err := store.Batched()
+		require.NoError(t, err)
 
 		err = batch.Set([]byte("testKey1"), []byte{84})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -729,11 +742,13 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
 
-		batch := store.Batched()
+		batch, err := store.Batched()
+		require.NoError(t, err)
 
-		err := batch.Set([]byte("testKey1"), []byte{84})
+		err = batch.Set([]byte("testKey1"), []byte{84})
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
 		err = batch.Set([]byte("testKey1"), []byte{69})
@@ -758,12 +773,13 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
-		store := testStore(t, dbImplementation, prefix)
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err)
+
 		count := 100_000
 
-		var err error
-
-		batch := store.Batched()
+		batch, err := store.Batched()
+		require.NoError(t, err)
 
 		for i := 0; i < count; i++ {
 			testKey := make([]byte, 49)
@@ -787,5 +803,58 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 
 		// Check that we checked the correct amount of entries
 		require.Equal(t, count, verifyCount, "used db: %s", dbImplementation)
+	}
+}
+
+func TestStoreClosed(t *testing.T) {
+
+	prefix := []byte("testPrefix")
+	for _, dbImplementation := range dbImplementations {
+		store, err := testStore(t, dbImplementation, prefix)
+		require.NoError(t, err, "used db: %s", dbImplementation)
+
+		batchedMutation, err := store.Batched()
+		require.NoError(t, err, "used db: %s", dbImplementation)
+
+		require.NoError(t, store.Close(), "used db: %s", dbImplementation)
+
+		err = batchedMutation.Commit()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.WithRealm(kvstore.EmptyPrefix)
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Iterate(kvstore.EmptyPrefix, func(key, value kvstore.Value) bool { return true })
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.IterateKeys(kvstore.EmptyPrefix, func(key kvstore.Key) bool { return true })
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Clear()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Get(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Set(kvstore.Key{0}, []byte{1})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Has(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Delete(kvstore.Key{0})
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.DeletePrefix(kvstore.EmptyPrefix)
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Flush()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		err = store.Close()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+
+		_, err = store.Batched()
+		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
 	}
 }

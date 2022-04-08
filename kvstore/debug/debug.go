@@ -84,23 +84,21 @@ func New(store kvstore.KVStore, callback AccessCallback, commandsFilter ...Comma
 	}
 }
 
-func (s *debugStore) WithRealm(realm kvstore.Realm) kvstore.KVStore {
+func (s *debugStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	storeWithRealm, err := s.underlying.WithRealm(realm)
+	if err != nil {
+		return nil, err
+	}
+
 	return &debugStore{
-		underlying:                   s.underlying.WithRealm(realm),
+		underlying:                   storeWithRealm,
 		accessCallback:               s.accessCallback,
 		accessCallbackCommandsFilter: s.accessCallbackCommandsFilter,
-	}
+	}, nil
 }
 
 func (s *debugStore) Realm() kvstore.Realm {
 	return s.underlying.Realm()
-}
-
-func (s *debugStore) Shutdown() {
-	if s.accessCallback != nil {
-		s.accessCallback(ShutdownCommand)
-	}
-	s.underlying.Shutdown()
 }
 
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
@@ -171,18 +169,23 @@ func (s *debugStore) Close() error {
 	return s.underlying.Close()
 }
 
+func (s *debugStore) Batched() (kvstore.BatchedMutations, error) {
+	batchedMutation, err := s.underlying.Batched()
+	if err != nil {
+		return nil, err
+	}
+
+	return &batchedMutations{
+		underlying:                   batchedMutation,
+		accessCallback:               s.accessCallback,
+		accessCallbackCommandsFilter: s.accessCallbackCommandsFilter,
+	}, nil
+}
+
 type batchedMutations struct {
 	underlying                   kvstore.BatchedMutations
 	accessCallback               AccessCallback
 	accessCallbackCommandsFilter Command
-}
-
-func (s *debugStore) Batched() kvstore.BatchedMutations {
-	return &batchedMutations{
-		underlying:                   s.underlying.Batched(),
-		accessCallback:               s.accessCallback,
-		accessCallbackCommandsFilter: s.accessCallbackCommandsFilter,
-	}
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
@@ -206,3 +209,6 @@ func (b *batchedMutations) Cancel() {
 func (b *batchedMutations) Commit() error {
 	return b.underlying.Commit()
 }
+
+var _ kvstore.KVStore = &debugStore{}
+var _ kvstore.BatchedMutations = &batchedMutations{}

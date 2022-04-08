@@ -66,5 +66,10 @@ func PebbleDB(t *testing.T) (kvstore.KVStore, error) {
 	counter := databaseCounter[t.Name()]
 	databaseCounterMutex.Unlock()
 
-	return pebble.New(db).WithRealm([]byte(t.Name() + strconv.Itoa(counter))), nil
+	storeWithRealm, err := pebble.New(db).WithRealm([]byte(t.Name() + strconv.Itoa(counter)))
+	if err != nil {
+		return nil, err
+	}
+
+	return storeWithRealm, nil
 }
