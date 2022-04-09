@@ -76,6 +76,10 @@ func (t *AdvancedSet[T]) DeleteAll(other *AdvancedSet[T]) (removedElements *Adva
 	return removedElements
 }
 
+func (t *AdvancedSet[T]) Delete(element T) (added bool) {
+	return t.OrderedMap.Delete(element)
+}
+
 func (t *AdvancedSet[T]) ForEach(callback func(element T) (err error)) (err error) {
 	t.OrderedMap.ForEach(func(element T, _ types.Empty) bool {
 		if err = callback(element); err != nil {
