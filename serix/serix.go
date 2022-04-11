@@ -190,11 +190,12 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 	if value.IsNil() {
 		return 0, errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
 	}
+	value = value.Elem()
 	opt := &options{}
 	for _, o := range opts {
 		o(opt)
 	}
-	return api.decode(ctx, b, value, opt)
+	return api.decode(ctx, b, value, opt.ts, opt)
 }
 
 func (api *API) EncodeJSON(obj interface{}) ([]byte, error) {

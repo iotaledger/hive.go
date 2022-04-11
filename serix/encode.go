@@ -20,27 +20,27 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 			return nil, errors.Wrap(err, "pre-serialization validation failed")
 		}
 	}
-	var bytes []byte
+	var b []byte
 	if serializable, ok := valueI.(Serializable); ok {
 		var err error
-		bytes, err = serializable.Encode()
+		b, err = serializable.Encode()
 		if err != nil {
 			return nil, errors.Wrap(err, "object failed to serialize itself")
 		}
 	} else {
 		var err error
-		bytes, err = api.encodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
+		b, err = api.encodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}
 	if opts.validation {
-		if err := api.callBytesValidator(valueType, bytes); err != nil {
+		if err := api.callBytesValidator(valueType, b); err != nil {
 			return nil, errors.Wrap(err, "post-serialization validation failed")
 		}
 	}
 
-	return bytes, nil
+	return b, nil
 }
 
 func (api *API) encodeBasedOnType(
