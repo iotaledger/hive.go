@@ -1017,6 +1017,46 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		return d
 	}
 
+	var seris Serializables
+	deserializeItem := func(d *Deserializer) (ty uint32, ok bool) {
+		var seri Serializable
+		// this mutates d.src/d.offset
+		_, ty = d.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
+			return errProducer(err)
+		})
+		if seri == nil {
+			return 0, false
+		}
+		if deSeriMode.HasMode(DeSeriModePerformValidation) {
+			if arrayRules.Guards.PostReadGuard != nil {
+				if err := arrayRules.Guards.PostReadGuard(seri); err != nil {
+					d.err = errProducer(err)
+					return 0, false
+				}
+			}
+		}
+		seris = append(seris, seri)
+		return ty, true
+
+	}
+	d.ReadSequenceOfObjects(deserializeItem, deSeriMode, lenType, arrayRules, errProducer)
+
+	d.readSerializablesIntoTarget(target, seris)
+
+	return d
+}
+
+type DeserializeFunc func(d *Deserializer) (ty uint32, ok bool)
+
+// ReadSequenceOfObjects reads a sequence of objects and calls DeserializeFunc for evey encountered item.
+func (d *Deserializer) ReadSequenceOfObjects(
+	itemDeserializer DeserializeFunc, deSeriMode DeSerializationMode,
+	lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer,
+) *Deserializer {
+	if d.err != nil {
+		return d
+	}
+
 	sliceLength, err := d.readSliceLength(lenType, errProducer)
 	if err != nil {
 		d.err = err
@@ -1039,35 +1079,19 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		return d
 	}
 
-	var seris Serializables
 	for i := 0; i < sliceLength; i++ {
 
 		// remember where we were before reading the object
 		srcBefore := d.src[d.offset:]
 		offsetBefore := d.offset
 
-		var seri Serializable
-		// this mutates d.src/d.offset
-		_, ty := d.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
-			return errProducer(err)
-		})
-
-		// there was an error
-		if seri == nil {
+		ty, ok := itemDeserializer(d)
+		if !ok {
 			return d
 		}
-
 		bytesConsumed := d.offset - offsetBefore
-
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			seenTypes[ty] = struct{}{}
-
-			if arrayRules.Guards.PostReadGuard != nil {
-				if err := arrayRules.Guards.PostReadGuard(seri); err != nil {
-					d.err = errProducer(err)
-					return d
-				}
-			}
 		}
 
 		if arrayElementValidator != nil {
@@ -1076,8 +1100,6 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 				return d
 			}
 		}
-
-		seris = append(seris, seri)
 	}
 
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
@@ -1087,11 +1109,9 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 		}
 	}
 
-	d.readSerializablesIntoTarget(target, seris)
-
 	return d
-}
 
+}
 func (d *Deserializer) readSerializablesIntoTarget(target interface{}, seris Serializables) {
 	switch x := target.(type) {
 	case func(seri Serializables):
