@@ -1,21 +1,10 @@
 package event
 
 import (
-	"sync"
-
 	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/generics/orderedmap"
-	"github.com/iotaledger/hive.go/workerpool"
 )
-
-const loopQueueSize = 1000
-
-var Loop struct {
-	once sync.Once
-
-	*workerpool.BlockingQueuedWorkerPool
-}
 
 // Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.
 type Event[T any] struct {
@@ -37,11 +26,6 @@ func New[T any]() (newEvent *Event[T]) {
 // Attach allows to register a Closure that is executed asynchronously when the Event triggers.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
 func (e *Event[T]) Attach(closure *Closure[T], triggerMaxCount ...uint64) {
-	Loop.once.Do(func() {
-		Loop.BlockingQueuedWorkerPool = workerpool.NewBlockingQueuedWorkerPool(workerpool.QueueSize(loopQueueSize), workerpool.FlushTasksAtShutdown(true))
-		Loop.Start()
-	})
-
 	if closure == nil {
 		return
 	}
