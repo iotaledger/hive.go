@@ -220,7 +220,6 @@ func (api *API) encodeStructFields(
 		})
 	}
 	return nil
-
 }
 
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType reflect.Type,

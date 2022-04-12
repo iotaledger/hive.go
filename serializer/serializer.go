@@ -1024,25 +1024,26 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 	}
 
 	var seris Serializables
-	deserializeItem := func(d *Deserializer) (ty uint32, ok bool) {
+	deserializeItem := func(b []byte) (bytesRead int, ty uint32, err error) {
 		var seri Serializable
 		// this mutates d.src/d.offset
-		_, ty = d.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
+		subDeseri := NewDeserializer(b)
+		_, ty = subDeseri.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
 			return errProducer(err)
 		})
-		if seri == nil {
-			return 0, false
+		bytesRead, err = subDeseri.Done()
+		if err != nil {
+			return 0, 0, err
 		}
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			if arrayRules.Guards.PostReadGuard != nil {
 				if err := arrayRules.Guards.PostReadGuard(seri); err != nil {
-					d.err = errProducer(err)
-					return 0, false
+					return 0, 0, err
 				}
 			}
 		}
 		seris = append(seris, seri)
-		return ty, true
+		return bytesRead, ty, nil
 
 	}
 	d.ReadSequenceOfObjects(deserializeItem, deSeriMode, lenType, arrayRules, errProducer)
@@ -1052,7 +1053,7 @@ func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSeria
 	return d
 }
 
-type DeserializeFunc func(d *Deserializer) (ty uint32, ok bool)
+type DeserializeFunc func(b []byte) (bytesRead int, ty uint32, err error)
 
 // ReadSequenceOfObjects reads a sequence of objects and calls DeserializeFunc for evey encountered item.
 func (d *Deserializer) ReadSequenceOfObjects(
@@ -1087,21 +1088,22 @@ func (d *Deserializer) ReadSequenceOfObjects(
 
 	for i := 0; i < sliceLength; i++ {
 
-		// remember where we were before reading the object
+		// Remember where we were before reading the item.
 		srcBefore := d.src[d.offset:]
 		offsetBefore := d.offset
 
-		ty, ok := itemDeserializer(d)
-		if !ok {
+		bytesRead, ty, err := itemDeserializer(srcBefore)
+		if err != nil {
+			d.err = errProducer(err)
 			return d
 		}
-		bytesConsumed := d.offset - offsetBefore
+		d.offset = offsetBefore + bytesRead
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			seenTypes[ty] = struct{}{}
 		}
 
 		if arrayElementValidator != nil {
-			if err := arrayElementValidator(i, srcBefore[:bytesConsumed]); err != nil {
+			if err := arrayElementValidator(i, srcBefore[:bytesRead]); err != nil {
 				d.err = errProducer(err)
 				return d
 			}

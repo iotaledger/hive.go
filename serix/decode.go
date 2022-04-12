@@ -3,7 +3,9 @@ package serix
 import (
 	"context"
 	"reflect"
+	"time"
 
+	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/pkg/errors"
 )
 
@@ -111,12 +113,98 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 }
 
 func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
-	valueType reflect.Type, opts *options) (int, error) {
-	return 0, nil
+	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
+	if valueType == timeType {
+		deseri := serializer.NewDeserializer(b)
+		addrValue := value.Addr()
+		deseri.ReadTime(addrValue.Interface().(*time.Time), func(err error) error {
+			return errors.Wrap(err, "failed to read time from the deserializer")
+		})
+		return deseri.Done()
+	}
+	deseri := serializer.NewDeserializer(b)
+	if objectCode := ts.ObjectCode(); objectCode != nil {
+		typeDen, codeNumber, err := getTypeDenotationAndNumber(objectCode)
+		if err != nil {
+			return 0, errors.WithStack(err)
+		}
+		deseri.CheckTypePrefix(codeNumber, typeDen, func(err error) error {
+			return errors.Wrap(err, "failed to check object type")
+		})
+	}
+	if err := api.decodeStructFields(ctx, deseri, value, valueType, opts); err != nil {
+		return 0, errors.WithStack(err)
+	}
+	return deseri.Done()
+}
+
+func (api *API) decodeStructFields(
+	ctx context.Context, deseri *serializer.Deserializer, value reflect.Value, valueType reflect.Type, opts *options,
+) error {
+	//structFields, err := parseStructType(valueType)
+	//if err != nil {
+	//	return errors.Wrapf(err, "can't parse struct type %s", valueType)
+	//}
+	//if len(structFields) == 0 {
+	//	return nil
+	//}
+	//
+	//for _, sField := range structFields {
+	//	fieldValue := value.Field(sField.index)
+	//	if sField.isEmbeddedStruct && !sField.settings.nest {
+	//		fieldType := sField.fType
+	//		if fieldValue.Kind() == reflect.Ptr {
+	//			if fieldValue.IsNil() {
+	//				continue
+	//			}
+	//			fieldValue = fieldValue.Elem()
+	//			fieldType = fieldType.Elem()
+	//		}
+	//		if err := api.encodeStructFields(ctx, s, fieldValue, fieldType, opts); err != nil {
+	//			return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
+	//		}
+	//		continue
+	//	}
+	//	var fieldBytes []byte
+	//	if sField.settings.isOptional {
+	//		if fieldValue.IsNil() {
+	//			s.WritePayloadLength(0, func(err error) error {
+	//				return errors.Wrapf(err,
+	//					"failed to write zero length for an optional struct field %s to serializer",
+	//					sField.name,
+	//				)
+	//			})
+	//			continue
+	//		}
+	//		fieldBytes, err = api.encode(ctx, fieldValue, sField.settings.ts, opts)
+	//		if err != nil {
+	//			return errors.Wrapf(err, "failed to serialize optional struct field %s", sField.name)
+	//		}
+	//		s.WritePayloadLength(len(fieldBytes), func(err error) error {
+	//			return errors.Wrapf(err,
+	//				"failed to write length for an optional struct field %s to serializer",
+	//				sField.name,
+	//			)
+	//		})
+	//	} else {
+	//		b, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
+	//		if err != nil {
+	//			return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
+	//		}
+	//		fieldBytes = b
+	//	}
+	//	s.WriteBytes(fieldBytes, func(err error) error {
+	//		return errors.Wrapf(err,
+	//			"failed to write serialized struct field bytes to serializer, field=%s",
+	//			sField.name,
+	//		)
+	//	})
+	//}
+	return nil
 }
 
 func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
-	valueType reflect.Type, opts *options) (int, error) {
+	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	//if valueType.AssignableTo(bytesType) {
 	//	lengthPrefixType, set := ts.LengthPrefixType()
 	//	if !set {
@@ -128,24 +216,29 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value, 
 	//	})
 	//	return seri.Serialize()
 	//}
-	//deseri := serializer.NewDeserializer(b)
-	//newValue:=reflect.New(valueType)
-	//value.Set()
-	//deserializeItem:= func(d *Deserializable) {[]}
-	//deseri.ReadSequenceOfObjects()
-	//reflect.Append()
-	//sliceLen := value.Len()
-	//data := make([][]byte, sliceLen)
-	//for i := 0; i < sliceLen; i++ {
-	//	elemValue := value.Index(i)
-	//	elemBytes, err := api.encode(ctx, elemValue, TypeSettings{}, opts)
-	//	if err != nil {
-	//		return nil, errors.Wrapf(err, "failed to encode element with index %d of slice %s", i, valueType)
-	//	}
-	//	data[i] = elemBytes
-	//}
-	//return encodeSliceOfBytes(data, valueType, ts, opts)
-	return 0, nil
+	deseri := serializer.NewDeserializer(b)
+	deserializeItem := func(b []byte) (bytesRead int, ty uint32, err error) {
+		elemValue := reflect.New(valueType.Elem()).Elem()
+		bytesRead, err = api.decode(ctx, b, elemValue, TypeSettings{}, opts)
+		if err != nil {
+			return 0, 0, errors.WithStack(err)
+		}
+		value.Set(reflect.Append(value, elemValue))
+		return bytesRead, 0, nil
+	}
+	lengthPrefixType, set := ts.LengthPrefixType()
+	if !set {
+		return 0, errors.Errorf("no LengthPrefixType was provided for type %s", valueType)
+	}
+	arrayRules := ts.ArrayRules()
+	if arrayRules == nil {
+		arrayRules = new(serializer.ArrayRules)
+	}
+	serializationMode := ts.toMode(opts)
+	deseri.ReadSequenceOfObjects(deserializeItem, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
+		return errors.Wrapf(err, "failed to read slice of objects %s from the deserialized", valueType)
+	})
+	return deseri.Done()
 }
 
 func (api *API) decodeInterface(ctx context.Context, b []byte, value reflect.Value, opts *options) (int, error) {
