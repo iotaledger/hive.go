@@ -416,30 +416,33 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 			objType,
 		)
 	}
-	objTypeDenotation, err := getTypeDenotationType(objectCode)
+	objTypeDenotation, _, err := getTypeDenotationAndNumber(objectCode)
 	if err != nil {
 		return 0, nil, errors.WithStack(err)
 	}
 	return objTypeDenotation, objectCode, nil
 }
 
-func getTypeDenotationType(objectCode interface{}) (serializer.TypeDenotationType, error) {
+func getTypeDenotationAndNumber(objectCode interface{}) (serializer.TypeDenotationType, uint32, error) {
 	objCodeType := reflect.TypeOf(objectCode)
 	if objCodeType == nil {
-		return 0, errors.New("can't detect type denotation type: object code is nil interface")
+		return 0, 0, errors.New("can't detect type denotation type: object code is nil interface")
 	}
+	var number uint32
 	var objTypeDenotation serializer.TypeDenotationType
 	switch objCodeType.Kind() {
 	case reflect.Uint32:
 		objTypeDenotation = serializer.TypeDenotationUint32
+		number = objectCode.(uint32)
 	case reflect.Uint8:
 		objTypeDenotation = serializer.TypeDenotationByte
+		number = uint32(objectCode.(uint8))
 	default:
-		return 0, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
+		return 0, 0, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
 			objCodeType, objCodeType.Kind())
 	}
 
-	return objTypeDenotation, nil
+	return objTypeDenotation, number, nil
 }
 
 func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
