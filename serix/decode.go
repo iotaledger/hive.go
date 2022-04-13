@@ -2,6 +2,7 @@ package serix
 
 import (
 	"context"
+	"math/big"
 	"reflect"
 	"time"
 
@@ -42,73 +43,84 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 
 func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
-	//globalTS, _ := api.getTypeSettings(valueType)
-	//ts = ts.merge(globalTS)
-	//switch value.Kind() {
-	//case reflect.Ptr:
-	//	if valueType == bigIntPtrType {
-	//		addrValue := value.Addr()
-	//		deseri := serializer.NewDeserializer(b)
-	//		deseri.ReadUint256(addrValue.Interface().(**big.Int), func(err error) error {
-	//			return errors.Wrap(err, "failed to read big.Int from deserializer")
-	//		})
-	//		return deseri.Done()
-	//	}
-	//	if omm, ok := parseOrderedMapMeta(valueType); ok {
-	//		return api.encodeOrderedMap(ctx, value, valueType, omm, ts, opts)
-	//	}
-	//	elemValue := reflect.Indirect(value)
-	//	if !elemValue.IsValid() {
-	//		return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
-	//	}
-	//	if elemValue.Kind() == reflect.Struct {
-	//		return api.encodeStruct(ctx, elemValue, elemValue.Interface(), elemValue.Type(), ts, opts)
-	//	}
-	//
-	//case reflect.Struct:
-	//	return api.encodeStruct(ctx, value, valueI, valueType, ts, opts)
-	//case reflect.Slice:
-	//	return api.encodeSlice(ctx, value, valueType, ts, opts)
-	//case reflect.Map:
-	//	return api.encodeMap(ctx, value, valueType, ts, opts)
-	//case reflect.Array:
-	//	sliceValue := sliceFromArray(value)
-	//	sliceValueType := sliceValue.Type()
-	//	if sliceValueType.AssignableTo(bytesType) {
-	//		seri := serializer.NewSerializer()
-	//		return seri.WriteBytes(sliceValue.Bytes(), func(err error) error {
-	//			return errors.Wrap(err, "failed to write array of bytes to serializer")
-	//		}).Serialize()
-	//	}
-	//	return api.encodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
-	//case reflect.Interface:
-	//	return api.encodeInterface(ctx, value, valueType, ts, opts)
-	//case reflect.String:
-	//	lengthPrefixType, set := ts.LengthPrefixType()
-	//	if !set {
-	//		return nil, errors.Errorf("in order to serialize 'string' type no LengthPrefixType was provided")
-	//	}
-	//	seri := serializer.NewSerializer()
-	//	return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
-	//		return errors.Wrap(err, "failed to write string value to serializer")
-	//	}).Serialize()
-	//
-	//case reflect.Bool:
-	//	seri := serializer.NewSerializer()
-	//	return seri.WriteBool(value.Bool(), func(err error) error {
-	//		return errors.Wrap(err, "failed to write bool value to serializer")
-	//	}).Serialize()
-	//
-	//case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-	//	reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-	//	reflect.Float32, reflect.Float64:
-	//	seri := serializer.NewSerializer()
-	//	return seri.WriteNum(valueI, func(err error) error {
-	//		return errors.Wrap(err, "failed to write number value to serializer")
-	//	}).Serialize()
-	//default:
-	//}
-	//return nil, errors.Errorf("can't encode: unsupported type %T", valueI)
+	globalTS, _ := api.getTypeSettings(valueType)
+	ts = ts.merge(globalTS)
+	switch value.Kind() {
+	case reflect.Ptr:
+		if valueType == bigIntPtrType {
+			addrValue := value.Addr()
+			deseri := serializer.NewDeserializer(b)
+			deseri.ReadUint256(addrValue.Interface().(**big.Int), func(err error) error {
+				return errors.Wrap(err, "failed to read big.Int from deserializer")
+			})
+			return deseri.Done()
+		}
+		elemType := valueType.Elem()
+		if elemType.Kind() == reflect.Struct {
+			if value.IsNil() {
+				value.Set(reflect.New(elemType))
+			}
+			elemValue := value.Elem()
+			return api.decodeStruct(ctx, b, elemValue, elemValue.Interface(), elemType, ts, opts)
+		}
+
+	case reflect.Struct:
+		return api.decodeStruct(ctx, b, value, valueI, valueType, ts, opts)
+	case reflect.Slice:
+		return api.decodeSlice(ctx, b, value, valueType, ts, opts)
+	case reflect.Map:
+		return api.decodeMap(ctx, b, value, valueType, ts, opts)
+	case reflect.Array:
+		sliceValue := sliceFromArray(value)
+		sliceValueType := sliceValue.Type()
+		if sliceValueType.AssignableTo(bytesType) {
+			deseri := serializer.NewDeserializer(b)
+			deseri.ReadBytesInPlace(sliceValue.Bytes(), func(err error) error {
+				return errors.Wrap(err, "failed to ready array of bytes from the deserializer")
+			})
+			fillArrayFromSlice(value, sliceValue)
+			return deseri.Done()
+		}
+		return api.decodeSlice(ctx, b, sliceValue, sliceValueType, ts, opts)
+	case reflect.Interface:
+		return api.decodeInterface(ctx, b, value, valueType, ts, opts)
+	case reflect.String:
+		lengthPrefixType, set := ts.LengthPrefixType()
+		if !set {
+			return 0, errors.Errorf("can't deserialize 'string' type: no LengthPrefixType was provided")
+		}
+		deseri := serializer.NewDeserializer(b)
+		addrValue := value.Addr()
+		deseri.ReadString(addrValue.Interface().(*string), lengthPrefixType, func(err error) error {
+			return errors.Wrap(err, "failed to read string value from the deserializer")
+		})
+		return deseri.Done()
+
+	case reflect.Bool:
+		deseri := serializer.NewDeserializer(b)
+		addrValue := value.Addr()
+		deseri.ReadBool(addrValue.Interface().(*bool), func(err error) error {
+			return errors.Wrap(err, "failed to read bool value from the deserializer")
+		})
+		return deseri.Done()
+
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		deseri := serializer.NewDeserializer(b)
+		addrValue := value.Addr()
+		deseri.ReadNum(addrValue.Interface(), func(err error) error {
+			return errors.Wrap(err, "failed to read number value from the serializer")
+		})
+		return deseri.Done()
+	default:
+	}
+	return 0, errors.Errorf("can't decode: unsupported type %T", valueI)
+}
+
+func (api *API) decodeInterface(
+	ctx context.Context, b []byte, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
+) (int, error) {
 	return 0, nil
 }
 
@@ -141,81 +153,84 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 func (api *API) decodeStructFields(
 	ctx context.Context, deseri *serializer.Deserializer, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	//structFields, err := parseStructType(valueType)
-	//if err != nil {
-	//	return errors.Wrapf(err, "can't parse struct type %s", valueType)
-	//}
-	//if len(structFields) == 0 {
-	//	return nil
-	//}
-	//
-	//for _, sField := range structFields {
-	//	fieldValue := value.Field(sField.index)
-	//	if sField.isEmbeddedStruct && !sField.settings.nest {
-	//		fieldType := sField.fType
-	//		if fieldValue.Kind() == reflect.Ptr {
-	//			if fieldValue.IsNil() {
-	//				continue
-	//			}
-	//			fieldValue = fieldValue.Elem()
-	//			fieldType = fieldType.Elem()
-	//		}
-	//		if err := api.encodeStructFields(ctx, s, fieldValue, fieldType, opts); err != nil {
-	//			return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
-	//		}
-	//		continue
-	//	}
-	//	var fieldBytes []byte
-	//	if sField.settings.isOptional {
-	//		if fieldValue.IsNil() {
-	//			s.WritePayloadLength(0, func(err error) error {
-	//				return errors.Wrapf(err,
-	//					"failed to write zero length for an optional struct field %s to serializer",
-	//					sField.name,
-	//				)
-	//			})
-	//			continue
-	//		}
-	//		fieldBytes, err = api.encode(ctx, fieldValue, sField.settings.ts, opts)
-	//		if err != nil {
-	//			return errors.Wrapf(err, "failed to serialize optional struct field %s", sField.name)
-	//		}
-	//		s.WritePayloadLength(len(fieldBytes), func(err error) error {
-	//			return errors.Wrapf(err,
-	//				"failed to write length for an optional struct field %s to serializer",
-	//				sField.name,
-	//			)
-	//		})
-	//	} else {
-	//		b, err := api.encode(ctx, fieldValue, sField.settings.ts, opts)
-	//		if err != nil {
-	//			return errors.Wrapf(err, "failed to serialize struct field %s", sField.name)
-	//		}
-	//		fieldBytes = b
-	//	}
-	//	s.WriteBytes(fieldBytes, func(err error) error {
-	//		return errors.Wrapf(err,
-	//			"failed to write serialized struct field bytes to serializer, field=%s",
-	//			sField.name,
-	//		)
-	//	})
-	//}
+	structFields, err := parseStructType(valueType)
+	if err != nil {
+		return errors.Wrapf(err, "can't parse struct type %s", valueType)
+	}
+	if len(structFields) == 0 {
+		return nil
+	}
+
+	for _, sField := range structFields {
+		fieldValue := value.Field(sField.index)
+		if sField.isEmbeddedStruct && !sField.settings.nest {
+			fieldType := sField.fType
+			if fieldType.Kind() == reflect.Ptr {
+				if fieldValue.IsNil() {
+					if sField.isUnexported {
+						return errors.Errorf(
+							"embedded field %s is a nil pointer, can't initialize because it's unexported",
+							sField.name,
+						)
+					}
+					fieldValue.Set(reflect.New(fieldType.Elem()))
+				}
+				fieldValue = fieldValue.Elem()
+				fieldType = fieldType.Elem()
+			}
+			if err := api.decodeStructFields(ctx, deseri, fieldValue, fieldType, opts); err != nil {
+				return errors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
+			}
+			continue
+		}
+		var bytesRead int
+		if sField.settings.isOptional {
+			payloadLength, err := deseri.ReadPayloadLength()
+			if err != nil {
+				return errors.Wrap(err, "can't read payload length from the deserializer")
+			}
+			if payloadLength == 0 {
+				continue
+			}
+
+			bytesRead, err = api.decode(ctx, deseri.RemainingBytes(), fieldValue, sField.settings.ts, opts)
+			if err != nil {
+				return errors.Wrapf(err, "failed to deserialize optional struct field %s", sField.name)
+			}
+			if bytesRead != int(payloadLength) {
+				return errors.Wrapf(
+					err,
+					"optional object length isn't equal to the amount of bytes read; length=%d, bytesRead=%d",
+					payloadLength, bytesRead,
+				)
+			}
+		} else {
+			bytesRead, err = api.decode(ctx, deseri.RemainingBytes(), fieldValue, sField.settings.ts, opts)
+			if err != nil {
+				return errors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
+			}
+		}
+		deseri.Skip(bytesRead, func(err error) error {
+			return errors.Wrap(err, "failed to skip amount of bytes read for the struct field")
+		})
+	}
 	return nil
 }
 
-func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
+func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
-	//if valueType.AssignableTo(bytesType) {
-	//	lengthPrefixType, set := ts.LengthPrefixType()
-	//	if !set {
-	//		return nil, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
-	//	}
-	//	seri := serializer.NewSerializer()
-	//	seri.WriteVariableByteSlice(value.Bytes(), lengthPrefixType, func(err error) error {
-	//		return errors.Wrap(err, "failed to write bytes to serializer")
-	//	})
-	//	return seri.Serialize()
-	//}
+	if valueType.AssignableTo(bytesType) {
+		lengthPrefixType, set := ts.LengthPrefixType()
+		if !set {
+			return 0, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
+		}
+		deseri := serializer.NewDeserializer(b)
+		addrValue := value.Addr()
+		deseri.ReadVariableByteSlice(addrValue.Interface().(*[]byte), lengthPrefixType, func(err error) error {
+			return errors.Wrap(err, "failed to read bytes from the deserializer")
+		})
+		return deseri.Done()
+	}
 	deseri := serializer.NewDeserializer(b)
 	deserializeItem := func(b []byte) (bytesRead int, ty uint32, err error) {
 		elemValue := reflect.New(valueType.Elem()).Elem()
@@ -241,7 +256,8 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value, 
 	return deseri.Done()
 }
 
-func (api *API) decodeInterface(ctx context.Context, b []byte, value reflect.Value, opts *options) (int, error) {
+func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
+	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	return 0, nil
 }
 
