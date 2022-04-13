@@ -56,9 +56,6 @@ func (api *API) encodeBasedOnType(
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
 		}
-		if omm, ok := parseOrderedMapMeta(valueType); ok {
-			return api.encodeOrderedMap(ctx, value, valueType, omm, ts, opts)
-		}
 		elemValue := reflect.Indirect(value)
 		if !elemValue.IsValid() {
 			return nil, errors.Errorf("unexpected nil pointer for type %T", valueI)
@@ -88,7 +85,7 @@ func (api *API) encodeBasedOnType(
 	case reflect.String:
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
-			return nil, errors.Errorf("in order to serialize 'string' type no LengthPrefixType was provided")
+			return nil, errors.Errorf("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
 		seri := serializer.NewSerializer()
 		return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
@@ -270,35 +267,6 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
 	ts = ts.WithArrayRules(arrayRules)
-
-	return encodeSliceOfBytes(data, valueType, ts, opts)
-}
-
-func (api *API) encodeOrderedMap(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, typeMeta iterableMeta, ts TypeSettings, opts *options,
-) ([]byte, error) {
-	if value.IsZero() {
-		return encodeSliceOfBytes(nil, valueType, ts, opts)
-	}
-	size := value.Method(typeMeta.sizeMethodIndex).Call(nil)[0].Int()
-	data := make([][]byte, size)
-	var i int
-	var iterErr error
-	iterFunc := reflect.MakeFunc(typeMeta.iterFuncType, func(args []reflect.Value) (results []reflect.Value) {
-		keyValue, elemValue := args[0], args[1]
-		b, err := api.encodeMapKVPair(ctx, keyValue, elemValue, opts)
-		if err != nil {
-			iterErr = errors.WithStack(err)
-			return []reflect.Value{reflect.ValueOf(false)}
-		}
-		data[i] = b
-		i++
-		return []reflect.Value{reflect.ValueOf(true)}
-	})
-	value.Method(typeMeta.forEachMethodIndex).Call([]reflect.Value{iterFunc})
-	if iterErr != nil {
-		return nil, errors.WithStack(iterErr)
-	}
 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }

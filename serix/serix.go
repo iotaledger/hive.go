@@ -453,6 +453,7 @@ func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
 
 type structField struct {
 	name             string
+	isUnexported     bool
 	index            int
 	fType            reflect.Type
 	isEmbeddedStruct bool
@@ -510,6 +511,7 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 		}
 		structFields = append(structFields, structField{
 			name:             field.Name,
+			isUnexported:     isUnexported,
 			index:            i,
 			fType:            field.Type,
 			isEmbeddedStruct: isEmbeddedStruct,
@@ -585,81 +587,15 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 	return sliceValue
 }
 
+func fillArrayFromSlice(arrayValue, sliceValue reflect.Value) {
+	for i := 0; i < sliceValue.Len(); i++ {
+		arrayValue.Index(i).Set(sliceValue.Index(i))
+	}
+}
+
 func isUnderlyingStruct(t reflect.Type) bool {
 	t = deRefPointer(t)
 	return t.Kind() == reflect.Struct
-}
-
-type iterableMeta struct {
-	sizeMethodIndex    int
-	forEachMethodIndex int
-	iterFuncType       reflect.Type
-}
-
-func parseOrderedMapMeta(t reflect.Type) (iterableMeta, bool) {
-	if !strings.Contains(t.String(), "orderedmap.OrderedMap") {
-		return iterableMeta{}, false
-	}
-	if t.Kind() == reflect.Interface {
-		return iterableMeta{}, false
-	}
-	sizeMethodIndex, ok := parseSizeMethod(t)
-	if !ok {
-		return iterableMeta{}, false
-	}
-	forEeachMethodIndex, iterFuncType, ok := parseForEachMethod(t)
-	if !ok {
-		return iterableMeta{}, false
-	}
-	if iterFuncType.NumIn() != 2 {
-		return iterableMeta{}, false
-	}
-	if iterFuncType.NumOut() != 1 {
-		return iterableMeta{}, false
-	}
-	if iterFuncType.Out(0) != boolType {
-		return iterableMeta{}, false
-	}
-	im := iterableMeta{
-		sizeMethodIndex:    sizeMethodIndex,
-		forEachMethodIndex: forEeachMethodIndex,
-		iterFuncType:       iterFuncType,
-	}
-	return im, true
-}
-
-func parseSizeMethod(t reflect.Type) (methodIndex int, ok bool) {
-	sizeMethod, ok := t.MethodByName("Size")
-	if !ok {
-		return 0, false
-	}
-	sizeType := sizeMethod.Type
-	if sizeType.NumIn() != 1 {
-		return 0, false
-	}
-	if sizeType.NumOut() != 1 {
-		return 0, false
-	}
-	if sizeType.Out(0) != reflect.TypeOf(int(0)) {
-		return 0, false
-	}
-	return sizeMethod.Index, true
-}
-
-func parseForEachMethod(t reflect.Type) (methodIndex int, iterFunc reflect.Type, ok bool) {
-	forEachMethod, ok := t.MethodByName("ForEach")
-	if !ok {
-		return 0, nil, false
-	}
-	forEachType := forEachMethod.Type
-	if forEachType.NumIn() != 2 {
-		return 0, nil, false
-	}
-	iterFuncType := forEachType.In(1)
-	if iterFuncType.Kind() != reflect.Func {
-		return 0, nil, false
-	}
-	return forEachMethod.Index, iterFuncType, true
 }
 
 func deRefPointer(t reflect.Type) reflect.Type {

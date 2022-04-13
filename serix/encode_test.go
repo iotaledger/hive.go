@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/generics/orderedmap"
 	"github.com/iotaledger/hive.go/serix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -145,25 +144,6 @@ func TestEncode_Map(t *testing.T) {
 		s.WriteSliceOfByteSlices(bytes, defaultSeriMode, lenType, new(serializer.ArrayRules), defaultErrProducer)
 	}
 	testEncode(t, manualSerialization, testObj, serix.WithTypeSettings(serix.TypeSettings{}.WithLengthPrefixType(lenType)))
-}
-
-func TestEncode_OrderedMap(t *testing.T) {
-	t.Parallel()
-	testObj := orderedmap.New[int64, int64]()
-	testObj.Set(0, 2)
-	testObj.Set(1, 4)
-	lenType := serializer.SeriLengthPrefixTypeAsUint32
-	manualSerialization := func(s *serializer.Serializer) {
-		var err error
-		bytes := make([][]byte, 2)
-		bytes[0], err = serializer.NewSerializer().WriteNum(int64(0), defaultErrProducer).WriteNum(int64(2), defaultErrProducer).Serialize()
-		require.NoError(t, err)
-		bytes[1], err = serializer.NewSerializer().WriteNum(int64(1), defaultErrProducer).WriteNum(int64(4), defaultErrProducer).Serialize()
-		require.NoError(t, err)
-		s.WriteSliceOfByteSlices(bytes, defaultSeriMode, lenType, new(serializer.ArrayRules), defaultErrProducer)
-	}
-	testEncode(t, manualSerialization, testObj, serix.WithTypeSettings(serix.TypeSettings{}.WithLengthPrefixType(lenType)))
-
 }
 
 func TestEncode_Serializable(t *testing.T) {

@@ -520,6 +520,10 @@ type Deserializer struct {
 	err    error
 }
 
+func (d *Deserializer) RemainingBytes() []byte {
+	return d.src[d.offset:]
+}
+
 // Skip skips the number of bytes during deserialization.
 func (d *Deserializer) Skip(skip int, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
@@ -1156,19 +1160,26 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 	return d
 }
 
+func (d *Deserializer) ReadPayloadLength() (uint32, error) {
+	if len(d.src[d.offset:]) < PayloadLengthByteSize {
+		return 0, fmt.Errorf("%w: data is smaller than payload length denotation", ErrDeserializationNotEnoughData)
+	}
+
+	payloadLength := binary.LittleEndian.Uint32(d.src[d.offset:])
+	d.offset += PayloadLengthByteSize
+	return payloadLength, nil
+}
+
 // ReadPayload reads a payload.
 func (d *Deserializer) ReadPayload(s interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, sel SerializableReadGuardFunc, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
-
-	if len(d.src[d.offset:]) < PayloadLengthByteSize {
-		d.err = errProducer(fmt.Errorf("%w: data is smaller than payload length denotation", ErrDeserializationNotEnoughData))
+	payloadLength, err := d.ReadPayloadLength()
+	if err != nil {
+		d.err = errProducer(err)
 		return d
 	}
-
-	payloadLength := binary.LittleEndian.Uint32(d.src[d.offset:])
-	d.offset += PayloadLengthByteSize
 
 	// nothing to do
 	if payloadLength == 0 {
