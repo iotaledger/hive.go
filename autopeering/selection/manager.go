@@ -10,7 +10,6 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -51,7 +50,7 @@ type manager struct {
 	r                int
 	ro               float64
 
-	events   Events
+	Events   *Events
 	inbound  *Neighborhood
 	outbound *Neighborhood
 
@@ -92,12 +91,7 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 		dropChan:          make(chan identity.ID, queueSize),
 		requestChan:       make(chan peeringRequest, queueSize),
 		closing:           make(chan struct{}),
-		events: Events{
-			SaltUpdated:     events.NewEvent(saltUpdatedCaller),
-			OutgoingPeering: events.NewEvent(peeringCaller),
-			IncomingPeering: events.NewEvent(peeringCaller),
-			Dropped:         events.NewEvent(droppedCaller),
-		},
+		Events:            newEvents(),
 	}
 }
 
@@ -425,7 +419,7 @@ func (m *manager) updateSalt() {
 		"public", saltLifetime,
 		"private", saltLifetime,
 	)
-	m.events.SaltUpdated.Trigger(&SaltUpdatedEvent{Public: public, Private: private})
+	m.Events.SaltUpdated.Trigger(&SaltUpdatedEvent{Public: public, Private: private})
 }
 
 func (m *manager) dropNeighborhood(nh *Neighborhood) {
@@ -444,7 +438,7 @@ func (m *manager) dropPeering(p *peer.Peer) {
 		"#out", m.outbound,
 		"#in", m.inbound,
 	)
-	m.events.Dropped.Trigger(&DroppedEvent{Peer: p, DroppedID: p.ID()})
+	m.Events.Dropped.Trigger(&DroppedEvent{Peer: p, DroppedID: p.ID()})
 }
 
 func (m *manager) getConnectedFilter() *Filter {
@@ -493,7 +487,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		m.events.OutgoingPeering.Trigger(&PeeringEvent{
+		m.Events.OutgoingPeering.Trigger(&PeeringEvent{
 			Peer:     p,
 			Status:   status,
 			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes(), p).Distance,
@@ -506,7 +500,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 			"#out", m.outbound,
 			"#in", m.inbound,
 		)
-		m.events.IncomingPeering.Trigger(&PeeringEvent{
+		m.Events.IncomingPeering.Trigger(&PeeringEvent{
 			Peer:     p,
 			Status:   status,
 			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
