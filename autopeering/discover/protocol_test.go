@@ -11,7 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/autopeering/server/servertest"
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/logger"
@@ -252,8 +252,8 @@ func TestProtEvents(t *testing.T) {
 	defer closeM()
 
 	e := newEventNetwork(t)
-	protM.Events().PeerDiscovered.Attach(events.NewClosure(e.peerDiscovered))
-	protM.Events().PeerDeleted.Attach(events.NewClosure(e.peerDeleted))
+	protM.Events().PeerDiscovered.Attach(event.NewClosure(e.peerDiscovered))
+	protM.Events().PeerDeleted.Attach(event.NewClosure(e.peerDeleted))
 
 	time.Sleep(graceTime) // wait for the master to initialize
 
@@ -288,7 +288,7 @@ func newEventNetwork(t *testing.T) *eventNetwork {
 	}
 }
 
-func (e *eventNetwork) peerDiscovered(ev *DiscoveredEvent) {
+func (e *eventNetwork) peerDiscovered(ev *PeerDiscoveredEvent) {
 	require.NotNil(e.t, ev)
 	e.Lock()
 	defer e.Unlock()
@@ -296,7 +296,7 @@ func (e *eventNetwork) peerDiscovered(ev *DiscoveredEvent) {
 	e.m[ev.Peer.ID()] = ev.Peer
 }
 
-func (e *eventNetwork) peerDeleted(ev *DeletedEvent) {
+func (e *eventNetwork) peerDeleted(ev *PeerDeletedEvent) {
 	require.NotNil(e.t, ev)
 	e.Lock()
 	defer e.Unlock()

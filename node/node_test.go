@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/iotaledger/hive.go/configuration"
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/node"
 	"github.com/stretchr/testify/require"
@@ -28,8 +28,8 @@ func TestDependencyInjection(t *testing.T) {
 
 	pluginB := node.NewPlugin("B", nil, node.Enabled)
 
-	pluginB.Events.Init.Attach(events.NewClosure(func(_ *node.Plugin, container *dig.Container) {
-		require.NoError(t, container.Provide(func() string {
+	pluginB.Events.Init.Attach(event.NewClosure(func(event *node.InitEvent) {
+		require.NoError(t, event.Container.Provide(func() string {
 			return stringVal
 		}, dig.Name("providedByB")))
 	}))

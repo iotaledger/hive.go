@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +28,7 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(2)
-		buffConn2.Events.Close.Attach(events.NewClosure(func() { wg.Done() }))
+		buffConn2.Events.Close.Attach(event.NewClosure(func(_ *CloseEvent) { wg.Done() }))
 		go func() {
 			err := buffConn2.Read()
 			assert.True(t, errors.Is(err, io.ErrClosedPipe), "unexpected error: %s", err)
@@ -66,8 +66,8 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(2)
-		buffConn2.Events.ReceiveMessage.Attach(events.NewClosure(func(data []byte) {
-			assert.EqualValues(t, testMsg, data)
+		buffConn2.Events.ReceiveMessage.Attach(event.NewClosure(func(event *ReceiveMessageEvent) {
+			assert.EqualValues(t, testMsg, event.Data)
 			wg.Done()
 		}))
 		go func() {
@@ -98,8 +98,8 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(numWrites)
-		buffConn2.Events.ReceiveMessage.Attach(events.NewClosure(func(data []byte) {
-			assert.Equal(t, testMsg, data)
+		buffConn2.Events.ReceiveMessage.Attach(event.NewClosure(func(event *ReceiveMessageEvent) {
+			assert.Equal(t, testMsg, event.Data)
 			wg.Done()
 		}))
 		go func() {

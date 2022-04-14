@@ -3,7 +3,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -69,12 +69,12 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	m := &eventMock{}
 	m.Test(t)
 
-	debugC := events.NewClosure(m.debug)
-	infoC := events.NewClosure(m.info)
-	warnC := events.NewClosure(m.warn)
-	errorC := events.NewClosure(m.error)
-	panicC := events.NewClosure(m.panic)
-	anyC := events.NewClosure(m.any)
+	debugC := event.NewClosure(func(event *LogEvent) { m.debug(event.Level, event.Name, event.Msg) })
+	infoC := event.NewClosure(func(event *LogEvent) { m.info(event.Level, event.Name, event.Msg) })
+	warnC := event.NewClosure(func(event *LogEvent) { m.warn(event.Level, event.Name, event.Msg) })
+	errorC := event.NewClosure(func(event *LogEvent) { m.error(event.Level, event.Name, event.Msg) })
+	panicC := event.NewClosure(func(event *LogEvent) { m.panic(event.Level, event.Name, event.Msg) })
+	anyC := event.NewClosure(func(event *LogEvent) { m.any(event.Level, event.Name, event.Msg) })
 
 	Events.DebugMsg.Attach(debugC)
 	Events.InfoMsg.Attach(infoC)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/network"
 	"github.com/iotaledger/hive.go/syncutils"
 )
@@ -12,7 +11,7 @@ import (
 type TCPServer struct {
 	socket      net.Listener
 	socketMutex syncutils.RWMutex
-	Events      tcpServerEvents
+	Events      *tcpServerEvents
 }
 
 func (srv *TCPServer) GetSocket() net.Listener {
@@ -45,8 +44,8 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 		srv.socketMutex.Unlock()
 	}
 
-	srv.Events.Start.Trigger()
-	defer srv.Events.Shutdown.Trigger()
+	srv.Events.Start.Trigger(&StartEvent{})
+	defer srv.Events.Shutdown.Trigger(&ShutdownEvent{})
 
 	for srv.GetSocket() != nil {
 		if socket, err := srv.GetSocket().Accept(); err != nil {
@@ -57,7 +56,7 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 		} else {
 			peer := network.NewManagedConnection(socket)
 
-			go srv.Events.Connect.Trigger(peer)
+			go srv.Events.Connect.Trigger(&ConnectEvent{peer})
 		}
 	}
 
@@ -66,11 +65,6 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 
 func NewServer() *TCPServer {
 	return &TCPServer{
-		Events: tcpServerEvents{
-			Start:    events.NewEvent(events.VoidCaller),
-			Shutdown: events.NewEvent(events.VoidCaller),
-			Connect:  events.NewEvent(network.ManagedConnectionCaller),
-			Error:    events.NewEvent(events.ErrorCaller),
-		},
+		Events: newTcpServerEvents(),
 	}
 }

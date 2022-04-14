@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/events"
 	"go.uber.org/atomic"
 )
 
@@ -25,15 +24,9 @@ var (
 	ErrInsufficientBuffer = errors.New("insufficient buffer")
 )
 
-// BufferedConnectionEvents contains all the events that are triggered during the peer discovery.
-type BufferedConnectionEvents struct {
-	ReceiveMessage *events.Event
-	Close          *events.Event
-}
-
 // BufferedConnection is a wrapper for sending and reading messages with a buffer.
 type BufferedConnection struct {
-	Events BufferedConnectionEvents
+	Events *BufferedConnectionEvents
 
 	conn                 net.Conn
 	incomingHeaderBuffer []byte
@@ -47,10 +40,7 @@ type BufferedConnection struct {
 // NewBufferedConnection creates a new BufferedConnection from a net.Conn.
 func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnection {
 	return &BufferedConnection{
-		Events: BufferedConnectionEvents{
-			ReceiveMessage: events.NewEvent(events.ByteSliceCaller),
-			Close:          events.NewEvent(events.VoidCaller),
-		},
+		Events:               newBufferedConnectionEvents(),
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
 		maxMessageSize:       maxMessageSize,
@@ -65,7 +55,7 @@ func (c *BufferedConnection) Close() (err error) {
 	c.closeOnce.Do(func() {
 		err = c.conn.Close()
 		// close in separate go routine to avoid deadlocks
-		go c.Events.Close.Trigger()
+		c.Events.Close.Trigger(&CloseEvent{})
 	})
 	return err
 }
@@ -102,7 +92,7 @@ func (c *BufferedConnection) Read() error {
 			return err
 		}
 		if n > 0 {
-			c.Events.ReceiveMessage.Trigger(buffer[:n])
+			c.Events.ReceiveMessage.Trigger(&ReceiveMessageEvent{buffer[:n]})
 		}
 	}
 }
