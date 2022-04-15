@@ -101,6 +101,9 @@ func (api *API) encodeBasedOnType(
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
+		typeToConvert, _ := getNumberTypeToConvert(valueType.Kind())
+		value = value.Convert(typeToConvert)
+		valueI = value.Interface()
 		seri := serializer.NewSerializer()
 		return seri.WriteNum(valueI, func(err error) error {
 			return errors.Wrap(err, "failed to write number value to serializer")

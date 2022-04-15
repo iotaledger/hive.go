@@ -604,3 +604,31 @@ func deRefPointer(t reflect.Type) reflect.Type {
 	}
 	return t
 }
+
+func getNumberTypeToConvert(kind reflect.Kind) (reflect.Type, reflect.Type) {
+	var numberType reflect.Type
+	switch kind {
+	case reflect.Int8:
+		numberType = reflect.TypeOf(int8(0))
+	case reflect.Int16:
+		numberType = reflect.TypeOf(int16(0))
+	case reflect.Int32:
+		numberType = reflect.TypeOf(int32(0))
+	case reflect.Int64:
+		numberType = reflect.TypeOf(int64(0))
+	case reflect.Uint8:
+		numberType = reflect.TypeOf(uint8(0))
+	case reflect.Uint16:
+		numberType = reflect.TypeOf(uint8(0))
+	case reflect.Uint32:
+		numberType = reflect.TypeOf(uint8(0))
+	case reflect.Float32:
+		numberType = reflect.TypeOf(float32(0))
+	case reflect.Float64:
+		numberType = reflect.TypeOf(float64(0))
+	default:
+		return nil, nil
+	}
+	return numberType, reflect.PointerTo(numberType)
+
+}
