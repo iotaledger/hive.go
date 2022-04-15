@@ -125,7 +125,26 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 func (api *API) decodeInterface(
 	ctx context.Context, b []byte, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (int, error) {
-	return 0, nil
+	iObjects := api.getInterfaceObjects(valueType)
+	if iObjects == nil {
+		return 0, errors.Errorf("interface %s hasn't been registered", valueType)
+	}
+	d := serializer.NewDeserializer(b)
+	objectCode, err := d.GetObjectType(iObjects.typeDenotation)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	objectType := iObjects.fromCodeToType[objectCode]
+	if objectType == nil {
+		return 0, errors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+	}
+	objectValue := reflect.New(objectType).Elem()
+	value.Set(objectValue)
+	bytesRead, err := api.decode(ctx, b, objectValue, ts, opts)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	return bytesRead, nil
 }
 
 func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
@@ -139,12 +158,12 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 		return deseri.Done()
 	}
 	deseri := serializer.NewDeserializer(b)
-	if objectCode := ts.ObjectCode(); objectCode != nil {
-		typeDen, codeNumber, err := getTypeDenotationAndNumber(objectCode)
+	if objectType := ts.ObjectType(); objectType != nil {
+		typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
 		if err != nil {
 			return 0, errors.WithStack(err)
 		}
-		deseri.CheckTypePrefix(codeNumber, typeDen, func(err error) error {
+		deseri.CheckTypePrefix(objectCode, typeDen, func(err error) error {
 			return errors.Wrap(err, "failed to check object type")
 		})
 	}
@@ -237,14 +256,14 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		return deseri.Done()
 	}
 	deseri := serializer.NewDeserializer(b)
-	deserializeItem := func(b []byte) (bytesRead int, ty uint32, err error) {
+	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		bytesRead, err = api.decode(ctx, b, elemValue, TypeSettings{}, opts)
 		if err != nil {
-			return 0, 0, errors.WithStack(err)
+			return 0, errors.WithStack(err)
 		}
 		value.Set(reflect.Append(value, elemValue))
-		return bytesRead, 0, nil
+		return bytesRead, nil
 	}
 	lengthPrefixType, set := ts.LengthPrefixType()
 	if !set {

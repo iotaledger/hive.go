@@ -973,30 +973,37 @@ func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerialization
 	return deserializer
 }
 
-func (d *Deserializer) readObject(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, typeDen TypeDenotationType, serSel SerializableReadGuardFunc, errProducer ErrProducer) (*Deserializer, uint32) {
-	if d.err != nil {
-		return d, 0
-	}
-
+func (d *Deserializer) GetObjectType(typeDen TypeDenotationType) (uint32, error) {
 	l := len(d.src[d.offset:])
 	var ty uint32
 	switch typeDen {
 	case TypeDenotationUint32:
 		if l < UInt32ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d, 0
+			return 0, ErrDeserializationNotEnoughData
 		}
 		ty = binary.LittleEndian.Uint32(d.src[d.offset:])
 	case TypeDenotationByte:
 		if l < OneByte {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d, 0
+			return 0, ErrDeserializationNotEnoughData
 		}
 		ty = uint32(d.src[d.offset : d.offset+1][0])
 	case TypeDenotationNone:
 		// object has no type denotation
+		return 0, nil
 	}
+	return ty, nil
 
+}
+
+func (d *Deserializer) readObject(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, typeDen TypeDenotationType, serSel SerializableReadGuardFunc, errProducer ErrProducer) (*Deserializer, uint32) {
+	if d.err != nil {
+		return d, 0
+	}
+	ty, err := d.GetObjectType(typeDen)
+	if err != nil {
+		d.err = errProducer(err)
+		return d, 0
+	}
 	seri, err := serSel(ty)
 	if err != nil {
 		d.err = errProducer(err)
@@ -1016,42 +1023,57 @@ func (d *Deserializer) readObject(target interface{}, deSeriMode DeSerialization
 }
 
 // ReadSliceOfObjects reads a slice of objects.
-func (d *Deserializer) ReadSliceOfObjects(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, lenType SeriLengthPrefixType, typeDen TypeDenotationType, arrayRules *ArrayRules, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadSliceOfObjects(
+	target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, lenType SeriLengthPrefixType,
+	typeDen TypeDenotationType, arrayRules *ArrayRules, errProducer ErrProducer,
+) *Deserializer {
 	if d.err != nil {
 		return d
 	}
 
 	var seris Serializables
-	deserializeItem := func(b []byte) (bytesRead int, ty uint32, err error) {
+	var seenTypes TypePrefixes
+	if deSeriMode.HasMode(DeSeriModePerformValidation) {
+		seenTypes = make(TypePrefixes, 0)
+	}
+	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		var seri Serializable
 		// this mutates d.src/d.offset
 		subDeseri := NewDeserializer(b)
-		_, ty = subDeseri.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
+		_, ty := subDeseri.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
 			return errProducer(err)
 		})
 		bytesRead, err = subDeseri.Done()
 		if err != nil {
-			return 0, 0, err
+			return 0, err
 		}
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
+			seenTypes[ty] = struct{}{}
 			if arrayRules.Guards.PostReadGuard != nil {
 				if err := arrayRules.Guards.PostReadGuard(seri); err != nil {
-					return 0, 0, err
+					return 0, err
 				}
 			}
 		}
 		seris = append(seris, seri)
-		return bytesRead, ty, nil
+		return bytesRead, nil
 
 	}
 	d.ReadSequenceOfObjects(deserializeItem, deSeriMode, lenType, arrayRules, errProducer)
+
+	if deSeriMode.HasMode(DeSeriModePerformValidation) {
+		if !arrayRules.MustOccur.Subset(seenTypes) {
+			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
+			return d
+		}
+	}
 
 	d.readSerializablesIntoTarget(target, seris)
 
 	return d
 }
 
-type DeserializeFunc func(b []byte) (bytesRead int, ty uint32, err error)
+type DeserializeFunc func(b []byte) (bytesRead int, err error)
 
 // ReadSequenceOfObjects reads a sequence of objects and calls DeserializeFunc for evey encountered item.
 func (d *Deserializer) ReadSequenceOfObjects(
@@ -1069,7 +1091,6 @@ func (d *Deserializer) ReadSequenceOfObjects(
 	}
 
 	var arrayElementValidator ElementValidationFunc
-	var seenTypes TypePrefixes
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
 			d.err = errProducer(err)
@@ -1077,7 +1098,6 @@ func (d *Deserializer) ReadSequenceOfObjects(
 		}
 
 		arrayElementValidator = arrayRules.ElementValidationFunc()
-		seenTypes = make(TypePrefixes, 0)
 	}
 
 	if sliceLength == 0 {
@@ -1090,28 +1110,18 @@ func (d *Deserializer) ReadSequenceOfObjects(
 		srcBefore := d.src[d.offset:]
 		offsetBefore := d.offset
 
-		bytesRead, ty, err := itemDeserializer(srcBefore)
+		bytesRead, err := itemDeserializer(srcBefore)
 		if err != nil {
 			d.err = errProducer(err)
 			return d
 		}
 		d.offset = offsetBefore + bytesRead
-		if deSeriMode.HasMode(DeSeriModePerformValidation) {
-			seenTypes[ty] = struct{}{}
-		}
 
 		if arrayElementValidator != nil {
 			if err := arrayElementValidator(i, srcBefore[:bytesRead]); err != nil {
 				d.err = errProducer(err)
 				return d
 			}
-		}
-	}
-
-	if deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if !arrayRules.MustOccur.Subset(seenTypes) {
-			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
-			return d
 		}
 	}
 

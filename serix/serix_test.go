@@ -167,19 +167,19 @@ func TestMain(m *testing.M) {
 	exitCode := func() int {
 		if err := testAPI.RegisterTypeSettings(
 			SimpleStruct{},
-			serix.TypeSettings{}.WithObjectCode(simpleStructObjectCode),
+			serix.TypeSettings{}.WithObjectType(simpleStructObjectCode),
 		); err != nil {
 			log.Panic(err)
 		}
 		if err := testAPI.RegisterTypeSettings(
 			InterfaceImpl{},
-			serix.TypeSettings{}.WithObjectCode(interfaceImplObjectCode),
+			serix.TypeSettings{}.WithObjectType(interfaceImplObjectCode),
 		); err != nil {
 			log.Panic(err)
 		}
 		if err := testAPI.RegisterTypeSettings(
 			ExportedStruct{},
-			serix.TypeSettings{}.WithObjectCode(exportedStructObjectCode),
+			serix.TypeSettings{}.WithObjectType(exportedStructObjectCode),
 		); err != nil {
 			log.Panic(err)
 		}

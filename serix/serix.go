@@ -40,8 +40,8 @@ type validators struct {
 }
 
 type interfaceObjects struct {
-	fromCodeToType map[interface{}]reflect.Type
-	fromTypeToCode map[reflect.Type]interface{}
+	fromCodeToType map[uint32]reflect.Type
+	fromTypeToCode map[reflect.Type]uint32
 	typeDenotation serializer.TypeDenotationType
 }
 
@@ -93,7 +93,7 @@ func (o *options) toMode() serializer.DeSerializationMode {
 
 type TypeSettings struct {
 	lengthPrefixType *serializer.SeriLengthPrefixType
-	objectCode       interface{}
+	objectType       interface{}
 	lexicalOrdering  *bool
 	arrayRules       *serializer.ArrayRules
 }
@@ -110,13 +110,13 @@ func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool
 	return *ts.lengthPrefixType, true
 }
 
-func (ts TypeSettings) WithObjectCode(code interface{}) TypeSettings {
-	ts.objectCode = code
+func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
+	ts.objectType = t
 	return ts
 }
 
-func (ts TypeSettings) ObjectCode() interface{} {
-	return ts.objectCode
+func (ts TypeSettings) ObjectType() interface{} {
+	return ts.objectType
 }
 
 func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
@@ -144,8 +144,8 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.lengthPrefixType == nil {
 		ts.lengthPrefixType = other.lengthPrefixType
 	}
-	if ts.objectCode == nil {
-		ts.objectCode = other.objectCode
+	if ts.objectType == nil {
+		ts.objectType = other.objectType
 	}
 	if ts.lexicalOrdering == nil {
 		ts.lexicalOrdering = other.lexicalOrdering
@@ -370,8 +370,8 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 	iRegistry, exists := api.interfacesRegistry[iTypeReflect]
 	if !exists {
 		iRegistry = &interfaceObjects{
-			fromCodeToType: make(map[interface{}]reflect.Type, len(objs)),
-			fromTypeToCode: make(map[reflect.Type]interface{}, len(objs)),
+			fromCodeToType: make(map[uint32]reflect.Type, len(objs)),
+			fromTypeToCode: make(map[reflect.Type]uint32, len(objs)),
 		}
 	}
 
@@ -400,49 +400,49 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 	return nil
 }
 
-func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, interface{}, error) {
+func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
 	ts, exists := api.getTypeSettings(objType)
 	if !exists {
-		return 0, nil, errors.Errorf(
+		return 0, 0, errors.Errorf(
 			"no type settings was found for object %s"+
 				"you must register object with its type settings first",
 			objType,
 		)
 	}
-	objectCode := ts.ObjectCode()
-	if objectCode == nil {
-		return 0, nil, errors.Errorf(
+	objectType := ts.ObjectType()
+	if objectType == nil {
+		return 0, 0, errors.Errorf(
 			"type settings for object %s doesn't contain object code",
 			objType,
 		)
 	}
-	objTypeDenotation, _, err := getTypeDenotationAndNumber(objectCode)
+	objTypeDenotation, objectCode, err := getTypeDenotationAndCode(objectType)
 	if err != nil {
-		return 0, nil, errors.WithStack(err)
+		return 0, 0, errors.WithStack(err)
 	}
 	return objTypeDenotation, objectCode, nil
 }
 
-func getTypeDenotationAndNumber(objectCode interface{}) (serializer.TypeDenotationType, uint32, error) {
-	objCodeType := reflect.TypeOf(objectCode)
+func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotationType, uint32, error) {
+	objCodeType := reflect.TypeOf(objectType)
 	if objCodeType == nil {
 		return 0, 0, errors.New("can't detect type denotation type: object code is nil interface")
 	}
-	var number uint32
+	var code uint32
 	var objTypeDenotation serializer.TypeDenotationType
 	switch objCodeType.Kind() {
 	case reflect.Uint32:
 		objTypeDenotation = serializer.TypeDenotationUint32
-		number = objectCode.(uint32)
+		code = objectType.(uint32)
 	case reflect.Uint8:
 		objTypeDenotation = serializer.TypeDenotationByte
-		number = uint32(objectCode.(uint8))
+		code = uint32(objectType.(uint8))
 	default:
 		return 0, 0, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
 			objCodeType, objCodeType.Kind())
 	}
 
-	return objTypeDenotation, number, nil
+	return objTypeDenotation, code, nil
 }
 
 func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
