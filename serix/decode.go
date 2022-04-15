@@ -91,6 +91,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		}
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+		addrValue = addrValue.Convert(reflect.TypeOf((*string)(nil)))
 		deseri.ReadString(addrValue.Interface().(*string), lengthPrefixType, func(err error) error {
 			return errors.Wrap(err, "failed to read string value from the deserializer")
 		})
@@ -99,6 +100,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 	case reflect.Bool:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+		addrValue = addrValue.Convert(reflect.TypeOf((*bool)(nil)))
 		deseri.ReadBool(addrValue.Interface().(*bool), func(err error) error {
 			return errors.Wrap(err, "failed to read bool value from the deserializer")
 		})
@@ -109,6 +111,8 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		reflect.Float32, reflect.Float64:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+		_, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
+		addrValue = addrValue.Convert(addrTypeToConvert)
 		deseri.ReadNum(addrValue.Interface(), func(err error) error {
 			return errors.Wrap(err, "failed to read number value from the serializer")
 		})
@@ -226,6 +230,7 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		}
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+		addrValue = addrValue.Convert(reflect.TypeOf((*[]byte)(nil)))
 		deseri.ReadVariableByteSlice(addrValue.Interface().(*[]byte), lengthPrefixType, func(err error) error {
 			return errors.Wrap(err, "failed to read bytes from the deserializer")
 		})
