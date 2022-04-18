@@ -619,9 +619,11 @@ func getNumberTypeToConvert(kind reflect.Kind) (reflect.Type, reflect.Type) {
 	case reflect.Uint8:
 		numberType = reflect.TypeOf(uint8(0))
 	case reflect.Uint16:
-		numberType = reflect.TypeOf(uint8(0))
+		numberType = reflect.TypeOf(uint16(0))
 	case reflect.Uint32:
-		numberType = reflect.TypeOf(uint8(0))
+		numberType = reflect.TypeOf(uint32(0))
+	case reflect.Uint64:
+		numberType = reflect.TypeOf(uint64(0))
 	case reflect.Float32:
 		numberType = reflect.TypeOf(float32(0))
 	case reflect.Float64:
