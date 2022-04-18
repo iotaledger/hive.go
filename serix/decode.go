@@ -27,7 +27,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		}
 	} else {
 		var err error
-		bytesRead, err = api.decodeBasedOnType(ctx, b, value, valueI, valueType, ts, opts)
+		bytesRead, err = api.decodeBasedOnType(ctx, b, value, valueType, ts, opts)
 		if err != nil {
 			return 0, errors.WithStack(err)
 		}
@@ -41,7 +41,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 	return bytesRead, nil
 }
 
-func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
+func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	globalTS, _ := api.getTypeSettings(valueType)
 	ts = ts.merge(globalTS)
@@ -61,11 +61,11 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 				value.Set(reflect.New(elemType))
 			}
 			elemValue := value.Elem()
-			return api.decodeStruct(ctx, b, elemValue, elemValue.Interface(), elemType, ts, opts)
+			return api.decodeStruct(ctx, b, elemValue, elemType, ts, opts)
 		}
 
 	case reflect.Struct:
-		return api.decodeStruct(ctx, b, value, valueI, valueType, ts, opts)
+		return api.decodeStruct(ctx, b, value, valueType, ts, opts)
 	case reflect.Slice:
 		return api.decodeSlice(ctx, b, value, valueType, ts, opts)
 	case reflect.Map:
@@ -119,7 +119,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		return deseri.Done()
 	default:
 	}
-	return 0, errors.Errorf("can't decode: unsupported type %T", valueI)
+	return 0, errors.Errorf("can't decode: unsupported type %s", valueType)
 }
 
 func (api *API) decodeInterface(
@@ -147,7 +147,7 @@ func (api *API) decodeInterface(
 	return bytesRead, nil
 }
 
-func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value, valueI interface{},
+func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	if valueType == timeType {
 		deseri := serializer.NewDeserializer(b)
@@ -255,7 +255,6 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		})
 		return deseri.Done()
 	}
-	deseri := serializer.NewDeserializer(b)
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		bytesRead, err = api.decode(ctx, b, elemValue, TypeSettings{}, opts)
@@ -265,6 +264,28 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		value.Set(reflect.Append(value, elemValue))
 		return bytesRead, nil
 	}
+	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+}
+
+func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
+	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
+	if value.IsNil() {
+		value.Set(reflect.New(valueType).Elem())
+	}
+	deserializeItem := func(b []byte) (bytesRead int, err error) {
+		keyValue := reflect.New(valueType.Key()).Elem()
+		elemValue := reflect.New(valueType.Elem()).Elem()
+		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, opts)
+		if err != nil {
+			return 0, errors.WithStack(err)
+		}
+		value.SetMapIndex(keyValue, elemValue)
+		return bytesRead, nil
+	}
+	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+}
+
+func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeFunc, valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	lengthPrefixType, set := ts.LengthPrefixType()
 	if !set {
 		return 0, errors.Errorf("no LengthPrefixType was provided for type %s", valueType)
@@ -274,15 +295,12 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		arrayRules = new(serializer.ArrayRules)
 	}
 	serializationMode := ts.toMode(opts)
+	deseri := serializer.NewDeserializer(b)
 	deseri.ReadSequenceOfObjects(deserializeItem, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
-		return errors.Wrapf(err, "failed to read slice of objects %s from the deserialized", valueType)
+		return errors.Wrapf(err, "failed to read sequence of objects %s from the deserialized", valueType)
 	})
 	return deseri.Done()
-}
 
-func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
-	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
-	return 0, nil
 }
 
 func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
