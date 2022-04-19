@@ -46,20 +46,20 @@ func (v SerializableSet[T]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (v SerializableSet[T]) Decode(b []byte) (bytesRead int, err error) {
-	//var elemCount uint32
-	//bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &elemCount)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//for i := uint32(0); i < elemCount; i++ {
-	//	var elem T
-	//	bytesReadVoter, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &elem)
-	//	if err != nil {
-	//		return 0, err
-	//	}
-	//	bytesRead += bytesReadVoter
-	//	v.Set.Add(elem)
-	//}
+	var elemCount uint32
+	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &elemCount)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := uint32(0); i < elemCount; i++ {
+		var elem T
+		bytesReadVoter, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &elem)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadVoter
+		v.Set.Add(elem)
+	}
 	return bytesRead, nil
 }
