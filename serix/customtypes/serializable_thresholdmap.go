@@ -53,30 +53,29 @@ func (s *SerializableThresholdMap[K, V]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (s *SerializableThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
-	//var mapSize uint32
-	//bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//bytesRead += bytesReadSize
-	//
-	//for i := uint32(0); i < mapSize; i++ {
-	//	var key K
-	//	bytesReadKey, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &key)
-	//	if err != nil {
-	//		return 0, err
-	//	}
-	//	bytesRead += bytesReadKey
-	//
-	//	var value V
-	//	bytesReadValue, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &value)
-	//	if err != nil {
-	//		return 0, err
-	//	}
-	//	bytesRead += bytesReadValue
-	//
-	//	s.Set(key, value)
-	//}
+	var mapSize uint32
+	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mapSize)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := uint32(0); i < mapSize; i++ {
+		var key K
+		bytesReadKey, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &key)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadKey
+
+		var value V
+		bytesReadValue, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &value)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadValue
+
+		s.Set(key, value)
+	}
 
 	return bytesRead, nil
 }
