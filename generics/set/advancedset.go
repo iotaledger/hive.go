@@ -165,6 +165,16 @@ func (t *AdvancedSet[T]) String() (humanReadable string) {
 	return "AdvancedSet(" + strings.Join(elementStrings, ", ") + ")"
 }
 
+func (t *AdvancedSet[T]) Base58() (base58 []string) {
+	base58 = make([]string, 0)
+	_ = t.ForEach(func(element T) (err error) {
+		base58 = append(base58, element.Base58())
+		return nil
+	})
+
+	return base58
+}
+
 func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 	return walker.New[T](false).PushAll(t.Slice()...)
 }
@@ -175,4 +185,5 @@ type AdvancedSetElement[T any] interface {
 	Unmarshal(util *marshalutil.MarshalUtil) (new T, err error)
 	Bytes() (serialized []byte)
 	String() (humanReadable string)
+	Base58() (base58 string)
 }
