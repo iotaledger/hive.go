@@ -28,7 +28,7 @@ func TestDependencyInjection(t *testing.T) {
 
 	pluginB := node.NewPlugin("B", nil, node.Enabled)
 
-	pluginB.Events.Init.Attach(event.NewClosure(func(event *node.InitEvent) {
+	pluginB.Events.Init.Hook(event.NewClosure(func(event *node.InitEvent) {
 		require.NoError(t, event.Container.Provide(func() string {
 			return stringVal
 		}, dig.Name("providedByB")))

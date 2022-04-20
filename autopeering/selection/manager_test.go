@@ -178,9 +178,9 @@ func newEventNetwork(t *testing.T) *eventNetwork {
 
 func (e *eventNetwork) attach(mgr *manager) {
 	id := mgr.getID()
-	mgr.Events.OutgoingPeering.Attach(event.NewClosure(func(ev *PeeringEvent) { e.outgoingPeering(id, ev) }))
-	mgr.Events.IncomingPeering.Attach(event.NewClosure(func(ev *PeeringEvent) { e.incomingPeering(id, ev) }))
-	mgr.Events.Dropped.Attach(event.NewClosure(func(ev *DroppedEvent) { e.dropped(id, ev) }))
+	mgr.Events.OutgoingPeering.Hook(event.NewClosure(func(ev *PeeringEvent) { e.outgoingPeering(id, ev) }))
+	mgr.Events.IncomingPeering.Hook(event.NewClosure(func(ev *PeeringEvent) { e.incomingPeering(id, ev) }))
+	mgr.Events.Dropped.Hook(event.NewClosure(func(ev *DroppedEvent) { e.dropped(id, ev) }))
 }
 
 func (e *eventNetwork) outgoingPeering(id identity.ID, ev *PeeringEvent) {

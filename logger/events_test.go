@@ -76,12 +76,12 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	panicC := event.NewClosure(func(event *LogEvent) { m.panic(event.Level, event.Name, event.Msg) })
 	anyC := event.NewClosure(func(event *LogEvent) { m.any(event.Level, event.Name, event.Msg) })
 
-	Events.DebugMsg.Attach(debugC)
-	Events.InfoMsg.Attach(infoC)
-	Events.WarningMsg.Attach(warnC)
-	Events.ErrorMsg.Attach(errorC)
-	Events.PanicMsg.Attach(panicC)
-	Events.AnyMsg.Attach(anyC)
+	Events.DebugMsg.Hook(debugC)
+	Events.InfoMsg.Hook(infoC)
+	Events.WarningMsg.Hook(warnC)
+	Events.ErrorMsg.Hook(errorC)
+	Events.PanicMsg.Hook(panicC)
+	Events.AnyMsg.Hook(anyC)
 
 	teardown := func() {
 		Events.DebugMsg.Detach(debugC)

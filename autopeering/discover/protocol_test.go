@@ -252,8 +252,8 @@ func TestProtEvents(t *testing.T) {
 	defer closeM()
 
 	e := newEventNetwork(t)
-	protM.Events().PeerDiscovered.Attach(event.NewClosure(e.peerDiscovered))
-	protM.Events().PeerDeleted.Attach(event.NewClosure(e.peerDeleted))
+	protM.Events().PeerDiscovered.Hook(event.NewClosure(e.peerDiscovered))
+	protM.Events().PeerDeleted.Hook(event.NewClosure(e.peerDeleted))
 
 	time.Sleep(graceTime) // wait for the master to initialize
 
