@@ -1,32 +1,54 @@
 package node
 
 import (
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"go.uber.org/dig"
 )
 
-type pluginEvents struct {
-	Init      *events.Event
-	Configure *events.Event
-	Run       *events.Event
+var Events *NodeEvents
+
+type NodeEvents struct {
+	AddPlugin *event.Event[*AddEvent]
 }
 
-func pluginCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*Plugin))(params[0].(*Plugin))
-}
-
-func pluginAndDepCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*Plugin, *dig.Container))(params[0].(*Plugin), params[1].(*dig.Container))
-}
-
-func pluginParameterCaller(handler interface{}, params ...interface{}) {
-	handler.(func(string, int))(params[0].(string), params[1].(int))
-}
-
-var (
-	Events = struct {
-		AddPlugin *events.Event
-	}{
-		AddPlugin: events.NewEvent(pluginParameterCaller),
+func newNodeEvents() (new *NodeEvents) {
+	return &NodeEvents{
+		AddPlugin: event.New[*AddEvent](),
 	}
-)
+}
+
+type AddEvent struct {
+	Name   string
+	Status int
+}
+
+func init() {
+	Events = newNodeEvents()
+}
+
+type PluginEvents struct {
+	Init      *event.Event[*InitEvent]
+	Configure *event.Event[*ConfigureEvent]
+	Run       *event.Event[*RunEvent]
+}
+
+func newPluginEvents() (new *PluginEvents) {
+	return &PluginEvents{
+		Init:      event.New[*InitEvent](),
+		Configure: event.New[*ConfigureEvent](),
+		Run:       event.New[*RunEvent](),
+	}
+}
+
+type InitEvent struct {
+	Plugin    *Plugin
+	Container *dig.Container
+}
+
+type ConfigureEvent struct {
+	Plugin *Plugin
+}
+
+type RunEvent struct {
+	Plugin *Plugin
+}

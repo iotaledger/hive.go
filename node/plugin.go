@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/iotaledger/hive.go/logger"
 )
 
@@ -19,7 +19,7 @@ type Plugin struct {
 	Node    *Node
 	Name    string
 	Status  int
-	Events  pluginEvents
+	Events  *PluginEvents
 	log     *logger.Logger
 	logOnce sync.Once
 	deps    interface{}
@@ -33,11 +33,7 @@ func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback)
 		Name:   name,
 		Status: status,
 		deps:   deps,
-		Events: pluginEvents{
-			Init:      events.NewEvent(pluginAndDepCaller),
-			Configure: events.NewEvent(pluginCaller),
-			Run:       events.NewEvent(pluginCaller),
-		},
+		Events: newPluginEvents(),
 	}
 
 	AddPlugin(plugin)
@@ -46,10 +42,10 @@ func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback)
 	case 0:
 		// plugin doesn't have any callbacks (i.e. plugins that execute stuff on init())
 	case 1:
-		plugin.Events.Run.Attach(events.NewClosure(callbacks[0]))
+		plugin.Events.Run.Attach(event.NewClosure(func(event *RunEvent) { callbacks[0](event.Plugin) }))
 	case 2:
-		plugin.Events.Configure.Attach(events.NewClosure(callbacks[0]))
-		plugin.Events.Run.Attach(events.NewClosure(callbacks[1]))
+		plugin.Events.Configure.Attach(event.NewClosure(func(event *ConfigureEvent) { callbacks[0](event.Plugin) }))
+		plugin.Events.Run.Attach(event.NewClosure(func(event *RunEvent) { callbacks[1](event.Plugin) }))
 	default:
 		panic("too many callbacks in NewPlugin(...)")
 	}

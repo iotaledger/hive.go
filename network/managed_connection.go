@@ -5,14 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/events"
 	"go.uber.org/atomic"
 )
 
 // ManagedConnection provides a wrapper for a net.Conn to be used together with events.
 type ManagedConnection struct {
 	net.Conn
-	Events ManagedConnectionEvents
+	Events *ManagedConnectionEvents
 
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -24,12 +23,8 @@ type ManagedConnection struct {
 
 func NewManagedConnection(conn net.Conn) *ManagedConnection {
 	return &ManagedConnection{
-		Conn: conn,
-		Events: ManagedConnectionEvents{
-			ReceiveData: events.NewEvent(events.ByteSliceCaller),
-			Close:       events.NewEvent(events.VoidCaller),
-			Error:       events.NewEvent(events.ErrorCaller),
-		},
+		Conn:   conn,
+		Events: newManagedConnectionEvents(),
 	}
 }
 
@@ -61,7 +56,7 @@ func (mc *ManagedConnection) Read(p []byte) (int, error) {
 			// copy the data before triggering
 			receivedData := make([]byte, n)
 			copy(receivedData, p)
-			mc.Events.ReceiveData.Trigger(receivedData)
+			mc.Events.ReceiveData.Trigger(&ReceivedDataEvent{receivedData})
 		}
 	}
 }
@@ -83,7 +78,7 @@ func (mc *ManagedConnection) Close() (err error) {
 		// do not trigger the error event to prevent deadlocks
 		err = mc.Conn.Close()
 		// trigger Close event in separate go routine to prevent deadlocks
-		go mc.Events.Close.Trigger()
+		mc.Events.Close.Trigger(&CloseEvent{})
 	})
 	return err
 }

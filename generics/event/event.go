@@ -95,8 +95,7 @@ func (e *Event[T]) Trigger(event T) {
 
 func (e *Event[T]) triggerEventHandlers(event T) {
 	e.eventHandlers.ForEach(func(closureID uint64, callback func(T)) bool {
-		// TODO: submit jobs to some worker pool
-		go callback(event)
+		Loop.Submit(func() { callback(event) })
 
 		return true
 	})

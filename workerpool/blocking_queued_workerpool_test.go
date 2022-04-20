@@ -12,7 +12,7 @@ func Test_SimpleCounter(t *testing.T) {
 	const queueSize = 10
 	const incCount = 100
 
-	el := NewEventLoop(QueueSize(queueSize))
+	el := NewBlockingQueuedWorkerPool(QueueSize(queueSize), FlushTasksAtShutdown(true))
 
 	var counter uint64
 	incAtomic := func() {
@@ -43,7 +43,7 @@ func Test_SimpleCounter(t *testing.T) {
 }
 
 func Test_ShutdownNotAdded(t *testing.T) {
-	el := NewEventLoop()
+	el := NewBlockingQueuedWorkerPool()
 	el.Start()
 	el.Stop()
 
@@ -62,7 +62,7 @@ func Test_NoFlush(t *testing.T) {
 	const workerCount = 1
 	const incCount = 100
 
-	elNoFlush := NewEventLoop(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(false))
+	elNoFlush := NewBlockingQueuedWorkerPool(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(false))
 	elNoFlush.Start()
 
 	assert.Equal(t, 1, elNoFlush.GetWorkerCount())
@@ -88,8 +88,8 @@ func Test_NoFlushVsFlush(t *testing.T) {
 	const workerCount = 1
 	const incCount = 100
 
-	elNoFlush := NewEventLoop(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(false))
-	elFlush := NewEventLoop(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(true))
+	elNoFlush := NewBlockingQueuedWorkerPool(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(false))
+	elFlush := NewBlockingQueuedWorkerPool(WorkerCount(workerCount), QueueSize(incCount), FlushTasksAtShutdown(true))
 	elNoFlush.Start()
 	elFlush.Start()
 

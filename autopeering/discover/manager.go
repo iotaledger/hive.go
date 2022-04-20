@@ -7,7 +7,6 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -35,7 +34,7 @@ type manager struct {
 	active       []*mpeer
 	replacements []*mpeer
 
-	events Events
+	events *Events
 	net    network
 	log    *logger.Logger
 
@@ -48,13 +47,10 @@ func newManager(net network, masters []*peer.Peer, log *logger.Logger) *manager 
 		masters:      wrapPeers(masters),
 		active:       make([]*mpeer, 0, maxManaged),
 		replacements: make([]*mpeer, 0, maxReplacements),
-		events: Events{
-			PeerDiscovered: events.NewEvent(peerDiscovered),
-			PeerDeleted:    events.NewEvent(peerDeleted),
-		},
-		net:     net,
-		log:     log,
-		closing: make(chan struct{}),
+		events:       newEvents(),
+		net:          net,
+		log:          log,
+		closing:      make(chan struct{}),
 	}
 }
 
@@ -174,7 +170,7 @@ func (m *manager) deletePeer(id identity.ID) {
 		"peer", mp,
 	)
 	if mp.verifiedCount.Load() > 0 {
-		m.events.PeerDeleted.Trigger(&DeletedEvent{Peer: unwrapPeer(mp)})
+		m.events.PeerDeleted.Trigger(&PeerDeletedEvent{Peer: unwrapPeer(mp)})
 	}
 
 	// add a random replacement, if available
@@ -285,7 +281,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	if v := m.updatePeer(p); v > 0 {
 		// trigger the event only for the first time the peer is updated
 		if v == 1 {
-			m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+			m.events.PeerDiscovered.Trigger(&PeerDiscoveredEvent{Peer: p})
 		}
 		return false
 	}
@@ -297,7 +293,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 		return m.addReplacement(mp)
 	}
 	// trigger the event only when the peer is added to active
-	m.events.PeerDiscovered.Trigger(&DiscoveredEvent{Peer: p})
+	m.events.PeerDiscovered.Trigger(&PeerDiscoveredEvent{Peer: p})
 
 	// new nodes are added to the front
 	m.active = unshiftPeer(m.active, mp, maxManaged)

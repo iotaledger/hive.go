@@ -4,24 +4,15 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/iotaledger/hive.go/protocol/message"
 	"github.com/iotaledger/hive.go/protocol/tlv"
 )
 
-// Events holds protocol related events.
-type Events struct {
-	// Holds event instances to attach to for received messages.
-	// Use a message's ID to get the corresponding event.
-	Received []*events.Event
-	// Fired for generic protocol errors.
-	Error *events.Event
-}
-
 // Protocol encapsulates the logic of parsing and sending protocol messages.
 type Protocol struct {
 	// Holds events for sent/received messages and generic errors.
-	Events Events
+	Events *Events
 	// message registry
 	msgRegistry *message.Registry
 	// lock during concurrent reads
@@ -40,21 +31,21 @@ func New(r *message.Registry) *Protocol {
 	definitions := r.Definitions()
 
 	// allocate event handlers for all message types
-	receiveHandlers := make([]*events.Event, len(definitions))
-	sentHandlers := make([]*events.Event, len(definitions))
+	receiveHandlers := make([]*event.Event[[]byte], len(definitions))
+	sentHandlers := make([]*event.Event[*VoidEvent], len(definitions))
 	for i, def := range definitions {
 		if def == nil {
 			continue
 		}
-		receiveHandlers[i] = events.NewEvent(events.ByteSliceCaller)
-		sentHandlers[i] = events.NewEvent(events.VoidCaller)
+		receiveHandlers[i] = event.New[[]byte]()
+		sentHandlers[i] = event.New[*VoidEvent]()
 	}
 
 	protocol := &Protocol{
 		msgRegistry: r,
-		Events: Events{
+		Events: &Events{
 			Received: receiveHandlers,
-			Error:    events.NewEvent(events.ErrorCaller),
+			Error:    event.New[error](),
 		},
 		// the first message on the protocol is a TLV header
 		readBuffer:  make([]byte, tlv.HeaderMessageDefinition.MaxBytesLength),

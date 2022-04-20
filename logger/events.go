@@ -1,30 +1,42 @@
 package logger
 
 import (
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// Events contains all the events that are triggered by the logger.
-var Events = struct {
-	DebugMsg   *events.Event
-	InfoMsg    *events.Event
-	WarningMsg *events.Event
-	ErrorMsg   *events.Event
-	PanicMsg   *events.Event
-	AnyMsg     *events.Event
-}{
-	DebugMsg:   events.NewEvent(logCaller),
-	InfoMsg:    events.NewEvent(logCaller),
-	WarningMsg: events.NewEvent(logCaller),
-	ErrorMsg:   events.NewEvent(logCaller),
-	PanicMsg:   events.NewEvent(logCaller),
-	AnyMsg:     events.NewEvent(logCaller),
+var Events *EventsStruct
+
+// EventsStruct contains all the events that are triggered by the logger.
+type EventsStruct struct {
+	DebugMsg   *event.Event[*LogEvent]
+	InfoMsg    *event.Event[*LogEvent]
+	WarningMsg *event.Event[*LogEvent]
+	ErrorMsg   *event.Event[*LogEvent]
+	PanicMsg   *event.Event[*LogEvent]
+	AnyMsg     *event.Event[*LogEvent]
 }
 
-func logCaller(handler interface{}, params ...interface{}) {
-	handler.(func(Level, string, string))(params[0].(Level), params[1].(string), params[2].(string))
+func newEventsStruct() (new *EventsStruct) {
+	return &EventsStruct{
+		DebugMsg:   event.New[*LogEvent](),
+		InfoMsg:    event.New[*LogEvent](),
+		WarningMsg: event.New[*LogEvent](),
+		ErrorMsg:   event.New[*LogEvent](),
+		PanicMsg:   event.New[*LogEvent](),
+		AnyMsg:     event.New[*LogEvent](),
+	}
+}
+
+type LogEvent struct {
+	Level Level
+	Name  string
+	Msg   string
+}
+
+func init() {
+	Events = newEventsStruct()
 }
 
 // NewEventCore creates a core that publishes log messages as events.
@@ -82,17 +94,17 @@ func (c *eventCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 
 	switch ent.Level {
 	case zapcore.DebugLevel:
-		Events.DebugMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.DebugMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 	case zapcore.InfoLevel:
-		Events.InfoMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.InfoMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 	case zapcore.WarnLevel:
-		Events.WarningMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.WarningMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 	case zapcore.ErrorLevel:
-		Events.ErrorMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.ErrorMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 	case zapcore.PanicLevel:
-		Events.PanicMsg.Trigger(ent.Level, ent.LoggerName, msg)
+		Events.PanicMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 	}
-	Events.AnyMsg.Trigger(ent.Level, ent.LoggerName, msg)
+	Events.AnyMsg.Trigger(&LogEvent{ent.Level, ent.LoggerName, msg})
 
 	return nil
 }
