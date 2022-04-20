@@ -87,23 +87,27 @@ func (bs Bools) FromSerializables(seris serializer.Serializables) {
 
 type SimpleStruct struct {
 	Bool       bool      `serix:"0"`
-	Num        uint64    `serix:"1"`
+	Uint       uint64    `serix:"1"`
 	String     string    `serix:"2,lengthPrefixType=uint16"`
 	Bytes      []byte    `serix:"3,lengthPrefixType=uint32"`
 	BytesArray [16]byte  `serix:"4"`
 	BigInt     *big.Int  `serix:"5"`
 	Time       time.Time `serix:"6"`
+	Int        uint64    `serix:"7"`
+	Float      float64   `serix:"8"`
 }
 
 func NewSimpleStruct() SimpleStruct {
 	return SimpleStruct{
 		Bool:       true,
-		Num:        10,
+		Uint:       10,
 		String:     "foo",
 		Bytes:      []byte{1, 2, 3},
 		BytesArray: [16]byte{3, 2, 1},
 		BigInt:     big.NewInt(8),
 		Time:       time.Unix(1000, 1000),
+		Int:        23,
+		Float:      4.44,
 	}
 }
 
@@ -128,12 +132,14 @@ func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSe
 	s := serializer.NewSerializer()
 	s.WriteNum(simpleStructObjectCode, defaultErrProducer)
 	s.WriteBool(ss.Bool, defaultErrProducer)
-	s.WriteNum(ss.Num, defaultErrProducer)
+	s.WriteNum(ss.Uint, defaultErrProducer)
 	s.WriteString(ss.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer)
 	s.WriteVariableByteSlice(ss.Bytes, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer)
 	s.WriteBytes(ss.BytesArray[:], defaultErrProducer)
 	s.WriteUint256(ss.BigInt, defaultErrProducer)
 	s.WriteTime(ss.Time, defaultErrProducer)
+	s.WriteNum(ss.Int, defaultErrProducer)
+	s.WriteNum(ss.Float, defaultErrProducer)
 	return s.Serialize()
 }
 
