@@ -1017,6 +1017,7 @@ func (d *Deserializer) ReadObject(target interface{}, deSeriMode DeSerialization
 	return deserializer
 }
 
+// GetObjectType reads object type but doesn't change the offset.
 func (d *Deserializer) GetObjectType(typeDen TypeDenotationType) (uint32, error) {
 	l := len(d.src[d.offset:])
 	var ty uint32
@@ -1117,6 +1118,7 @@ func (d *Deserializer) ReadSliceOfObjects(
 	return d
 }
 
+// DeserializeFunc is a function that reads bytes from b and returns how much bytes was read.
 type DeserializeFunc func(b []byte) (bytesRead int, err error)
 
 // ReadSequenceOfObjects reads a sequence of objects and calls DeserializeFunc for evey encountered item.
@@ -1208,6 +1210,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 	return d
 }
 
+// ReadPayloadLength reads the payload length from the deserializer
 func (d *Deserializer) ReadPayloadLength() (uint32, error) {
 	if len(d.src[d.offset:]) < PayloadLengthByteSize {
 		return 0, fmt.Errorf("%w: data is smaller than payload length denotation", ErrDeserializationNotEnoughData)

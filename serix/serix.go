@@ -1,3 +1,16 @@
+// Package serix serializes and deserializes complex Go objects into/from bytes using reflection.
+/*
+
+Structs serialization/deserialization
+
+In order for a field to be detected by serix it must have `serix` struct tag set with the position index: `serix:"0"`.
+serix traverses all fields and handles them in the order specifies in the struct tags.
+Apart from the required position you can provide the following settings to serix via struct tags:
+"optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"1,optional"`
+"lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"2,lengthPrefixType=unint32"`
+"nest" - handle embedded/anonymous field as a nested field: `serix:"3,nest"`
+See serix_text.go for more detail.
+*/
 package serix
 
 import (
@@ -15,14 +28,22 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
+// Serializable is a type that can serialize itself.
+// Setix will call its .Encode() method instead of trying to serialize it in the default way.
+// The behavior is totally the same as in the standard "encoding/json" package and json.Marshaller interface.
 type Serializable interface {
 	Encode() ([]byte, error)
 }
 
+// Deserializable is a type that can deserialize itself.
+// Setix will call its .Decode() method instead of trying to deserialize it in the default way.
+// The behavior is totally the same as in the standard "encoding/json" package and json.Unmarshaller interface.
 type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
 
+// API is the main object of the package that provides the methods for client to use.
+// It holds all the settings and configuration. It also stores the cache.
 type API struct {
 	interfacesRegistryMutex sync.RWMutex
 	interfacesRegistry      map[reflect.Type]*interfaceObjects
@@ -45,8 +66,10 @@ type interfaceObjects struct {
 	typeDenotation serializer.TypeDenotationType
 }
 
+// DefaultAPI is the default instance of the API type.
 var DefaultAPI = NewAPI()
 
+// NewAPI creates a new instance of the API type.
 func NewAPI() *API {
 	api := &API{
 		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
@@ -64,14 +87,19 @@ var (
 	boolType      = reflect.TypeOf(false)
 )
 
+// Option is an option for Encode/Decode methods.
 type Option func(o *options)
 
+// WithValidation returns an Option that tell the serix to perform the validation.
 func WithValidation() Option {
 	return func(o *options) {
 		o.validation = true
 	}
 }
 
+// WithTypeSettings returns an option that sets TypeSettings.
+// TypeSettings provided via option override global TypeSettings from the registry.
+// See TypeSettings for details.
 func WithTypeSettings(ts TypeSettings) Option {
 	return func(o *options) {
 		o.ts = ts
@@ -91,6 +119,14 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
+// TypeSettings holds various settings for a particular type.
+// Those settings determine how the object should be serialized/deserialized.
+// There are three way to provide TypeSettings
+// 1. Via global registry: API.RegisterTypeSettings().
+// 2. Parse from struct tags.
+// 3. Pass as an option to Encode/Decode methods.
+// The type settings provided via struct tags or an option override the type settings from the registry.
+// See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
 	lengthPrefixType *serializer.SeriLengthPrefixType
 	objectType       interface{}
@@ -98,11 +134,13 @@ type TypeSettings struct {
 	arrayRules       *serializer.ArrayRules
 }
 
+// WithLengthPrefixType specifies serializer.SeriLengthPrefixType.
 func (ts TypeSettings) WithLengthPrefixType(lpt serializer.SeriLengthPrefixType) TypeSettings {
 	ts.lengthPrefixType = &lpt
 	return ts
 }
 
+// LengthPrefixType returns serializer.SeriLengthPrefixType.
 func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool) {
 	if ts.lengthPrefixType == nil {
 		return 0, false
@@ -110,20 +148,27 @@ func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool
 	return *ts.lengthPrefixType, true
 }
 
+// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
+// The object type holds two meanings the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
+// serix uses object type to actually encode the number
+// and to know its serializer.TypeDenotationType to be able to decode it.
 func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
 	ts.objectType = t
 	return ts
 }
 
+// ObjectType returns the object type as an uint8 or uint32 number.
 func (ts TypeSettings) ObjectType() interface{} {
 	return ts.objectType
 }
 
+//WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
 func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
 	ts.lexicalOrdering = &val
 	return ts
 }
 
+// LexicalOrdering returns lexical ordering flag.
 func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 	if ts.lexicalOrdering == nil {
 		return false, false
@@ -131,11 +176,13 @@ func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 	return *ts.lexicalOrdering, true
 }
 
+// WithArrayRules specifies serializer.ArrayRules.
 func (ts TypeSettings) WithArrayRules(rules *serializer.ArrayRules) TypeSettings {
 	ts.arrayRules = rules
 	return ts
 }
 
+// ArrayRules returns serializer.ArrayRules.
 func (ts TypeSettings) ArrayRules() *serializer.ArrayRules {
 	return ts.arrayRules
 }
@@ -165,6 +212,12 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 	return mode
 }
 
+// Encode serializer the provided object obj into bytes.
+// serix traverses the object recursively and serializes everything based on the type.
+// If a type implements the custom Serializable interface serix delegates the serialization to that type.
+// During the encoding process serix also performs the validation if such option was provided.
+// Use the options list opts to customize the serialization behaviour.
+// To ensure deterministic serialization serix automatically applies lexical ordering for maps.
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
@@ -177,6 +230,12 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
+// Decode deserializer bytes b into the provided object obj.
+// obj must be a non-nil pointer for serix to deserialize into it.
+// serix traverses the object recursively and deserializes everything based on its type.
+// If a type implements the custom Deserializable interface serix delegates the deserialization the that type.
+// During the decoding process serix also performs the validation if such option was provided.
+// Use the options list opts to customize the deserialization behavior.
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) (int, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
@@ -198,15 +257,34 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 	return api.decode(ctx, b, value, opt.ts, opt)
 }
 
-func (api *API) EncodeJSON(obj interface{}) ([]byte, error) {
-	return nil, nil
-}
-
-func (api *API) DecodeJSON(b []byte, obj interface{}) error {
-	return nil
-}
-
-func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn interface{}, syntacticValidatorFn interface{}) error {
+// RegisterValidators registers validator functions that serix will call during the Encode and Decode processes.
+// There are two types of validator functions:
+//
+// 1. Syntactic validators, they validate the Go object and its data.
+// For Encode they are called for the original Go object before serix serializes the object into bytes.
+// For Decode they are called after serix builds the Go object from bytes.
+//
+// 2. Bytes validators, they validate the corresponding bytes representation of an object.
+// For Encode they are called after serix serializes Go object into bytes
+// For Decode they are called for the bytes before serix deserializes them into a Go object.
+//
+// The validation is called for every registered type during the recursive traversal.
+// It's an early stop process, if some validator returns an error serix stops the Encode/Decode and pops up the error.
+//
+// obj is an instance of the type you want to provide the validator for.
+// Note that it's better to pass the obj as a value, not as a pointer
+// because that way serix would be able to derefer pointers during Encode/Decode
+// and detect the validators for both pointers and values
+// bytesValidatorFn is a function that accepts bytes and returns an error.
+// syntacticValidatorFn is a function that accepts single argument that must have the same type as obj.
+// Every validator func is optional, just provide nil.
+// Example:
+// bytesValidator := func(b []byte) error { ... }
+// syntacticValidator := func (t time.Time) error { ... }
+// api.RegisterValidators(time.Time{}, bytesValidator, syntacticValidator)
+//
+// See TestMain() in serix_test.go for more examples.
+func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
 		return errors.New("'obj' is a nil interface, it's need to be a valid type")
@@ -324,6 +402,13 @@ func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Ty
 	return nil
 }
 
+// RegisterTypeSettings registers settings for a particular type obj.
+// It's better to provide obj as a value, not a pointer,
+// that way serix will be able to get the type settings for both values and pointers during Encode/Decode via dereferencing
+// The settings provided via registration are considered global and default ones,
+// they can overridden by type settings parsed from struct tags
+// or by type settings provided via option to the Encode/Decode methods.
+// See TypeSettings for more detail.
 func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
@@ -350,6 +435,14 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	return TypeSettings{}, false
 }
 
+// RegisterInterfaceObjects tells serix that when it encounters iType during serialization/deserialization
+// it actually might be one of the objs types.
+// Those objs type must provide their ObjectTypes beforehand via API.RegisterTypeSettings().
+// serix needs object types to be able to figure out what concrete object to instantiate during the deserialization
+// based on its object type code.
+// In order for reflection to grasp the actual interface type iType must be provided as a pointer to an interface:
+// api.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
+// See TestMain() in serix_test.go for more detail.
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
 	ptrType := reflect.TypeOf(iType)
 	if ptrType == nil {
@@ -632,5 +725,4 @@ func getNumberTypeToConvert(kind reflect.Kind) (reflect.Type, reflect.Type) {
 		return nil, nil
 	}
 	return numberType, reflect.PointerTo(numberType)
-
 }
