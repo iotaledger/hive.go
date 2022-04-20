@@ -12,7 +12,7 @@ func Test_SimpleCounter(t *testing.T) {
 	const queueSize = 10
 	const incCount = 100
 
-	el := NewBlockingQueuedWorkerPool(QueueSize(queueSize))
+	el := NewBlockingQueuedWorkerPool(QueueSize(queueSize), FlushTasksAtShutdown(true))
 
 	var counter uint64
 	incAtomic := func() {
