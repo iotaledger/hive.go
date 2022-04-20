@@ -121,7 +121,9 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		})
 		return deseri.Done()
 
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		_, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
