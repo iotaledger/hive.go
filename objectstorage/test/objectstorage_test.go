@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/async"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
@@ -24,6 +23,7 @@ import (
 	"github.com/iotaledger/hive.go/testutil"
 	"github.com/iotaledger/hive.go/types"
 	"github.com/iotaledger/hive.go/typeutils"
+	"github.com/iotaledger/hive.go/workerpool"
 )
 
 const (
@@ -87,10 +87,9 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	missingMessageStorage := objectstorage.New(badgerDBMissingMessageStorage, testObjectFactory)
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
-	// create sync and async utils
-	var wp async.WorkerPool
-	var wg sync.WaitGroup
-	wp.Tune(1024)
+	// create workerpool
+	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
+	wp.Start()
 
 	// result counters
 	var eventsCounter int32
@@ -106,7 +105,6 @@ func TestConcurrentCreateDelete(t *testing.T) {
 		messageIDBytes := []byte(messageIDString)
 
 		// launch the background worker that removes the missing message entry
-		wg.Add(1)
 		wp.Submit(func() {
 			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
 				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, x))
@@ -120,12 +118,9 @@ func TestConcurrentCreateDelete(t *testing.T) {
 
 				return nil
 			}).Release()
-
-			wg.Done()
 		})
 
 		// launch the background worker that creates the missing message entry
-		wg.Add(1)
 		wp.Submit(func() {
 			metadataStorage.Store(newTestObject(messageIDString, x)).Release()
 
@@ -134,13 +129,11 @@ func TestConcurrentCreateDelete(t *testing.T) {
 
 				deletedMap.Store(messageIDString, true)
 			}
-
-			wg.Done()
 		})
 	}
 
-	// wait for a workers to finish
-	wg.Wait()
+	// wait for workers to finish
+	wp.StopAndWait()
 
 	// count messages still in the store
 	messagesInStore := 0
@@ -159,7 +152,6 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	// shutdown test
 	missingMessageStorage.Shutdown()
 	metadataStorage.Shutdown()
-	wp.Shutdown()
 }
 
 // TestTransaction tests if Transactions with the same identifier can not run in parallel and that Transactions and

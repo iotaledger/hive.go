@@ -84,7 +84,7 @@ func (node *Node) init(plugins ...*Plugin) {
 		if IsSkipped(plugin) {
 			continue
 		}
-		plugin.Events.Init.Trigger(plugin, node.depContainer)
+		plugin.Events.Init.Trigger(&InitEvent{plugin, node.depContainer})
 	}
 }
 
@@ -102,7 +102,7 @@ func (node *Node) configure(plugins ...*Plugin) {
 			node.populatePluginDependencies(plugin)
 		}
 
-		plugin.Events.Configure.Trigger(plugin)
+		plugin.Events.Configure.Trigger(&ConfigureEvent{plugin})
 		node.loadedPlugins = append(node.loadedPlugins, plugin)
 		node.Logger.Infof("Loading Plugin: %s ... done", plugin.Name)
 	}
@@ -132,7 +132,7 @@ func (node *Node) Start() {
 	node.Logger.Info("Executing plugins...")
 
 	for _, plugin := range node.loadedPlugins {
-		plugin.Events.Run.Trigger(plugin)
+		plugin.Events.Run.Trigger(&RunEvent{plugin})
 
 		node.Logger.Infof("Starting Plugin: %s...", plugin.Name)
 	}
@@ -145,7 +145,7 @@ func (node *Node) Run() {
 	node.Logger.Info("Executing plugins ...")
 
 	for _, plugin := range node.loadedPlugins {
-		plugin.Events.Run.Trigger(plugin)
+		plugin.Events.Run.Trigger(&RunEvent{plugin})
 		node.Logger.Infof("Starting Plugin: %s ... done", plugin.Name)
 	}
 
@@ -166,7 +166,7 @@ func AddPlugin(plugin *Plugin) {
 
 	plugins[name] = plugin
 
-	Events.AddPlugin.Trigger(name, status)
+	Events.AddPlugin.Trigger(&AddEvent{name, status})
 }
 
 func GetPlugins() map[string]*Plugin {

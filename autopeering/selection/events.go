@@ -3,20 +3,29 @@ package selection
 import (
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/events"
+	"github.com/iotaledger/hive.go/generics/event"
 	"github.com/iotaledger/hive.go/identity"
 )
 
 // Events contains all the events that are triggered during the neighbor selection.
 type Events struct {
 	// A SaltUpdated event is triggered, when the private and public salt were updated.
-	SaltUpdated *events.Event
+	SaltUpdated *event.Event[*SaltUpdatedEvent]
 	// An OutgoingPeering event is triggered, when a valid response of PeeringRequest has been received.
-	OutgoingPeering *events.Event
+	OutgoingPeering *event.Event[*PeeringEvent]
 	// An IncomingPeering event is triggered, when a valid PeerRequest has been received.
-	IncomingPeering *events.Event
+	IncomingPeering *event.Event[*PeeringEvent]
 	// A Dropped event is triggered, when a neighbor is dropped or when a drop message is received.
-	Dropped *events.Event
+	Dropped *event.Event[*DroppedEvent]
+}
+
+func newEvents() (new *Events) {
+	return &Events{
+		SaltUpdated:     event.New[*SaltUpdatedEvent](),
+		OutgoingPeering: event.New[*PeeringEvent](),
+		IncomingPeering: event.New[*PeeringEvent](),
+		Dropped:         event.New[*DroppedEvent](),
+	}
 }
 
 // SaltUpdatedEvent bundles the information sent in the SaltUpdated event.
@@ -35,16 +44,4 @@ type PeeringEvent struct {
 type DroppedEvent struct {
 	Peer      *peer.Peer
 	DroppedID identity.ID // ID of the peer that gets dropped.
-}
-
-func saltUpdatedCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*SaltUpdatedEvent))(params[0].(*SaltUpdatedEvent))
-}
-
-func peeringCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*PeeringEvent))(params[0].(*PeeringEvent))
-}
-
-func droppedCaller(handler interface{}, params ...interface{}) {
-	handler.(func(*DroppedEvent))(params[0].(*DroppedEvent))
 }
