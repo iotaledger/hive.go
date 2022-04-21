@@ -147,11 +147,7 @@ func (api *API) encodeStruct(
 	}
 	s := serializer.NewSerializer()
 	if objectType := ts.ObjectType(); objectType != nil {
-		_, objectCode, err := getTypeDenotationAndCode(objectType)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		s.WriteNum(objectCode, func(err error) error {
+		s.WriteNum(objectType, func(err error) error {
 			return errors.Wrap(err, "failed to write object type code into serializer")
 		})
 	}
