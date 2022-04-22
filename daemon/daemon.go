@@ -127,11 +127,28 @@ func (d *OrderedDaemon) GetRunningBackgroundWorkers() []string {
 		result = append(result, name)
 	}
 
+	// reverse order
 	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
 		result[i], result[j] = result[j], result[i]
 	}
 
 	return result
+}
+
+// getWorkersAndShutdownOrder returns a copy of all workers and the shutdown order.
+func (d *OrderedDaemon) getWorkersAndShutdownOrder() (map[string]*worker, []string) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
+	workers := make(map[string]*worker)
+	for k, v := range d.workers {
+		workers[k] = v
+	}
+
+	shutdownOrderWorker := make([]string, len(d.shutdownOrderWorker))
+	copy(shutdownOrderWorker, d.shutdownOrderWorker)
+
+	return workers, shutdownOrderWorker
 }
 
 func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker WorkerFunc) {
@@ -144,9 +161,21 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 		if d.logger != nil {
 			d.logger.Debugf("Starting Background Worker: %s ...", name)
 		}
+
 		backgroundWorker(worker.ctx)
-		worker.running.UnSet()
+
+		// first we need to finish the waitgroup, otherwise stopWorkers could
+		// already have acquired the lock and wait until all wait groups are done.
 		shutdownOrderWaitGroup.Done()
+
+		// now we can acquire the lock and cleanup the worker
+		d.cleanupWorker(name)
+
+		// only after cleanup is finished, we can unset the running flag,
+		// otherwise there is a race condition between starting another worker with the same name
+		// and a worker that is scheduled for cleanup.
+		worker.running.UnSet()
+
 		if d.logger != nil {
 			d.logger.Debugf("Stopping Background Worker: %s ... done", name)
 		}
@@ -176,16 +205,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 		}
 
 		// remove the existing worker from the shutdown order
-		for i, exName := range d.shutdownOrderWorker {
-			if exName != name {
-				continue
-			}
-			if i < len(d.shutdownOrderWorker)-1 {
-				copy(d.shutdownOrderWorker[i:], d.shutdownOrderWorker[i+1:])
-			}
-			d.shutdownOrderWorker[len(d.shutdownOrderWorker)-1] = ""
-			d.shutdownOrderWorker = d.shutdownOrderWorker[:len(d.shutdownOrderWorker)-1]
-		}
+		d.removeWorkerFromShutdownOrder(name)
 	}
 
 	var shutdownOrder int
@@ -261,8 +281,8 @@ func (d *OrderedDaemon) Run() {
 
 // returns on the waitGroup of the lowest shutdownOrderWorker or nil if not workers.
 func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 
 	if len(d.shutdownOrderWorker) == 0 {
 		return nil
@@ -291,15 +311,14 @@ func (d *OrderedDaemon) shutdown() {
 
 // stopWorkers stops all the workers of the daemon
 func (d *OrderedDaemon) stopWorkers() {
-	d.lock.RLock()
-	defer d.lock.RUnlock()
+	workers, shutdownOrderWorker := d.getWorkersAndShutdownOrder()
 
 	// stop all the workers
-	if len(d.shutdownOrderWorker) > 0 {
+	if len(shutdownOrderWorker) > 0 {
 		// initialize with the priority of the first worker
-		prevPriority := d.workers[d.shutdownOrderWorker[0]].shutdownOrder
-		for _, name := range d.shutdownOrderWorker {
-			worker := d.workers[name]
+		prevPriority := workers[shutdownOrderWorker[0]].shutdownOrder
+		for _, name := range shutdownOrderWorker {
+			worker := workers[name]
 			if !worker.running.IsSet() {
 				worker.ctxCancel()
 				continue
@@ -317,6 +336,43 @@ func (d *OrderedDaemon) stopWorkers() {
 		}
 		// wait for the last priority to finish
 		d.wgPerSameShutdownOrder[prevPriority].Wait()
+	}
+}
+
+// cleanupWorker removes a finished worker from the workers pool and the shutdown order.
+// Attention: this should only be called if the worker is already finished.
+func (d *OrderedDaemon) cleanupWorker(name string) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	if d.IsStopped() {
+		return
+	}
+
+	delete(d.workers, name)
+	d.removeWorkerFromShutdownOrder(name)
+}
+
+// removeWorkerFromShutdownOrder removes the existing worker from the shutdown order.
+// Attention: this should only be called if the worker is already finished.
+func (d *OrderedDaemon) removeWorkerFromShutdownOrder(name string) {
+	if d.shutdownOrderWorker == nil {
+		return
+	}
+
+	for i, exName := range d.shutdownOrderWorker {
+		if exName != name {
+			continue
+		}
+
+		if i < len(d.shutdownOrderWorker)-1 {
+			copy(d.shutdownOrderWorker[i:], d.shutdownOrderWorker[i+1:])
+		}
+		d.shutdownOrderWorker[len(d.shutdownOrderWorker)-1] = "" // mark for garbage collection with zero value
+		d.shutdownOrderWorker = d.shutdownOrderWorker[:len(d.shutdownOrderWorker)-1]
+
+		// we found the worker, no need to iterate further
+		break
 	}
 }
 

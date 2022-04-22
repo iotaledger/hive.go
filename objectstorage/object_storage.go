@@ -1,10 +1,10 @@
 package objectstorage
 
 import (
-	"errors"
 	"sync"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/events"
@@ -1017,22 +1017,28 @@ func (objectStorage *ObjectStorage) DeleteEntryFromStore(key []byte) {
 }
 
 // DeleteEntriesFromStore deletes entries from the persistence layer.
-func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) {
+func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) error {
 	if !objectStorage.options.persistenceEnabled {
-		return
+		return nil
 	}
 
-	batchedMuts := objectStorage.options.store.Batched()
+	batchedMuts, err := objectStorage.options.store.Batched()
+	if err != nil {
+		return err
+	}
+
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
-			panic(err)
+			return err
 		}
 	}
 
 	if err := batchedMuts.Commit(); err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {

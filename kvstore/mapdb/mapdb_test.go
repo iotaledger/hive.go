@@ -97,18 +97,22 @@ func TestMapDB_IterateDirection(t *testing.T) {
 func TestMapDB_Realm(t *testing.T) {
 	store := NewMapDB()
 	realm := kvstore.Realm("realm")
-	realmStore := store.WithRealm(realm)
-
-	key := []byte("key")
-	err := realmStore.Set(key, []byte("value"))
+	realmStore, err := store.WithRealm(realm)
 	require.NoError(t, err)
 
-	tmpStore := store.WithRealm(kvstore.Realm("tmp"))
+	key := []byte("key")
+	err = realmStore.Set(key, []byte("value"))
+	require.NoError(t, err)
+
+	tmpStore, err := store.WithRealm(kvstore.Realm("tmp"))
+	require.NoError(t, err)
+
 	key2 := []byte("key2")
 	err = tmpStore.Set(key2, []byte("value"))
 	require.NoError(t, err)
 
-	realmStore2 := store.WithRealm(realm)
+	realmStore2, err := store.WithRealm(realm)
+	require.NoError(t, err)
 
 	has, err := realmStore2.Has(key)
 	assert.NoError(t, err)
