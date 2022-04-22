@@ -20,8 +20,12 @@ var (
 	ErrArrayValidationMaxElementsExceeded = errors.New("max count of elements within the array exceeded")
 	// ErrArrayValidationViolatesUniqueness gets returned if the array elements are not unique.
 	ErrArrayValidationViolatesUniqueness = errors.New("array elements must be unique")
+	// ErrArrayValidationViolatesTypeUniqueness gets returned if the array contains the same type multiple times.
+	ErrArrayValidationViolatesTypeUniqueness = errors.New("array elements must be of a unique type")
 	// ErrArrayValidationOrderViolatesLexicalOrder gets returned if the array elements are not in lexical order.
 	ErrArrayValidationOrderViolatesLexicalOrder = errors.New("array elements must be in their lexical order (byte wise)")
+	// ErrArrayValidationTypesNotOccurred gets returned if not all types as specified in an ArrayRules.MustOccur are in an array.
+	ErrArrayValidationTypesNotOccurred = errors.New("not all needed types are present")
 	// ErrDeserializationNotEnoughData gets returned if there is not enough data available to deserialize a given object.
 	ErrDeserializationNotEnoughData = errors.New("not enough data for deserialization")
 	// ErrDeserializationInvalidBoolValue gets returned when a bool value is tried to be read but it is neither 0 or 1.
@@ -30,11 +34,19 @@ var (
 	ErrDeserializationLengthInvalid = errors.New("length denotation invalid")
 	// ErrDeserializationNotAllConsumed gets returned if not all bytes were consumed during deserialization of a given type.
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
+	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit
+	ErrUint256NumNegative = errors.New("uint256 is negative")
+	// ErrStringTooLong gets returned if a string exceeds a max length.
+	ErrStringTooLong = errors.New("string is too long")
+	// ErrUint256TooBig gets returned when a supposed uint256 big.Int value is more than 32 bytes in size.
+	ErrUint256TooBig = errors.New("uint256 big int is too big")
+	// ErrUint256Nil gets returned when a uint256 *big.Int is nil.
+	ErrUint256Nil = errors.New("uint256 must not be nil")
 )
 
 // CheckType checks that the denoted type equals the shouldType.
 func CheckType(data []byte, shouldType uint32) error {
-	if len(data) < 4 {
+	if len(data) < UInt32ByteSize {
 		return fmt.Errorf("%w: can't check type denotation", ErrDeserializationNotEnoughData)
 	}
 	actualType := binary.LittleEndian.Uint32(data)
