@@ -15,9 +15,16 @@ type OrderedMap struct {
 
 // New returns a new *OrderedMap.
 func New() *OrderedMap {
-	return &OrderedMap{
-		dictionary: make(map[interface{}]*Element),
-	}
+	orderedMap := new(OrderedMap)
+	orderedMap.Initialize()
+	return orderedMap
+}
+
+// Initialize returns the first map entry.
+func (orderedMap *OrderedMap) Initialize() {
+	orderedMap.mutex.Lock()
+	defer orderedMap.mutex.Unlock()
+	orderedMap.dictionary = make(map[interface{}]*Element)
 }
 
 // Head returns the first map entry.

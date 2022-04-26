@@ -418,7 +418,7 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 	timeToWrite.IsZero()
 	// the zero value of time translates to -6795364578871345152
 	if nanoSeconds == -6795364578871345152 {
-		if err := binary.Write(&s.buf, binary.LittleEndian, nanoSeconds); err != nil {
+		if err := binary.Write(&s.buf, binary.LittleEndian, int64(0)); err != nil {
 			s.err = errProducer(err)
 		}
 	} else {

@@ -115,6 +115,7 @@ func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (orderedMap *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	orderedMap.Initialize()
 	var mapSize uint32
 	bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
 	if err != nil {
