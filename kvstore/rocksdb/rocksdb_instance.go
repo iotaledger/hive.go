@@ -1,12 +1,11 @@
 //go:build rocksdb
-// +build rocksdb
 
 package rocksdb
 
 import (
 	"fmt"
 
-	"github.com/linxGnu/grocksdb"
+	"github.com/gohornet/grocksdb"
 
 	"github.com/iotaledger/hive.go/kvstore/utils"
 )

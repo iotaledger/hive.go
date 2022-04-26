@@ -4,5 +4,5 @@
 package test
 
 var (
-	dbImplementations = []string{"badger", "bolt", "mapDB", "pebble", "rocksdb"}
+	dbImplementations = []string{"badger", "mapDB", "pebble", "rocksdb"}
 )
