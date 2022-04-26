@@ -1,12 +1,11 @@
 //go:build rocksdb
-// +build rocksdb
 
 package rocksdb
 
 import (
 	"sync"
 
-	"github.com/linxGnu/grocksdb"
+	"github.com/gohornet/grocksdb"
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
