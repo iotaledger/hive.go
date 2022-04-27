@@ -581,7 +581,7 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
 		}
 		if _, exists := seenPositions[tSettings.position]; exists {
-			return nil, errors.Errorf("struct field with dupicated position number %d", tSettings.position)
+			return nil, errors.Errorf("struct field with duplicated position number %d", tSettings.position)
 		}
 		seenPositions[tSettings.position] = struct{}{}
 		if tSettings.isOptional {
