@@ -37,7 +37,7 @@ type Serializable interface {
 
 // Deserializable is a type that can deserialize itself.
 // Serix will call its .Decode() method instead of trying to deserialize it in the default way.
-// The behavior is totally the same as in the standard "encoding/json" package and json.Unmarshaller interface.
+// The behavior is totally the same as in the standard "encoding/json" package and json.Unmarshaler interface.
 type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
