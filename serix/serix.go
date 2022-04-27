@@ -149,7 +149,7 @@ func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool
 }
 
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
-// The object type holds two meanings the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
+// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
 // serix uses object type to actually encode the number
 // and to know its serializer.TypeDenotationType to be able to decode it.
 func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
