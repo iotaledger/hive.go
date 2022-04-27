@@ -4,7 +4,7 @@
 Structs serialization/deserialization
 
 In order for a field to be detected by serix it must have `serix` struct tag set with the position index: `serix:"0"`.
-serix traverses all fields and handles them in the order specifies in the struct tags.
+serix traverses all fields and handles them in the order specified in the struct tags.
 Apart from the required position you can provide the following settings to serix via struct tags:
 "optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"1,optional"`
 "lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"2,lengthPrefixType=unint32"`
@@ -29,15 +29,15 @@ import (
 )
 
 // Serializable is a type that can serialize itself.
-// Setix will call its .Encode() method instead of trying to serialize it in the default way.
-// The behavior is totally the same as in the standard "encoding/json" package and json.Marshaller interface.
+// Serix will call its .Encode() method instead of trying to serialize it in the default way.
+// The behavior is totally the same as in the standard "encoding/json" package and json.Marshaler interface.
 type Serializable interface {
 	Encode() ([]byte, error)
 }
 
 // Deserializable is a type that can deserialize itself.
-// Setix will call its .Decode() method instead of trying to deserialize it in the default way.
-// The behavior is totally the same as in the standard "encoding/json" package and json.Unmarshaller interface.
+// Serix will call its .Decode() method instead of trying to deserialize it in the default way.
+// The behavior is totally the same as in the standard "encoding/json" package and json.Unmarshaler interface.
 type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
@@ -93,7 +93,7 @@ var (
 // Option is an option for Encode/Decode methods.
 type Option func(o *options)
 
-// WithValidation returns an Option that tell the serix to perform the validation.
+// WithValidation returns an Option that tells serix to perform validation.
 func WithValidation() Option {
 	return func(o *options) {
 		o.validation = true
@@ -127,7 +127,7 @@ func (o *options) toMode() serializer.DeSerializationMode {
 // There are three way to provide TypeSettings
 // 1. Via global registry: API.RegisterTypeSettings().
 // 2. Parse from struct tags.
-// 3. Pass as an option to Encode/Decode methods.
+// 3. Pass as an option to API.Encode/API.Decode methods.
 // The type settings provided via struct tags or an option override the type settings from the registry.
 // So the precedence is the following 1<2<3.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
@@ -153,7 +153,7 @@ func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool
 }
 
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
-// The object type holds two meanings the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
+// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
 // serix uses object type to actually encode the number
 // and to know its serializer.TypeDenotationType to be able to decode it.
 func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
@@ -216,7 +216,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 	return mode
 }
 
-// Encode serializer the provided object obj into bytes.
+// Encode serializes the provided object obj into bytes.
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.
 // During the encoding process serix also performs the validation if such option was provided.
@@ -234,10 +234,10 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
-// Decode deserializer bytes b into the provided object obj.
+// Decode deserializes bytes b into the provided object obj.
 // obj must be a non-nil pointer for serix to deserialize into it.
 // serix traverses the object recursively and deserializes everything based on its type.
-// If a type implements the custom Deserializable interface serix delegates the deserialization the that type.
+// If a type implements the custom Deserializable interface serix delegates the deserialization to that type.
 // During the decoding process serix also performs the validation if such option was provided.
 // Use the options list opts to customize the deserialization behavior.
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) (int, error) {
@@ -277,7 +277,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 //
 // obj is an instance of the type you want to provide the validator for.
 // Note that it's better to pass the obj as a value, not as a pointer
-// because that way serix would be able to derefer pointers during Encode/Decode
+// because that way serix would be able to dereference pointers during Encode/Decode
 // and detect the validators for both pointers and values
 // bytesValidatorFn is a function that accepts bytes and returns an error.
 // syntacticValidatorFn is a function that accepts single argument that must have the same type as obj.
@@ -291,7 +291,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 func (api *API) RegisterValidators(obj any, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return errors.New("'obj' is a nil interface, it's need to be a valid type")
+		return errors.New("'obj' is a nil interface, it needs to be a valid type")
 	}
 	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
 	if err != nil {
@@ -472,8 +472,7 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 		}
 	}
 
-	for i := range objs {
-		obj := objs[i]
+	for i, obj := range objs {
 		objType := reflect.TypeOf(obj)
 		objTypeDenotation, objCode, err := api.getTypeDenotationAndObjectCode(objType)
 		if err != nil {
@@ -585,7 +584,7 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
 		}
 		if _, exists := seenPositions[tSettings.position]; exists {
-			return nil, errors.Errorf("struct field with dupicated position number %d", tSettings.position)
+			return nil, errors.Errorf("struct field with duplicated position number %d", tSettings.position)
 		}
 		seenPositions[tSettings.position] = struct{}{}
 		if tSettings.isOptional {

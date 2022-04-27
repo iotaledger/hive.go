@@ -145,6 +145,18 @@ func (s SignatureWithPublicKey) Encode() ([]byte, error) {
 	return s.Bytes(), nil
 }
 
+// Encode returns the signature in bytes.
+func (s *SignatureWithPublicKey) Decode(b []byte) (int, error) {
+	decoded, consumedBytes, err := SignatureWithPublicKeyFromBytes(b)
+	if err != nil {
+		return 0, err
+	}
+	s.PublicKey = decoded.PublicKey
+	s.Signature = decoded.Signature
+
+	return consumedBytes, nil
+}
+
 // Base58 returns a base58 encoded version of the SignatureWithPublicKey.
 func (s SignatureWithPublicKey) Base58() string {
 	return base58.Encode(s.Bytes())
