@@ -212,7 +212,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 	return mode
 }
 
-// Encode serializer the provided object obj into bytes.
+// Encode serializes the provided object obj into bytes.
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.
 // During the encoding process serix also performs the validation if such option was provided.
@@ -230,10 +230,10 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
-// Decode deserializer bytes b into the provided object obj.
+// Decode deserializes bytes b into the provided object obj.
 // obj must be a non-nil pointer for serix to deserialize into it.
 // serix traverses the object recursively and deserializes everything based on its type.
-// If a type implements the custom Deserializable interface serix delegates the deserialization the that type.
+// If a type implements the custom Deserializable interface serix delegates the deserialization to that type.
 // During the decoding process serix also performs the validation if such option was provided.
 // Use the options list opts to customize the deserialization behavior.
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) (int, error) {
@@ -273,7 +273,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 //
 // obj is an instance of the type you want to provide the validator for.
 // Note that it's better to pass the obj as a value, not as a pointer
-// because that way serix would be able to derefer pointers during Encode/Decode
+// because that way serix would be able to dereference pointers during Encode/Decode
 // and detect the validators for both pointers and values
 // bytesValidatorFn is a function that accepts bytes and returns an error.
 // syntacticValidatorFn is a function that accepts single argument that must have the same type as obj.
@@ -287,7 +287,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return errors.New("'obj' is a nil interface, it's need to be a valid type")
+		return errors.New("'obj' is a nil interface, it needs to be a valid type")
 	}
 	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
 	if err != nil {
@@ -468,8 +468,7 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 		}
 	}
 
-	for i := range objs {
-		obj := objs[i]
+	for i, obj := range objs {
 		objType := reflect.TypeOf(obj)
 		objTypeDenotation, objCode, err := api.getTypeDenotationAndObjectCode(objType)
 		if err != nil {
