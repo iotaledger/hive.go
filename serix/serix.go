@@ -44,6 +44,9 @@ type Deserializable interface {
 
 // API is the main object of the package that provides the methods for client to use.
 // It holds all the settings and configuration. It also stores the cache.
+// Most often you will need a single object of API for the whole program.
+// You register all type settings and interfaces on the program start or in init() function.
+// Instead of creating a new API object you can also use the default singleton API object: DefaultAPI.
 type API struct {
 	interfacesRegistryMutex sync.RWMutex
 	interfacesRegistry      map[reflect.Type]*interfaceObjects
@@ -126,6 +129,7 @@ func (o *options) toMode() serializer.DeSerializationMode {
 // 2. Parse from struct tags.
 // 3. Pass as an option to Encode/Decode methods.
 // The type settings provided via struct tags or an option override the type settings from the registry.
+// So the precedence is the following 1<2<3.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
 	lengthPrefixType *serializer.SeriLengthPrefixType
@@ -284,7 +288,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 // api.RegisterValidators(time.Time{}, bytesValidator, syntacticValidator)
 //
 // See TestMain() in serix_test.go for more examples.
-func (api *API) RegisterValidators(obj interface{}, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
+func (api *API) RegisterValidators(obj any, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
 		return errors.New("'obj' is a nil interface, it's need to be a valid type")
@@ -406,7 +410,7 @@ func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Ty
 // It's better to provide obj as a value, not a pointer,
 // that way serix will be able to get the type settings for both values and pointers during Encode/Decode via dereferencing
 // The settings provided via registration are considered global and default ones,
-// they can overridden by type settings parsed from struct tags
+// they can be overridden by type settings parsed from struct tags
 // or by type settings provided via option to the Encode/Decode methods.
 // See TypeSettings for more detail.
 func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
@@ -440,7 +444,7 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 // Those objs type must provide their ObjectTypes beforehand via API.RegisterTypeSettings().
 // serix needs object types to be able to figure out what concrete object to instantiate during the deserialization
 // based on its object type code.
-// In order for reflection to grasp the actual interface type iType must be provided as a pointer to an interface:
+// In order for reflection to grasp the actual interface type, iType must be provided as a pointer to an interface:
 // api.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
 // See TestMain() in serix_test.go for more detail.
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {

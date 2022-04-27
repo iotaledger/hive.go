@@ -674,18 +674,18 @@ func (d *Deserializer) ReadNum(dest interface{}, errProducer ErrProducer) *Deser
 		l = UInt64ByteSize
 		*x = int64(binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize]))
 	case *float32:
-		if l < UInt32ByteSize {
+		if l < Float32ByteSize {
 			d.err = errProducer(ErrDeserializationNotEnoughData)
 			return d
 		}
-		l = UInt32ByteSize
+		l = Float32ByteSize
 		*x = math.Float32frombits(binary.LittleEndian.Uint32(d.src[d.offset : d.offset+UInt32ByteSize]))
 	case *float64:
-		if l < UInt64ByteSize {
+		if l < Float64ByteSize {
 			d.err = errProducer(ErrDeserializationNotEnoughData)
 			return d
 		}
-		l = UInt64ByteSize
+		l = Float64ByteSize
 		*x = math.Float64frombits(binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize]))
 
 	default:

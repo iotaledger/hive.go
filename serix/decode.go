@@ -34,12 +34,6 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if err != nil {
 			return 0, errors.Wrap(err, "object failed to deserialize itself")
 		}
-	} else if deserializable, ok := value.Addr().Interface().(Deserializable); ok {
-		var err error
-		bytesRead, err = deserializable.Decode(b)
-		if err != nil {
-			return 0, errors.Wrap(err, "object failed to deserialize itself")
-		}
 	} else {
 		var err error
 		bytesRead, err = api.decodeBasedOnType(ctx, b, value, valueType, ts, opts)
