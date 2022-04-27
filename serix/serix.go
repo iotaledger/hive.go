@@ -4,7 +4,7 @@
 Structs serialization/deserialization
 
 In order for a field to be detected by serix it must have `serix` struct tag set with the position index: `serix:"0"`.
-serix traverses all fields and handles them in the order specifies in the struct tags.
+serix traverses all fields and handles them in the order specified in the struct tags.
 Apart from the required position you can provide the following settings to serix via struct tags:
 "optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"1,optional"`
 "lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"2,lengthPrefixType=unint32"`
