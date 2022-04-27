@@ -16,7 +16,6 @@ import (
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
-	"github.com/iotaledger/hive.go/kvstore/bolt"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/objectstorage"
@@ -45,13 +44,6 @@ func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
 		return badger.New(db).WithRealm(realm)
-
-	case dbBolt:
-		dir, err := ioutil.TempDir("", "database.bolt")
-		require.NoError(t, err)
-		db, err := bolt.CreateDB(dir, "my.db", nil)
-		require.NoError(t, err)
-		return bolt.New(db).WithRealm(realm)
 
 	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
