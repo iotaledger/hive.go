@@ -86,9 +86,9 @@ func TestEncode_BytesValidation(t *testing.T) {
 
 func TestEncode_ArrayRules(t *testing.T) {
 	t.Parallel()
-	rules := &serializer.ArrayRules{Min: 5}
+	rules := &serix.ArrayRules{Min: 5}
 	testObj := Bools{true, false, true, true}
-	ts := serix.TypeSettings{}.WithLengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32).WithArrayRules(rules)
+	ts := serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint32).WithArrayRules(rules)
 	got, err := testAPI.Encode(ctx, testObj, serix.WithValidation(), serix.WithTypeSettings(ts))
 	require.Nil(t, got)
 	assert.Contains(t, err.Error(), "min count of elements within the array not reached")

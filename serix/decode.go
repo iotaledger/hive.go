@@ -101,9 +101,12 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*string)(nil)))
-		deseri.ReadString(addrValue.Interface().(*string), lengthPrefixType, func(err error) error {
-			return errors.Wrap(err, "failed to read string value from the deserializer")
-		})
+		deseri.ReadString(
+			addrValue.Interface().(*string),
+			serializer.SeriLengthPrefixType(lengthPrefixType),
+			func(err error) error {
+				return errors.Wrap(err, "failed to read string value from the deserializer")
+			})
 		return deseri.Done()
 
 	case reflect.Bool:
@@ -259,9 +262,12 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*[]byte)(nil)))
-		deseri.ReadVariableByteSlice(addrValue.Interface().(*[]byte), lengthPrefixType, func(err error) error {
-			return errors.Wrap(err, "failed to read bytes from the deserializer")
-		})
+		deseri.ReadVariableByteSlice(
+			addrValue.Interface().(*[]byte),
+			serializer.SeriLengthPrefixType(lengthPrefixType),
+			func(err error) error {
+				return errors.Wrap(err, "failed to read bytes from the deserializer")
+			})
 		return deseri.Done()
 	}
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
@@ -301,13 +307,19 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 	}
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
-		arrayRules = new(serializer.ArrayRules)
+		arrayRules = new(ArrayRules)
 	}
 	serializationMode := ts.toMode(opts)
 	deseri := serializer.NewDeserializer(b)
-	deseri.ReadSequenceOfObjects(deserializeItem, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
-		return errors.Wrapf(err, "failed to read sequence of objects %s from the deserialized", valueType)
-	})
+	serializerArrayRules := serializer.ArrayRules(*arrayRules)
+	serializerArrayRulesPtr := &serializerArrayRules
+	deseri.ReadSequenceOfObjects(
+		deserializeItem, serializationMode,
+		serializer.SeriLengthPrefixType(lengthPrefixType),
+		serializerArrayRulesPtr,
+		func(err error) error {
+			return errors.Wrapf(err, "failed to read sequence of objects %s from the deserialized", valueType)
+		})
 	return deseri.Done()
 }
 

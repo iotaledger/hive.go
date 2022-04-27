@@ -96,7 +96,7 @@ func TestDecode_ArrayRules(t *testing.T) {
 	testObj := &Bools{true, false, true, true}
 	bytes, err := testObj.Serialize(defaultSeriMode, nil)
 	require.NoError(t, err)
-	rules := &serializer.ArrayRules{Min: 5}
+	rules := &serix.ArrayRules{Min: 5}
 	ts := serix.TypeSettings{}.WithLengthPrefixType(boolsLenType).WithArrayRules(rules)
 	bytesRead, err := testAPI.Decode(ctx, bytes, testObj, serix.WithValidation(), serix.WithTypeSettings(ts))
 	require.Zero(t, bytesRead)

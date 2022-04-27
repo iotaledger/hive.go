@@ -49,7 +49,7 @@ func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx int
 
 type Bools []Bool
 
-var boolsLenType = serializer.SeriLengthPrefixTypeAsUint16
+var boolsLenType = serix.LengthPrefixTypeAsUint16
 
 func (bs Bools) MarshalJSON() ([]byte, error) {
 	//TODO implement me
@@ -68,7 +68,7 @@ func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMo
 
 func (bs Bools) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
-	s.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, boolsLenType, defaultArrayRules, defaultErrProducer)
+	s.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
 	return s.Serialize()
 }
 
@@ -264,7 +264,7 @@ var exportedStructObjectCode = uint32(3)
 
 type Map map[uint64]uint64
 
-var mapLenType = serializer.SeriLengthPrefixTypeAsUint32
+var mapLenType = serix.LengthPrefixTypeAsUint32
 
 func (m Map) MarshalJSON() ([]byte, error) {
 	//TODO implement me
@@ -298,7 +298,7 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 	s := serializer.NewSerializer()
 	mode := defaultSeriMode | serializer.DeSeriModePerformLexicalOrdering
 	arrayRules := &serializer.ArrayRules{ValidationMode: serializer.ArrayValidationModeLexicalOrdering}
-	s.WriteSliceOfByteSlices(bytes, mode, mapLenType, arrayRules, defaultErrProducer)
+	s.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
 	return s.Serialize()
 }
 

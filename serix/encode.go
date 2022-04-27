@@ -88,9 +88,12 @@ func (api *API) encodeBasedOnType(
 			return nil, errors.Errorf("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
 		seri := serializer.NewSerializer()
-		return seri.WriteString(value.String(), lengthPrefixType, func(err error) error {
-			return errors.Wrap(err, "failed to write string value to serializer")
-		}).Serialize()
+		return seri.WriteString(
+			value.String(),
+			serializer.SeriLengthPrefixType(lengthPrefixType),
+			func(err error) error {
+				return errors.Wrap(err, "failed to write string value to serializer")
+			}).Serialize()
 
 	case reflect.Bool:
 		seri := serializer.NewSerializer()
@@ -231,9 +234,11 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 			return nil, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
 		}
 		seri := serializer.NewSerializer()
-		seri.WriteVariableByteSlice(value.Bytes(), lengthPrefixType, func(err error) error {
-			return errors.Wrap(err, "failed to write bytes to serializer")
-		})
+		seri.WriteVariableByteSlice(value.Bytes(),
+			serializer.SeriLengthPrefixType(lengthPrefixType),
+			func(err error) error {
+				return errors.Wrap(err, "failed to write bytes to serializer")
+			})
 		return seri.Serialize()
 	}
 	sliceLen := value.Len()
@@ -266,7 +271,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	ts = ts.WithLexicalOrdering(true)
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
-		arrayRules = new(serializer.ArrayRules)
+		arrayRules = new(ArrayRules)
 	}
 	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
 	ts = ts.WithArrayRules(arrayRules)
@@ -295,14 +300,20 @@ func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, 
 	}
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
-		arrayRules = new(serializer.ArrayRules)
+		arrayRules = new(ArrayRules)
 	}
 	serializationMode := ts.toMode(opts)
+	serializerArrayRules := serializer.ArrayRules(*arrayRules)
+	serializerArrayRulesPtr := &serializerArrayRules
 	seri := serializer.NewSerializer()
-	seri.WriteSliceOfByteSlices(data, serializationMode, lengthPrefixType, arrayRules, func(err error) error {
-		return errors.Wrapf(err,
-			"serializer failed to write %s  as slice of bytes", valueType,
-		)
-	})
+	seri.WriteSliceOfByteSlices(data,
+		serializationMode,
+		serializer.SeriLengthPrefixType(lengthPrefixType),
+		serializerArrayRulesPtr,
+		func(err error) error {
+			return errors.Wrapf(err,
+				"serializer failed to write %s  as slice of bytes", valueType,
+			)
+		})
 	return seri.Serialize()
 }

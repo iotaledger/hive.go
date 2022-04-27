@@ -122,6 +122,22 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
+// ArrayRules defines rules around a to be deserialized array.
+// Min and Max at 0 define an unbounded array.
+type ArrayRules serializer.ArrayRules
+
+// LengthPrefixType defines the type of the value denoting the length of a collection.
+type LengthPrefixType serializer.SeriLengthPrefixType
+
+const (
+	// LengthPrefixTypeAsByte defines a collection length to be denoted by a byte.
+	LengthPrefixTypeAsByte = LengthPrefixType(serializer.SeriLengthPrefixTypeAsByte)
+	// LengthPrefixTypeAsUint16 defines a collection length to be denoted by a uint16.
+	LengthPrefixTypeAsUint16 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint16)
+	// LengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
+	LengthPrefixTypeAsUint32 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32)
+)
+
 // TypeSettings holds various settings for a particular type.
 // Those settings determine how the object should be serialized/deserialized.
 // There are three way to provide TypeSettings
@@ -132,20 +148,20 @@ func (o *options) toMode() serializer.DeSerializationMode {
 // So the precedence is the following 1<2<3.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
-	lengthPrefixType *serializer.SeriLengthPrefixType
+	lengthPrefixType *LengthPrefixType
 	objectType       interface{}
 	lexicalOrdering  *bool
-	arrayRules       *serializer.ArrayRules
+	arrayRules       *ArrayRules
 }
 
-// WithLengthPrefixType specifies serializer.SeriLengthPrefixType.
-func (ts TypeSettings) WithLengthPrefixType(lpt serializer.SeriLengthPrefixType) TypeSettings {
+// WithLengthPrefixType specifies LengthPrefixType.
+func (ts TypeSettings) WithLengthPrefixType(lpt LengthPrefixType) TypeSettings {
 	ts.lengthPrefixType = &lpt
 	return ts
 }
 
-// LengthPrefixType returns serializer.SeriLengthPrefixType.
-func (ts TypeSettings) LengthPrefixType() (serializer.SeriLengthPrefixType, bool) {
+// LengthPrefixType returns LengthPrefixType.
+func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
 	if ts.lengthPrefixType == nil {
 		return 0, false
 	}
@@ -181,13 +197,13 @@ func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 }
 
 // WithArrayRules specifies serializer.ArrayRules.
-func (ts TypeSettings) WithArrayRules(rules *serializer.ArrayRules) TypeSettings {
+func (ts TypeSettings) WithArrayRules(rules *ArrayRules) TypeSettings {
 	ts.arrayRules = rules
 	return ts
 }
 
 // ArrayRules returns serializer.ArrayRules.
-func (ts TypeSettings) ArrayRules() *serializer.ArrayRules {
+func (ts TypeSettings) ArrayRules() *ArrayRules {
 	return ts.arrayRules
 }
 
@@ -662,16 +678,16 @@ func parseStructTag(tag string) (tagSettings, error) {
 	return settings, nil
 }
 
-func parseLengthPrefixType(prefixTypeRaw string) (serializer.SeriLengthPrefixType, error) {
+func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
 	switch prefixTypeRaw {
 	case "byte", "uint8":
-		return serializer.SeriLengthPrefixTypeAsByte, nil
+		return LengthPrefixTypeAsByte, nil
 	case "uint16":
-		return serializer.SeriLengthPrefixTypeAsUint16, nil
+		return LengthPrefixTypeAsUint16, nil
 	case "uint32":
-		return serializer.SeriLengthPrefixTypeAsUint32, nil
+		return LengthPrefixTypeAsUint32, nil
 	default:
-		return serializer.SeriLengthPrefixTypeAsByte, errors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+		return LengthPrefixTypeAsByte, errors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
 	}
 }
 
