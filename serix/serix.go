@@ -29,7 +29,7 @@ import (
 )
 
 // Serializable is a type that can serialize itself.
-// Setix will call its .Encode() method instead of trying to serialize it in the default way.
+// Serix will call its .Encode() method instead of trying to serialize it in the default way.
 // The behavior is totally the same as in the standard "encoding/json" package and json.Marshaller interface.
 type Serializable interface {
 	Encode() ([]byte, error)
