@@ -90,7 +90,7 @@ var (
 // Option is an option for Encode/Decode methods.
 type Option func(o *options)
 
-// WithValidation returns an Option that tell the serix to perform the validation.
+// WithValidation returns an Option that tells serix to perform validation.
 func WithValidation() Option {
 	return func(o *options) {
 		o.validation = true
@@ -124,7 +124,7 @@ func (o *options) toMode() serializer.DeSerializationMode {
 // There are three way to provide TypeSettings
 // 1. Via global registry: API.RegisterTypeSettings().
 // 2. Parse from struct tags.
-// 3. Pass as an option to Encode/Decode methods.
+// 3. Pass as an option to API.Encode/API.Decode methods.
 // The type settings provided via struct tags or an option override the type settings from the registry.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
