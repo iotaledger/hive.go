@@ -6,6 +6,7 @@ import (
 
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/maps"
+	"github.com/knadh/koanf/providers/posflag"
 	"github.com/spf13/pflag"
 )
 
@@ -51,38 +52,7 @@ func (p *lowerPosflag) Read() (map[string]interface{}, error) {
 			}
 		}
 
-		var v interface{}
-		switch f.Value.Type() {
-		case "int":
-			i, _ := p.flagset.GetInt(f.Name)
-			v = int64(i)
-		case "int8":
-			i, _ := p.flagset.GetInt8(f.Name)
-			v = int64(i)
-		case "int16":
-			i, _ := p.flagset.GetInt16(f.Name)
-			v = int64(i)
-		case "int32":
-			i, _ := p.flagset.GetInt32(f.Name)
-			v = int64(i)
-		case "int64":
-			i, _ := p.flagset.GetInt64(f.Name)
-			v = int64(i)
-		case "float32":
-			v, _ = p.flagset.GetFloat32(f.Name)
-		case "float":
-			v, _ = p.flagset.GetFloat64(f.Name)
-		case "bool":
-			v, _ = p.flagset.GetBool(f.Name)
-		case "stringSlice":
-			v, _ = p.flagset.GetStringSlice(f.Name)
-		case "intSlice":
-			v, _ = p.flagset.GetIntSlice(f.Name)
-		default:
-			v = f.Value.String()
-		}
-
-		mp[strings.ToLower(f.Name)] = v
+		mp[strings.ToLower(f.Name)] = posflag.FlagVal(p.flagset, f)
 	})
 	return maps.Unflatten(mp, p.delim), nil
 }
