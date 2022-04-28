@@ -119,3 +119,32 @@ func Test_NoFlushVsFlush(t *testing.T) {
 	assert.NotEqual(t, uint64(incCount), noFlushCounter)
 	assert.Equal(t, uint64(incCount), flushCounter)
 }
+
+func Test_Events(t *testing.T) {
+	el := NewBlockingQueuedWorkerPool(QueueSize(100), FlushTasksAtShutdown(true))
+	el.Start()
+
+	var counter uint64
+
+	el.Submit(func() {
+		time.Sleep(500 * time.Millisecond)
+
+		atomic.AddUint64(&counter, 1)
+
+		el.Submit(func() {
+			time.Sleep(500 * time.Millisecond)
+
+			atomic.AddUint64(&counter, 1)
+		})
+	})
+
+	el.TrySubmit(func() {
+		time.Sleep(500 * time.Millisecond)
+
+		atomic.AddUint64(&counter, 1)
+	})
+
+	el.WaitUntilAllTasksProcessed()
+
+	assert.EqualValues(t, 3, counter)
+}

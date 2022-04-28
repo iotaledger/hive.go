@@ -3,9 +3,13 @@ package workerpool
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/types"
 )
+
+// region BlockQueuedWorkerPool ////////////////////////////////////////////////////////////////////////////////////////
 
 // BlockingQueuedWorkerPool represents a set of workers with a blocking queue of pending tasks.
 type BlockingQueuedWorkerPool struct {
@@ -19,6 +23,10 @@ type BlockingQueuedWorkerPool struct {
 	running  bool
 	shutdown bool
 
+	pendingTasksCounter uint64
+	emptyChan           chan types.Empty
+	emptyChanMutex      sync.RWMutex
+
 	mutex syncutils.RWMutex
 	wait  sync.WaitGroup
 }
@@ -30,6 +38,7 @@ func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQue
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	result = &BlockingQueuedWorkerPool{
+		emptyChan: make(chan types.Empty),
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		options:   options,
@@ -42,13 +51,13 @@ func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQue
 // Submit submits a task to the loop, if the queue is full the call blocks until the task is succesfully submitted.
 func (wp *BlockingQueuedWorkerPool) Submit(f func()) {
 	wp.mutex.RLock()
-
 	if wp.shutdown {
 		wp.mutex.RUnlock()
 		return
 	}
 	wp.mutex.RUnlock()
 
+	atomic.AddUint64(&wp.pendingTasksCounter, 1)
 	wp.calls <- f
 }
 
@@ -59,10 +68,12 @@ func (wp *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 	defer wp.mutex.RUnlock()
 
 	if !wp.shutdown {
+		atomic.AddUint64(&wp.pendingTasksCounter, 1)
 		select {
 		case wp.calls <- f:
 			return true
 		default:
+			wp.decreasePendingTasksCounter()
 			return false
 		}
 	}
@@ -143,6 +154,7 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 							select {
 							case f := <-wp.calls:
 								f()
+								wp.decreasePendingTasksCounter()
 
 							default:
 								break terminateLoop
@@ -151,6 +163,7 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 					}
 				case f := <-wp.calls:
 					f()
+					wp.decreasePendingTasksCounter()
 				}
 			}
 
@@ -159,3 +172,29 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 
 	}
 }
+
+// WaitUntilAllTasksProcessed waits until all tasks are processed.
+func (wp *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
+	if atomic.LoadUint64(&wp.pendingTasksCounter) == 0 {
+		return
+	}
+
+	wp.emptyChanMutex.RLock()
+	emptyChan := wp.emptyChan
+	wp.emptyChanMutex.RUnlock()
+
+	<-emptyChan
+}
+
+// decreasePendingTasksCounter decreases the pending tasks counter and closes the empty channel if necessary.
+func (wp *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
+	if atomic.AddUint64(&wp.pendingTasksCounter, ^uint64(0)) == 0 {
+		wp.emptyChanMutex.Lock()
+		defer wp.emptyChanMutex.Unlock()
+
+		close(wp.emptyChan)
+		wp.emptyChan = make(chan types.Empty)
+	}
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
