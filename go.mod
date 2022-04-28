@@ -3,13 +3,13 @@ module github.com/iotaledger/hive.go
 go 1.18
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20220224165957-0e0d279abe38
+	github.com/cockroachdb/pebble v0.0.0-20220428002600-b9e970a83ddd
 	github.com/dgraph-io/badger/v2 v2.2007.4
-	github.com/emirpasic/gods v1.12.0
+	github.com/emirpasic/gods v1.18.1
 	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
-	github.com/knadh/koanf v1.4.0
+	github.com/knadh/koanf v1.4.1
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e
@@ -20,11 +20,11 @@ require (
 	github.com/stretchr/testify v1.7.1
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.uber.org/atomic v1.9.0
-	go.uber.org/dig v1.13.0
+	go.uber.org/dig v1.14.1
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	google.golang.org/protobuf v1.27.1
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -36,6 +36,7 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f // indirect
 	github.com/cockroachdb/redact v1.0.8 // indirect
 	github.com/cockroachdb/sentry-go v0.6.1-cockroachdb.2 // indirect
+	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
@@ -64,5 +65,4 @@ require (
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/objx v0.3.0 // indirect
-	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
