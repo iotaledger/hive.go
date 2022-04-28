@@ -466,7 +466,7 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
 	ptrType := reflect.TypeOf(iType)
 	if ptrType == nil {
-		return errors.New("'iType' is a nil interface, it's need to be a pointer to an interface")
+		return errors.New("'iType' is a nil interface, it needs to be a pointer to an interface")
 	}
 	if ptrType.Kind() != reflect.Ptr {
 		return errors.Errorf("'iType' parameter must be a pointer, got %s", ptrType.Kind())
