@@ -4,10 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"runtime"
 	"strconv"
 	"sync"
 )
+
+func GetFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
 
 var Enabled bool
 

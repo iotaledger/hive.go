@@ -1,7 +1,9 @@
 package syncutils
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/iotaledger/hive.go/stringify"
 )
@@ -28,9 +30,18 @@ func (f *StarvingMutex) RLock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
+	waiting := true
+	go func() {
+		time.Sleep(10 * time.Second)
+		if waiting {
+			fmt.Println("DEADLOCK!!!")
+		}
+	}()
+
 	for f.writerActive {
 		f.readerCond.Wait()
 	}
+	waiting = false
 
 	f.readersActive++
 }
@@ -60,10 +71,19 @@ func (f *StarvingMutex) Lock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
+	waiting := true
+	go func() {
+		time.Sleep(10 * time.Second)
+		if waiting {
+			fmt.Println("DEADLOCK!!!")
+		}
+	}()
+
 	f.pendingWriters++
 	for !f.canWrite() {
 		f.writerCond.Wait()
 	}
+	waiting = false
 	f.pendingWriters--
 	f.writerActive = true
 }

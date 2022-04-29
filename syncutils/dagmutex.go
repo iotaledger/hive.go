@@ -2,6 +2,7 @@ package syncutils
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/iotaledger/hive.go/debug"
@@ -24,6 +25,10 @@ func (d *DAGMutex[T]) RLock(ids ...T) {
 	for i, mutex := range d.registerMutexes(ids...) {
 		if debug.Enabled {
 			fmt.Println(debug.GoroutineID(), "RLock", ids[i])
+			_, file, no, ok := runtime.Caller(0)
+			if ok {
+				fmt.Println(debug.GoroutineID(), "called from", file, no)
+			}
 		}
 		mutex.RLock()
 		if debug.Enabled {
@@ -51,6 +56,10 @@ func (d *DAGMutex[T]) Lock(id T) {
 
 	if debug.Enabled {
 		fmt.Println(debug.GoroutineID(), "Lock", id)
+		_, file, no, ok := runtime.Caller(0)
+		if ok {
+			fmt.Println(debug.GoroutineID(), "called from", file, no)
+		}
 	}
 	mutex.Lock()
 	if debug.Enabled {
