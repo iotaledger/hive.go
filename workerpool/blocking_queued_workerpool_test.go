@@ -2,6 +2,7 @@ package workerpool
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -133,8 +134,11 @@ func Test_Events(t *testing.T) {
 		})
 
 		total := 1000000
+		var wg sync.WaitGroup
+		wg.Add(total)
 		for i := 0; i < total; i++ {
 			go func(i int) {
+				defer wg.Done()
 				// fmt.Println("Submitting", i)
 				el.Submit(func() {
 					atomic.AddUint64(&counter, 1)
@@ -145,7 +149,7 @@ func Test_Events(t *testing.T) {
 				})
 			}(i)
 		}
-
+		wg.Wait()
 		el.WaitUntilAllTasksProcessed()
 		fmt.Println("Counter", counter)
 		// el.StopAndWait()

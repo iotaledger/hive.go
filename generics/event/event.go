@@ -1,8 +1,11 @@
 package event
 
 import (
+	"fmt"
+
 	"go.uber.org/atomic"
 
+	"github.com/iotaledger/hive.go/debug"
 	"github.com/iotaledger/hive.go/generics/orderedmap"
 )
 
@@ -95,7 +98,10 @@ func (e *Event[T]) Trigger(event T) {
 
 func (e *Event[T]) triggerEventHandlers(event T) {
 	e.eventHandlers.ForEach(func(closureID uint64, callback func(T)) bool {
-		Loop.Submit(func() { callback(event) })
+		Loop.Submit(func() {
+			fmt.Println(debug.GoroutineID(), "triggerEventHandlers", debug.GetFunctionName(callback))
+			callback(event)
+		})
 
 		return true
 	})
