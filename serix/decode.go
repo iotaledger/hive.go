@@ -13,7 +13,7 @@ import (
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {
 	valueType := value.Type()
 	if opts.validation {
-		if err := api.callBytesValidator(valueType, b); err != nil {
+		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
 			return 0, errors.Wrap(err, "pre-deserialization validation failed")
 		}
 	}
@@ -42,7 +42,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		}
 	}
 	if opts.validation {
-		if err := api.callSyntacticValidator(value, valueType); err != nil {
+		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return 0, errors.Wrap(err, "post-deserialization validation failed")
 		}
 	}

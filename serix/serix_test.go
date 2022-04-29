@@ -340,7 +340,7 @@ type ObjectForSyntacticValidation struct{}
 
 var errSyntacticValidation = errors.New("syntactic validation failed")
 
-func SyntacticValidation(obj ObjectForSyntacticValidation) error {
+func SyntacticValidation(ctx context.Context, obj ObjectForSyntacticValidation) error {
 	return errSyntacticValidation
 }
 
@@ -348,7 +348,7 @@ type ObjectForBytesValidation struct{}
 
 var errBytesValidation = errors.New("bytes validation failed")
 
-func BytesValidation([]byte) error {
+func BytesValidation(ctx context.Context, b []byte) error {
 	return errBytesValidation
 }
 

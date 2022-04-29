@@ -87,7 +87,7 @@ var (
 	bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
 	timeType      = reflect.TypeOf(time.Time{})
 	errorType     = reflect.TypeOf((*error)(nil)).Elem()
-	boolType      = reflect.TypeOf(false)
+	ctxType       = reflect.TypeOf((*context.Context)(nil)).Elem()
 )
 
 // Option is an option for Encode/Decode methods.
@@ -295,16 +295,16 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 // Note that it's better to pass the obj as a value, not as a pointer
 // because that way serix would be able to dereference pointers during Encode/Decode
 // and detect the validators for both pointers and values
-// bytesValidatorFn is a function that accepts bytes and returns an error.
-// syntacticValidatorFn is a function that accepts single argument that must have the same type as obj.
+// bytesValidatorFn is a function that accepts context.Context, []byte and returns an error.
+// syntacticValidatorFn is a function that accepts context.Context, and an object with the same type as obj.
 // Every validator func is optional, just provide nil.
 // Example:
-// bytesValidator := func(b []byte) error { ... }
-// syntacticValidator := func (t time.Time) error { ... }
+// bytesValidator := func(ctx context.Context, b []byte) error { ... }
+// syntacticValidator := func (ctx context.Context, t time.Time) error { ... }
 // api.RegisterValidators(time.Time{}, bytesValidator, syntacticValidator)
 //
 // See TestMain() in serix_test.go for more examples.
-func (api *API) RegisterValidators(obj any, bytesValidatorFn func([]byte) error, syntacticValidatorFn interface{}) error {
+func (api *API) RegisterValidators(obj any, bytesValidatorFn func(context.Context, []byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
 		return errors.New("'obj' is a nil interface, it needs to be a valid type")
@@ -350,8 +350,12 @@ func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 		)
 	}
 	funcType := funcValue.Type()
-	if funcType.NumIn() != 1 {
-		return reflect.Value{}, errors.Errorf("validator func must have one argument")
+	if funcType.NumIn() != 2 {
+		return reflect.Value{}, errors.Errorf("validator func must have two arguments")
+	}
+	firstArgType := funcType.In(0)
+	if firstArgType != ctxType {
+		return reflect.Value{}, errors.Errorf("validator func's first argument must be context")
 	}
 	if funcType.NumOut() != 1 {
 		return reflect.Value{}, errors.Errorf("validator func must have one return value, got %d", funcType.NumOut())
@@ -365,7 +369,7 @@ func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 
 func checkBytesValidatorSignature(funcValue reflect.Value) error {
 	funcType := funcValue.Type()
-	argumentType := funcType.In(0)
+	argumentType := funcType.In(1)
 	if argumentType != bytesType {
 		return errors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
 	}
@@ -374,7 +378,7 @@ func checkBytesValidatorSignature(funcValue reflect.Value) error {
 
 func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect.Value) error {
 	funcType := funcValue.Type()
-	argumentType := funcType.In(0)
+	argumentType := funcType.In(1)
 	if argumentType != objectType {
 		return errors.Errorf(
 			"syntacticValidatorFn's argument must have the same type as the object it was registered for, "+
@@ -385,7 +389,7 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 	return nil
 }
 
-func (api *API) callBytesValidator(valueType reflect.Type, bytes []byte) error {
+func (api *API) callBytesValidator(ctx context.Context, valueType reflect.Type, bytes []byte) error {
 	api.validatorsRegistryMutex.RLock()
 	defer api.validatorsRegistryMutex.RUnlock()
 	bytesValidator := api.validatorsRegistry[valueType].bytesValidator
@@ -396,14 +400,16 @@ func (api *API) callBytesValidator(valueType reflect.Type, bytes []byte) error {
 		}
 	}
 	if bytesValidator.IsValid() {
-		if err, _ := bytesValidator.Call([]reflect.Value{reflect.ValueOf(bytes)})[0].Interface().(error); err != nil {
+		if err, _ := bytesValidator.Call(
+			[]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(bytes)},
+		)[0].Interface().(error); err != nil {
 			return errors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
 		}
 	}
 	return nil
 }
 
-func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Type) error {
+func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value, valueType reflect.Type) error {
 	api.validatorsRegistryMutex.RLock()
 	defer api.validatorsRegistryMutex.RUnlock()
 	syntacticValidator := api.validatorsRegistry[valueType].syntacticValidator
@@ -415,7 +421,9 @@ func (api *API) callSyntacticValidator(value reflect.Value, valueType reflect.Ty
 		}
 	}
 	if syntacticValidator.IsValid() {
-		if err, _ := syntacticValidator.Call([]reflect.Value{value})[0].Interface().(error); err != nil {
+		if err, _ := syntacticValidator.Call(
+			[]reflect.Value{reflect.ValueOf(ctx), value},
+		)[0].Interface().(error); err != nil {
 			return errors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
 		}
 	}
