@@ -66,8 +66,8 @@ func (wp *BlockingQueuedWorkerPool) Submit(f func()) {
 		fmt.Printf("Submitted from %s#%d\n", file, no)
 	}
 
-	pendingTasks := atomic.AddUint64(&wp.pendingTasksCounter, 1)
-	fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
+	atomic.AddUint64(&wp.pendingTasksCounter, 1)
+	// fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
 	wp.calls <- f
 }
 
@@ -78,8 +78,8 @@ func (wp *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 	defer wp.mutex.RUnlock()
 
 	if !wp.shutdown {
-		pendingTasks := atomic.AddUint64(&wp.pendingTasksCounter, 1)
-		fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
+		atomic.AddUint64(&wp.pendingTasksCounter, 1)
+		// fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
 		select {
 		case wp.calls <- f:
 			return true
@@ -189,7 +189,7 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 						}
 					}
 				case f := <-wp.calls:
-					fmt.Println(debug2.GoroutineID(), "EXECUTING", debug2.GetFunctionName(f))
+					// fmt.Println(debug2.GoroutineID(), "EXECUTING", debug2.GetFunctionName(f))
 					waiting := true
 					go func() {
 						time.Sleep(10 * time.Second)
@@ -199,7 +199,7 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 					}()
 					f()
 					waiting = false
-					fmt.Println(debug2.GoroutineID(), "EXECUTED", debug2.GetFunctionName(f))
+					// fmt.Println(debug2.GoroutineID(), "EXECUTED", debug2.GetFunctionName(f))
 					wp.decreasePendingTasksCounter()
 				}
 			}
@@ -227,21 +227,18 @@ func (wp *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
 
 // decreasePendingTasksCounter decreases the pending tasks counter and closes the empty channel if necessary.
 func (wp *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
-	fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter")
+	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter")
+	wp.emptyChanMutex.Lock()
+	defer wp.emptyChanMutex.Unlock()
 
-	pendingTasks := atomic.AddUint64(&wp.pendingTasksCounter, ^uint64(0))
-
-	fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", pendingTasks)
-
-	if pendingTasks == 0 {
-		wp.emptyChanMutex.Lock()
-		defer wp.emptyChanMutex.Unlock()
-
+	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", pendingTasks)
+	if atomic.AddUint64(&wp.pendingTasksCounter, ^uint64(0)) == 0 {
+		fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", "CLOSE")
 		close(wp.emptyChan)
 		wp.emptyChan = make(chan types.Empty)
 	}
 
-	fmt.Println(debug2.GoroutineID(), "pendingTasks", pendingTasks)
+	// fmt.Println(debug2.GoroutineID(), "pendingTasks", pendingTasks)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

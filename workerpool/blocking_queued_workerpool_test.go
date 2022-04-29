@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -121,30 +122,34 @@ func Test_NoFlushVsFlush(t *testing.T) {
 }
 
 func Test_Events(t *testing.T) {
-	el := NewBlockingQueuedWorkerPool(QueueSize(100), FlushTasksAtShutdown(true))
-	el.Start()
+	for j := 0; j < 100; j++ {
+		el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true))
+		el.Start()
 
-	var counter uint64
-
-	el.Submit(func() {
-		time.Sleep(500 * time.Millisecond)
-
-		atomic.AddUint64(&counter, 1)
-
-		el.Submit(func() {
+		var counter uint64
+		el.TrySubmit(func() {
 			time.Sleep(500 * time.Millisecond)
-
 			atomic.AddUint64(&counter, 1)
 		})
-	})
 
-	el.TrySubmit(func() {
-		time.Sleep(500 * time.Millisecond)
+		total := 1000000
+		for i := 0; i < total; i++ {
+			go func(i int) {
+				// fmt.Println("Submitting", i)
+				el.Submit(func() {
+					atomic.AddUint64(&counter, 1)
 
-		atomic.AddUint64(&counter, 1)
-	})
+					el.Submit(func() {
+						atomic.AddUint64(&counter, 1)
+					})
+				})
+			}(i)
+		}
 
-	el.WaitUntilAllTasksProcessed()
+		el.WaitUntilAllTasksProcessed()
+		fmt.Println("Counter", counter)
+		// el.StopAndWait()
 
-	assert.EqualValues(t, 3, counter)
+		assert.EqualValues(t, total*2+1, counter)
+	}
 }
