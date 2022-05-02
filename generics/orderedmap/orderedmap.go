@@ -94,11 +94,13 @@ func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 
 	orderedMap.ForEach(func(key K, val V) bool {
 		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), key)
-		seri.AbortIf(func(_ error) error {
-			return errors.Wrap(err, "encode OrderedMap key")
-		})
+		if err != nil {
+			seri.AbortIf(func(err error) error {
+				return errors.Wrap(err, "encode OrderedMap key")
+			})
+		}
 		seri.WriteBytes(keyBytes, func(err error) error {
-			return errors.Wrap(err, "failed to OrderedMap key to serializer")
+			return errors.Wrap(err, "failed to write OrderedMap key to serializer")
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
@@ -106,7 +108,7 @@ func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 			return errors.Wrap(err, "failed to serialize OrderedMap value")
 		})
 		seri.WriteBytes(valBytes, func(err error) error {
-			return errors.Wrap(err, "failed to OrderedMap value to serializer")
+			return errors.Wrap(err, "failed to write OrderedMap value to serializer")
 		})
 		return true
 	})
