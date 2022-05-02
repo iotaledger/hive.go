@@ -2,7 +2,6 @@ package workerpool
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -124,6 +123,7 @@ func Test_NoFlushVsFlush(t *testing.T) {
 
 func Test_Events(t *testing.T) {
 	for j := 0; j < 100; j++ {
+		fmt.Println("Test_Events", j)
 		el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true))
 		el.Start()
 
@@ -133,13 +133,9 @@ func Test_Events(t *testing.T) {
 			atomic.AddUint64(&counter, 1)
 		})
 
-		total := 1000000
-		var wg sync.WaitGroup
-		wg.Add(total)
+		total := 100000
 		for i := 0; i < total; i++ {
-			go func(i int) {
-				defer wg.Done()
-				// fmt.Println("Submitting", i)
+			el.Submit(func() {
 				el.Submit(func() {
 					atomic.AddUint64(&counter, 1)
 
@@ -147,9 +143,8 @@ func Test_Events(t *testing.T) {
 						atomic.AddUint64(&counter, 1)
 					})
 				})
-			}(i)
+			})
 		}
-		wg.Wait()
 		el.WaitUntilAllTasksProcessed()
 		fmt.Println("Counter", counter)
 		// el.StopAndWait()

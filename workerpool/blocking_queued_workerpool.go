@@ -6,11 +6,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	debug2 "github.com/iotaledger/hive.go/debug"
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/iotaledger/hive.go/types"
 )
 
 // region BlockQueuedWorkerPool ////////////////////////////////////////////////////////////////////////////////////////
@@ -27,10 +27,13 @@ type BlockingQueuedWorkerPool struct {
 	running  bool
 	shutdown bool
 
-	pendingTasksCounter uint64
-	pendingTasksMutex   sync.Mutex
-	emptyChan           chan types.Empty
-	emptyChanMutex      sync.RWMutex
+	pendingTasksCounter        uint64
+	pendingTasksMutex          sync.Mutex
+	waitUntilAllTasksProcessed *sync.Cond
+	closed                     uint64
+
+	workerIDs      map[uint64]bool
+	workerIDsMutex sync.RWMutex
 
 	mutex syncutils.RWMutex
 	wait  sync.WaitGroup
@@ -45,6 +48,7 @@ type task struct {
 func (t task) String() string {
 	s := strings.Builder{}
 
+	s.WriteString(fmt.Sprintf("%d ", debug2.GoroutineID()))
 	s.WriteString(debug2.GetFunctionName(t.f))
 	s.WriteString("\n")
 	for i, file := range t.files {
@@ -53,13 +57,10 @@ func (t task) String() string {
 	return s.String()
 }
 
-func (t task) run() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in f", r)
-		}
-	}()
-	fmt.Println(debug2.GoroutineID(), "EXECUTING", debug2.GetFunctionName(t.f))
+func (t task) run(wp *BlockingQueuedWorkerPool) {
+	defer wp.decreasePendingTasksCounter()
+
+	// fmt.Println(debug2.GoroutineID(), "EXECUTING", debug2.GetFunctionName(t.f))
 	goroutine := debug2.GoroutineID()
 	waiting := true
 	go func() {
@@ -69,11 +70,9 @@ func (t task) run() {
 		}
 	}()
 	t.f()
-	if r := recover(); r != nil {
-		fmt.Println(r)
-	}
+
 	waiting = false
-	fmt.Println(debug2.GoroutineID(), "EXECUTED", debug2.GetFunctionName(t.f))
+	// fmt.Println(debug2.GoroutineID(), "EXECUTED", debug2.GetFunctionName(t.f))
 }
 
 // NewBlockingQueuedWorkerPool returns a new stopped WorkerPool.
@@ -83,18 +82,28 @@ func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQue
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	result = &BlockingQueuedWorkerPool{
-		emptyChan: make(chan types.Empty),
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		options:   options,
 		calls:     make(chan task, options.QueueSize),
+		workerIDs: make(map[uint64]bool),
 	}
+	result.waitUntilAllTasksProcessed = sync.NewCond(&result.pendingTasksMutex)
 
 	return
 }
 
 // Submit submits a task to the loop, if the queue is full the call blocks until the task is succesfully submitted.
 func (wp *BlockingQueuedWorkerPool) Submit(f func()) {
+	if atomic.LoadUint64(&wp.closed) == 1 {
+		wp.workerIDsMutex.RLock()
+		if !wp.workerIDs[debug2.GoroutineID()] {
+			fmt.Println(debug2.GoroutineID(), "WorkerPool was empty before submitting task")
+			fmt.Println(wp.createTask(f))
+		}
+		wp.workerIDsMutex.RUnlock()
+	}
+
 	wp.mutex.RLock()
 	if wp.shutdown {
 		wp.mutex.RUnlock()
@@ -204,6 +213,10 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 		wp.wait.Add(1)
 
 		go func() {
+			wp.workerIDsMutex.Lock()
+			wp.workerIDs[debug2.GoroutineID()] = true
+			wp.workerIDsMutex.Unlock()
+
 			aborted := false
 
 			for !aborted {
@@ -218,17 +231,14 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 						for {
 							select {
 							case t := <-wp.calls:
-								t.run()
-								wp.decreasePendingTasksCounter()
-
+								t.run(wp)
 							default:
 								break terminateLoop
 							}
 						}
 					}
 				case t := <-wp.calls:
-					t.run()
-					wp.decreasePendingTasksCounter()
+					t.run(wp)
 				}
 			}
 
@@ -241,26 +251,24 @@ func (wp *BlockingQueuedWorkerPool) startWorkers() {
 // WaitUntilAllTasksProcessed waits until all tasks are processed.
 func (wp *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
 	wp.pendingTasksMutex.Lock()
+	defer wp.pendingTasksMutex.Unlock()
 	if wp.pendingTasksCounter == 0 {
-		wp.pendingTasksMutex.Unlock()
 		return
 	}
-	wp.pendingTasksMutex.Unlock()
-
-	wp.emptyChanMutex.RLock()
-	emptyChan := wp.emptyChan
-	wp.emptyChanMutex.RUnlock()
 
 	fmt.Println(debug2.GoroutineID(), "WAITING")
-	<-emptyChan
+	for wp.pendingTasksCounter > 0 {
+		wp.waitUntilAllTasksProcessed.Wait()
+	}
 	fmt.Println(debug2.GoroutineID(), "WAITING DONE")
+	atomic.StoreUint64(&wp.closed, 0)
 }
 
 func (wp *BlockingQueuedWorkerPool) increasePendingTaskCounter() {
 	wp.pendingTasksMutex.Lock()
 	defer wp.pendingTasksMutex.Unlock()
 
-	fmt.Println(debug2.GoroutineID(), "increasePendingTasksCounter", wp.pendingTasksCounter)
+	// fmt.Println(debug2.GoroutineID(), "increasePendingTasksCounter", wp.pendingTasksCounter)
 
 	wp.pendingTasksCounter++
 }
@@ -269,17 +277,17 @@ func (wp *BlockingQueuedWorkerPool) increasePendingTaskCounter() {
 func (wp *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
 	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter")
 	wp.pendingTasksMutex.Lock()
-	defer wp.pendingTasksMutex.Unlock()
 
-	fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", wp.pendingTasksCounter)
+	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", wp.pendingTasksCounter)
 	wp.pendingTasksCounter--
-	if wp.pendingTasksCounter == 0 {
-		wp.emptyChanMutex.Lock()
-		defer wp.emptyChanMutex.Unlock()
-		fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", "CLOSE")
-		close(wp.emptyChan)
-		wp.emptyChan = make(chan types.Empty)
+	if wp.pendingTasksCounter != 0 {
+		wp.pendingTasksMutex.Unlock()
+		return
 	}
+	atomic.StoreUint64(&wp.closed, 1)
+	wp.pendingTasksMutex.Unlock()
+	wp.waitUntilAllTasksProcessed.Broadcast()
+	fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", "CLOSE")
 
 	// fmt.Println(debug2.GoroutineID(), "pendingTasks", pendingTasks)
 }
