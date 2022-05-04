@@ -1,37 +1,10 @@
 package utils
 
 import (
-	"os"
 	"sort"
 
 	"github.com/iotaledger/hive.go/kvstore"
 )
-
-// PathExists returns whether the given file or directory exists.
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-// CreateDirectory checks if the directory exists,
-// otherwise it creates it with given permissions.
-func CreateDirectory(dir string, perm os.FileMode) error {
-	exists, err := PathExists(dir)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return os.Mkdir(dir, perm)
-	}
-	return nil
-}
 
 // CopyBytes returns a copy of the source slice.
 // If size is not passed, the result slice has same size as the source slice.
