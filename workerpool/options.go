@@ -5,9 +5,16 @@ import (
 )
 
 var DEFAULT_OPTIONS = &Options{
+	Alias:                "",
 	WorkerCount:          2 * runtime.NumCPU(),
 	QueueSize:            4 * runtime.NumCPU(),
 	FlushTasksAtShutdown: false,
+}
+
+func WithAlias(alias string) Option {
+	return func(o *Options) {
+		o.Alias = alias
+	}
 }
 
 func WorkerCount(workerCount int) Option {
@@ -29,6 +36,7 @@ func FlushTasksAtShutdown(flush bool) Option {
 }
 
 type Options struct {
+	Alias                string
 	WorkerCount          int
 	QueueSize            int
 	FlushTasksAtShutdown bool

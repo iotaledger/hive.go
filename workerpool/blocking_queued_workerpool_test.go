@@ -2,11 +2,14 @@ package workerpool
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/debug"
 )
 
 func Test_SimpleCounter(t *testing.T) {
@@ -121,34 +124,48 @@ func Test_NoFlushVsFlush(t *testing.T) {
 	assert.Equal(t, uint64(incCount), flushCounter)
 }
 
+func Test_DeadlockDetection(t *testing.T) {
+	debug.Enabled = true
+
+	el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true), WithAlias("event.Loop"))
+	el.Start()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	el.Submit(func() {
+		time.Sleep(7 * time.Second)
+
+		fmt.Println("DONE")
+
+		wg.Done()
+	})
+
+	wg.Wait()
+}
+
 func Test_Events(t *testing.T) {
-	for j := 0; j < 100; j++ {
-		fmt.Println("Test_Events", j)
-		el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true))
-		el.Start()
+	el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true))
+	el.Start()
 
-		var counter uint64
-		el.TrySubmit(func() {
-			time.Sleep(500 * time.Millisecond)
-			atomic.AddUint64(&counter, 1)
-		})
+	var counter uint64
+	el.TrySubmit(func() {
+		time.Sleep(500 * time.Millisecond)
+		atomic.AddUint64(&counter, 1)
+	})
 
-		total := 100000
-		for i := 0; i < total; i++ {
+	total := 10000
+	for i := 0; i < total; i++ {
+		el.Submit(func() {
 			el.Submit(func() {
+				atomic.AddUint64(&counter, 1)
+
 				el.Submit(func() {
 					atomic.AddUint64(&counter, 1)
-
-					el.Submit(func() {
-						atomic.AddUint64(&counter, 1)
-					})
 				})
 			})
-		}
-		el.WaitUntilAllTasksProcessed()
-		fmt.Println("Counter", counter)
-		// el.StopAndWait()
-
-		assert.EqualValues(t, total*2+1, counter)
+		})
 	}
+	el.WaitUntilAllTasksProcessed()
+
+	assert.EqualValues(t, total*2+1, counter)
 }

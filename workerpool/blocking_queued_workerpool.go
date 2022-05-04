@@ -3,293 +3,283 @@ package workerpool
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	debug2 "github.com/iotaledger/hive.go/debug"
+	"github.com/iotaledger/hive.go/debug"
 	"github.com/iotaledger/hive.go/syncutils"
+	"github.com/iotaledger/hive.go/types"
 )
 
-// region BlockQueuedWorkerPool ////////////////////////////////////////////////////////////////////////////////////////
+// region BlockingQueuedWorkerPool /////////////////////////////////////////////////////////////////////////////////////
 
 // BlockingQueuedWorkerPool represents a set of workers with a blocking queue of pending tasks.
 type BlockingQueuedWorkerPool struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
-
-	options *Options
-
-	calls chan task
-
-	running  bool
-	shutdown bool
+	options   *Options
+	tasks     chan *BlockingQueueWorkerPoolTask
+	running   bool
+	shutdown  bool
 
 	pendingTasksCounter        uint64
 	pendingTasksMutex          sync.Mutex
 	waitUntilAllTasksProcessed *sync.Cond
-	closed                     uint64
-
-	workerIDs      map[uint64]bool
-	workerIDsMutex sync.RWMutex
-
-	mutex syncutils.RWMutex
-	wait  sync.WaitGroup
-}
-
-type task struct {
-	f     func()
-	lines []int
-	files []string
-}
-
-func (t task) String() string {
-	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("%d ", debug2.GoroutineID()))
-	s.WriteString(debug2.GetFunctionName(t.f))
-	s.WriteString("\n")
-	for i, file := range t.files {
-		s.WriteString(fmt.Sprintf("\t %s:%d\n", file, t.lines[i]))
-	}
-	return s.String()
-}
-
-func (t task) run(wp *BlockingQueuedWorkerPool) {
-	defer wp.decreasePendingTasksCounter()
-
-	// fmt.Println(debug2.GoroutineID(), "EXECUTING", debug2.GetFunctionName(t.f))
-	goroutine := debug2.GoroutineID()
-	waiting := true
-	go func() {
-		time.Sleep(5 * time.Second)
-		if waiting {
-			fmt.Println(goroutine, "HANG!!", t)
-		}
-	}()
-	t.f()
-
-	waiting = false
-	// fmt.Println(debug2.GoroutineID(), "EXECUTED", debug2.GetFunctionName(t.f))
+	mutex                      syncutils.RWMutex
+	workers                    sync.WaitGroup
 }
 
 // NewBlockingQueuedWorkerPool returns a new stopped WorkerPool.
 func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQueuedWorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
-
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	result = &BlockingQueuedWorkerPool{
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		options:   options,
-		calls:     make(chan task, options.QueueSize),
-		workerIDs: make(map[uint64]bool),
+		tasks:     make(chan *BlockingQueueWorkerPoolTask, options.QueueSize),
 	}
 	result.waitUntilAllTasksProcessed = sync.NewCond(&result.pendingTasksMutex)
 
-	return
+	return result
 }
 
-// Submit submits a task to the loop, if the queue is full the call blocks until the task is succesfully submitted.
-func (wp *BlockingQueuedWorkerPool) Submit(f func()) {
-	if atomic.LoadUint64(&wp.closed) == 1 {
-		wp.workerIDsMutex.RLock()
-		if !wp.workerIDs[debug2.GoroutineID()] {
-			fmt.Println(debug2.GoroutineID(), "WorkerPool was empty before submitting task")
-			fmt.Println(wp.createTask(f))
-		}
-		wp.workerIDsMutex.RUnlock()
+// Submit submits a handler function to the queue and blocks if the queue is full.
+func (b *BlockingQueuedWorkerPool) Submit(handler func()) {
+	b.SubmitTask(b.CreateTask(handler))
+}
+
+// TrySubmit tries to queue the execution of the handler function and ignores the handler if there is no capacity for it
+// to be added.
+func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
+	return b.TrySubmitTask(b.CreateTask(f))
+}
+
+// CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
+func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) (new *BlockingQueueWorkerPoolTask) {
+	b.increasePendingTaskCounter()
+
+	var stackTrace string
+	if len(optionalStackTrace) > 1 {
+		stackTrace = optionalStackTrace[0]
 	}
 
-	wp.mutex.RLock()
-	if wp.shutdown {
-		wp.mutex.RUnlock()
+	return newBlockingQueueWorkerPoolTask(b, f, stackTrace)
+}
+
+// SubmitTask submits a task to the queue and blocks if the queue is full (it should only be used instead of Submit if
+// manually handling the task is necessary to create better debug outputs).
+func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask) {
+	if !b.IsRunning() {
+		task.markDone()
 		return
 	}
-	wp.mutex.RUnlock()
 
-	wp.increasePendingTaskCounter()
-	// fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
-	wp.calls <- wp.createTask(f)
+	b.tasks <- task
 }
 
-func (wp *BlockingQueuedWorkerPool) createTask(f func()) task {
-	t := task{
-		f:     f,
-		lines: make([]int, 0),
-		files: make([]string, 0),
+// TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to
+// be added (it should only be used instead of TrySubmit if manually handling the task is necessary to create better
+// debug outputs).
+func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *BlockingQueueWorkerPoolTask) (added bool) {
+	if !b.IsRunning() {
+		task.markDone()
+		return false
 	}
 
-	for i := 0; ; i++ {
-		_, file, no, ok := runtime.Caller(i)
-		if !ok {
-			break
-		}
-		t.files = append(t.files, file)
-		t.lines = append(t.lines, no)
+	select {
+	case b.tasks <- task:
+		return true
+	default:
+		task.markDone()
+		return false
 	}
-	return t
-}
-
-// TrySubmit submits a task to the loop without blocking, it returns false if the queue is full and the task was not
-// succesfully submitted.
-func (wp *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
-	wp.mutex.RLock()
-	defer wp.mutex.RUnlock()
-
-	if !wp.shutdown {
-		wp.increasePendingTaskCounter()
-		// fmt.Println(debug2.GoroutineID(), "pendingTasks ADDED", pendingTasks)
-		select {
-		case wp.calls <- wp.createTask(f):
-			return true
-		default:
-			wp.decreasePendingTasksCounter()
-			return false
-		}
-	}
-
-	return false
 }
 
 // Start starts the WorkerPool (non-blocking).
-func (wp *BlockingQueuedWorkerPool) Start() {
-	wp.mutex.Lock()
+func (b *BlockingQueuedWorkerPool) Start() {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 
-	if !wp.running {
-		if wp.shutdown {
+	if !b.running {
+		if b.shutdown {
 			panic("Worker was already used before")
 		}
-		wp.running = true
+		b.running = true
 
-		wp.startWorkers()
+		b.startWorkers()
 	}
-
-	wp.mutex.Unlock()
 }
 
 // Run starts the WorkerPool and waits for its shutdown.
-func (wp *BlockingQueuedWorkerPool) Run() {
-	wp.Start()
+func (b *BlockingQueuedWorkerPool) Run() {
+	b.Start()
 
-	wp.wait.Wait()
+	b.workers.Wait()
 }
 
 // Stop stops the WorkerPool.
-func (wp *BlockingQueuedWorkerPool) Stop() {
-	wp.mutex.Lock()
+func (b *BlockingQueuedWorkerPool) Stop() {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 
-	if wp.running {
-		wp.shutdown = true
-		wp.running = false
+	if b.running {
+		b.shutdown = true
+		b.running = false
 
-		wp.ctxCancel()
+		b.ctxCancel()
 	}
-
-	wp.mutex.Unlock()
 }
 
 // StopAndWait stops the WorkerPool and waits for its shutdown.
-func (wp *BlockingQueuedWorkerPool) StopAndWait() {
-	wp.Stop()
-	wp.wait.Wait()
+func (b *BlockingQueuedWorkerPool) StopAndWait() {
+	b.Stop()
+	b.workers.Wait()
 }
 
 // GetWorkerCount returns the worker count for the WorkerPool.
-func (wp *BlockingQueuedWorkerPool) GetWorkerCount() int {
-	return wp.options.WorkerCount
+func (b *BlockingQueuedWorkerPool) GetWorkerCount() int {
+	return b.options.WorkerCount
 }
 
 // GetPendingQueueSize returns the amount of tasks pending to the processed.
-func (wp *BlockingQueuedWorkerPool) GetPendingQueueSize() int {
-	return len(wp.calls)
+func (b *BlockingQueuedWorkerPool) GetPendingQueueSize() int {
+	return len(b.tasks)
 }
 
-func (wp *BlockingQueuedWorkerPool) startWorkers() {
-	for i := 0; i < wp.options.WorkerCount; i++ {
-		wp.wait.Add(1)
+// WaitUntilAllTasksProcessed waits until all tasks are processed.
+func (b *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
+	b.pendingTasksMutex.Lock()
+	defer b.pendingTasksMutex.Unlock()
+	if b.pendingTasksCounter == 0 {
+		return
+	}
+
+	for b.pendingTasksCounter > 0 {
+		b.waitUntilAllTasksProcessed.Wait()
+	}
+}
+
+// IsRunning returns true if the WorkerPool is running.
+func (b *BlockingQueuedWorkerPool) IsRunning() (isRunning bool) {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	return !b.shutdown
+}
+
+func (b *BlockingQueuedWorkerPool) alias() string {
+	if b.options.Alias != "" {
+		return b.options.Alias
+	}
+
+	return "BlockingQueuedWorkerPool"
+}
+
+func (b *BlockingQueuedWorkerPool) startWorkers() {
+	for i := 0; i < b.options.WorkerCount; i++ {
+		b.workers.Add(1)
 
 		go func() {
-			wp.workerIDsMutex.Lock()
-			wp.workerIDs[debug2.GoroutineID()] = true
-			wp.workerIDsMutex.Unlock()
-
-			aborted := false
-
-			for !aborted {
+			for aborted := false; !aborted; {
 				select {
-
-				case <-wp.ctx.Done():
+				case <-b.ctx.Done():
 					aborted = true
 
-					if wp.options.FlushTasksAtShutdown {
+					if b.options.FlushTasksAtShutdown {
 					terminateLoop:
 						// process all waiting tasks after shutdown signal
 						for {
 							select {
-							case t := <-wp.calls:
-								t.run(wp)
+							case currentTask := <-b.tasks:
+								currentTask.run()
 							default:
 								break terminateLoop
 							}
 						}
 					}
-				case t := <-wp.calls:
-					t.run(wp)
+				case currentTask := <-b.tasks:
+					currentTask.run()
 				}
 			}
 
-			wp.wait.Done()
+			b.workers.Done()
 		}()
-
 	}
 }
 
-// WaitUntilAllTasksProcessed waits until all tasks are processed.
-func (wp *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
-	wp.pendingTasksMutex.Lock()
-	defer wp.pendingTasksMutex.Unlock()
-	if wp.pendingTasksCounter == 0 {
+func (b *BlockingQueuedWorkerPool) increasePendingTaskCounter() {
+	b.pendingTasksMutex.Lock()
+	defer b.pendingTasksMutex.Unlock()
+
+	b.pendingTasksCounter++
+}
+
+func (b *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
+	b.pendingTasksMutex.Lock()
+
+	b.pendingTasksCounter--
+	if b.pendingTasksCounter != 0 {
+		b.pendingTasksMutex.Unlock()
 		return
 	}
+	b.pendingTasksMutex.Unlock()
+	b.waitUntilAllTasksProcessed.Broadcast()
+}
 
-	fmt.Println(debug2.GoroutineID(), "WAITING")
-	for wp.pendingTasksCounter > 0 {
-		wp.waitUntilAllTasksProcessed.Wait()
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region BlockingQueueWorkerPoolTask /////////////////////////////////////////////////////////////////////////////////
+
+// BlockingQueueWorkerPoolTask is a task that is executed by a BlockingQueuedWorkerPool.
+type BlockingQueueWorkerPoolTask struct {
+	workerPool *BlockingQueuedWorkerPool
+	workerFunc func()
+	doneChan   chan types.Empty
+	stackTrace string
+}
+
+// newBlockingQueueWorkerPoolTask creates a new BlockingQueueWorkerPoolTask.
+func newBlockingQueueWorkerPoolTask(workerPool *BlockingQueuedWorkerPool, workerFunc func(), stackTrace string) *BlockingQueueWorkerPoolTask {
+	if debug.Enabled && stackTrace == "" {
+		stackTrace = debug.ClosureStackTrace(workerFunc)
 	}
-	fmt.Println(debug2.GoroutineID(), "WAITING DONE")
-	atomic.StoreUint64(&wp.closed, 0)
+
+	return &BlockingQueueWorkerPoolTask{
+		workerPool: workerPool,
+		workerFunc: workerFunc,
+		doneChan:   make(chan types.Empty),
+		stackTrace: stackTrace,
+	}
 }
 
-func (wp *BlockingQueuedWorkerPool) increasePendingTaskCounter() {
-	wp.pendingTasksMutex.Lock()
-	defer wp.pendingTasksMutex.Unlock()
+// run executes the task.
+func (t *BlockingQueueWorkerPoolTask) run() {
+	if debug.Enabled {
+		go t.detectedHangingTasks()
+	}
 
-	// fmt.Println(debug2.GoroutineID(), "increasePendingTasksCounter", wp.pendingTasksCounter)
-
-	wp.pendingTasksCounter++
+	t.workerFunc()
+	t.markDone()
 }
 
-// decreasePendingTasksCounter decreases the pending tasks counter and closes the empty channel if necessary.
-func (wp *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
-	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter")
-	wp.pendingTasksMutex.Lock()
+// markDone marks the task as done.
+func (t *BlockingQueueWorkerPoolTask) markDone() {
+	close(t.doneChan)
+	t.workerPool.decreasePendingTasksCounter()
+}
 
-	// fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", wp.pendingTasksCounter)
-	wp.pendingTasksCounter--
-	if wp.pendingTasksCounter != 0 {
-		wp.pendingTasksMutex.Unlock()
+// detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
+func (t *BlockingQueueWorkerPoolTask) detectedHangingTasks() {
+	select {
+	case <-t.doneChan:
 		return
+	case <-time.After(debug.DeadlockDetectionTimeout):
+		fmt.Println("task in " + t.workerPool.alias() + " seems to hang (" + debug.DeadlockDetectionTimeout.String() + ") ...")
+		fmt.Println("\n" + strings.Replace(strings.Replace(t.stackTrace, "closure:", "task:", 1), "called by", "queued by", 1))
 	}
-	atomic.StoreUint64(&wp.closed, 1)
-	wp.pendingTasksMutex.Unlock()
-	wp.waitUntilAllTasksProcessed.Broadcast()
-	fmt.Println(debug2.GoroutineID(), "decreasePendingTasksCounter", "CLOSE")
-
-	// fmt.Println(debug2.GoroutineID(), "pendingTasks", pendingTasks)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

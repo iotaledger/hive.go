@@ -2,10 +2,7 @@ package syncutils
 
 import (
 	"fmt"
-	"runtime"
 	"sync"
-
-	"github.com/iotaledger/hive.go/debug"
 )
 
 type DAGMutex[T comparable] struct {
@@ -22,30 +19,14 @@ func NewDAGMutex[T comparable]() *DAGMutex[T] {
 }
 
 func (d *DAGMutex[T]) RLock(ids ...T) {
-	for i, mutex := range d.registerMutexes(ids...) {
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "RLock", ids[i])
-			_, file, no, ok := runtime.Caller(0)
-			if ok {
-				fmt.Println(debug.GoroutineID(), "called from", file, no)
-			}
-		}
+	for _, mutex := range d.registerMutexes(ids...) {
 		mutex.RLock()
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "RLocked", ids[i])
-		}
 	}
 }
 
 func (d *DAGMutex[T]) RUnlock(ids ...T) {
-	for i, mutex := range d.unregisterMutexes(ids...) {
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "RUnLock", ids[i])
-		}
+	for _, mutex := range d.unregisterMutexes(ids...) {
 		mutex.RUnlock()
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "RUnLocked", ids[i])
-		}
 	}
 }
 
@@ -54,17 +35,7 @@ func (d *DAGMutex[T]) Lock(id T) {
 	mutex := d.registerMutex(id)
 	d.Mutex.Unlock()
 
-	if debug.Enabled {
-		fmt.Println(debug.GoroutineID(), "Lock", id)
-		_, file, no, ok := runtime.Caller(0)
-		if ok {
-			fmt.Println(debug.GoroutineID(), "called from", file, no)
-		}
-	}
 	mutex.Lock()
-	if debug.Enabled {
-		fmt.Println(debug.GoroutineID(), "Locked", id)
-	}
 }
 
 func (d *DAGMutex[T]) Unlock(id T) {
@@ -72,23 +43,11 @@ func (d *DAGMutex[T]) Unlock(id T) {
 	mutex := d.unregisterMutex(id)
 	if mutex == nil {
 		d.Mutex.Unlock()
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "UnLock (early)", id)
-		}
-		if debug.Enabled {
-			fmt.Println(debug.GoroutineID(), "UnLocked (early)", id)
-		}
 		return
 	}
 	d.Mutex.Unlock()
 
-	if debug.Enabled {
-		fmt.Println(debug.GoroutineID(), "UnLock", id)
-	}
 	mutex.Unlock()
-	if debug.Enabled {
-		fmt.Println(debug.GoroutineID(), "UnLocked", id)
-	}
 }
 
 func (d *DAGMutex[T]) registerMutexes(ids ...T) (mutexes []*StarvingMutex) {
@@ -133,8 +92,6 @@ func (d *DAGMutex[T]) unregisterMutex(id T) (mutex *StarvingMutex) {
 	if d.consumerCounter[id] == 1 {
 		delete(d.consumerCounter, id)
 		delete(d.mutexes, id)
-
-		// we don't need to unlock removed mutexes as nobody else is using them anymore anyway
 		return nil
 	}
 

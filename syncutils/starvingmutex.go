@@ -5,7 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/debug"
 	"github.com/iotaledger/hive.go/stringify"
+	"github.com/iotaledger/hive.go/types"
 )
 
 type StarvingMutex struct {
@@ -13,8 +15,7 @@ type StarvingMutex struct {
 	writerActive   bool
 	pendingWriters int
 
-	mutex sync.Mutex
-
+	mutex      sync.Mutex
 	readerCond sync.Cond
 	writerCond sync.Cond
 }
@@ -30,18 +31,20 @@ func (f *StarvingMutex) RLock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	waiting := true
-	go func() {
-		time.Sleep(10 * time.Second)
-		if waiting {
-			fmt.Println("DEADLOCK!!!")
-		}
-	}()
+	var doneChan chan types.Empty
+	if debug.Enabled {
+		doneChan = make(chan types.Empty, 1)
+
+		go f.detectDeadlock("RLock", debug.CallerStackTrace(), doneChan)
+	}
 
 	for f.writerActive {
 		f.readerCond.Wait()
 	}
-	waiting = false
+
+	if debug.Enabled {
+		close(doneChan)
+	}
 
 	f.readersActive++
 }
@@ -71,19 +74,18 @@ func (f *StarvingMutex) Lock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	waiting := true
-	go func() {
-		time.Sleep(10 * time.Second)
-		if waiting {
-			fmt.Println("DEADLOCK!!!")
-		}
-	}()
+	var doneChan chan types.Empty
+	if debug.Enabled {
+		doneChan = make(chan types.Empty, 1)
+
+		go f.detectDeadlock("Lock", debug.CallerStackTrace(), doneChan)
+	}
 
 	f.pendingWriters++
 	for !f.canWrite() {
 		f.writerCond.Wait()
 	}
-	waiting = false
+	close(doneChan)
 	f.pendingWriters--
 	f.writerActive = true
 }
@@ -116,4 +118,14 @@ func (f *StarvingMutex) String() (humanReadable string) {
 
 func (f *StarvingMutex) canWrite() bool {
 	return !f.writerActive && f.readersActive == 0
+}
+
+func (f *StarvingMutex) detectDeadlock(lockType string, trace string, done chan types.Empty) {
+	select {
+	case <-done:
+		return
+	case <-time.After(debug.DeadlockDetectionTimeout):
+		fmt.Println("possible deadlock while trying to acquire " + lockType + " (" + debug.DeadlockDetectionTimeout.String() + ") ...")
+		fmt.Println("\n" + trace)
+	}
 }

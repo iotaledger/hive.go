@@ -1,8 +1,6 @@
 package event
 
 import (
-	"fmt"
-
 	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/debug"
@@ -98,10 +96,12 @@ func (e *Event[T]) Trigger(event T) {
 
 func (e *Event[T]) triggerEventHandlers(event T) {
 	e.eventHandlers.ForEach(func(closureID uint64, callback func(T)) bool {
-		Loop.Submit(func() {
-			fmt.Println(debug.GoroutineID(), "triggerEventHandlers", debug.GetFunctionName(callback))
-			callback(event)
-		})
+		var closureStackTrace string
+		if debug.Enabled {
+			closureStackTrace = debug.ClosureStackTrace(callback)
+		}
+
+		Loop.SubmitTask(Loop.CreateTask(func() { callback(event) }, closureStackTrace))
 
 		return true
 	})

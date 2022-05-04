@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/workerpool"
 )
 
-const loopQueueSize = 1000
+const loopQueueSize = 100000
 
 var Loop *workerpool.BlockingQueuedWorkerPool
 

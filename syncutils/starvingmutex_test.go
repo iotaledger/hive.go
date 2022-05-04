@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/debug"
 )
 
 func Benchmark(b *testing.B) {
@@ -33,6 +35,9 @@ func Benchmark(b *testing.B) {
 }
 
 func Test(t *testing.T) {
+	debug.Enabled = true
+	debug.DeadlockDetectionTimeout = 100 * time.Millisecond
+
 	mutex := NewStarvingMutex()
 
 	mutex.RLock()
@@ -60,4 +65,19 @@ func Test(t *testing.T) {
 
 	assert.Equal(t, false, mutex.writerActive)
 	assert.Equal(t, 0, mutex.readersActive)
+
+	mutex.Lock()
+
+	go func() {
+		mutex.RLock()
+		mutex.RUnlock()
+	}()
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		mutex.Unlock()
+	}()
+
+	mutex.Lock()
+	mutex.Unlock()
 }

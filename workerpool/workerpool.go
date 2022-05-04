@@ -76,7 +76,7 @@ func (wp *WorkerPool) TrySubmit(params ...interface{}) (result chan interface{},
 		}:
 			return result, true
 		default:
-			// Queue full => drop the task
+			// Queue full => drop the BlockingQueueWorkerPoolTask
 			close(result)
 			return nil, false
 		}

@@ -5,9 +5,10 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/panjf2000/ants/v2"
+
 	"github.com/iotaledger/hive.go/datastructure/queue"
 	"github.com/iotaledger/hive.go/syncutils"
-	"github.com/panjf2000/ants/v2"
 )
 
 // NonBlockingQueuedWorkerPool implements a non-blocking goroutine pool backed by a queue.
@@ -44,7 +45,7 @@ func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Op
 }
 
 func (wp *NonBlockingQueuedWorkerPool) workerFuncWrapper(t interface{}) {
-	// always execute at least 1 task: the one that was invoked via wp.pool.Invoke
+	// always execute at least 1 BlockingQueueWorkerPoolTask: the one that was invoked via wp.pool.Invoke
 	taskAvailable := true
 	for taskAvailable {
 		// wrap into inner function to continue execution with worker even if there's a panic
@@ -87,8 +88,8 @@ func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan inter
 	return wp.TrySubmit(params...)
 }
 
-// TrySubmit submits a task to this pool (it drops the task if not enough workers are available and the queue is full).
-// It returns a channel to obtain the task result, and a boolean if the task was successfully submitted to the queue.
+// TrySubmit submits a BlockingQueueWorkerPoolTask to this pool (it drops the BlockingQueueWorkerPoolTask if not enough workers are available and the queue is full).
+// It returns a channel to obtain the BlockingQueueWorkerPoolTask result, and a boolean if the BlockingQueueWorkerPoolTask was successfully submitted to the queue.
 func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result chan interface{}, added bool) {
 	wp.shutdownMutex.RLock()
 	defer wp.shutdownMutex.RUnlock()

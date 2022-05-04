@@ -1,138 +1,72 @@
 package debug
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"reflect"
 	"runtime"
 	"strconv"
-	"sync"
+	"strings"
+	"syscall"
+	"time"
 )
 
-func GetFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+var (
+	Enabled                  = true
+	DeadlockDetectionTimeout = 5 * time.Second
+)
+
+// FunctionName returns the name of the generic function pointer.
+func FunctionName(functionPointer interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(functionPointer).Pointer()).Name()
 }
 
-var Enabled bool
+// StackTrace returns a goroutine stack trace. If the allGoRoutines parameter is false, then it only returns the stack
+// trace of the calling goroutine. It is possible to skip the first n frames of the stack trace.
+func StackTrace(allGoRoutines bool, skipFrames int) string {
+	buf := make([]byte, 1<<20)
+	str := string(buf[:runtime.Stack(buf, allGoRoutines)])
+	lines := strings.Split(strings.ReplaceAll(str, "\r\n", "\n"), "\n")
 
+	trimmedLines := make([]string, 0)
+	trimmedLines = append(trimmedLines, lines[:1]...)
+	trimmedLines = append(trimmedLines, lines[1+(1+skipFrames)*2:]...)
+
+	return strings.Join(trimmedLines, "\n")
+}
+
+// CallerStackTrace returns a formatted stack trace of the caller of this function.
+func CallerStackTrace() (stackTrace string) {
+	return strings.TrimSuffix("\tcalled by "+strings.ReplaceAll(StackTrace(false, 1), "\n", "\n\t\t"), "\t\t")
+}
+
+// ClosureStackTrace returns a formatted stack trace for the given function pointer
+func ClosureStackTrace(functionPointer interface{}) (stackTrace string) {
+	return strings.TrimSuffix("\tclosure:\n\t\t"+FunctionName(functionPointer)+"\n\n\tcalled by "+strings.ReplaceAll(StackTrace(false, 1), "\n", "\n\t\t"), "\t\t")
+}
+
+// GoroutineID returns the ID of the current goroutine.
 func GoroutineID() uint64 {
-	bp := littleBuf.Get().(*[]byte)
-	defer littleBuf.Put(bp)
-	b := *bp
-	b = b[:runtime.Stack(b, false)]
-	// Parse the 4707 out of "goroutine 4707 ["
-	b = bytes.TrimPrefix(b, []byte("goroutine "))
-	i := bytes.IndexByte(b, ' ')
-	if i < 0 {
-		panic(fmt.Sprintf("No space found in %q", b))
-	}
-	b = b[:i]
-	n, err := parseUintBytes(b, 10, 64)
+	buf := make([]byte, 1<<20)
+	str := string(buf[:runtime.Stack(buf, false)])
+	str = strings.TrimPrefix(str, "goroutine ")
+	str, _, _ = strings.Cut(str, " ")
+
+	goRoutineID, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to parse goroutine ID out of %q: %v", b, err))
+		panic(err)
 	}
-	return n
+
+	return goRoutineID
 }
 
-var littleBuf = sync.Pool{
-	New: func() interface{} {
-		buf := make([]byte, 64)
-		return &buf
-	},
-}
-
-// parseUintBytes is like strconv.ParseUint, but using a []byte.
-func parseUintBytes(s []byte, base int, bitSize int) (n uint64, err error) {
-	var cutoff, maxVal uint64
-
-	if bitSize == 0 {
-		bitSize = int(strconv.IntSize)
-	}
-
-	s0 := s
-	switch {
-	case len(s) < 1:
-		err = strconv.ErrSyntax
-		goto Error
-
-	case 2 <= base && base <= 36:
-		// valid base; nothing to do
-
-	case base == 0:
-		// Look for octal, hex prefix.
-		switch {
-		case s[0] == '0' && len(s) > 1 && (s[1] == 'x' || s[1] == 'X'):
-			base = 16
-			s = s[2:]
-			if len(s) < 1 {
-				err = strconv.ErrSyntax
-				goto Error
-			}
-		case s[0] == '0':
-			base = 8
-		default:
-			base = 10
-		}
-
-	default:
-		err = errors.New("invalid base " + strconv.Itoa(base))
-		goto Error
-	}
-
-	n = 0
-	cutoff = cutoff64(base)
-	maxVal = 1<<uint(bitSize) - 1
-
-	for i := 0; i < len(s); i++ {
-		var v byte
-		d := s[i]
-		switch {
-		case '0' <= d && d <= '9':
-			v = d - '0'
-		case 'a' <= d && d <= 'z':
-			v = d - 'a' + 10
-		case 'A' <= d && d <= 'Z':
-			v = d - 'A' + 10
-		default:
-			n = 0
-			err = strconv.ErrSyntax
-			goto Error
-		}
-		if int(v) >= base {
-			n = 0
-			err = strconv.ErrSyntax
-			goto Error
-		}
-
-		if n >= cutoff {
-			// n*base overflows
-			n = 1<<64 - 1
-			err = strconv.ErrRange
-			goto Error
-		}
-		n *= uint64(base)
-
-		n1 := n + uint64(v)
-		if n1 < n || n1 > maxVal {
-			// n+v overflows
-			n = 1<<64 - 1
-			err = strconv.ErrRange
-			goto Error
-		}
-		n = n1
-	}
-
-	return n, nil
-
-Error:
-	return n, &strconv.NumError{Func: "ParseUint", Num: string(s0), Err: err}
-}
-
-// Return the first number n such that n*base >= 1<<64.
-func cutoff64(base int) uint64 {
-	if base < 2 {
-		return 0
-	}
-	return (1<<64-1)/uint64(base) + 1
+func init() {
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		fmt.Println(StackTrace(true, 0))
+		os.Exit(1)
+	}()
 }
