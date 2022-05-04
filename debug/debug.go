@@ -13,7 +13,10 @@ import (
 )
 
 var (
-	Enabled                  = true
+	// Enabled contains a flag that determines if the debug mode is active.
+	Enabled = false
+
+	// DeadlockDetectionTimeout contains the duration to wait before assuming a deadlock.
 	DeadlockDetectionTimeout = 5 * time.Second
 )
 
