@@ -15,7 +15,7 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 
-	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/ioutils"
 )
 
 var (
@@ -66,7 +66,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
-	exists, err := utils.PathExists(filePath)
+	exists, err := ioutils.PathExists(filePath)
 	if err != nil {
 		return err
 	}
