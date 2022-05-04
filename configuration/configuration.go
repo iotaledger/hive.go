@@ -169,3 +169,16 @@ func (c *Configuration) LoadEnvironmentVars(prefix string) error {
 		return mapKey
 	}), nil)
 }
+
+// Koanf returns the underlying Koanf instance.
+func (c *Configuration) Koanf() *koanf.Koanf {
+	return c.config
+}
+
+// Load takes a Provider that either provides a parsed config map[string]interface{}
+// in which case pa (Parser) can be nil, or raw bytes to be parsed, where a Parser
+// can be provided to parse. Additionally, options can be passed which modify the
+// load behavior, such as passing a custom merge function.
+func (c *Configuration) Load(p koanf.Provider, pa koanf.Parser, opts ...koanf.Option) error {
+	return c.config.Load(p, pa, opts...)
+}
