@@ -7,7 +7,7 @@ import (
 
 	"github.com/gohornet/grocksdb"
 
-	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/ioutils"
 )
 
 // RocksDB holds the underlying grocksdb.DB instance and options
@@ -21,7 +21,7 @@ type RocksDB struct {
 // CreateDB creates a new RocksDB instance.
 func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
-	if err := utils.CreateDirectory(directory, 0700); err != nil {
+	if err := ioutils.CreateDirectory(directory, 0700); err != nil {
 		return nil, fmt.Errorf("could not create directory: %w", err)
 	}
 

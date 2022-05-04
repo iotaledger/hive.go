@@ -15,7 +15,7 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 
-	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/ioutils"
 )
 
 var (
@@ -66,7 +66,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
-	exists, err := utils.PathExists(filePath)
+	exists, err := ioutils.PathExists(filePath)
 	if err != nil {
 		return err
 	}
@@ -168,4 +168,17 @@ func (c *Configuration) LoadEnvironmentVars(prefix string) error {
 		}
 		return mapKey
 	}), nil)
+}
+
+// Koanf returns the underlying Koanf instance.
+func (c *Configuration) Koanf() *koanf.Koanf {
+	return c.config
+}
+
+// Load takes a Provider that either provides a parsed config map[string]interface{}
+// in which case pa (Parser) can be nil, or raw bytes to be parsed, where a Parser
+// can be provided to parse. Additionally, options can be passed which modify the
+// load behavior, such as passing a custom merge function.
+func (c *Configuration) Load(p koanf.Provider, pa koanf.Parser, opts ...koanf.Option) error {
+	return c.config.Load(p, pa, opts...)
 }
