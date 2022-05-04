@@ -85,7 +85,9 @@ func (f *StarvingMutex) Lock() {
 	for !f.canWrite() {
 		f.writerCond.Wait()
 	}
-	close(doneChan)
+	if debug.Enabled {
+		close(doneChan)
+	}
 	f.pendingWriters--
 	f.writerActive = true
 }
