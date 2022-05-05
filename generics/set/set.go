@@ -1,6 +1,9 @@
 package set
 
-import "github.com/iotaledger/hive.go/datastructure/set"
+import (
+	"github.com/iotaledger/hive.go/datastructure/set"
+	"github.com/iotaledger/hive.go/serix"
+)
 
 // Set is a collection of elements.
 type Set[T comparable] interface {
@@ -21,6 +24,9 @@ type Set[T comparable] interface {
 
 	// Size returns the size of the Set.
 	Size() int
+
+	serix.Serializable
+	serix.Deserializable
 }
 
 // New returns a new Set that is thread safe if the optional threadSafe parameter is set to true.

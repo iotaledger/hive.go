@@ -1,10 +1,11 @@
 package bls
 
 import (
-	"github.com/iotaledger/hive.go/byteutils"
-	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
+
+	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 // region Signature ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,12 +140,29 @@ func (s SignatureWithPublicKey) Bytes() []byte {
 	return byteutils.ConcatBytes(s.PublicKey.Bytes(), s.Signature.Bytes())
 }
 
+// Encode returns the signature in bytes.
+func (s SignatureWithPublicKey) Encode() ([]byte, error) {
+	return s.Bytes(), nil
+}
+
+// Encode returns the signature in bytes.
+func (s *SignatureWithPublicKey) Decode(b []byte) (int, error) {
+	decoded, consumedBytes, err := SignatureWithPublicKeyFromBytes(b)
+	if err != nil {
+		return 0, err
+	}
+	s.PublicKey = decoded.PublicKey
+	s.Signature = decoded.Signature
+
+	return consumedBytes, nil
+}
+
 // Base58 returns a base58 encoded version of the SignatureWithPublicKey.
 func (s SignatureWithPublicKey) Base58() string {
 	return base58.Encode(s.Bytes())
 }
 
-// String returns a human readable version of the SignatureWithPublicKey (base58 encoded).
+// String returns a human-readable version of the SignatureWithPublicKey (base58 encoded).
 func (s SignatureWithPublicKey) String() string {
 	return base58.Encode(s.Bytes())
 }

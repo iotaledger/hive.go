@@ -10,6 +10,7 @@ require (
 	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220309063734-061146d8ff30
 	github.com/knadh/koanf v1.4.0
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
@@ -43,9 +44,9 @@ require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.12.3 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -66,3 +67,5 @@ require (
 	github.com/stretchr/objx v0.3.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
+
+replace github.com/iotaledger/hive.go/serializer/v2 => ./serializer

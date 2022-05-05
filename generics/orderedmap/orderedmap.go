@@ -1,7 +1,13 @@
 package orderedmap
 
 import (
+	"context"
+
+	"github.com/pkg/errors"
+
 	"github.com/iotaledger/hive.go/datastructure/orderedmap"
+	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/iotaledger/hive.go/serix"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
@@ -76,4 +82,66 @@ func (orderedMap *OrderedMap[K, V]) ForEachReverse(consumer func(key K, value V)
 // It returns false if the key is not found.
 func (orderedMap *OrderedMap[K, V]) Delete(key K) bool {
 	return orderedMap.OrderedMap.Delete(key)
+}
+
+// Encode returns a serialized byte slice of the object.
+func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
+	seri := serializer.NewSerializer()
+
+	seri.WriteNum(uint32(orderedMap.Size()), func(err error) error {
+		return errors.Wrap(err, "failed to write OrderedMap size to serializer")
+	})
+
+	orderedMap.ForEach(func(key K, val V) bool {
+		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), key)
+		if err != nil {
+			seri.AbortIf(func(err error) error {
+				return errors.Wrap(err, "encode OrderedMap key")
+			})
+		}
+		seri.WriteBytes(keyBytes, func(err error) error {
+			return errors.Wrap(err, "failed to write OrderedMap key to serializer")
+		})
+
+		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
+		seri.AbortIf(func(_ error) error {
+			return errors.Wrap(err, "failed to serialize OrderedMap value")
+		})
+		seri.WriteBytes(valBytes, func(err error) error {
+			return errors.Wrap(err, "failed to write OrderedMap value to serializer")
+		})
+		return true
+	})
+	return seri.Serialize()
+}
+
+// Decode deserializes bytes into a valid object.
+func (orderedMap *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	orderedMap.OrderedMap = orderedmap.New()
+	var mapSize uint32
+	bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
+	if err != nil {
+		return 0, err
+	}
+	bytesRead += bytesReadSize
+
+	for i := uint32(0); i < mapSize; i++ {
+		var key K
+		bytesReadKey, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &key)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadKey
+
+		var value V
+		bytesReadValue, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &value)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadValue
+
+		orderedMap.Set(key, value)
+	}
+
+	return bytesRead, nil
 }
