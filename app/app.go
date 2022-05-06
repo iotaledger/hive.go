@@ -105,17 +105,17 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	return a
 }
 
-func (a *App) isEnabled(identifier string) bool {
+func (a *App) isPluginEnabled(identifier string) bool {
 	_, exists := a.enabledPlugins[identifier]
 	return exists
 }
 
-func (a *App) isDisabled(identifier string) bool {
+func (a *App) isPluginDisabled(identifier string) bool {
 	_, exists := a.disabledPlugins[identifier]
 	return exists
 }
 
-func (a *App) isForceDisabled(identifier string) bool {
+func (a *App) isComponentForceDisabled(identifier string) bool {
 	_, exists := a.forceDisabledComponents[identifier]
 	return exists
 }
@@ -123,13 +123,13 @@ func (a *App) isForceDisabled(identifier string) bool {
 // IsSkipped returns whether the plugin is loaded or skipped.
 func (a *App) IsSkipped(plugin *Plugin) bool {
 	// list of disabled plugins has the highest priority
-	if a.isDisabled(plugin.Identifier()) || a.isForceDisabled(plugin.Identifier()) {
+	if a.isPluginDisabled(plugin.Identifier()) || a.isComponentForceDisabled(plugin.Identifier()) {
 		return true
 	}
 
 	// if the plugin was not in the list of disabled plugins, it is only skipped if
 	// the plugin was not enabled and not in the list of enabled plugins.
-	return plugin.Status != StatusEnabled && !a.isEnabled(plugin.Identifier())
+	return plugin.Status != StatusEnabled && !a.isPluginEnabled(plugin.Identifier())
 }
 
 // prints the loaded configuration, but hides sensitive information.
@@ -294,7 +294,7 @@ Command line flags:
 		panic(err)
 	}
 
-	// parse
+	// enable version check
 	a.options.versionCheckEnabled = a.appConfig.Bool(CfgAppCheckForUpdates)
 
 	// initialize the global logger
@@ -326,14 +326,14 @@ func (a *App) initConfig() {
 
 	if a.options.initComponent.InitConfigPars != nil {
 		if err := a.options.initComponent.InitConfigPars(a.container); err != nil {
-			a.LogPanicf("failed to initialize config parameters: %s", err)
+			a.LogPanicf("failed to initialize init component config parameters: %s", err)
 		}
 	}
 
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		if coreComponent.InitConfigPars != nil {
 			if err := coreComponent.InitConfigPars(a.container); err != nil {
-				a.LogPanicf("failed to initialize config parameters: %s", err)
+				a.LogPanicf("failed to initialize core component (%s) config parameters: %s", coreComponent.Name, err)
 			}
 		}
 		return true
@@ -342,7 +342,7 @@ func (a *App) initConfig() {
 	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
 		if plugin.InitConfigPars != nil {
 			if err := plugin.InitConfigPars(a.container); err != nil {
-				a.LogPanicf("failed to initialize config parameters: %s", err)
+				a.LogPanicf("failed to initialize plugin (%s) config parameters: %s", plugin.Name, err)
 			}
 		}
 		return true
@@ -359,14 +359,14 @@ func (a *App) preProvide() {
 
 	if a.options.initComponent.PreProvide != nil {
 		if err := a.options.initComponent.PreProvide(a.container, a, initCfg); err != nil {
-			a.LogPanicf("pre-provide failed: %s", err)
+			a.LogPanicf("pre-provide init component failed: %s", err)
 		}
 	}
 
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		if coreComponent.PreProvide != nil {
 			if err := coreComponent.PreProvide(a.container, a, initCfg); err != nil {
-				a.LogPanicf("pre-provide failed: %s", err)
+				a.LogPanicf("pre-provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
 		return true
@@ -375,7 +375,7 @@ func (a *App) preProvide() {
 	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
 		if plugin.PreProvide != nil {
 			if err := plugin.PreProvide(a.container, a, initCfg); err != nil {
-				a.LogPanicf("pre-provide failed: %s", err)
+				a.LogPanicf("pre-provide plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
 		return true
@@ -399,7 +399,7 @@ func (a *App) preProvide() {
 func (a *App) addComponents() {
 
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
-		if a.isForceDisabled(coreComponent.Identifier()) {
+		if a.isComponentForceDisabled(coreComponent.Identifier()) {
 			return true
 		}
 
@@ -423,14 +423,14 @@ func (a *App) provide() {
 
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
-			a.LogPanicf("provide failed: %s", err)
+			a.LogPanicf("provide init component failed: %s", err)
 		}
 	}
 
 	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
 		if coreComponent.Provide != nil {
 			if err := coreComponent.Provide(a.container); err != nil {
-				a.LogPanicf("provide failed: %s", err)
+				a.LogPanicf("provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
 		return true
@@ -439,7 +439,7 @@ func (a *App) provide() {
 	a.ForEachPlugin(func(plugin *Plugin) bool {
 		if plugin.Provide != nil {
 			if err := plugin.Provide(a.container); err != nil {
-				a.LogPanicf("provide failed: %s", err)
+				a.LogPanicf("provide plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
 		return true
@@ -451,14 +451,14 @@ func (a *App) invoke() {
 
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
-			a.LogPanicf("invoke failed: %s", err)
+			a.LogPanicf("invoke init component failed: %s", err)
 		}
 	}
 
 	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
 		if coreComponent.DepsFunc != nil {
 			if err := a.container.Invoke(coreComponent.DepsFunc); err != nil {
-				a.LogPanicf("invoke failed: %s", err)
+				a.LogPanicf("invoke core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
 		return true
@@ -467,7 +467,7 @@ func (a *App) invoke() {
 	a.ForEachPlugin(func(plugin *Plugin) bool {
 		if plugin.DepsFunc != nil {
 			if err := a.container.Invoke(plugin.DepsFunc); err != nil {
-				a.LogPanicf("invoke failed: %s", err)
+				a.LogPanicf("invoke plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
 		return true
@@ -481,14 +481,14 @@ func (a *App) configure() {
 
 	if a.options.initComponent.Configure != nil {
 		if err := a.options.initComponent.Configure(); err != nil {
-			a.LogPanicf("configure failed: %s", err)
+			a.LogPanicf("configure init component failed: %s", err)
 		}
 	}
 
 	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
 		if coreComponent.Configure != nil {
 			if err := coreComponent.Configure(); err != nil {
-				a.LogPanicf("configure failed: %s", err)
+				a.LogPanicf("configure core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
 		a.LogInfof("Loading core components: %s ... done", coreComponent.Name)
@@ -500,7 +500,7 @@ func (a *App) configure() {
 	a.ForEachPlugin(func(plugin *Plugin) bool {
 		if plugin.Configure != nil {
 			if err := plugin.Configure(); err != nil {
-				a.LogPanicf("configure failed: %s", err)
+				a.LogPanicf("configure plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
 		a.LogInfof("Loading plugin: %s ... done", plugin.Name)
@@ -554,14 +554,14 @@ func (a *App) run() {
 
 	if a.options.initComponent.Run != nil {
 		if err := a.options.initComponent.Run(); err != nil {
-			a.LogPanicf("run failed: %s", err)
+			a.LogPanicf("run init component failed: %s", err)
 		}
 	}
 
 	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
 		if coreComponent.Run != nil {
 			if err := coreComponent.Run(); err != nil {
-				a.LogPanicf("run failed: %s", err)
+				a.LogPanicf("run core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
 		a.LogInfof("Starting core component: %s ... done", coreComponent.Name)
@@ -573,7 +573,7 @@ func (a *App) run() {
 	a.ForEachPlugin(func(plugin *Plugin) bool {
 		if plugin.Run != nil {
 			if err := plugin.Run(); err != nil {
-				a.LogPanicf("run failed: %s", err)
+				a.LogPanicf("run plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
 		a.LogInfof("Starting plugin: %s ... done", plugin.Name)
