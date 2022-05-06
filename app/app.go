@@ -120,8 +120,8 @@ func (a *App) isComponentForceDisabled(identifier string) bool {
 	return exists
 }
 
-// IsSkipped returns whether the plugin is loaded or skipped.
-func (a *App) IsSkipped(plugin *Plugin) bool {
+// IsPluginSkipped returns whether the plugin is loaded or skipped.
+func (a *App) IsPluginSkipped(plugin *Plugin) bool {
 	// list of disabled plugins has the highest priority
 	if a.isPluginDisabled(plugin.Identifier()) || a.isComponentForceDisabled(plugin.Identifier()) {
 		return true
@@ -408,7 +408,7 @@ func (a *App) addComponents() {
 	})
 
 	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
-		if a.IsSkipped(plugin) {
+		if a.IsPluginSkipped(plugin) {
 			return true
 		}
 
