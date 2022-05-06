@@ -3,12 +3,13 @@ module github.com/iotaledger/hive.go
 go 1.18
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20220428002600-b9e970a83ddd
+	github.com/cockroachdb/pebble v0.0.0-20220505215428-5ae2174691bd
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
 	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
+	github.com/hashicorp/go-version v1.4.0
 	github.com/knadh/koanf v1.4.1
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
@@ -19,6 +20,7 @@ require (
 	github.com/spf13/cast v1.4.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.1
+	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.uber.org/atomic v1.9.0
 	go.uber.org/dig v1.14.1
@@ -46,6 +48,8 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
+	github.com/google/go-github v17.0.0+incompatible // indirect
+	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/klauspost/compress v1.12.3 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
