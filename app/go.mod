@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/hashicorp/go-version v1.4.0
-	github.com/iotaledger/hive.go v0.0.0-20220506102051-31e8f730037e
+	github.com/iotaledger/hive.go v0.0.0-20220506133329-a1eae615d109
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/dig v1.14.1
 )

@@ -64,8 +64,8 @@ github.com/hashicorp/vault/api v1.0.4/go.mod h1:gDcqh3WGcR1cpF5AJz/B1UFheUEneMoI
 github.com/hashicorp/vault/sdk v0.1.13/go.mod h1:B+hVj7TpuQY1Y/GPbCpffmgd+tSEwvhkWnjtSYCaS2M=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
-github.com/iotaledger/hive.go v0.0.0-20220506102051-31e8f730037e h1:bvR/oN3qZs54tKqwxalxfJEvPMSHcOZdizPweF9MJJQ=
-github.com/iotaledger/hive.go v0.0.0-20220506102051-31e8f730037e/go.mod h1:fqZ0XbOseVQHXh9TmN80X8y5p2QVGzWz6aC0Cz9owwE=
+github.com/iotaledger/hive.go v0.0.0-20220506133329-a1eae615d109 h1:5mErg0tv8eZyJigMiI08ou7d2MGnPbODz+9Y54wPGvs=
+github.com/iotaledger/hive.go v0.0.0-20220506133329-a1eae615d109/go.mod h1:fqZ0XbOseVQHXh9TmN80X8y5p2QVGzWz6aC0Cz9owwE=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/joho/godotenv v1.3.0 h1:Zjp+RcGpHhGlrMbJzXTrZZPrWj+1vfm90La1wgB6Bhc=
