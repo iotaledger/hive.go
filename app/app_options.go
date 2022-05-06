@@ -67,7 +67,7 @@ func WithVersionCheck(owner string, repository string) AppOption {
 	}
 }
 
-// WithUsageText enables the GitHub version check.
+// WithUsageText overwrites the default usage text of the app.
 func WithUsageText(usageText string) AppOption {
 	return func(opts *AppOptions) {
 		opts.usageText = usageText

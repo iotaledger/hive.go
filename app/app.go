@@ -105,56 +105,6 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	return a
 }
 
-func (a *App) isPluginEnabled(identifier string) bool {
-	_, exists := a.enabledPlugins[identifier]
-	return exists
-}
-
-func (a *App) isPluginDisabled(identifier string) bool {
-	_, exists := a.disabledPlugins[identifier]
-	return exists
-}
-
-func (a *App) isComponentForceDisabled(identifier string) bool {
-	_, exists := a.forceDisabledComponents[identifier]
-	return exists
-}
-
-// IsPluginSkipped returns whether the plugin is loaded or skipped.
-func (a *App) IsPluginSkipped(plugin *Plugin) bool {
-	// list of disabled plugins has the highest priority
-	if a.isPluginDisabled(plugin.Identifier()) || a.isComponentForceDisabled(plugin.Identifier()) {
-		return true
-	}
-
-	// if the plugin was not in the list of disabled plugins, it is only skipped if
-	// the plugin was not enabled and not in the list of enabled plugins.
-	return plugin.Status != StatusEnabled && !a.isPluginEnabled(plugin.Identifier())
-}
-
-// prints the loaded configuration, but hides sensitive information.
-func (a *App) printConfig() {
-	a.appConfig.Print(a.maskedKeys)
-
-	enablePlugins := a.appConfig.Strings(CfgAppEnablePlugins)
-	disablePlugins := a.appConfig.Strings(CfgAppDisablePlugins)
-
-	getList := func(a []string) string {
-		sort.Strings(a)
-		return "\n   - " + strings.Join(a, "\n   - ")
-	}
-
-	if len(enablePlugins) > 0 || len(disablePlugins) > 0 {
-		if len(enablePlugins) > 0 {
-			fmt.Printf("\nThe following plugins are enabled: %s\n", getList(enablePlugins))
-		}
-		if len(disablePlugins) > 0 {
-			fmt.Printf("\nThe following plugins are disabled: %s\n", getList(disablePlugins))
-		}
-		fmt.Println()
-	}
-}
-
 // init stage collects all parameters and loads the config files
 func (a *App) init() {
 
@@ -319,6 +269,29 @@ func (a *App) printAppInfo() {
 	}
 
 	fmt.Printf(">>>>> Starting %s %s <<<<<\n\n", a.Info().Name, versionString)
+}
+
+// prints the loaded configuration, but hides sensitive information.
+func (a *App) printConfig() {
+	a.appConfig.Print(a.maskedKeys)
+
+	enablePlugins := a.appConfig.Strings(CfgAppEnablePlugins)
+	disablePlugins := a.appConfig.Strings(CfgAppDisablePlugins)
+
+	getList := func(a []string) string {
+		sort.Strings(a)
+		return "\n   - " + strings.Join(a, "\n   - ")
+	}
+
+	if len(enablePlugins) > 0 || len(disablePlugins) > 0 {
+		if len(enablePlugins) > 0 {
+			fmt.Printf("\nThe following plugins are enabled: %s\n", getList(enablePlugins))
+		}
+		if len(disablePlugins) > 0 {
+			fmt.Printf("\nThe following plugins are disabled: %s\n", getList(disablePlugins))
+		}
+		fmt.Println()
+	}
 }
 
 // initConfig stage
@@ -658,6 +631,33 @@ func (a *App) addPlugin(plugin *Plugin) {
 
 	a.pluginsMap[name] = plugin
 	a.plugins = append(a.plugins, plugin)
+}
+
+func (a *App) isPluginEnabled(identifier string) bool {
+	_, exists := a.enabledPlugins[identifier]
+	return exists
+}
+
+func (a *App) isPluginDisabled(identifier string) bool {
+	_, exists := a.disabledPlugins[identifier]
+	return exists
+}
+
+func (a *App) isComponentForceDisabled(identifier string) bool {
+	_, exists := a.forceDisabledComponents[identifier]
+	return exists
+}
+
+// IsPluginSkipped returns whether the plugin is loaded or skipped.
+func (a *App) IsPluginSkipped(plugin *Plugin) bool {
+	// list of disabled plugins has the highest priority
+	if a.isPluginDisabled(plugin.Identifier()) || a.isComponentForceDisabled(plugin.Identifier()) {
+		return true
+	}
+
+	// if the plugin was not in the list of disabled plugins, it is only skipped if
+	// the plugin was not enabled and not in the list of enabled plugins.
+	return plugin.Status != StatusEnabled && !a.isPluginEnabled(plugin.Identifier())
 }
 
 // CoreComponentForEachFunc is used in ForEachCoreComponent.
