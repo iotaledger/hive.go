@@ -64,7 +64,8 @@ func GoroutineID() uint64 {
 	return goRoutineID
 }
 
-func init() {
+// DumpGoRoutinesOnShutdown dumps the stack traces of all goroutines on shutdown.
+func DumpGoRoutinesOnShutdown() {
 	go func() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
