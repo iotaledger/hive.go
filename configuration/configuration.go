@@ -19,6 +19,8 @@ import (
 )
 
 var (
+	// ErrConfigDoesNotExist is returned if the config file is unknown.
+	ErrConfigDoesNotExist = errors.New("config does not exist")
 	// ErrUnknownConfigFormat is returned if the format of the config file is unknown.
 	ErrUnknownConfigFormat = errors.New("unknown config file format")
 )
