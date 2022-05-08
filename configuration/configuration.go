@@ -1,7 +1,6 @@
 package configuration
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +18,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 
 	"github.com/iotaledger/hive.go/ioutils"
+	reflectutils "github.com/iotaledger/hive.go/reflect"
 )
 
 var (
@@ -196,7 +196,7 @@ func (c *Configuration) Load(p koanf.Provider, pa koanf.Parser, opts ...koanf.Op
 // BoundParameter stores the pointer and the type of values that were bound using the BindParameters function.
 type BoundParameter struct {
 	boundPointer interface{}
-	boundType    string
+	boundType    reflect.Type
 }
 
 // BindParameters is a utility function that allows to define and bind a set of parameters in a single step by using a
@@ -214,25 +214,21 @@ type BoundParameter struct {
 //
 // The first level is determined by the package of struct but it can be overridden by providing an optional namespace
 // parameter.
-func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalNamespace ...string) {
-	var prefix string
-	if len(optionalNamespace) == 0 {
-		prefix = lowerCamelCase(callerShortPackageName())
-	} else {
-		prefix = optionalNamespace[0]
-	}
-
+func (c *Configuration) BindParameters(namespace string, pointerToStruct interface{}) {
 	val := reflect.ValueOf(pointerToStruct).Elem()
 	for i := 0; i < val.NumField(); i++ {
 		valueField := val.Field(i)
 		typeField := val.Type().Field(i)
 
-		name := prefix + "."
+		name := namespace + "."
 		if tagName, exists := typeField.Tag.Lookup("name"); exists {
 			name += tagName
 		} else {
 			name += lowerCamelCase(typeField.Name)
 		}
+
+		shortHand, _ := typeField.Tag.Lookup("shorthand")
+		usage, _ := typeField.Tag.Lookup("usage")
 
 		switch defaultValue := valueField.Interface().(type) {
 		case bool:
@@ -242,16 +238,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.BoolVarP(valueField.Addr().Interface().(*bool), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.BoolVar(valueField.Addr().Interface().(*bool), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "bool",
-			}
+			flag.BoolVarP(valueField.Addr().Interface().(*bool), name, shortHand, defaultValue, usage)
 		case time.Duration:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if parsedDuration, err := time.ParseDuration(tagDefaultValue); err != nil {
@@ -261,16 +248,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.DurationVarP(valueField.Addr().Interface().(*time.Duration), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.DurationVar(valueField.Addr().Interface().(*time.Duration), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "time.Duration",
-			}
+			flag.DurationVarP(valueField.Addr().Interface().(*time.Duration), name, shortHand, defaultValue, usage)
 		case float32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -278,16 +256,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Float32VarP(valueField.Addr().Interface().(*float32), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Float32Var(valueField.Addr().Interface().(*float32), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "float32",
-			}
+			flag.Float32VarP(valueField.Addr().Interface().(*float32), name, shortHand, defaultValue, usage)
 		case float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -295,16 +264,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Float64VarP(valueField.Addr().Interface().(*float64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Float64Var(valueField.Addr().Interface().(*float64), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "float64",
-			}
+			flag.Float64VarP(valueField.Addr().Interface().(*float64), name, shortHand, defaultValue, usage)
 		case int:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -312,16 +272,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.IntVarP(valueField.Addr().Interface().(*int), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.IntVar(valueField.Addr().Interface().(*int), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "int",
-			}
+			flag.IntVarP(valueField.Addr().Interface().(*int), name, shortHand, defaultValue, usage)
 		case int8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -329,16 +280,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Int8VarP(valueField.Addr().Interface().(*int8), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Int8Var(valueField.Addr().Interface().(*int8), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "int8",
-			}
+			flag.Int8VarP(valueField.Addr().Interface().(*int8), name, shortHand, defaultValue, usage)
 		case int16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -346,16 +288,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Int16VarP(valueField.Addr().Interface().(*int16), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Int16Var(valueField.Addr().Interface().(*int16), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "int16",
-			}
+			flag.Int16VarP(valueField.Addr().Interface().(*int16), name, shortHand, defaultValue, usage)
 		case int32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -363,16 +296,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Int32VarP(valueField.Addr().Interface().(*int32), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Int32Var(valueField.Addr().Interface().(*int32), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "int32",
-			}
+			flag.Int32VarP(valueField.Addr().Interface().(*int32), name, shortHand, defaultValue, usage)
 		case int64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -380,16 +304,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Int64VarP(valueField.Addr().Interface().(*int64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Int64Var(valueField.Addr().Interface().(*int64), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "int64",
-			}
+			flag.Int64VarP(valueField.Addr().Interface().(*int64), name, shortHand, defaultValue, usage)
 		case string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -397,16 +312,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.StringVarP(valueField.Addr().Interface().(*string), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.StringVar(valueField.Addr().Interface().(*string), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "string",
-			}
+			flag.StringVarP(valueField.Addr().Interface().(*string), name, shortHand, defaultValue, usage)
 		case uint:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -414,16 +320,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.UintVarP(valueField.Addr().Interface().(*uint), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.UintVar(valueField.Addr().Interface().(*uint), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "uint",
-			}
+			flag.UintVarP(valueField.Addr().Interface().(*uint), name, shortHand, defaultValue, usage)
 		case uint8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -431,16 +328,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Uint8VarP(valueField.Addr().Interface().(*uint8), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Uint8Var(valueField.Addr().Interface().(*uint8), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "uint8",
-			}
+			flag.Uint8VarP(valueField.Addr().Interface().(*uint8), name, shortHand, defaultValue, usage)
 		case uint16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -448,16 +336,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Uint16VarP(valueField.Addr().Interface().(*uint16), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Uint16Var(valueField.Addr().Interface().(*uint16), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "uint16",
-			}
+			flag.Uint16VarP(valueField.Addr().Interface().(*uint16), name, shortHand, defaultValue, usage)
 		case uint32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -465,16 +344,7 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Uint32VarP(valueField.Addr().Interface().(*uint32), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Uint32Var(valueField.Addr().Interface().(*uint32), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "uint32",
-			}
+			flag.Uint32VarP(valueField.Addr().Interface().(*uint32), name, shortHand, defaultValue, usage)
 		case uint64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if _, err := fmt.Sscan(tagDefaultValue, &defaultValue); err != nil {
@@ -482,37 +352,20 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 				}
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.Uint64Var(valueField.Addr().Interface().(*uint64), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "uint64",
-			}
+			flag.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, usage)
 		case []string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-				parsedValue, err := csv.NewReader(strings.NewReader(tagDefaultValue)).Read()
-				if err != nil {
-					panic(err)
-				}
-				defaultValue = parsedValue
+				defaultValue = strings.Split(tagDefaultValue, ",")
 			}
 
-			if shortHand, exists := typeField.Tag.Lookup("shorthand"); exists {
-				flag.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, typeField.Tag.Get("usage"))
-			} else {
-				flag.StringSliceVar(valueField.Addr().Interface().(*[]string), name, defaultValue, typeField.Tag.Get("usage"))
-			}
-
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    "[]string",
-			}
+			flag.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, usage)
 		default:
-			c.BindParameters(valueField.Addr().Interface(), name)
+			c.BindParameters(name, valueField.Addr().Interface())
+		}
+
+		c.boundParameters[name] = &BoundParameter{
+			boundPointer: valueField.Addr().Interface(),
+			boundType:    valueField.Type(),
 		}
 	}
 }
@@ -522,37 +375,37 @@ func (c *Configuration) BindParameters(pointerToStruct interface{}, optionalName
 func (c *Configuration) UpdateBoundParameters() {
 	for parameterName, boundParameter := range c.boundParameters {
 		switch boundParameter.boundType {
-		case "bool":
+		case reflectutils.BoolType:
 			*(boundParameter.boundPointer.(*bool)) = c.Bool(parameterName)
-		case "time.Duration":
+		case reflectutils.TimeDurationType:
 			*(boundParameter.boundPointer.(*time.Duration)) = c.Duration(parameterName)
-		case "float32":
+		case reflectutils.Float32Type:
 			*(boundParameter.boundPointer.(*float32)) = float32(c.Float64(parameterName))
-		case "float64":
+		case reflectutils.Float64Type:
 			*(boundParameter.boundPointer.(*float64)) = c.Float64(parameterName)
-		case "int":
+		case reflectutils.IntType:
 			*(boundParameter.boundPointer.(*int)) = c.Int(parameterName)
-		case "int8":
+		case reflectutils.Int8Type:
 			*(boundParameter.boundPointer.(*int8)) = int8(c.Int(parameterName))
-		case "int16":
+		case reflectutils.Int16Type:
 			*(boundParameter.boundPointer.(*int16)) = int16(c.Int(parameterName))
-		case "int32":
+		case reflectutils.Int32Type:
 			*(boundParameter.boundPointer.(*int32)) = int32(c.Int(parameterName))
-		case "int64":
+		case reflectutils.Int64Type:
 			*(boundParameter.boundPointer.(*int64)) = c.Int64(parameterName)
-		case "string":
+		case reflectutils.StringType:
 			*(boundParameter.boundPointer.(*string)) = c.String(parameterName)
-		case "uint":
+		case reflectutils.UintType:
 			*(boundParameter.boundPointer.(*uint)) = uint(c.Int(parameterName))
-		case "uint8":
+		case reflectutils.Uint8Type:
 			*(boundParameter.boundPointer.(*uint8)) = uint8(c.Int(parameterName))
-		case "uint16":
+		case reflectutils.Uint16Type:
 			*(boundParameter.boundPointer.(*uint16)) = uint16(c.Int(parameterName))
-		case "uint32":
+		case reflectutils.Uint32Type:
 			*(boundParameter.boundPointer.(*uint32)) = uint32(c.Int(parameterName))
-		case "uint64":
+		case reflectutils.Uint64Type:
 			*(boundParameter.boundPointer.(*uint64)) = uint64(c.Int64(parameterName))
-		case "[]string":
+		case reflectutils.StringSliceType:
 			*(boundParameter.boundPointer.(*[]string)) = c.Strings(parameterName)
 		}
 	}
