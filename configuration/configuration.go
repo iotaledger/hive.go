@@ -33,13 +33,16 @@ type Configuration struct {
 	config *koanf.Koanf
 	// boundParameters keeps track of all parameters that were bound using the BindParameters function.
 	boundParameters map[string]*BoundParameter
+	// boundParametersMapping keeps track of all parameter names that were bound using the BindParameters function.
+	boundParametersMapping map[reflect.Value]string
 }
 
 // New returns a new configuration.
 func New() *Configuration {
 	return &Configuration{
-		config:          koanf.New("."),
-		boundParameters: make(map[string]*BoundParameter),
+		config:                 koanf.New("."),
+		boundParameters:        make(map[string]*BoundParameter),
+		boundParametersMapping: make(map[reflect.Value]string),
 	}
 }
 
@@ -367,6 +370,8 @@ func (c *Configuration) BindParameters(namespace string, pointerToStruct interfa
 			boundPointer: valueField.Addr().Interface(),
 			boundType:    valueField.Type(),
 		}
+
+		c.boundParametersMapping[valueField.Addr()] = name
 	}
 }
 
@@ -409,4 +414,10 @@ func (c *Configuration) UpdateBoundParameters() {
 			*(boundParameter.boundPointer.(*[]string)) = c.Strings(parameterName)
 		}
 	}
+}
+
+// GetParameterPath returns the path to the parameter with the given name.
+// It needs to be called with a pointer to the struct field that was bound to retrieve the path.
+func (c *Configuration) GetParameterPath(parameter any) string {
+	return c.boundParametersMapping[reflect.ValueOf(parameter)]
 }
