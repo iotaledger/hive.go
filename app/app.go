@@ -172,11 +172,17 @@ func (a *App) init() {
 		}
 
 		if component.Params.Params != nil {
-			component.Params.Params(a.appFlagSet)
+			for namespace, pointerToStruct := range component.Params.Params {
+				a.appConfig.BindParameters(pointerToStruct, namespace)
+			}
 		}
 
 		if component.Params.AdditionalParams != nil {
-			component.Params.AdditionalParams(a.configs.FlagSetsMap())
+			for cfgName, params := range component.Params.AdditionalParams {
+				for namespace, pointerToStruct := range params {
+					a.configs.ConfigsMap()[cfgName].BindParameters(pointerToStruct, namespace)
+				}
+			}
 		}
 
 		if component.Params.Masked != nil {
