@@ -240,8 +240,8 @@ func (c *Configuration) BindParameters(namespace string, pointerToStruct interfa
 		c.boundParametersMapping[valueField.Addr()] = name
 
 		if tagNoFlag, exists := typeField.Tag.Lookup("noflag"); exists && tagNoFlag == "true" {
-			if err := c.Set(name, valueField.Interface()); err != nil {
-				panic(err)
+			if err := c.SetDefault(name, valueField.Interface()); err != nil {
+				panic(fmt.Sprintf("could not set default value of %s, error: %s", name, err))
 			}
 			continue
 		}
