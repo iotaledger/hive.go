@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -210,26 +211,39 @@ func TestSaveConfigFile(t *testing.T) {
 	require.EqualValues(t, false, valueIgnoredBool)
 }
 
-func TestBindParameters(t *testing.T) {
-	var parameters = struct {
-		TestField  int64 `shorthand:"t" usage:"you can do stuff with this parameter"`
-		TestField1 bool  `name:"bernd" default:"true" usage:"batman was here"`
-		Nested     struct {
-			Key       string `default:"elephant" usage:"nestedKey elephant"`
-			SubNested struct {
-				Key string `default:"duck" usage:"nestedKey duck"`
-			}
+type Otto struct {
+	Name string
+}
+
+type Parameters struct {
+	TestField  int64 `shorthand:"t" usage:"you can do stuff with this parameter"`
+	TestField1 bool  `name:"bernd" default:"true" usage:"batman was here"`
+	Nested     struct {
+		Key       string `default:"elephant" usage:"nestedKey elephant"`
+		SubNested struct {
+			Key string `default:"duck" usage:"nestedKey duck"`
 		}
-		Nested1 struct {
-			Key string `name:"bird" shorthand:"b" default:"bird" usage:"nestedKey bird"`
-		} `name:"renamedNested"`
-		Batman []string      `default:"a,b" usage:"robin"`
-		ItsAMe time.Duration `default:"60s" usage:"mario"`
-	}{
+	}
+	Nested1 struct {
+		Key string `name:"bird" shorthand:"b" default:"bird" usage:"nestedKey bird"`
+	} `name:"renamedNested"`
+	Batman []string      `default:"a,b" usage:"robin"`
+	ItsAMe time.Duration `default:"60s" usage:"mario"`
+	Ottos  []Otto        `usage:"make thumbs up" noflag:"true"`
+}
+
+func TestBindAndUpdateParameters(t *testing.T) {
+	parameters := Parameters{
 		// assign default value outside of tag
 		TestField: 13,
 		// assign default value inside of tag (is overriden by default value of tag)
 		Batman: []string{"a", "b", "c"},
+
+		Ottos: []Otto{
+			{Name: "Bruce"}, // Batman
+			{Name: "Clark"}, // Superman
+			{Name: "Barry"}, // The Flash
+		},
 	}
 
 	config := New()
@@ -249,52 +263,83 @@ func TestBindParameters(t *testing.T) {
 
 	config.UpdateBoundParameters()
 
-	testFieldFlag := flag.Lookup("configuration.testField")
-	assert.Equal(t, "you can do stuff with this parameter", testFieldFlag.Usage)
-	assert.Equal(t, "13", testFieldFlag.DefValue)
-	assert.Equal(t, "t", testFieldFlag.Shorthand)
-	assert.Equal(t, "configuration.testField", testFieldFlag.Name)
-	assert.Equal(t, "configuration.testField", config.GetParameterPath(&parameters.TestField))
+	assertFlag(t, config, &parameters.TestField,
+		"configuration.testField",
+		"you can do stuff with this parameter",
+		"13",
+		"t",
+		13,
+	)
 
-	testField1Flag := flag.Lookup("configuration.bernd")
-	assert.Equal(t, "batman was here", testField1Flag.Usage)
-	assert.Equal(t, "true", testField1Flag.DefValue)
-	assert.Equal(t, "", testField1Flag.Shorthand)
-	assert.Equal(t, "configuration.bernd", testField1Flag.Name)
-	assert.Equal(t, "configuration.bernd", config.GetParameterPath(&parameters.TestField1))
+	assertFlag(t, config, &parameters.TestField1,
+		"configuration.bernd",
+		"batman was here",
+		"true",
+		"",
+		true,
+	)
 
-	elephantFlag := flag.Lookup("configuration.nested.key")
-	assert.Equal(t, "nestedKey elephant", elephantFlag.Usage)
-	assert.Equal(t, "elephant", elephantFlag.DefValue)
-	assert.Equal(t, "", elephantFlag.Shorthand)
-	assert.Equal(t, "configuration.nested.key", elephantFlag.Name)
-	assert.Equal(t, "configuration.nested.key", config.GetParameterPath(&parameters.Nested.Key))
+	assertFlag(t, config, &parameters.Nested.Key,
+		"configuration.nested.key",
+		"nestedKey elephant",
+		"elephant",
+		"",
+		"elephant",
+	)
 
-	duckFlag := flag.Lookup("configuration.nested.subNested.key")
-	assert.Equal(t, "nestedKey duck", duckFlag.Usage)
-	assert.Equal(t, "duck", duckFlag.DefValue)
-	assert.Equal(t, "", duckFlag.Shorthand)
-	assert.Equal(t, "configuration.nested.subNested.key", duckFlag.Name)
-	assert.Equal(t, "configuration.nested.subNested.key", config.GetParameterPath(&parameters.Nested.SubNested.Key))
+	assertFlag(t, config, &parameters.Nested.SubNested.Key,
+		"configuration.nested.subNested.key",
+		"nestedKey duck",
+		"duck",
+		"",
+		"duck",
+	)
 
-	birdFlag := flag.Lookup("configuration.renamedNested.bird")
-	assert.Equal(t, "nestedKey bird", birdFlag.Usage)
-	assert.Equal(t, "bird", birdFlag.DefValue)
-	assert.Equal(t, "b", birdFlag.Shorthand)
-	assert.Equal(t, "configuration.renamedNested.bird", birdFlag.Name)
-	assert.Equal(t, "configuration.renamedNested.bird", config.GetParameterPath(&parameters.Nested1.Key))
+	assertFlag(t, config, &parameters.Nested1.Key,
+		"configuration.renamedNested.bird",
+		"nestedKey bird",
+		"bird",
+		"b",
+		"bird",
+	)
 
-	batmanFlag := flag.Lookup("configuration.batman")
-	assert.Equal(t, "robin", batmanFlag.Usage)
-	assert.Equal(t, []string{"a", "b"}, parameters.Batman)
-	assert.Equal(t, "", batmanFlag.Shorthand)
-	assert.Equal(t, "configuration.batman", batmanFlag.Name)
-	assert.Equal(t, "configuration.batman", config.GetParameterPath(&parameters.Batman))
+	assertFlag(t, config, &parameters.Batman,
+		"configuration.batman",
+		"robin",
+		"[a,b]",
+		"",
+		[]string{"a", "b"},
+	)
 
-	ItsAMeFlag := flag.Lookup("configuration.itsAMe")
-	assert.Equal(t, "mario", ItsAMeFlag.Usage)
-	assert.Equal(t, 60*time.Second, parameters.ItsAMe)
-	assert.Equal(t, "", ItsAMeFlag.Shorthand)
-	assert.Equal(t, "configuration.itsAMe", ItsAMeFlag.Name)
-	assert.Equal(t, "configuration.itsAMe", config.GetParameterPath(&parameters.ItsAMe))
+	dur, err := time.ParseDuration("60s")
+	assert.NoError(t, err)
+	assertFlag(t, config, &parameters.ItsAMe,
+		"configuration.itsAMe",
+		"mario",
+		dur.String(),
+		"",
+		60*time.Second,
+	)
+
+	ottosFlag := flag.Lookup("configuration.ottos")
+	assert.Nil(t, ottosFlag)
+	expectedOttos := []Otto{
+		{Name: "Bruce"}, // Batman
+		{Name: "Clark"}, // Superman
+		{Name: "Barry"}, // The Flash
+	}
+	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
+	assert.EqualValues(t, expectedOttos, config.Get("configuration.ottos"))
+	assert.EqualValues(t, expectedOttos, parameters.Ottos)
+}
+
+func assertFlag(t *testing.T, config *Configuration, parametersField any, name, usage, defValue, shorthand string, expectedValue any) {
+	f := flag.Lookup(name)
+	assert.Equal(t, usage, f.Usage)
+	assert.Equal(t, defValue, f.DefValue)
+	assert.Equal(t, shorthand, f.Shorthand)
+	assert.Equal(t, name, f.Name)
+	assert.EqualValues(t, name, config.GetParameterPath(parametersField))
+	assert.EqualValues(t, expectedValue, config.Get(name))
+	assert.EqualValues(t, expectedValue, reflect.ValueOf(parametersField).Elem().Interface())
 }

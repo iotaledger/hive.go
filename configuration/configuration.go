@@ -233,6 +233,19 @@ func (c *Configuration) BindParameters(namespace string, pointerToStruct interfa
 		shortHand, _ := typeField.Tag.Lookup("shorthand")
 		usage, _ := typeField.Tag.Lookup("usage")
 
+		c.boundParameters[name] = &BoundParameter{
+			boundPointer: valueField.Addr().Interface(),
+			boundType:    valueField.Type(),
+		}
+		c.boundParametersMapping[valueField.Addr()] = name
+
+		if tagNoFlag, exists := typeField.Tag.Lookup("noflag"); exists && tagNoFlag == "true" {
+			if err := c.Set(name, valueField.Interface()); err != nil {
+				panic(err)
+			}
+			continue
+		}
+
 		switch defaultValue := valueField.Interface().(type) {
 		case bool:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
@@ -365,13 +378,6 @@ func (c *Configuration) BindParameters(namespace string, pointerToStruct interfa
 		default:
 			c.BindParameters(name, valueField.Addr().Interface())
 		}
-
-		c.boundParameters[name] = &BoundParameter{
-			boundPointer: valueField.Addr().Interface(),
-			boundType:    valueField.Type(),
-		}
-
-		c.boundParametersMapping[valueField.Addr()] = name
 	}
 }
 
