@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	reflectutils "github.com/iotaledger/hive.go/reflect"
 )
 
 func tempFile(t *testing.T, pattern string) (string, *os.File) {
@@ -229,7 +231,7 @@ type Parameters struct {
 	} `name:"renamedNested"`
 	Batman []string      `default:"a,b" usage:"robin"`
 	ItsAMe time.Duration `default:"60s" usage:"mario"`
-	Ottos  []Otto        `usage:"make thumbs up" noflag:"true"`
+	Ottos  []Otto        `noflag:"true"`
 }
 
 func TestBindAndUpdateParameters(t *testing.T) {
@@ -268,7 +270,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		"you can do stuff with this parameter",
 		"13",
 		"t",
-		13,
+		int64(13),
 	)
 
 	assertFlag(t, config, &parameters.TestField1,
@@ -339,7 +341,11 @@ func assertFlag(t *testing.T, config *Configuration, parametersField any, name, 
 	assert.Equal(t, defValue, f.DefValue)
 	assert.Equal(t, shorthand, f.Shorthand)
 	assert.Equal(t, name, f.Name)
-	assert.EqualValues(t, name, config.GetParameterPath(parametersField))
-	assert.EqualValues(t, expectedValue, config.Get(name))
-	assert.EqualValues(t, expectedValue, reflect.ValueOf(parametersField).Elem().Interface())
+	assert.Equal(t, name, config.GetParameterPath(parametersField))
+	if reflect.TypeOf(parametersField).Elem() == reflectutils.TimeDurationType {
+		assert.Equal(t, expectedValue, config.Duration(name))
+	} else {
+		assert.Equal(t, expectedValue, config.Get(name))
+	}
+	assert.Equal(t, expectedValue, reflect.ValueOf(parametersField).Elem().Interface())
 }
