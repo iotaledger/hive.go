@@ -454,6 +454,11 @@ func (c *Configuration) UpdateBoundParameters() {
 			*(boundParameter.boundPointer.(*uint64)) = uint64(c.Int64(parameterName))
 		case reflectutils.StringSliceType:
 			*(boundParameter.boundPointer.(*[]string)) = c.Strings(parameterName)
+		default:
+			// if we don't know the type, we try to unmarshal it
+			if err := c.Unmarshal(parameterName, &boundParameter.boundPointer); err != nil {
+				panic(fmt.Sprintf("could not unmarshal value of '%s', error: %s", parameterName, err))
+			}
 		}
 	}
 }
