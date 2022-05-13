@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/knadh/koanf/providers/rawbytes"
 	flag "github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -332,7 +333,60 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		{Name: "Barry"}, // The Flash
 	}
 	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
-	assert.EqualValues(t, expectedOttos, config.Get("configuration.ottos"))
+	require.EqualValues(t, expectedOttos, config.Get("configuration.ottos"))
+	assert.EqualValues(t, expectedOttos, parameters.Ottos)
+
+	// check loading of config file and update of bound parameters
+	exampleJSON := `{
+		"configuration": {
+			"testField": 14,
+			"batman": ["d", "e", "f"],
+			"ottos": [
+				{
+					"name": "Hans"
+				},
+				{
+					"name": "Jonas"
+				},
+				{
+					"name": "Max"
+				}
+			]
+		}
+	}`
+
+	err = config.Load(rawbytes.Provider([]byte(exampleJSON)), &JSONLowerParser{})
+	assert.NoError(t, err)
+
+	config.UpdateBoundParameters()
+
+	assertConfigValue(t, config, &parameters.TestField,
+		"configuration.testField",
+		int64(14),
+	)
+
+	assertConfigValue(t, config, &parameters.Batman,
+		"configuration.batman",
+		[]string{"d", "e", "f"},
+	)
+
+	ottosFlag = flagset.Lookup("configuration.ottos")
+	assert.Nil(t, ottosFlag)
+
+	expectedOttos = []Otto{
+		{Name: "Hans"},  // three lines of code
+		{Name: "Jonas"}, // ripped hans whisperer
+		{Name: "Max"},   // logs please...
+	}
+
+	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
+
+	newVal := reflect.New(reflect.TypeOf(&parameters.Ottos)).Elem().Interface()
+	if err := config.Unmarshal("configuration.ottos", &newVal); err != nil {
+		require.NoError(t, err)
+	}
+
+	assert.EqualValues(t, &expectedOttos, newVal)
 	assert.EqualValues(t, expectedOttos, parameters.Ottos)
 }
 
@@ -349,4 +403,53 @@ func assertFlag(t *testing.T, flagset *flag.FlagSet, config *Configuration, para
 		assert.Equal(t, expectedValue, config.Get(name))
 	}
 	assert.Equal(t, expectedValue, reflect.ValueOf(parametersField).Elem().Interface())
+}
+
+func assertConfigValue(t *testing.T, config *Configuration, parametersField any, name string, expectedValue any) {
+	assert.Equal(t, name, config.GetParameterPath(parametersField))
+
+	switch reflect.TypeOf(parametersField).Elem() {
+	case reflectutils.BoolType:
+		assert.Equal(t, expectedValue, config.Bool(name))
+	case reflectutils.TimeDurationType:
+		assert.Equal(t, expectedValue, config.Duration(name))
+	case reflectutils.Float32Type:
+		assert.Equal(t, expectedValue, float32(config.Float64(name)))
+	case reflectutils.Float64Type:
+		assert.Equal(t, expectedValue, config.Float64(name))
+	case reflectutils.IntType:
+		assert.Equal(t, expectedValue, config.Int(name))
+	case reflectutils.Int8Type:
+		assert.Equal(t, expectedValue, int8(config.Int(name)))
+	case reflectutils.Int16Type:
+		assert.Equal(t, expectedValue, int16(config.Int(name)))
+	case reflectutils.Int32Type:
+		assert.Equal(t, expectedValue, int32(config.Int(name)))
+	case reflectutils.Int64Type:
+		assert.Equal(t, expectedValue, config.Int64(name))
+	case reflectutils.StringType:
+		assert.Equal(t, expectedValue, config.String(name))
+	case reflectutils.UintType:
+		assert.Equal(t, expectedValue, uint(config.Int(name)))
+	case reflectutils.Uint8Type:
+		assert.Equal(t, expectedValue, uint8(config.Int(name)))
+	case reflectutils.Uint16Type:
+		assert.Equal(t, expectedValue, uint16(config.Int(name)))
+	case reflectutils.Uint32Type:
+		assert.Equal(t, expectedValue, uint32(config.Int(name)))
+	case reflectutils.Uint64Type:
+		assert.Equal(t, expectedValue, uint64(config.Int64(name)))
+	case reflectutils.StringSliceType:
+		assert.Equal(t, expectedValue, config.Strings(name))
+	default:
+		// if we don't know the type, we try to unmarshal it
+		newVal := reflect.New(reflect.TypeOf(parametersField)).Elem().Interface()
+		if err := config.Unmarshal(name, &newVal); err != nil {
+			require.NoError(t, err)
+		}
+
+		assert.EqualValues(t, expectedValue, newVal)
+	}
+
+	assert.Equal(t, expectedValue, reflect.Indirect(reflect.ValueOf(parametersField).Elem()).Interface())
 }
