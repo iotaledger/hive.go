@@ -401,6 +401,9 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 			flagset.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, usage)
 		default:
+			if valueField.Kind() == reflect.Slice {
+				panic(fmt.Sprintf("could not bind '%s' because it is a slice value. did you forget the 'noflag:\"true\"' tag?", name))
+			}
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
 		}
 	}
