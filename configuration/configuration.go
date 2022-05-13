@@ -234,16 +234,19 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		shortHand, _ := typeField.Tag.Lookup("shorthand")
 		usage, _ := typeField.Tag.Lookup("usage")
 
-		c.boundParameters[name] = &BoundParameter{
-			boundPointer: valueField.Addr().Interface(),
-			boundType:    valueField.Type(),
+		addParameter := func(name string, valueField reflect.Value) {
+			c.boundParameters[name] = &BoundParameter{
+				boundPointer: valueField.Addr().Interface(),
+				boundType:    valueField.Type(),
+			}
+			c.boundParametersMapping[valueField.Addr()] = name
 		}
-		c.boundParametersMapping[valueField.Addr()] = name
 
 		if tagNoFlag, exists := typeField.Tag.Lookup("noflag"); exists && tagNoFlag == "true" {
 			if err := c.SetDefault(name, valueField.Interface()); err != nil {
 				panic(fmt.Sprintf("could not set default value of %s, error: %s", name, err))
 			}
+			addParameter(name, valueField)
 			continue
 		}
 
@@ -405,8 +408,12 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 				panic(fmt.Sprintf("could not bind '%s' because it is a slice value. did you forget the 'noflag:\"true\"' tag?", name))
 			}
 
+			// recursively walk the value, but do no add it as a parameter
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
+			continue
 		}
+
+		addParameter(name, valueField)
 	}
 }
 
