@@ -256,8 +256,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = value
 				}
 			}
-
 			flagset.BoolVarP(valueField.Addr().Interface().(*bool), name, shortHand, defaultValue, usage)
+
 		case time.Duration:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if parsedDuration, err := time.ParseDuration(tagDefaultValue); err != nil {
@@ -266,8 +266,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = parsedDuration
 				}
 			}
-
 			flagset.DurationVarP(valueField.Addr().Interface().(*time.Duration), name, shortHand, defaultValue, usage)
+
 		case float32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseFloat(tagDefaultValue, 32); err != nil {
@@ -276,8 +276,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = float32(value)
 				}
 			}
-
 			flagset.Float32VarP(valueField.Addr().Interface().(*float32), name, shortHand, defaultValue, usage)
+
 		case float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
@@ -286,8 +286,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = value
 				}
 			}
-
 			flagset.Float64VarP(valueField.Addr().Interface().(*float64), name, shortHand, defaultValue, usage)
+
 		case int:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
@@ -296,8 +296,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = int(value)
 				}
 			}
-
 			flagset.IntVarP(valueField.Addr().Interface().(*int), name, shortHand, defaultValue, usage)
+
 		case int8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseInt(tagDefaultValue, 10, 8); err != nil {
@@ -306,8 +306,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = int8(value)
 				}
 			}
-
 			flagset.Int8VarP(valueField.Addr().Interface().(*int8), name, shortHand, defaultValue, usage)
+
 		case int16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseInt(tagDefaultValue, 10, 16); err != nil {
@@ -316,8 +316,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = int16(value)
 				}
 			}
-
 			flagset.Int16VarP(valueField.Addr().Interface().(*int16), name, shortHand, defaultValue, usage)
+
 		case int32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseInt(tagDefaultValue, 10, 32); err != nil {
@@ -326,8 +326,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = int32(value)
 				}
 			}
-
 			flagset.Int32VarP(valueField.Addr().Interface().(*int32), name, shortHand, defaultValue, usage)
+
 		case int64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
@@ -336,14 +336,14 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = value
 				}
 			}
-
 			flagset.Int64VarP(valueField.Addr().Interface().(*int64), name, shortHand, defaultValue, usage)
+
 		case string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				defaultValue = tagDefaultValue
 			}
-
 			flagset.StringVarP(valueField.Addr().Interface().(*string), name, shortHand, defaultValue, usage)
+
 		case uint:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
@@ -352,8 +352,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = uint(value)
 				}
 			}
-
 			flagset.UintVarP(valueField.Addr().Interface().(*uint), name, shortHand, defaultValue, usage)
+
 		case uint8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseUint(tagDefaultValue, 10, 8); err != nil {
@@ -362,8 +362,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = uint8(value)
 				}
 			}
-
 			flagset.Uint8VarP(valueField.Addr().Interface().(*uint8), name, shortHand, defaultValue, usage)
+
 		case uint16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseUint(tagDefaultValue, 10, 16); err != nil {
@@ -372,8 +372,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = uint16(value)
 				}
 			}
-
 			flagset.Uint16VarP(valueField.Addr().Interface().(*uint16), name, shortHand, defaultValue, usage)
+
 		case uint32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseUint(tagDefaultValue, 10, 32); err != nil {
@@ -382,8 +382,8 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = uint32(value)
 				}
 			}
-
 			flagset.Uint32VarP(valueField.Addr().Interface().(*uint32), name, shortHand, defaultValue, usage)
+
 		case uint64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
@@ -392,18 +392,19 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 					defaultValue = value
 				}
 			}
-
 			flagset.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, usage)
+
 		case []string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 				defaultValue = strings.Split(tagDefaultValue, ",")
 			}
-
 			flagset.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, usage)
+
 		default:
 			if valueField.Kind() == reflect.Slice {
 				panic(fmt.Sprintf("could not bind '%s' because it is a slice value. did you forget the 'noflag:\"true\"' tag?", name))
 			}
+
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
 		}
 	}
