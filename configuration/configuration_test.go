@@ -249,9 +249,10 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	}
 
 	config := New()
-	config.BindParameters("configuration", &parameters)
+	flagset := NewUnsortedFlagSet("", flag.ContinueOnError)
+	config.BindParameters(flagset, "configuration", &parameters)
 
-	err := config.LoadFlagSet(flag.CommandLine)
+	err := config.LoadFlagSet(flagset)
 	assert.NoError(t, err)
 
 	// read in ENV variables
@@ -260,12 +261,12 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	assert.NoError(t, err)
 
 	// load the flags again to overwrite env vars that were also set via command line
-	err = config.LoadFlagSet(flag.CommandLine)
+	err = config.LoadFlagSet(flagset)
 	assert.NoError(t, err)
 
 	config.UpdateBoundParameters()
 
-	assertFlag(t, config, &parameters.TestField,
+	assertFlag(t, flagset, config, &parameters.TestField,
 		"configuration.testField",
 		"you can do stuff with this parameter",
 		"13",
@@ -273,7 +274,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		int64(13),
 	)
 
-	assertFlag(t, config, &parameters.TestField1,
+	assertFlag(t, flagset, config, &parameters.TestField1,
 		"configuration.bernd",
 		"batman was here",
 		"true",
@@ -281,7 +282,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		true,
 	)
 
-	assertFlag(t, config, &parameters.Nested.Key,
+	assertFlag(t, flagset, config, &parameters.Nested.Key,
 		"configuration.nested.key",
 		"nestedKey elephant",
 		"elephant",
@@ -289,7 +290,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		"elephant",
 	)
 
-	assertFlag(t, config, &parameters.Nested.SubNested.Key,
+	assertFlag(t, flagset, config, &parameters.Nested.SubNested.Key,
 		"configuration.nested.subNested.key",
 		"nestedKey duck",
 		"duck",
@@ -297,7 +298,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		"duck",
 	)
 
-	assertFlag(t, config, &parameters.Nested1.Key,
+	assertFlag(t, flagset, config, &parameters.Nested1.Key,
 		"configuration.renamedNested.bird",
 		"nestedKey bird",
 		"bird",
@@ -305,7 +306,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		"bird",
 	)
 
-	assertFlag(t, config, &parameters.Batman,
+	assertFlag(t, flagset, config, &parameters.Batman,
 		"configuration.batman",
 		"robin",
 		"[a,b]",
@@ -315,7 +316,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 
 	dur, err := time.ParseDuration("60s")
 	assert.NoError(t, err)
-	assertFlag(t, config, &parameters.ItsAMe,
+	assertFlag(t, flagset, config, &parameters.ItsAMe,
 		"configuration.itsAMe",
 		"mario",
 		dur.String(),
@@ -323,7 +324,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		60*time.Second,
 	)
 
-	ottosFlag := flag.Lookup("configuration.ottos")
+	ottosFlag := flagset.Lookup("configuration.ottos")
 	assert.Nil(t, ottosFlag)
 	expectedOttos := []Otto{
 		{Name: "Bruce"}, // Batman
@@ -335,8 +336,8 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	assert.EqualValues(t, expectedOttos, parameters.Ottos)
 }
 
-func assertFlag(t *testing.T, config *Configuration, parametersField any, name, usage, defValue, shorthand string, expectedValue any) {
-	f := flag.Lookup(name)
+func assertFlag(t *testing.T, flagset *flag.FlagSet, config *Configuration, parametersField any, name, usage, defValue, shorthand string, expectedValue any) {
+	f := flagset.Lookup(name)
 	assert.Equal(t, usage, f.Usage)
 	assert.Equal(t, defValue, f.DefValue)
 	assert.Equal(t, shorthand, f.Shorthand)
