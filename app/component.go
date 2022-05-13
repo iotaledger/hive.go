@@ -4,8 +4,6 @@ import (
 	"strings"
 	"sync"
 
-	flag "github.com/spf13/pflag"
-
 	"github.com/iotaledger/hive.go/daemon"
 	"github.com/iotaledger/hive.go/logger"
 )
@@ -13,9 +11,9 @@ import (
 // ComponentParams defines the parameters configuration of a component.
 type ComponentParams struct {
 	// Handler to add configuration parameters to the default config.
-	Params func(fs *flag.FlagSet)
+	Params map[string]any
 	// Handler to add configuration parameters to the additional configs.
-	AdditionalParams func(map[string]*flag.FlagSet)
+	AdditionalParams map[string]map[string]any
 	// The configuration values to mask.
 	Masked []string
 }

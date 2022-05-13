@@ -1,16 +1,20 @@
-package configuration_test
+package configuration
 
 import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
+	"time"
 
+	"github.com/knadh/koanf/providers/rawbytes"
 	flag "github.com/spf13/pflag"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/iotaledger/hive.go/configuration"
+	reflectutils "github.com/iotaledger/hive.go/reflect"
 )
 
 func tempFile(t *testing.T, pattern string) (string, *os.File) {
@@ -29,7 +33,7 @@ func TestFetchGlobalFlags(t *testing.T) {
 	flag.String("A", "321", "test")
 	flag.Set("A", "321")
 
-	config := configuration.New()
+	config := New()
 
 	err := config.LoadFlagSet(flag.CommandLine)
 	require.NoError(t, err)
@@ -44,7 +48,7 @@ func TestFetchFlagset(t *testing.T) {
 	testFlagSet.Set("A", "321")
 
 	flag.Parse()
-	config := configuration.New()
+	config := New()
 
 	err := config.LoadFlagSet(testFlagSet)
 	require.NoError(t, err)
@@ -62,7 +66,7 @@ func TestFetchEnvVars(t *testing.T) {
 
 	os.Setenv("TEST_C", "321")
 
-	config := configuration.New()
+	config := New()
 
 	err := config.LoadFlagSet(testFlagSet)
 	require.NoError(t, err)
@@ -92,7 +96,7 @@ func TestFetchJSONFile(t *testing.T) {
 	err = jsonConfFile.Close()
 	require.NoError(t, err)
 
-	config := configuration.New()
+	config := New()
 
 	err = config.LoadFile(jsonConfFileName)
 	require.NoError(t, err)
@@ -116,7 +120,7 @@ func TestFetchYAMLFile(t *testing.T) {
 	err = yamlConfFile.Close()
 	require.NoError(t, err)
 
-	config := configuration.New()
+	config := New()
 
 	err = config.LoadFile(yamlConfFileName)
 	require.NoError(t, err)
@@ -145,7 +149,7 @@ func TestMergeParameters(t *testing.T) {
 	err = jsonConfFile.Close()
 	require.NoError(t, err)
 
-	config := configuration.New()
+	config := New()
 
 	err = config.LoadFile(jsonConfFileName)
 	require.NoError(t, err)
@@ -186,8 +190,7 @@ func TestMergeParameters(t *testing.T) {
 }
 
 func TestSaveConfigFile(t *testing.T) {
-
-	config1 := configuration.New()
+	config1 := New()
 	config1.Set("test.integer", 321)
 	config1.Set("test.slice", []string{"string1", "string2", "string3"})
 	config1.Set("test.bool.ignore", true)
@@ -196,7 +199,7 @@ func TestSaveConfigFile(t *testing.T) {
 	err := config1.StoreFile(jsonConfFileName, []string{"test.bool.ignore"})
 	require.NoError(t, err)
 
-	config2 := configuration.New()
+	config2 := New()
 
 	err = config2.LoadFile(jsonConfFileName)
 	require.NoError(t, err)
@@ -209,4 +212,244 @@ func TestSaveConfigFile(t *testing.T) {
 
 	valueIgnoredBool := config2.Bool("test.bool.ignore")
 	require.EqualValues(t, false, valueIgnoredBool)
+}
+
+type Otto struct {
+	Name string
+}
+
+type Parameters struct {
+	TestField  int64 `shorthand:"t" usage:"you can do stuff with this parameter"`
+	TestField1 bool  `name:"bernd" default:"true" usage:"batman was here"`
+	Nested     struct {
+		Key       string `default:"elephant" usage:"nestedKey elephant"`
+		SubNested struct {
+			Key string `default:"duck" usage:"nestedKey duck"`
+		}
+	}
+	Nested1 struct {
+		Key string `name:"bird" shorthand:"b" default:"bird" usage:"nestedKey bird"`
+	} `name:"renamedNested"`
+	Batman []string      `default:"a,b" usage:"robin"`
+	ItsAMe time.Duration `default:"60s" usage:"mario"`
+	Ottos  []Otto        `noflag:"true"`
+}
+
+func TestBindAndUpdateParameters(t *testing.T) {
+	parameters := Parameters{
+		// assign default value outside of tag
+		TestField: 13,
+		// assign default value inside of tag (is overriden by default value of tag)
+		Batman: []string{"a", "b", "c"},
+
+		Ottos: []Otto{
+			{Name: "Bruce"}, // Batman
+			{Name: "Clark"}, // Superman
+			{Name: "Barry"}, // The Flash
+		},
+	}
+
+	config := New()
+	flagset := NewUnsortedFlagSet("", flag.ContinueOnError)
+	config.BindParameters(flagset, "configuration", &parameters)
+
+	err := config.LoadFlagSet(flagset)
+	assert.NoError(t, err)
+
+	// read in ENV variables
+	// load the env vars after default values from flags were set (otherwise the env vars are not added because the keys don't exist)
+	err = config.LoadEnvironmentVars("test")
+	assert.NoError(t, err)
+
+	// load the flags again to overwrite env vars that were also set via command line
+	err = config.LoadFlagSet(flagset)
+	assert.NoError(t, err)
+
+	config.UpdateBoundParameters()
+
+	assertFlag(t, flagset, config, &parameters.TestField,
+		"configuration.testField",
+		"you can do stuff with this parameter",
+		"13",
+		"t",
+		int64(13),
+	)
+
+	assertFlag(t, flagset, config, &parameters.TestField1,
+		"configuration.bernd",
+		"batman was here",
+		"true",
+		"",
+		true,
+	)
+
+	assertFlag(t, flagset, config, &parameters.Nested.Key,
+		"configuration.nested.key",
+		"nestedKey elephant",
+		"elephant",
+		"",
+		"elephant",
+	)
+
+	assertFlag(t, flagset, config, &parameters.Nested.SubNested.Key,
+		"configuration.nested.subNested.key",
+		"nestedKey duck",
+		"duck",
+		"",
+		"duck",
+	)
+
+	assertFlag(t, flagset, config, &parameters.Nested1.Key,
+		"configuration.renamedNested.bird",
+		"nestedKey bird",
+		"bird",
+		"b",
+		"bird",
+	)
+
+	assertFlag(t, flagset, config, &parameters.Batman,
+		"configuration.batman",
+		"robin",
+		"[a,b]",
+		"",
+		[]string{"a", "b"},
+	)
+
+	dur, err := time.ParseDuration("60s")
+	assert.NoError(t, err)
+	assertFlag(t, flagset, config, &parameters.ItsAMe,
+		"configuration.itsAMe",
+		"mario",
+		dur.String(),
+		"",
+		60*time.Second,
+	)
+
+	ottosFlag := flagset.Lookup("configuration.ottos")
+	assert.Nil(t, ottosFlag)
+	expectedOttos := []Otto{
+		{Name: "Bruce"}, // Batman
+		{Name: "Clark"}, // Superman
+		{Name: "Barry"}, // The Flash
+	}
+	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
+	require.EqualValues(t, expectedOttos, config.Get("configuration.ottos"))
+	assert.EqualValues(t, expectedOttos, parameters.Ottos)
+
+	// check loading of config file and update of bound parameters
+	exampleJSON := `{
+		"configuration": {
+			"testField": 14,
+			"batman": ["d", "e", "f"],
+			"ottos": [
+				{
+					"name": "Hans"
+				},
+				{
+					"name": "Jonas"
+				},
+				{
+					"name": "Max"
+				}
+			]
+		}
+	}`
+
+	err = config.Load(rawbytes.Provider([]byte(exampleJSON)), &JSONLowerParser{})
+	assert.NoError(t, err)
+
+	config.UpdateBoundParameters()
+
+	assertConfigValue(t, config, &parameters.TestField,
+		"configuration.testField",
+		int64(14),
+	)
+
+	assertConfigValue(t, config, &parameters.Batman,
+		"configuration.batman",
+		[]string{"d", "e", "f"},
+	)
+
+	ottosFlag = flagset.Lookup("configuration.ottos")
+	assert.Nil(t, ottosFlag)
+
+	expectedOttos = []Otto{
+		{Name: "Hans"},  // three lines of code
+		{Name: "Jonas"}, // ripped hans whisperer
+		{Name: "Max"},   // logs please...
+	}
+
+	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
+
+	newVal := reflect.New(reflect.TypeOf(&parameters.Ottos)).Elem().Interface()
+	if err := config.Unmarshal("configuration.ottos", &newVal); err != nil {
+		require.NoError(t, err)
+	}
+
+	assert.EqualValues(t, &expectedOttos, newVal)
+	assert.EqualValues(t, expectedOttos, parameters.Ottos)
+}
+
+func assertFlag(t *testing.T, flagset *flag.FlagSet, config *Configuration, parametersField any, name, usage, defValue, shorthand string, expectedValue any) {
+	f := flagset.Lookup(name)
+	assert.Equal(t, usage, f.Usage)
+	assert.Equal(t, defValue, f.DefValue)
+	assert.Equal(t, shorthand, f.Shorthand)
+	assert.Equal(t, name, f.Name)
+	assert.Equal(t, name, config.GetParameterPath(parametersField))
+	if reflect.TypeOf(parametersField).Elem() == reflectutils.TimeDurationType {
+		assert.Equal(t, expectedValue, config.Duration(name))
+	} else {
+		assert.Equal(t, expectedValue, config.Get(name))
+	}
+	assert.Equal(t, expectedValue, reflect.ValueOf(parametersField).Elem().Interface())
+}
+
+func assertConfigValue(t *testing.T, config *Configuration, parametersField any, name string, expectedValue any) {
+	assert.Equal(t, name, config.GetParameterPath(parametersField))
+
+	switch reflect.TypeOf(parametersField).Elem() {
+	case reflectutils.BoolType:
+		assert.Equal(t, expectedValue, config.Bool(name))
+	case reflectutils.TimeDurationType:
+		assert.Equal(t, expectedValue, config.Duration(name))
+	case reflectutils.Float32Type:
+		assert.Equal(t, expectedValue, float32(config.Float64(name)))
+	case reflectutils.Float64Type:
+		assert.Equal(t, expectedValue, config.Float64(name))
+	case reflectutils.IntType:
+		assert.Equal(t, expectedValue, config.Int(name))
+	case reflectutils.Int8Type:
+		assert.Equal(t, expectedValue, int8(config.Int(name)))
+	case reflectutils.Int16Type:
+		assert.Equal(t, expectedValue, int16(config.Int(name)))
+	case reflectutils.Int32Type:
+		assert.Equal(t, expectedValue, int32(config.Int(name)))
+	case reflectutils.Int64Type:
+		assert.Equal(t, expectedValue, config.Int64(name))
+	case reflectutils.StringType:
+		assert.Equal(t, expectedValue, config.String(name))
+	case reflectutils.UintType:
+		assert.Equal(t, expectedValue, uint(config.Int(name)))
+	case reflectutils.Uint8Type:
+		assert.Equal(t, expectedValue, uint8(config.Int(name)))
+	case reflectutils.Uint16Type:
+		assert.Equal(t, expectedValue, uint16(config.Int(name)))
+	case reflectutils.Uint32Type:
+		assert.Equal(t, expectedValue, uint32(config.Int(name)))
+	case reflectutils.Uint64Type:
+		assert.Equal(t, expectedValue, uint64(config.Int64(name)))
+	case reflectutils.StringSliceType:
+		assert.Equal(t, expectedValue, config.Strings(name))
+	default:
+		// if we don't know the type, we try to unmarshal it
+		newVal := reflect.New(reflect.TypeOf(parametersField)).Elem().Interface()
+		if err := config.Unmarshal(name, &newVal); err != nil {
+			require.NoError(t, err)
+		}
+
+		assert.EqualValues(t, expectedValue, newVal)
+	}
+
+	assert.Equal(t, expectedValue, reflect.Indirect(reflect.ValueOf(parametersField).Elem()).Interface())
 }

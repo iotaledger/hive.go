@@ -128,5 +128,10 @@ func loadConfigurations(configFilesFlagSet *flag.FlagSet, configurationSets []*C
 		}
 	}
 
+	for _, config := range configurationSets {
+		// propagate values in the config back to bound parameters
+		config.config.UpdateBoundParameters()
+	}
+
 	return nil
 }
