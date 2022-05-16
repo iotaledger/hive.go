@@ -219,9 +219,10 @@ type Otto struct {
 }
 
 type Parameters struct {
-	TestField  int64 `shorthand:"t" usage:"you can do stuff with this parameter"`
-	TestField1 bool  `name:"bernd" default:"true" usage:"batman was here"`
-	Nested     struct {
+	TestField    int64             `shorthand:"t" usage:"you can do stuff with this parameter"`
+	TestField1   bool              `name:"bernd" default:"true" usage:"batman was here"`
+	TestFieldMap map[string]string `usage:"the list of allowed ottos with their favorite drink"`
+	Nested       struct {
 		Key       string `default:"elephant" usage:"nestedKey elephant"`
 		SubNested struct {
 			Key string `default:"duck" usage:"nestedKey duck"`
@@ -239,6 +240,13 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	parameters := Parameters{
 		// assign default value outside of tag
 		TestField: 13,
+
+		TestFieldMap: map[string]string{
+			"Hans":  "Rum",
+			"Jonas": "Water",
+			"Max":   "Beer",
+		},
+
 		// assign default value inside of tag (is overriden by default value of tag)
 		Batman: []string{"a", "b", "c"},
 
@@ -281,6 +289,18 @@ func TestBindAndUpdateParameters(t *testing.T) {
 		"true",
 		"",
 		true,
+	)
+
+	assertFlag(t, flagset, config, &parameters.TestFieldMap,
+		"configuration.testFieldMap",
+		"the list of allowed ottos with their favorite drink",
+		"",
+		"",
+		map[string]string{
+			"Hans":  "Rum",
+			"Jonas": "Water",
+			"Max":   "Beer",
+		},
 	)
 
 	assertFlag(t, flagset, config, &parameters.Nested.Key,
@@ -393,7 +413,9 @@ func TestBindAndUpdateParameters(t *testing.T) {
 func assertFlag(t *testing.T, flagset *flag.FlagSet, config *Configuration, parametersField any, name, usage, defValue, shorthand string, expectedValue any) {
 	f := flagset.Lookup(name)
 	assert.Equal(t, usage, f.Usage)
-	assert.Equal(t, defValue, f.DefValue)
+	if reflect.TypeOf(parametersField).Elem() != reflectutils.StringMapType {
+		assert.Equal(t, defValue, f.DefValue)
+	}
 	assert.Equal(t, shorthand, f.Shorthand)
 	assert.Equal(t, name, f.Name)
 	assert.Equal(t, name, config.GetParameterPath(parametersField))
@@ -441,6 +463,8 @@ func assertConfigValue(t *testing.T, config *Configuration, parametersField any,
 		assert.Equal(t, expectedValue, uint64(config.Int64(name)))
 	case reflectutils.StringSliceType:
 		assert.Equal(t, expectedValue, config.Strings(name))
+	case reflectutils.StringMapType:
+		assert.Equal(t, expectedValue, config.StringMap(name))
 	default:
 		// if we don't know the type, we try to unmarshal it
 		newVal := reflect.New(reflect.TypeOf(parametersField)).Elem().Interface()
