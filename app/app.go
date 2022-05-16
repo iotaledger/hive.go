@@ -24,15 +24,6 @@ const (
 	DefaultFlagSetName = "appConfig"
 )
 
-const (
-	// CfgAppCheckForUpdates defines whether to check for updates of the application or not.
-	CfgAppCheckForUpdates = "app.checkForUpdates"
-	// CfgAppDisablePlugins defines a list of plugins that shall be disabled.
-	CfgAppDisablePlugins = "app.disablePlugins"
-	// CfgAppEnablePlugins defines a list of plugins that shall be enabled.
-	CfgAppEnablePlugins = "app.enablePlugins"
-)
-
 // AppInfo provides informations about the app.
 type AppInfo struct {
 	Name                string
@@ -40,7 +31,7 @@ type AppInfo struct {
 	LatestGitHubVersion string
 }
 
-type AppParams struct {
+type ParametersApp struct {
 	CheckForUpdates bool     `default:"true" usage:"whether to check for updates of the application or not"`
 	DisablePlugins  []string `default:"" usage:"a list of plugins that shall be disabled"`
 	EnablePlugins   []string `default:"" usage:"a list of plugins that shall be enabled"`
@@ -59,6 +50,7 @@ type App struct {
 	log                     *logger.Logger
 	appFlagSet              *flag.FlagSet
 	appConfig               *configuration.Configuration
+	appParams               *ParametersApp
 	configs                 ConfigurationSets
 	maskedKeys              []string
 	options                 *AppOptions
@@ -127,8 +119,15 @@ func (a *App) init() {
 	a.appFlagSet = defaultConfig.flagSet
 	a.appConfig = defaultConfig.config
 
-	appParams := &AppParams{}
-	a.appConfig.BindParameters(a.appFlagSet, "app", appParams)
+	a.appParams = &ParametersApp{}
+	a.appConfig.BindParameters(a.appFlagSet, "app", a.appParams)
+
+	// provide the app params in the container
+	if err := a.container.Provide(func() *ParametersApp {
+		return a.appParams
+	}); err != nil {
+		panic(err)
+	}
 
 	a.configs = ConfigurationSets{}
 	a.configs = append(a.configs, defaultConfig)
@@ -256,7 +255,7 @@ Command line flags:
 	}
 
 	// enable version check
-	a.options.versionCheckEnabled = a.appConfig.Bool(CfgAppCheckForUpdates)
+	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
 	// initialize the global logger
 	if err := logger.InitGlobalLogger(a.appConfig); err != nil {
@@ -286,8 +285,8 @@ func (a *App) printAppInfo() {
 func (a *App) printConfig() {
 	a.appConfig.Print(a.maskedKeys)
 
-	enablePlugins := a.appConfig.Strings(CfgAppEnablePlugins)
-	disablePlugins := a.appConfig.Strings(CfgAppDisablePlugins)
+	enablePlugins := a.appParams.EnablePlugins
+	disablePlugins := a.appParams.DisablePlugins
 
 	getList := func(a []string) string {
 		sort.Strings(a)
@@ -337,8 +336,8 @@ func (a *App) initConfig() {
 func (a *App) preProvide() {
 
 	initCfg := &InitConfig{
-		EnabledPlugins:  a.appConfig.Strings(CfgAppEnablePlugins),
-		DisabledPlugins: a.appConfig.Strings(CfgAppDisablePlugins),
+		EnabledPlugins:  a.appParams.EnablePlugins,
+		DisabledPlugins: a.appParams.DisablePlugins,
 	}
 
 	if a.options.initComponent.PreProvide != nil {
@@ -608,6 +607,10 @@ func (a *App) Config() *configuration.Configuration {
 
 func (a *App) FlagSet() *flag.FlagSet {
 	return a.appFlagSet
+}
+
+func (a *App) Parameters() *ParametersApp {
+	return a.appParams
 }
 
 func (a *App) AdditionalConfigs() map[string]*configuration.Configuration {
