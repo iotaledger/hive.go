@@ -199,8 +199,12 @@ func (c *Configuration) Load(p koanf.Provider, pa koanf.Parser, opts ...koanf.Op
 
 // BoundParameter stores the pointer and the type of values that were bound using the BindParameters function.
 type BoundParameter struct {
-	boundPointer interface{}
-	boundType    reflect.Type
+	Name         string
+	ShortHand    string
+	Usage        string
+	DefaultVal   any
+	BoundPointer any
+	BoundType    reflect.Type
 }
 
 // BindParameters is a utility function that allows to define and bind a set of parameters in a single step by using a
@@ -234,10 +238,14 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		shortHand, _ := typeField.Tag.Lookup("shorthand")
 		usage, _ := typeField.Tag.Lookup("usage")
 
-		addParameter := func(name string, valueField reflect.Value) {
-			c.boundParameters[name] = &BoundParameter{
-				boundPointer: valueField.Addr().Interface(),
-				boundType:    valueField.Type(),
+		addParameter := func(name string, shortHand string, usage string, defaultVal any, valueField reflect.Value) {
+			c.boundParameters[strings.ToLower(name)] = &BoundParameter{
+				Name:         name,
+				ShortHand:    shortHand,
+				Usage:        usage,
+				DefaultVal:   defaultVal,
+				BoundPointer: valueField.Addr().Interface(),
+				BoundType:    valueField.Type(),
 			}
 			c.boundParametersMapping[valueField.Addr()] = name
 		}
@@ -246,7 +254,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 			if err := c.SetDefault(name, valueField.Interface()); err != nil {
 				panic(fmt.Sprintf("could not set default value of %s, error: %s", name, err))
 			}
-			addParameter(name, valueField)
+			addParameter(name, shortHand, usage, valueField.Interface(), valueField)
 			continue
 		}
 
@@ -399,7 +407,11 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 		case []string:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-				defaultValue = strings.Split(tagDefaultValue, ",")
+				if len(tagDefaultValue) == 0 {
+					defaultValue = []string{}
+				} else {
+					defaultValue = strings.Split(tagDefaultValue, ",")
+				}
 			}
 			flagset.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, usage)
 
@@ -412,51 +424,52 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
 			continue
 		}
-
-		addParameter(name, valueField)
+		addParameter(name, shortHand, usage, valueField.Interface(), valueField)
 	}
 }
 
 // UpdateBoundParameters updates parameters that were bound using the BindParameters method with the current values in
 // the configuration.
 func (c *Configuration) UpdateBoundParameters() {
-	for parameterName, boundParameter := range c.boundParameters {
-		switch boundParameter.boundType {
+	for _, boundParameter := range c.boundParameters {
+		parameterName := boundParameter.Name
+
+		switch boundParameter.BoundType {
 		case reflectutils.BoolType:
-			*(boundParameter.boundPointer.(*bool)) = c.Bool(parameterName)
+			*(boundParameter.BoundPointer.(*bool)) = c.Bool(parameterName)
 		case reflectutils.TimeDurationType:
-			*(boundParameter.boundPointer.(*time.Duration)) = c.Duration(parameterName)
+			*(boundParameter.BoundPointer.(*time.Duration)) = c.Duration(parameterName)
 		case reflectutils.Float32Type:
-			*(boundParameter.boundPointer.(*float32)) = float32(c.Float64(parameterName))
+			*(boundParameter.BoundPointer.(*float32)) = float32(c.Float64(parameterName))
 		case reflectutils.Float64Type:
-			*(boundParameter.boundPointer.(*float64)) = c.Float64(parameterName)
+			*(boundParameter.BoundPointer.(*float64)) = c.Float64(parameterName)
 		case reflectutils.IntType:
-			*(boundParameter.boundPointer.(*int)) = c.Int(parameterName)
+			*(boundParameter.BoundPointer.(*int)) = c.Int(parameterName)
 		case reflectutils.Int8Type:
-			*(boundParameter.boundPointer.(*int8)) = int8(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*int8)) = int8(c.Int(parameterName))
 		case reflectutils.Int16Type:
-			*(boundParameter.boundPointer.(*int16)) = int16(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*int16)) = int16(c.Int(parameterName))
 		case reflectutils.Int32Type:
-			*(boundParameter.boundPointer.(*int32)) = int32(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*int32)) = int32(c.Int(parameterName))
 		case reflectutils.Int64Type:
-			*(boundParameter.boundPointer.(*int64)) = c.Int64(parameterName)
+			*(boundParameter.BoundPointer.(*int64)) = c.Int64(parameterName)
 		case reflectutils.StringType:
-			*(boundParameter.boundPointer.(*string)) = c.String(parameterName)
+			*(boundParameter.BoundPointer.(*string)) = c.String(parameterName)
 		case reflectutils.UintType:
-			*(boundParameter.boundPointer.(*uint)) = uint(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*uint)) = uint(c.Int(parameterName))
 		case reflectutils.Uint8Type:
-			*(boundParameter.boundPointer.(*uint8)) = uint8(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*uint8)) = uint8(c.Int(parameterName))
 		case reflectutils.Uint16Type:
-			*(boundParameter.boundPointer.(*uint16)) = uint16(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*uint16)) = uint16(c.Int(parameterName))
 		case reflectutils.Uint32Type:
-			*(boundParameter.boundPointer.(*uint32)) = uint32(c.Int(parameterName))
+			*(boundParameter.BoundPointer.(*uint32)) = uint32(c.Int(parameterName))
 		case reflectutils.Uint64Type:
-			*(boundParameter.boundPointer.(*uint64)) = uint64(c.Int64(parameterName))
+			*(boundParameter.BoundPointer.(*uint64)) = uint64(c.Int64(parameterName))
 		case reflectutils.StringSliceType:
-			*(boundParameter.boundPointer.(*[]string)) = c.Strings(parameterName)
+			*(boundParameter.BoundPointer.(*[]string)) = c.Strings(parameterName)
 		default:
 			// if we don't know the type, we try to unmarshal it
-			if err := c.Unmarshal(parameterName, &boundParameter.boundPointer); err != nil {
+			if err := c.Unmarshal(parameterName, &boundParameter.BoundPointer); err != nil {
 				panic(fmt.Sprintf("could not unmarshal value of '%s', error: %s", parameterName, err))
 			}
 		}

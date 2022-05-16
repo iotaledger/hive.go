@@ -173,3 +173,8 @@ func (c *Configuration) Unmarshal(path string, o interface{}) error {
 func (c *Configuration) UnmarshalWithConf(path string, o interface{}, uc koanf.UnmarshalConf) error {
 	return c.config.UnmarshalWithConf(strings.ToLower(path), o, uc)
 }
+
+// BoundParameter returns the parameter that was bound to the configuration.
+func (c *Configuration) BoundParameter(path string) *BoundParameter {
+	return c.boundParameters[strings.ToLower(path)]
+}

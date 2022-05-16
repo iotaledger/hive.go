@@ -40,6 +40,12 @@ type AppInfo struct {
 	LatestGitHubVersion string
 }
 
+type AppParams struct {
+	CheckForUpdates bool     `default:"true" usage:"whether to check for updates of the application or not"`
+	DisablePlugins  []string `default:"" usage:"a list of plugins that shall be disabled"`
+	EnablePlugins   []string `default:"" usage:"a list of plugins that shall be enabled"`
+}
+
 type App struct {
 	appInfo                 *AppInfo
 	enabledPlugins          map[string]struct{}
@@ -121,9 +127,8 @@ func (a *App) init() {
 	a.appFlagSet = defaultConfig.flagSet
 	a.appConfig = defaultConfig.config
 
-	a.appFlagSet.Bool(CfgAppCheckForUpdates, true, "whether to check for updates of the application or not")
-	a.appFlagSet.StringSlice(CfgAppDisablePlugins, nil, "a list of plugins that shall be disabled")
-	a.appFlagSet.StringSlice(CfgAppEnablePlugins, nil, "a list of plugins that shall be enabled")
+	appParams := &AppParams{}
+	a.appConfig.BindParameters(a.appFlagSet, "app", appParams)
 
 	a.configs = ConfigurationSets{}
 	a.configs = append(a.configs, defaultConfig)
