@@ -415,6 +415,12 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 			}
 			flagset.StringSliceVarP(valueField.Addr().Interface().(*[]string), name, shortHand, defaultValue, usage)
 
+		case map[string]string:
+			if _, exists := typeField.Tag.Lookup("default"); exists {
+				panic(fmt.Sprintf("passing default value of '%s' via tag not allowed", name))
+			}
+			flagset.StringToStringVarP(valueField.Addr().Interface().(*map[string]string), name, shortHand, defaultValue, usage)
+
 		default:
 			if valueField.Kind() == reflect.Slice {
 				panic(fmt.Sprintf("could not bind '%s' because it is a slice value. did you forget the 'noflag:\"true\"' tag?", name))
@@ -467,6 +473,9 @@ func (c *Configuration) UpdateBoundParameters() {
 			*(boundParameter.BoundPointer.(*uint64)) = uint64(c.Int64(parameterName))
 		case reflectutils.StringSliceType:
 			*(boundParameter.BoundPointer.(*[]string)) = c.Strings(parameterName)
+		case reflectutils.StringMapType:
+			*(boundParameter.BoundPointer.(*map[string]string)) = c.StringMap(parameterName)
+
 		default:
 			// if we don't know the type, we try to unmarshal it
 			if err := c.Unmarshal(parameterName, &boundParameter.BoundPointer); err != nil {

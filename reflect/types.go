@@ -38,4 +38,6 @@ var (
 	Uint64Type = reflect.TypeOf(uint64(0))
 	// StringSliceType is the reflect.Type of []string.
 	StringSliceType = reflect.TypeOf([]string{})
+	// StringMapType is the reflect.Type of map[string]string.
+	StringMapType = reflect.TypeOf(map[string]string{})
 )
