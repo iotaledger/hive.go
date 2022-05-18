@@ -105,7 +105,6 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 
 // init stage collects all parameters and loads the config files
 func (a *App) init() {
-
 	version := flag.BoolP("version", "v", false, "prints the app version")
 	help := flag.BoolP("help", "h", false, "prints the app help (--full for all parameters)")
 	helpFull := flag.Bool("full", false, "prints full app help (only in combination with -h)")
@@ -268,7 +267,6 @@ Command line flags:
 
 // printAppInfo prints app name and version info
 func (a *App) printAppInfo() {
-
 	versionString := a.Info().Version
 	if _, err := goversion.NewSemver(a.Info().Version); err == nil {
 		// version is a valid SemVer => release version
@@ -306,7 +304,6 @@ func (a *App) printConfig() {
 
 // initConfig stage
 func (a *App) initConfig() {
-
 	if a.options.initComponent.InitConfigPars != nil {
 		if err := a.options.initComponent.InitConfigPars(a.container); err != nil {
 			a.LogPanicf("failed to initialize init component config parameters: %s", err)
@@ -334,7 +331,6 @@ func (a *App) initConfig() {
 
 // preProvide stage
 func (a *App) preProvide() {
-
 	initCfg := &InitConfig{
 		EnabledPlugins:  a.appParams.EnablePlugins,
 		DisabledPlugins: a.appParams.DisablePlugins,
@@ -380,7 +376,6 @@ func (a *App) preProvide() {
 
 // addComponents stage
 func (a *App) addComponents() {
-
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		if a.isComponentForceDisabled(coreComponent.Identifier()) {
 			return true
@@ -398,12 +393,10 @@ func (a *App) addComponents() {
 		a.addPlugin(plugin)
 		return true
 	})
-
 }
 
 // provide stage
 func (a *App) provide() {
-
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
 			a.LogPanicf("provide init component failed: %s", err)
@@ -431,7 +424,6 @@ func (a *App) provide() {
 
 // invoke stage
 func (a *App) invoke() {
-
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
 			a.LogPanicf("invoke init component failed: %s", err)
@@ -459,7 +451,6 @@ func (a *App) invoke() {
 
 // configure stage
 func (a *App) configure() {
-
 	a.LogInfo("Loading core components ...")
 
 	if a.options.initComponent.Configure != nil {
@@ -493,7 +484,6 @@ func (a *App) configure() {
 
 // initializeVersionCheck stage
 func (a *App) initializeVersionCheck() {
-
 	// do not check for updates if it was disabled
 	if !a.options.versionCheckEnabled {
 		return
@@ -514,7 +504,8 @@ func (a *App) initializeVersionCheck() {
 		}
 
 		if res.Outdated {
-			a.LogInfof("Update to %s available on https://github.com/%s/%s/releases/latest", a.options.versionCheckOwner, a.options.versionCheckRepository, res.Current)
+			a.LogInfof("Update to %s %s available on https://github.com/%s/%s/releases/latest",
+				a.options.versionCheckRepository, res.Current, a.options.versionCheckOwner, a.options.versionCheckRepository)
 			a.appInfo.LatestGitHubVersion = res.Current
 		}
 	}
