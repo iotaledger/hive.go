@@ -7,10 +7,10 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20220224165957-0e0d279abe38
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.12.0
+	github.com/ethereum/go-ethereum v1.10.17
 	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220309063734-061146d8ff30
 	github.com/knadh/koanf v1.4.0
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
@@ -32,12 +32,14 @@ require (
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.1.2 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f // indirect
 	github.com/cockroachdb/redact v1.0.8 // indirect
 	github.com/cockroachdb/sentry-go v0.6.1-cockroachdb.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -67,5 +69,3 @@ require (
 	github.com/stretchr/objx v0.3.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
-
-replace github.com/iotaledger/hive.go/serializer/v2 => ./serializer

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/iotaledger/hive.go/serializer"
 	"github.com/pkg/errors"
 )
 

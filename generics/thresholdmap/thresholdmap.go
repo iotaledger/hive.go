@@ -7,7 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/datastructure/genericcomparator"
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
-	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/iotaledger/hive.go/serializer"
 	"github.com/iotaledger/hive.go/serix"
 )
 
