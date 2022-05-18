@@ -97,7 +97,7 @@ func (e *Event[T]) Trigger(event T) {
 func (e *Event[T]) triggerEventHandlers(event T) {
 	e.eventHandlers.ForEach(func(closureID uint64, callback func(T)) bool {
 		var closureStackTrace string
-		if debug.Enabled {
+		if debug.GetEnabled() {
 			closureStackTrace = debug.ClosureStackTrace(callback)
 		}
 
