@@ -8,17 +8,34 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
 
 var (
-	// Enabled contains a flag that determines if the debug mode is active.
-	Enabled = false
+	enabled      = false
+	enabledMutex sync.RWMutex
 
 	// DeadlockDetectionTimeout contains the duration to wait before assuming a deadlock.
 	DeadlockDetectionTimeout = 5 * time.Second
 )
+
+// GetEnabled returns true if the debug mode is active.
+func GetEnabled() bool {
+	enabledMutex.RLock()
+	defer enabledMutex.RUnlock()
+
+	return enabled
+}
+
+// SetEnable sets if the debug mode is active.
+func SetEnabled(newEnabled bool) {
+	enabledMutex.Lock()
+	defer enabledMutex.Unlock()
+
+	enabled = newEnabled
+}
 
 // FunctionName returns the name of the generic function pointer.
 func FunctionName(functionPointer interface{}) string {

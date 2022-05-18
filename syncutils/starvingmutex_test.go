@@ -35,7 +35,7 @@ func Benchmark(b *testing.B) {
 }
 
 func Test(t *testing.T) {
-	debug.Enabled = true
+	debug.SetEnabled(true)
 	debug.DeadlockDetectionTimeout = 100 * time.Millisecond
 
 	mutex := NewStarvingMutex()

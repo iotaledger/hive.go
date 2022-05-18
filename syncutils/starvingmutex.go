@@ -32,7 +32,7 @@ func (f *StarvingMutex) RLock() {
 	defer f.mutex.Unlock()
 
 	var doneChan chan types.Empty
-	if debug.Enabled {
+	if debug.GetEnabled() {
 		doneChan = make(chan types.Empty, 1)
 
 		go f.detectDeadlock("RLock", debug.CallerStackTrace(), doneChan)
@@ -42,7 +42,7 @@ func (f *StarvingMutex) RLock() {
 		f.readerCond.Wait()
 	}
 
-	if debug.Enabled {
+	if debug.GetEnabled() {
 		close(doneChan)
 	}
 
@@ -75,7 +75,7 @@ func (f *StarvingMutex) Lock() {
 	defer f.mutex.Unlock()
 
 	var doneChan chan types.Empty
-	if debug.Enabled {
+	if debug.GetEnabled() {
 		doneChan = make(chan types.Empty, 1)
 
 		go f.detectDeadlock("Lock", debug.CallerStackTrace(), doneChan)
@@ -85,7 +85,7 @@ func (f *StarvingMutex) Lock() {
 	for !f.canWrite() {
 		f.writerCond.Wait()
 	}
-	if debug.Enabled {
+	if debug.GetEnabled() {
 		close(doneChan)
 	}
 	f.pendingWriters--

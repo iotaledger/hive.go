@@ -243,7 +243,7 @@ type BlockingQueueWorkerPoolTask struct {
 
 // newBlockingQueueWorkerPoolTask creates a new BlockingQueueWorkerPoolTask.
 func newBlockingQueueWorkerPoolTask(workerPool *BlockingQueuedWorkerPool, workerFunc func(), stackTrace string) *BlockingQueueWorkerPoolTask {
-	if debug.Enabled && stackTrace == "" {
+	if debug.GetEnabled() && stackTrace == "" {
 		stackTrace = debug.ClosureStackTrace(workerFunc)
 	}
 
@@ -257,7 +257,7 @@ func newBlockingQueueWorkerPoolTask(workerPool *BlockingQueuedWorkerPool, worker
 
 // run executes the task.
 func (t *BlockingQueueWorkerPoolTask) run() {
-	if debug.Enabled {
+	if debug.GetEnabled() {
 		go t.detectedHangingTasks()
 	}
 

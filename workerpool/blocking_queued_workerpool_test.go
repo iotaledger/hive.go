@@ -125,7 +125,7 @@ func Test_NoFlushVsFlush(t *testing.T) {
 }
 
 func Test_DeadlockDetection(t *testing.T) {
-	debug.Enabled = true
+	debug.SetEnabled(true)
 
 	el := NewBlockingQueuedWorkerPool(QueueSize(1000000), FlushTasksAtShutdown(true), WithAlias("event.Loop"))
 	el.Start()
