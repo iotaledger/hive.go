@@ -42,6 +42,16 @@ type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
 
+type RLocker interface {
+	RLock()
+	RUnlock()
+}
+
+type WLocker interface {
+	Lock()
+	Unlock()
+}
+
 // API is the main object of the package that provides the methods for client to use.
 // It holds all the settings and configuration. It also stores the cache.
 // Most often you will need a single object of API for the whole program.

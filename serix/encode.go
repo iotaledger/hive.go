@@ -15,6 +15,10 @@ import (
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
 	valueI := value.Interface()
 	valueType := value.Type()
+	if rlock, ok := valueI.(RLocker); ok {
+		rlock.RLock()
+		defer rlock.RUnlock()
+	}
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return nil, errors.Wrap(err, "pre-serialization validation failed")
