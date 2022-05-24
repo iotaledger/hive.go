@@ -22,7 +22,7 @@ type Serializable interface {
 	Serialize(deSeriMode DeSerializationMode, deSeriCtx interface{}) ([]byte, error)
 }
 
-// SerializableWithSize implements Serializable interface and has the extra funtionality of returning the size of the
+// SerializableWithSize implements Serializable interface and has the extra functionality of returning the size of the
 // resulting serialized object (ideally without actually serializing it)
 type SerializableWithSize interface {
 	Serializable
