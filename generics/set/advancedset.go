@@ -13,11 +13,11 @@ import (
 )
 
 type AdvancedSet[T AdvancedSetElement[T]] struct {
-	*orderedmap.OrderedMap[T, types.Empty]
+	orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
 
 func NewAdvancedSet[T AdvancedSetElement[T]](elements ...T) (new *AdvancedSet[T]) {
-	new = &AdvancedSet[T]{orderedmap.New[T, types.Empty]()}
+	new = &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
 		new.Set(element, types.Void)
 	}
@@ -25,11 +25,7 @@ func NewAdvancedSet[T AdvancedSetElement[T]](elements ...T) (new *AdvancedSet[T]
 	return new
 }
 
-func (t AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (err error) {
-	if t.OrderedMap == nil {
-		*t.OrderedMap = *orderedmap.New[T, types.Empty]()
-	}
-
+func (t *AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (err error) {
 	elementCount, err := marshalUtil.ReadUint64()
 	if err != nil {
 		return errors.Errorf("failed to parse amount of AdvancedSet: %w", err)
