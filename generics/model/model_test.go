@@ -1,12 +1,28 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/iotaledger/hive.go/types"
 )
+
+func TestModel(t *testing.T) {
+	source := NewSigLockedSingleOutput(1337, 2)
+
+	restored := new(SigLockedSingleOutput)
+	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
+
+	assert.Equal(t, source.ID(), restored.ID())
+	assert.Equal(t, source.Address(), restored.Address())
+	assert.Equal(t, source.Balance(), restored.Balance())
+	assert.Equal(t, source.ObjectStorageKey(), restored.ObjectStorageKey())
+	assert.Equal(t, source.ObjectStorageValue(), restored.ObjectStorageValue())
+
+	fmt.Println(restored)
+}
 
 type SigLockedSingleOutput struct {
 	Model[types.Identifier, sigLockedSingleOutput]
@@ -21,8 +37,6 @@ func NewSigLockedSingleOutput(balance uint64, address uint64) *SigLockedSingleOu
 	return &SigLockedSingleOutput{NewModel[types.Identifier](sigLockedSingleOutput{
 		Balance: balance,
 		Address: address,
-	}, func(model *sigLockedSingleOutput) types.Identifier {
-		return types.Identifier{1}
 	})}
 }
 
@@ -38,17 +52,4 @@ func (s *SigLockedSingleOutput) Address() uint64 {
 	defer s.RUnlock()
 
 	return s.m.Address
-}
-
-func TestSth(t *testing.T) {
-	source := NewSigLockedSingleOutput(1337, 2)
-
-	restored := new(SigLockedSingleOutput)
-	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
-
-	assert.Equal(t, source.ID(), restored.ID())
-	assert.Equal(t, source.Address(), restored.Address())
-	assert.Equal(t, source.Balance(), restored.Balance())
-	assert.Equal(t, source.ObjectStorageKey(), restored.ObjectStorageKey())
-	assert.Equal(t, source.ObjectStorageValue(), restored.ObjectStorageValue())
 }

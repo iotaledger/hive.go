@@ -34,7 +34,6 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
-
 	storageOptions := newOptions(store, objectFactory, optionalOptions)
 
 	return &ObjectStorage{
