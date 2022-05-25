@@ -13,7 +13,7 @@ import (
 	"github.com/iotaledger/hive.go/serix"
 )
 
-type Model[IDType any, ModelType any] struct {
+type Model[IDType comparable, ModelType any] struct {
 	id      *IDType
 	idFunc  func(model *ModelType) IDType
 	idMutex sync.RWMutex
@@ -23,7 +23,7 @@ type Model[IDType any, ModelType any] struct {
 	objectstorage.StorableObjectFlags
 }
 
-func NewModel[IDType any, ModelType any](model ModelType, optionalIDFunc ...func(model *ModelType) IDType) (new Model[IDType, ModelType]) {
+func NewModel[IDType comparable, ModelType any](model ModelType, optionalIDFunc ...func(model *ModelType) IDType) (new Model[IDType, ModelType]) {
 	if len(optionalIDFunc) == 0 {
 		optionalIDFunc = append(optionalIDFunc, func(model *ModelType) (key IDType) {
 			return key
@@ -71,7 +71,7 @@ func (m *Model[IDType, ModelType]) Decode(b []byte) (int, error) {
 	m.Lock()
 	defer m.Unlock()
 
-	return serix.DefaultAPI.Decode(context.Background(), b, &m.M)
+	return serix.DefaultAPI.Decode(context.Background(), b, &m.M, serix.WithValidation())
 }
 
 func (m *Model[IDType, ModelType]) Encode() ([]byte, error) {
@@ -119,9 +119,9 @@ func (m *Model[IDType, ModelType]) String() string {
 	return fmt.Sprintf("Model[%s] {\n\tid: %+v\n\tmodel: %+v\n}", reflect.TypeOf(m.M).Name(), m.id, m.M)
 }
 
-// region KeyModel /////////////////////////////////////////////////////////////////////////////////////////////////////
+// region ReferenceModel ///////////////////////////////////////////////////////////////////////////////////////////////
 
-type ReferenceModel[SourceIDType, TargetIDType any] struct {
+type ReferenceModel[SourceIDType, TargetIDType comparable] struct {
 	SourceID SourceIDType
 	TargetID TargetIDType
 
@@ -129,7 +129,7 @@ type ReferenceModel[SourceIDType, TargetIDType any] struct {
 	objectstorage.StorableObjectFlags
 }
 
-func NewReferenceModel[SourceIDType, TargetIDType any](s SourceIDType, t TargetIDType) (new ReferenceModel[SourceIDType, TargetIDType]) {
+func NewReferenceModel[SourceIDType, TargetIDType comparable](s SourceIDType, t TargetIDType) (new ReferenceModel[SourceIDType, TargetIDType]) {
 	new = ReferenceModel[SourceIDType, TargetIDType]{
 		SourceID: s,
 		TargetID: t,
@@ -144,12 +144,12 @@ func (m *ReferenceModel[SourceIDType, TargetIDType]) Decode(b []byte) (int, erro
 	m.Lock()
 	defer m.Unlock()
 
-	consumedBytesSource, err := serix.DefaultAPI.Decode(context.Background(), b, &m.SourceID)
+	consumedBytesSource, err := serix.DefaultAPI.Decode(context.Background(), b, &m.SourceID, serix.WithValidation())
 	if err != nil {
 		return consumedBytesSource, errors.Errorf("failed to decode SourceID: %w", err)
 	}
 
-	consumedBytesTarget, err := serix.DefaultAPI.Decode(context.Background(), b[consumedBytesSource:], &m.TargetID)
+	consumedBytesTarget, err := serix.DefaultAPI.Decode(context.Background(), b[consumedBytesSource:], &m.TargetID, serix.WithValidation())
 	if err != nil {
 		return consumedBytesTarget, errors.Errorf("failed to decode TargetID: %w", err)
 	}
@@ -209,6 +209,86 @@ func (m ReferenceModel[SourceIDType, TargetIDType]) PartitionKey() []int {
 		panic(err)
 	}
 	return []int{len(sourceBytes), len(targetBytes)}
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region ReferenceModelWithMetadata ///////////////////////////////////////////////////////////////////////////////////
+
+type ReferenceModelWithMetadata[SourceIDType, TargetIDType comparable, ModelType any] struct {
+	SourceID SourceIDType
+	TargetID TargetIDType
+	M        ModelType
+
+	sync.RWMutex
+	objectstorage.StorableObjectFlags
+}
+
+func NewReferenceModelWithMetadata[SourceIDType, TargetIDType comparable, ModelType any](s SourceIDType, t TargetIDType, m ModelType) (new ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) {
+	new = ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]{
+		SourceID: s,
+		TargetID: t,
+		M:        m,
+	}
+	new.SetModified()
+	new.Persist()
+
+	return new
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Decode(b []byte) (int, error) {
+	m.Lock()
+	defer m.Unlock()
+
+	return serix.DefaultAPI.Decode(context.Background(), b, &m.M)
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Encode() ([]byte, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	return serix.DefaultAPI.Encode(context.Background(), &m.M, serix.WithValidation())
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
+	m.Lock()
+	defer m.Unlock()
+
+	consumedSourceIDBytes, err := serix.DefaultAPI.Decode(context.Background(), key, &m.SourceID, serix.WithValidation())
+	if err != nil {
+		return errors.Errorf("failed to decode source ID: %w", err)
+	}
+	_, err = serix.DefaultAPI.Decode(context.Background(), key[consumedSourceIDBytes:], &m.TargetID, serix.WithValidation())
+	if err != nil {
+		return errors.Errorf("failed to decode target ID: %w", err)
+	}
+
+	if _, err = serix.DefaultAPI.Decode(context.Background(), data, &m.M, serix.WithValidation()); err != nil {
+		return errors.Errorf("failed to decode model: %w", err)
+	}
+
+	return nil
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) ObjectStorageKey() (key []byte) {
+	m.RLock()
+	defer m.RUnlock()
+
+	return byteutils.ConcatBytes(serix.Encode(m.SourceID), serix.Encode(m.TargetID))
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) ObjectStorageValue() (value []byte) {
+	m.RLock()
+	defer m.RUnlock()
+
+	return serix.Encode(&m.M)
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) String() string {
+	m.RLock()
+	defer m.RUnlock()
+
+	return fmt.Sprintf("ReferenceModelWithMetadata[%s, %s, %s] {\n\tsourceID: %+v\n\ttargetID: %+v\n\tmodel: %+v\n}", reflect.TypeOf(m.SourceID).Name(), reflect.TypeOf(m.TargetID).Name(), reflect.TypeOf(m.M).Name(), m.SourceID, m.TargetID, m.M)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
