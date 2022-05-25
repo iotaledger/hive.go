@@ -51,12 +51,6 @@ func newOptions(store kvstore.KVStore, objectFactory StorableObjectFactory, opti
 
 type Option func(*Options)
 
-func WithObjectFactory(objectFactory StorableObjectFactory) Option {
-	return func(args *Options) {
-		args.objectFactory = objectFactory
-	}
-}
-
 func CacheTime(duration time.Duration) Option {
 	return func(args *Options) {
 		args.cacheTime = duration
