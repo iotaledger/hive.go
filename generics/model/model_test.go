@@ -44,12 +44,12 @@ func (s *SigLockedSingleOutput) Balance() uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
-	return s.m.Balance
+	return s.M.Balance
 }
 
 func (s *SigLockedSingleOutput) Address() uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
-	return s.m.Address
+	return s.M.Address
 }

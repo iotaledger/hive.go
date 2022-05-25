@@ -16,7 +16,7 @@ type Model[IDType any, ModelType any] struct {
 	id      *IDType
 	idFunc  func(model *ModelType) IDType
 	idMutex sync.RWMutex
-	m       ModelType
+	M       ModelType
 
 	sync.RWMutex
 	objectstorage.StorableObjectFlags
@@ -30,7 +30,7 @@ func NewModel[IDType any, ModelType any](model ModelType, optionalIDFunc ...func
 	}
 
 	return Model[IDType, ModelType]{
-		m:      model,
+		M:      model,
 		idFunc: optionalIDFunc[0],
 	}
 }
@@ -49,7 +49,7 @@ func (m *Model[IDType, ModelType]) ID() (id IDType) {
 		return *m.id
 	}
 
-	id = m.idFunc(&m.m)
+	id = m.idFunc(&m.M)
 	m.id = &id
 
 	return id
@@ -66,14 +66,14 @@ func (m *Model[IDType, ModelType]) Decode(b []byte) (int, error) {
 	m.Lock()
 	defer m.Unlock()
 
-	return serix.DefaultAPI.Decode(context.Background(), b, &m.m)
+	return serix.DefaultAPI.Decode(context.Background(), b, &m.M)
 }
 
 func (m *Model[IDType, ModelType]) Encode() ([]byte, error) {
 	m.RLock()
 	defer m.RUnlock()
 
-	return serix.DefaultAPI.Encode(context.Background(), &m.m, serix.WithValidation())
+	return serix.DefaultAPI.Encode(context.Background(), &m.M, serix.WithValidation())
 }
 
 func (m *Model[IDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
@@ -85,7 +85,7 @@ func (m *Model[IDType, ModelType]) FromObjectStorage(key, data []byte) (err erro
 
 	m.Lock()
 	defer m.Unlock()
-	if _, err = serix.DefaultAPI.Decode(context.Background(), data, &m.m); err != nil {
+	if _, err = serix.DefaultAPI.Decode(context.Background(), data, &m.M); err != nil {
 		return errors.Errorf("failed to decode m: %w", err)
 	}
 
@@ -111,5 +111,5 @@ func (m *Model[IDType, ModelType]) ObjectStorageValue() (value []byte) {
 }
 
 func (m *Model[IDType, ModelType]) String() string {
-	return fmt.Sprintf("Model[%s] {\n\tid: %+v\n\tmodel: %+v\n}", reflect.TypeOf(m.m).Name(), m.id, m.m)
+	return fmt.Sprintf("Model[%s] {\n\tid: %+v\n\tmodel: %+v\n}", reflect.TypeOf(m.M).Name(), m.id, m.M)
 }
