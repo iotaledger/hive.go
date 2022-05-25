@@ -5,13 +5,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 func TestDeserializer_ReadObject(t *testing.T) {
@@ -215,6 +216,88 @@ func TestDeserializer_ReadString(t *testing.T) {
 			if s != tt.want {
 				t.Errorf("ReadStringFromBytes() got = %v, want %v", s, tt.want)
 			}
+		})
+	}
+}
+
+func TestReadWriteNum(t *testing.T) {
+	tests := []struct {
+		name        string
+		x           any
+		expectedErr error
+	}{
+		{
+			name:        "ok - uint8",
+			x:           uint8(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - uint16",
+			x:           uint16(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - uint32",
+			x:           uint32(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - uint64",
+			x:           uint64(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - int8",
+			x:           int8(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - int16",
+			x:           int16(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - int32",
+			x:           int32(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - int64",
+			x:           int64(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - float32",
+			x:           float32(1),
+			expectedErr: nil,
+		},
+		{
+			name:        "ok - float64",
+			x:           float64(1),
+			expectedErr: nil,
+		},
+	}
+
+	returnErr := func(err error) error { return err }
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serializedBytes, err := serializer.NewSerializer().WriteNum(tt.x, returnErr).Serialize()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+			require.NoError(t, err)
+
+			y := reflect.New(reflect.TypeOf(tt.x)).Interface()
+			_, err = serializer.NewDeserializer(serializedBytes).ReadNum(y, returnErr).Done()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.x, reflect.ValueOf(y).Elem().Interface())
 		})
 	}
 }
