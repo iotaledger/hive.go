@@ -13,13 +13,13 @@ type ObjectStorage[T StorableObject] struct {
 	*objectstorage.ObjectStorage
 }
 
-func New[T StorableObject](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
+func New[T StorableObject](store kvstore.KVStore, newFunc func() T, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
 	newObjectStorage = &ObjectStorage[T]{
 		Events: &Events{
 			ObjectEvicted: events.NewEvent(evictionEvent[T]),
 		},
 
-		ObjectStorage: objectstorage.New(store, objectFactory[T], optionalOptions...),
+		ObjectStorage: objectstorage.New(store, objectFactory[T](newFunc), optionalOptions...),
 	}
 
 	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
@@ -111,8 +111,12 @@ func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.Tim
 	return o.ObjectStorage.ReleaseExecutor()
 }
 
-func objectFactory[T StorableObject](key, data []byte) (result objectstorage.StorableObject, err error) {
-	var obj T
-
-	return obj.FromObjectStorage(key, data)
+func objectFactory[T StorableObject](newFunc func() T) func(key, data []byte) (result objectstorage.StorableObject, err error) {
+	return func(key, data []byte) (objectstorage.StorableObject, error) {
+		o := newFunc()
+		if _, err := o.FromObjectStorage(key, data); err != nil {
+			return nil, err
+		}
+		return o, nil
+	}
 }

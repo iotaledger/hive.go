@@ -12,6 +12,10 @@ import (
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
+func init() {
+
+}
+
 // region Identifier ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Identifier is a 32 byte hash value that can be used to uniquely identify some blob of data.
@@ -91,6 +95,20 @@ func (t Identifier) UnregisterAlias() {
 	defer _identifierAliasesMutex.Unlock()
 
 	delete(_identifierAliases, t)
+}
+
+// Decode decodes the Identifier from a sequence of bytes.
+func (t *Identifier) Decode(data []byte) (consumed int, err error) {
+	if len(data) < IdentifierLength {
+		return 0, errors.New("not enough data to decode Identifier")
+	}
+	copy(t[:], data[:IdentifierLength])
+	return IdentifierLength, nil
+}
+
+// Encode returns a serialized version of the Identifier.
+func (t Identifier) Encode() (serialized []byte, err error) {
+	return t[:], nil
 }
 
 // Bytes returns a serialized version of the Identifier.

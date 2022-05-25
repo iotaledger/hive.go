@@ -98,3 +98,8 @@ func Bind[FirstParamType, ParamType, ReturnType any](secondParam ParamType, call
 		return callback(firstParam, secondParam)
 	}
 }
+
+func NewInstance[T any]() *T {
+	var x T
+	return &x
+}

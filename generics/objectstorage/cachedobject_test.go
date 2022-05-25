@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 func TestCachedObject_Consume(t *testing.T) {
-	objectStorage := New[*testObject](mapdb.NewMapDB(), CacheTime(0))
+	objectStorage := New[*testObject](mapdb.NewMapDB(), lo.NewInstance[testObject], CacheTime(0))
 	defer objectStorage.Shutdown()
 
 	cachedStoredObject1, stored1 := objectStorage.StoreIfAbsent(NewTestObject(1, 3))
@@ -73,15 +74,14 @@ func (t *testObject) FromObjectStorage(key, value []byte) (storableObject Storab
 func (t *testObject) FromBytes(bytes []byte) (storableObject StorableObject, err error) {
 	marshalUtil := marshalutil.New(bytes)
 
-	result := &testObject{}
-	if result.key, err = marshalUtil.ReadUint64(); err != nil {
+	if t.key, err = marshalUtil.ReadUint64(); err != nil {
 		return nil, errors.Errorf("failed to read key from MarshalUtil: %w", err)
 	}
-	if result.value, err = marshalUtil.ReadUint64(); err != nil {
+	if t.value, err = marshalUtil.ReadUint64(); err != nil {
 		return nil, errors.Errorf("failed to read value from MarshalUtil: %w", err)
 	}
 
-	return result, nil
+	return t, nil
 }
 
 func (t *testObject) ObjectStorageKey() []byte {
