@@ -79,20 +79,20 @@ func (m *Model[Key, T]) Encode() ([]byte, error) {
 	return serix.DefaultAPI.Encode(context.Background(), &m.m, serix.WithValidation())
 }
 
-func (m *Model[Key, T]) FromObjectStorage(key, data []byte) (object objectstorage.StorableObject, err error) {
+func (m *Model[Key, T]) FromObjectStorage(key, data []byte) (err error) {
 	m.idMutex.Lock()
 	defer m.idMutex.Unlock()
 	if _, err = serix.DefaultAPI.Decode(context.Background(), key, &m.id); err != nil {
-		return nil, errors.Errorf("failed to decode key: %w", err)
+		return errors.Errorf("failed to decode key: %w", err)
 	}
 
 	m.Lock()
 	defer m.Unlock()
 	if _, err = serix.DefaultAPI.Decode(context.Background(), data, &m.m); err != nil {
-		return nil, errors.Errorf("failed to decode m: %w", err)
+		return errors.Errorf("failed to decode m: %w", err)
 	}
 
-	return m, nil
+	return nil
 }
 
 func (m *Model[Key, T]) ObjectStorageKey() (key []byte) {

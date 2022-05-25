@@ -130,7 +130,7 @@ func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.Tim
 func objectFactory[T PtrStorableObject[U], U any](key, data []byte) (result objectstorage.StorableObject, err error) {
 	var instance U
 	typedResult := T(&instance)
-	if _, err = typedResult.FromObjectStorage(key, data); err != nil {
+	if err = typedResult.FromObjectStorage(key, data); err != nil {
 		return nil, err
 	}
 

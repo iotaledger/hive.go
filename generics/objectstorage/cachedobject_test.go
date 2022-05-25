@@ -53,7 +53,7 @@ func TestNewStructStorage(t *testing.T) {
 func TestNewInterfaceStorage(t *testing.T) {
 	objectStorage := NewInterfaceStorage[testInterface](mapdb.NewMapDB(), func(key []byte, data []byte) (result StorableObject, err error) {
 		r := new(testObject)
-		if _, err = r.FromObjectStorage(key, data); err != nil {
+		if err = r.FromObjectStorage(key, data); err != nil {
 			return nil, err
 		}
 
@@ -111,21 +111,20 @@ func NewTestObject(key, value uint64) *testObject {
 	}
 }
 
-func (t *testObject) FromObjectStorage(key, value []byte) (storableObject StorableObject, err error) {
+func (t *testObject) FromObjectStorage(key, value []byte) (err error) {
 	return t.FromBytes(byteutils.ConcatBytes(key, value))
 
 }
-func (t *testObject) FromBytes(bytes []byte) (storableObject StorableObject, err error) {
+func (t *testObject) FromBytes(bytes []byte) (err error) {
 	marshalUtil := marshalutil.New(bytes)
-
 	if t.key, err = marshalUtil.ReadUint64(); err != nil {
-		return nil, errors.Errorf("failed to read key from MarshalUtil: %w", err)
+		return errors.Errorf("failed to read key from MarshalUtil: %w", err)
 	}
 	if t.value, err = marshalUtil.ReadUint64(); err != nil {
-		return nil, errors.Errorf("failed to read value from MarshalUtil: %w", err)
+		return errors.Errorf("failed to read value from MarshalUtil: %w", err)
 	}
 
-	return t, nil
+	return nil
 }
 
 func (t *testObject) ObjectStorageKey() []byte {

@@ -44,12 +44,11 @@ func TestSth(t *testing.T) {
 	source := NewSigLockedSingleOutput(1337, 2)
 
 	restored := new(SigLockedSingleOutput)
-	restoredObject, err := restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue())
-	assert.NoError(t, err)
+	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
 
 	assert.Equal(t, source.ID(), restored.ID())
 	assert.Equal(t, source.Address(), restored.Address())
 	assert.Equal(t, source.Balance(), restored.Balance())
-	assert.Equal(t, source.ObjectStorageKey(), restoredObject.ObjectStorageKey())
-	assert.Equal(t, source.ObjectStorageValue(), restoredObject.ObjectStorageValue())
+	assert.Equal(t, source.ObjectStorageKey(), restored.ObjectStorageKey())
+	assert.Equal(t, source.ObjectStorageValue(), restored.ObjectStorageValue())
 }
