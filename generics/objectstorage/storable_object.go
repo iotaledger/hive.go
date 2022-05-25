@@ -8,4 +8,10 @@ type StorableObject interface {
 	objectstorage.StorableObject
 }
 
+type PtrStorableObject[T any] interface {
+	*T
+
+	StorableObject
+}
+
 type StorableObjectFactory func(key []byte, data []byte) (result StorableObject, err error)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/types"
 )
 
@@ -44,7 +43,7 @@ func (s *SigLockedSingleOutput) Address() uint64 {
 func TestSth(t *testing.T) {
 	source := NewSigLockedSingleOutput(1337, 2)
 
-	restored := lo.NewInstance[SigLockedSingleOutput]()
+	restored := new(SigLockedSingleOutput)
 	restoredObject, err := restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue())
 	assert.NoError(t, err)
 
