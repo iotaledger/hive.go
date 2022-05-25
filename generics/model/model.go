@@ -22,17 +22,21 @@ type Model[IDType any, ModelType any] struct {
 	objectstorage.StorableObjectFlags
 }
 
-func NewModel[IDType any, ModelType any](model ModelType, optionalIDFunc ...func(model *ModelType) IDType) Model[IDType, ModelType] {
+func NewModel[IDType any, ModelType any](model ModelType, optionalIDFunc ...func(model *ModelType) IDType) (new Model[IDType, ModelType]) {
 	if len(optionalIDFunc) == 0 {
 		optionalIDFunc = append(optionalIDFunc, func(model *ModelType) (key IDType) {
 			return key
 		})
 	}
 
-	return Model[IDType, ModelType]{
+	new = Model[IDType, ModelType]{
 		M:      model,
 		idFunc: optionalIDFunc[0],
 	}
+	new.SetModified()
+	new.Persist()
+
+	return new
 }
 
 func (m *Model[IDType, ModelType]) ID() (id IDType) {
