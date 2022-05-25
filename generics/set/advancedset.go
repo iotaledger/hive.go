@@ -1,46 +1,24 @@
 package set
 
 import (
-	"strings"
-
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/generics/orderedmap"
 	"github.com/iotaledger/hive.go/generics/walker"
-	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/iotaledger/hive.go/types"
 )
 
-type AdvancedSet[T AdvancedSetElement[T]] struct {
+type AdvancedSet[T comparable] struct {
 	orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
 
-func NewAdvancedSet[T AdvancedSetElement[T]](elements ...T) (new *AdvancedSet[T]) {
+func NewAdvancedSet[T comparable](elements ...T) (new *AdvancedSet[T]) {
 	new = &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
 		new.Set(element, types.Void)
 	}
 
 	return new
-}
-
-func (t *AdvancedSet[T]) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (err error) {
-	elementCount, err := marshalUtil.ReadUint64()
-	if err != nil {
-		return errors.Errorf("failed to parse amount of AdvancedSet: %w", err)
-	}
-
-	for i := 0; i < int(elementCount); i++ {
-		var element T
-
-		if element, err = element.Unmarshal(marshalUtil); err != nil {
-			return errors.Errorf("failed to parse TransactionID: %w", err)
-		}
-		t.Add(element)
-	}
-
-	return nil
 }
 
 func (t *AdvancedSet[T]) IsEmpty() (empty bool) {
@@ -140,46 +118,6 @@ func (t *AdvancedSet[T]) Slice() (slice []T) {
 	return slice
 }
 
-func (t *AdvancedSet[T]) Bytes() (serialized []byte) {
-	marshalUtil := marshalutil.New()
-
-	marshalUtil.WriteUint64(uint64(t.Size()))
-	_ = t.ForEach(func(element T) (err error) {
-		marshalUtil.Write(element)
-		return nil
-	})
-
-	return marshalUtil.Bytes()
-}
-
-func (t *AdvancedSet[T]) String() (humanReadable string) {
-	elementStrings := lo.Map(t.Slice(), T.String)
-	if len(elementStrings) == 0 {
-		return "AdvancedSet()"
-	}
-
-	return "AdvancedSet(" + strings.Join(elementStrings, ", ") + ")"
-}
-
-func (t *AdvancedSet[T]) Base58() (base58 []string) {
-	base58 = make([]string, 0)
-	_ = t.ForEach(func(element T) (err error) {
-		base58 = append(base58, element.Base58())
-		return nil
-	})
-
-	return base58
-}
-
 func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 	return walker.New[T](false).PushAll(t.Slice()...)
-}
-
-type AdvancedSetElement[T any] interface {
-	comparable
-
-	Unmarshal(util *marshalutil.MarshalUtil) (new T, err error)
-	Bytes() (serialized []byte)
-	String() (humanReadable string)
-	Base58() (base58 string)
 }

@@ -9,7 +9,6 @@ import (
 	"golang.org/x/crypto/blake2b"
 
 	"github.com/iotaledger/hive.go/cerrors"
-	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 func init() {
@@ -32,17 +31,6 @@ func (t *Identifier) FromRandomness() (err error) {
 	return
 }
 
-// FromBytes un-serializes an Identifier from a sequence of bytes.
-func (t *Identifier) FromBytes(bytes []byte) (consumedBytes int, err error) {
-	marshalUtil := marshalutil.New(bytes)
-
-	if err = t.FromMarshalUtil(marshalUtil); err != nil {
-		return marshalUtil.ReadOffset(), errors.Errorf("failed to parse Identifier from MarshalUtil: %w", err)
-	}
-
-	return marshalUtil.ReadOffset(), nil
-}
-
 // FromBase58 un-serializes an Identifier from a base58 encoded string.
 func (t *Identifier) FromBase58(base58String string) (err error) {
 	decodedBytes, err := base58.Decode(base58String)
@@ -50,22 +38,11 @@ func (t *Identifier) FromBase58(base58String string) (err error) {
 		return errors.Errorf("error while decoding base58 encoded Identifier (%v): %w", err, cerrors.ErrBase58DecodeFailed)
 	}
 
-	if _, err = t.FromBytes(decodedBytes); err != nil {
+	if _, err = t.Decode(decodedBytes); err != nil {
 		return errors.Errorf("failed to parse Identifier from bytes: %w", err)
 	}
 
 	return nil
-}
-
-// FromMarshalUtil un-serializes an Identifier from a MarshalUtil.
-func (t *Identifier) FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (err error) {
-	outputIdentifierBytes, err := marshalUtil.ReadBytes(IdentifierLength)
-	if err != nil {
-		return errors.Errorf("failed to parse Identifier (%v): %w", err, cerrors.ErrParseBytesFailed)
-	}
-	copy((*t)[:], outputIdentifierBytes)
-
-	return
 }
 
 // RegisterAlias allows to register a human-readable alias for the Identifier which will be used as a replacement for
@@ -109,11 +86,6 @@ func (t *Identifier) Decode(data []byte) (consumed int, err error) {
 // Encode returns a serialized version of the Identifier.
 func (t Identifier) Encode() (serialized []byte, err error) {
 	return t[:], nil
-}
-
-// Bytes returns a serialized version of the Identifier.
-func (t Identifier) Bytes() (serialized []byte) {
-	return t[:]
 }
 
 // Base58 returns a base58 encoded version of the Identifier.
