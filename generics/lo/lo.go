@@ -98,3 +98,12 @@ func Bind[FirstParamType, ParamType, ReturnType any](secondParam ParamType, call
 		return callback(firstParam, secondParam)
 	}
 }
+
+// PanicOnErr panics of the seconds parameter is an error and returns the first parameter otherwise.
+func PanicOnErr[T any](result T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+
+	return result
+}
