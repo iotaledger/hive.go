@@ -191,24 +191,16 @@ func (m *ReferenceModel[SourceIDType, TargetIDType]) ObjectStorageValue() (value
 	return nil
 }
 
+func (m ReferenceModel[SourceIDType, TargetIDType]) KeyPartitions() []int {
+	var s SourceIDType
+	var t TargetIDType
+
+	return []int{len(serix.Encode(s)), len(serix.Encode(t))}
+}
+
 func (m *ReferenceModel[SourceIDType, TargetIDType]) String() string {
 	return fmt.Sprintf("ReferenceModel[%s,%s] {\n\tSourceID: %+v\n\tTargetID: %+v\n}",
 		reflect.TypeOf(m.SourceID).Name(), reflect.TypeOf(m.TargetID).Name(), m.SourceID, m.TargetID)
-}
-
-func (m ReferenceModel[SourceIDType, TargetIDType]) PartitionKey() []int {
-	var s SourceIDType
-	sourceBytes, err := serix.DefaultAPI.Encode(context.Background(), s, serix.WithValidation())
-	if err != nil {
-		panic(err)
-	}
-
-	var t TargetIDType
-	targetBytes, err := serix.DefaultAPI.Encode(context.Background(), t, serix.WithValidation())
-	if err != nil {
-		panic(err)
-	}
-	return []int{len(sourceBytes), len(targetBytes)}
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +274,13 @@ func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Obje
 	defer m.RUnlock()
 
 	return serix.Encode(&m.M)
+}
+
+func (m ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPartitions() []int {
+	var s SourceIDType
+	var t TargetIDType
+
+	return []int{len(serix.Encode(s)), len(serix.Encode(t))}
 }
 
 func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) String() string {

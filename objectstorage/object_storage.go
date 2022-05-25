@@ -391,7 +391,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 	opts.apply(options...)
 
 	if objectStorage.options.keyPartitions == nil && len(opts.optionalPrefix) > 0 {
-		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+		panic("prefix iterations are only allowed when the option KeyPartitions(....) is set")
 	}
 
 	iterations := 0
@@ -496,7 +496,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 	opts.apply(options...)
 
 	if objectStorage.options.keyPartitions == nil && len(opts.optionalPrefix) > 0 {
-		panic("prefix iterations are only allowed when the option PartitionKey(....) is set")
+		panic("prefix iterations are only allowed when the option KeyPartitions(....) is set")
 	}
 
 	iterations := 0
