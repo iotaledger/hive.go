@@ -42,14 +42,9 @@ type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
 
-type RLocker interface {
-	RLock()
-	RUnlock()
-}
-
-type WLocker interface {
-	Lock()
-	Unlock()
+type lockFunctionsPair struct {
+	acquire reflect.Value
+	release reflect.Value
 }
 
 // API is the main object of the package that provides the methods for client to use.
@@ -66,6 +61,9 @@ type API struct {
 
 	validatorsRegistryMutex sync.RWMutex
 	validatorsRegistry      map[reflect.Type]validators
+
+	readLocksRegistryMutex sync.RWMutex
+	readLocksRegistry      map[reflect.Type]lockFunctionsPair
 }
 
 type validators struct {
@@ -88,6 +86,7 @@ func NewAPI() *API {
 		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
 		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
 		validatorsRegistry:   map[reflect.Type]validators{},
+		readLocksRegistry:    map[reflect.Type]lockFunctionsPair{},
 	}
 	return api
 }
@@ -438,6 +437,86 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 		}
 	}
 	return nil
+}
+
+// RegisterReadLock registers a pair of functions - acquireFn and releaseFn - to call them on the object obj during encoding.
+// The functions must have single input argument with the same type as object type.
+// Usually, those functions would just call mutex.RLock() and mutex.RUnlock() on the mutex stored inside the object.
+// Since mutex must not be copied it's better to register locks for object pointer, not value.
+// Example:
+// type MyLockableType struct {
+//   mutex sync.RWMutex
+//   Foo string `serix:"0"`
+// }
+// acquireFn := func(o *MyLockableType) { o.mutex.RLock() }
+// releaseFn := func(o *MyLockableType) { o.mutex.RUnlock() }
+// api.RegisterReadLock(new(MyLockableType), acquireFn, releaseFn)
+//
+// See TestMain() in serix_test.go for more examples.
+func (api *API) RegisterReadLock(obj interface{}, acquireFn, releaseFn interface{}) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return errors.New("'obj' is a nil interface, it needs to be a valid type")
+	}
+	lockFnValue, err := parseLockFunc(objType, acquireFn)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	unlockFnValue, err := parseLockFunc(objType, releaseFn)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	locks := lockFunctionsPair{
+		acquire: lockFnValue,
+		release: unlockFnValue,
+	}
+	api.readLocksRegistryMutex.Lock()
+	defer api.readLocksRegistryMutex.Unlock()
+	api.readLocksRegistry[objType] = locks
+	return nil
+}
+
+func (api *API) callReadLockFunc(value reflect.Value, isAcquire bool) {
+	api.readLocksRegistryMutex.RLock()
+	defer api.readLocksRegistryMutex.RUnlock()
+	valueType := value.Type()
+	locks, ok := api.readLocksRegistry[valueType]
+	if !ok {
+		return
+	}
+	if isAcquire {
+		locks.acquire.Call([]reflect.Value{value})
+	} else {
+		locks.release.Call([]reflect.Value{value})
+	}
+	return
+}
+
+func parseLockFunc(objectType reflect.Type, fn interface{}) (reflect.Value, error) {
+	if fn == nil {
+		return reflect.Value{}, errors.Errorf("lock function must be non nil")
+	}
+	funcValue := reflect.ValueOf(fn)
+	if !funcValue.IsValid() || funcValue.IsZero() {
+		return reflect.Value{}, errors.Errorf("lock function must be non nil")
+	}
+	if funcValue.Kind() != reflect.Func {
+		return reflect.Value{}, errors.Errorf(
+			"validator must be a function, got %T(%s)", fn, funcValue.Kind(),
+		)
+	}
+	funcType := funcValue.Type()
+	if funcType.NumIn() != 1 {
+		return reflect.Value{}, errors.Errorf("lock function must have one input argument, got=%d", funcType.NumIn())
+	}
+	argType := funcType.In(0)
+	if argType != objectType {
+		return reflect.Value{}, errors.Errorf(
+			"lock function argument mast have the same type as the object the fuction was registered for: "+
+				"argType=%s, objectType=%s", argType, objectType,
+		)
+	}
+	return funcValue, nil
 }
 
 // RegisterTypeSettings registers settings for a particular type obj.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/iotaledger/hive.go/serializer"
 	"github.com/iotaledger/hive.go/serix"
+	"github.com/stretchr/testify/mock"
 )
 
 const defaultSeriMode = serializer.DeSeriModePerformValidation
@@ -352,6 +353,10 @@ func BytesValidation(ctx context.Context, b []byte) error {
 	return errBytesValidation
 }
 
+type LockableObject struct {
+	mock mock.Mock
+}
+
 func TestMain(m *testing.M) {
 	exitCode := func() int {
 		if err := testAPI.RegisterTypeSettings(
@@ -379,6 +384,15 @@ func TestMain(m *testing.M) {
 			log.Panic(err)
 		}
 		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
+			log.Panic(err)
+		}
+		lockFn := func(lo *LockableObject) {
+			lo.mock.MethodCalled("lock")
+		}
+		unlockFn := func(lo *LockableObject) {
+			lo.mock.MethodCalled("unlock")
+		}
+		if err := testAPI.RegisterReadLock(new(LockableObject), lockFn, unlockFn); err != nil {
 			log.Panic(err)
 		}
 		return m.Run()

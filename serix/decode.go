@@ -12,18 +12,6 @@ import (
 
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {
 	valueType := value.Type()
-	wlock, ok := value.Interface().(WLocker)
-	if ok {
-		if value.Kind() == reflect.Ptr && value.IsNil() {
-			value.Set(reflect.New(valueType.Elem()))
-		}
-	} else {
-		wlock, _ = value.Addr().Interface().(WLocker)
-	}
-	if wlock != nil {
-		wlock.Lock()
-		defer wlock.Unlock()
-	}
 	if opts.validation {
 		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
 			return 0, errors.Wrap(err, "pre-deserialization validation failed")

@@ -94,6 +94,16 @@ func TestEncode_ArrayRules(t *testing.T) {
 	assert.Contains(t, err.Error(), "min count of elements within the array not reached")
 }
 
+func TestEncode_ReadLock(t *testing.T) {
+	t.Parallel()
+	testObj := &LockableObject{}
+	testObj.mock.On("lock")
+	testObj.mock.On("unlock")
+	_, err := testAPI.Encode(ctx, testObj)
+	require.NoError(t, err)
+	testObj.mock.AssertExpectations(t)
+}
+
 func testEncode(t testing.TB, testObj serializer.Serializable, opts ...serix.Option) {
 	got, err := testAPI.Encode(ctx, testObj, opts...)
 	require.NoError(t, err)
