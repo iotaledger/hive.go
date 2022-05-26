@@ -88,6 +88,11 @@ func (t Identifier) Encode() (serialized []byte, err error) {
 	return t[:], nil
 }
 
+// Bytes returns the raw bytes of the Identifier.
+func (t Identifier) Bytes() []byte {
+	return t[:]
+}
+
 // Base58 returns a base58 encoded version of the Identifier.
 func (t Identifier) Base58() (base58Encoded string) {
 	return base58.Encode(t[:])
