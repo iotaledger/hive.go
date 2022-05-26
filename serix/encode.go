@@ -9,14 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/serializer"
 )
-
-// Encode is a utility function acting as syntactical sugar for easier encoding.
-func Encode(obj interface{}) []byte {
-	return lo.PanicOnErr(DefaultAPI.Encode(context.Background(), obj))
-}
 
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
 	valueI := value.Interface()

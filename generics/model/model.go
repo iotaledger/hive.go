@@ -104,6 +104,13 @@ func (m *Model[IDType, ModelType]) ObjectStorageValue() (value []byte) {
 	return value
 }
 
+func (m *Model[IDType, ModelType]) Bytes() (bytes []byte, err error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	return serix.DefaultAPI.Encode(context.Background(), m.M, serix.WithValidation())
+}
+
 func (m *Model[IDType, ModelType]) String() string {
 	return fmt.Sprintf("Model[%s] {\n\tid: %+v\n\tmodel: %+v\n}", reflect.TypeOf(m.M).Name(), m.id, m.M)
 }
@@ -185,7 +192,7 @@ func (m *ReferenceModel[SourceIDType, TargetIDType]) String() string {
 type ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType any] struct {
 	SourceID SourceIDType
 	TargetID TargetIDType
-	M        ModelType
+	M        ModelType `serix:"0"`
 
 	sync.RWMutex
 	objectstorage.StorableObjectFlags
@@ -242,6 +249,13 @@ func (m ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPa
 	var t TargetIDType
 
 	return []int{len(serix.Encode(s)), len(serix.Encode(t))}
+}
+
+func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Bytes() (bytes []byte, err error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	return serix.DefaultAPI.Encode(context.Background(), m.M, serix.WithValidation())
 }
 
 func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) String() string {
