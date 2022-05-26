@@ -9,6 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/iotaledger/hive.go/byteutils"
+	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/generics/objectstorage"
 	"github.com/iotaledger/hive.go/serix"
 )
@@ -177,7 +178,7 @@ func (m ReferenceModel[SourceIDType, TargetIDType]) KeyPartitions() []int {
 	var s SourceIDType
 	var t TargetIDType
 
-	return []int{len(serix.Encode(s)), len(serix.Encode(t))}
+	return []int{len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), s))), len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), t)))}
 }
 
 func (m *ReferenceModel[SourceIDType, TargetIDType]) String() string {
@@ -234,21 +235,21 @@ func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Obje
 	m.RLock()
 	defer m.RUnlock()
 
-	return byteutils.ConcatBytes(serix.Encode(m.SourceID), serix.Encode(m.TargetID))
+	return byteutils.ConcatBytes(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), m.SourceID)), lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), m.TargetID)))
 }
 
 func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) ObjectStorageValue() (value []byte) {
 	m.RLock()
 	defer m.RUnlock()
 
-	return serix.Encode(&m.M)
+	return lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), &m.M))
 }
 
 func (m ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPartitions() []int {
 	var s SourceIDType
 	var t TargetIDType
 
-	return []int{len(serix.Encode(s)), len(serix.Encode(t))}
+	return []int{len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), s))), len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), t)))}
 }
 
 func (m *ReferenceModelWithMetadata[SourceIDType, TargetIDType, ModelType]) Bytes() (bytes []byte, err error) {
