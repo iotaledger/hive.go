@@ -67,20 +67,6 @@ func (m *Model[IDType, ModelType]) SetID(id IDType) {
 	m.id = &id
 }
 
-func (m *Model[IDType, ModelType]) Decode(b []byte) (int, error) {
-	m.Lock()
-	defer m.Unlock()
-
-	return serix.DefaultAPI.Decode(context.Background(), b, &m.M, serix.WithValidation())
-}
-
-func (m *Model[IDType, ModelType]) Encode() ([]byte, error) {
-	m.RLock()
-	defer m.RUnlock()
-
-	return serix.DefaultAPI.Encode(context.Background(), &m.M, serix.WithValidation())
-}
-
 func (m *Model[IDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
 	m.idMutex.Lock()
 	defer m.idMutex.Unlock()
@@ -107,7 +93,10 @@ func (m *Model[IDType, ModelType]) ObjectStorageKey() (key []byte) {
 }
 
 func (m *Model[IDType, ModelType]) ObjectStorageValue() (value []byte) {
-	value, err := m.Encode()
+	m.RLock()
+	defer m.RUnlock()
+
+	value, err := serix.DefaultAPI.Encode(context.Background(), &m.M, serix.WithValidation())
 	if err != nil {
 		panic(err)
 	}
