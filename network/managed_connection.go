@@ -78,7 +78,7 @@ func (mc *ManagedConnection) Close() (err error) {
 		// do not trigger the error event to prevent deadlocks
 		err = mc.Conn.Close()
 		// trigger Close event in separate go routine to prevent deadlocks
-		mc.Events.Close.Trigger(&CloseEvent{})
+		go mc.Events.Close.Trigger(&CloseEvent{})
 	})
 	return err
 }
