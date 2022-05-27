@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/cockroachdb/errors"
 
@@ -13,13 +14,12 @@ import (
 	"github.com/iotaledger/hive.go/serix"
 )
 
-// region StorableReferenceWithMetadata ///////////////////////////////////////////////////////////////////////////////////
-
 type StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any] struct {
-	SourceID         SourceIDType
-	TargetID         TargetIDType
-	Model[ModelType] `serix:"0"`
+	SourceID SourceIDType
+	TargetID TargetIDType
+	M        ModelType `serix:"0"`
 
+	sync.RWMutex
 	objectstorage.StorableObjectFlags
 }
 
@@ -27,7 +27,7 @@ func NewStorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any]
 	new = StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]{
 		SourceID: s,
 		TargetID: t,
-		Model:    New(m),
+		M:        m,
 	}
 	new.SetModified()
 	new.Persist()
@@ -47,7 +47,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) F
 	if err != nil {
 		return errors.Errorf("failed to decode target ID: %w", err)
 	}
-	if err = s.Model.FromBytes(bytes[consumedSourceIDBytes+consumedTargetIDBytes:]); err != nil {
+	if _, err = serix.DefaultAPI.Decode(context.Background(), bytes[consumedSourceIDBytes+consumedTargetIDBytes:], &s.M, serix.WithValidation()); err != nil {
 		return errors.Errorf("failed to decode model: %w", err)
 	}
 
@@ -95,7 +95,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) B
 	if err != nil {
 		return nil, errors.Errorf("failed to serialize target ID: %w", err)
 	}
-	modelBytes, err := s.Model.Bytes()
+	modelBytes, err := serix.DefaultAPI.Encode(context.Background(), s.M)
 	if err != nil {
 		return nil, errors.Errorf("failed to serialize model: %w", err)
 	}
@@ -110,5 +110,3 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) S
 	return fmt.Sprintf("StorableReferenceWithMetadata[%s, %s, %s] {\n\tSourceID: %+v\n\tTargetID: %+v\n\tModel: %+v\n}",
 		reflect.TypeOf(s.SourceID).Name(), reflect.TypeOf(s.TargetID).Name(), reflect.TypeOf(s.M).Name(), s.SourceID, s.TargetID, s.M)
 }
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

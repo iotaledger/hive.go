@@ -14,11 +14,12 @@ import (
 )
 
 type Storable[IDType, ModelType any] struct {
-	id               *IDType
-	idFunc           func(model *ModelType) IDType
-	idMutex          sync.RWMutex
-	Model[ModelType] `serix:"0"`
+	id      *IDType
+	idFunc  func(model *ModelType) IDType
+	idMutex sync.RWMutex
+	M       ModelType `serix:"0"`
 
+	sync.RWMutex
 	objectstorage.StorableObjectFlags
 }
 
@@ -30,7 +31,7 @@ func NewStorable[IDType, ModelType any](model ModelType, optionalIDFunc ...func(
 	}
 
 	new = Storable[IDType, ModelType]{
-		Model:  New(model),
+		M:      model,
 		idFunc: optionalIDFunc[0],
 	}
 	new.SetModified()
@@ -66,6 +67,14 @@ func (s *Storable[IDType, ModelType]) SetID(id IDType) {
 	s.id = &id
 }
 
+func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
+	s.Lock()
+	defer s.Unlock()
+
+	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, &s.M, serix.WithValidation())
+	return
+}
+
 func (s *Storable[IDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
 	s.idMutex.Lock()
 	defer s.idMutex.Unlock()
@@ -93,6 +102,13 @@ func (s *Storable[IDType, ModelType]) ObjectStorageValue() (value []byte) {
 	return lo.PanicOnErr(s.Bytes())
 }
 
+func (s *Storable[IDType, ModelType]) Bytes() (bytes []byte, err error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
+}
+
 func (s *Storable[IDType, ModelType]) String() string {
-	return fmt.Sprintf("Model[%s] {\n\tID: %+v\n\tModel: %+v\n}", reflect.TypeOf(s.M).Name(), s.id, s.M)
+	return fmt.Sprintf("Storable[%s] {\n\tID: %+v\n\tModel: %+v\n}", reflect.TypeOf(s.M).Name(), s.id, s.M)
 }
