@@ -3,9 +3,7 @@ package serix
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
-	"math/big"
 	"reflect"
 	"strconv"
 )
@@ -35,11 +33,11 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	case reflect.Ptr:
 		if valueType == bigIntPtrType {
 			bigIntHexStr := mapVal.(string)
-			bigIntBytes, err := hexutil.Decode(bigIntHexStr)
+			bigInt, err := DecodeUint256(bigIntHexStr)
 			if err != nil {
 				return errors.Wrap(err, "failed to read big.Int from map")
 			}
-			value.Addr().Elem().Set(reflect.ValueOf(new(big.Int).SetBytes(bigIntBytes)))
+			value.Addr().Elem().Set(reflect.ValueOf(bigInt))
 			return nil
 		}
 
@@ -109,10 +107,14 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		addrValue := value.Addr().Convert(reflect.TypeOf((*bool)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 		return nil
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return api.mapDecodeInteger(value, valueType, mapVal, true)
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return api.mapDecodeInteger(value, valueType, mapVal, false)
+	case reflect.Int8, reflect.Int16, reflect.Int32:
+		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), true))
+	case reflect.Int64:
+		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, true))
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), false))
+	case reflect.Uint64:
+		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, false))
 	case reflect.Float32:
 		return api.mapDecodeFloat(value, valueType, mapVal, 32)
 	case reflect.Float64:
@@ -122,25 +124,56 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	return errors.Errorf("can't map decode: unsupported type %s", valueType)
 }
 
-func (api *API) mapDecodeInteger(value reflect.Value, valueType reflect.Type, mapVal any, signed bool) error {
+// num parse func returns a num or an error.
+type numParseFunc func() (any, error)
+
+func float64NumParser(v float64, ty reflect.Kind, signed bool) numParseFunc {
+	return func() (any, error) {
+		if signed {
+			switch ty {
+			case reflect.Int8:
+				return int8(v), nil
+			case reflect.Int16:
+				return int16(v), nil
+			case reflect.Int32:
+				return int32(v), nil
+			default:
+				return nil, errors.Errorf("can not map decode kind %s to signed integer", ty)
+			}
+		}
+		switch ty {
+		case reflect.Uint8:
+			return uint8(v), nil
+		case reflect.Uint16:
+			return uint16(v), nil
+		case reflect.Uint32:
+			return uint32(v), nil
+		default:
+			return nil, errors.Errorf("can not map decode kind %s to unsigned integer", ty)
+		}
+	}
+}
+
+func strNumParser(str string, bitSize int, signed bool) numParseFunc {
+	return func() (any, error) {
+		if signed {
+			return strconv.ParseInt(str, 10, bitSize)
+		}
+		return strconv.ParseUint(str, 10, bitSize)
+	}
+}
+
+func (api *API) mapDecodeNum(value reflect.Value, valueType reflect.Type, parser numParseFunc) error {
 	addrValue := value.Addr()
-	bitSize, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
+	_, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
 	addrValue = addrValue.Convert(addrTypeToConvert)
 
-	if signed {
-		num, err := strconv.ParseInt(mapVal.(string), 10, bitSize)
-		if err != nil {
-			return err
-		}
-		addrValue.Elem().SetInt(num)
-		return nil
-	}
-
-	num, err := strconv.ParseUint(mapVal.(string), 10, bitSize)
+	num, err := parser()
 	if err != nil {
 		return err
 	}
-	addrValue.Elem().SetUint(num)
+
+	addrValue.Elem().Set(reflect.ValueOf(num))
 	return nil
 }
 
@@ -259,7 +292,7 @@ func (api *API) mapDecodeStructFields(
 
 		mapVal, has := m[sField.settings.ts.MustMapKey()]
 		if !has {
-			if sField.settings.isOptional {
+			if sField.settings.isOptional || sField.settings.omitEmpty {
 				continue
 			}
 			return errors.Wrapf(err, "missing map entry for field %s", sField.name)

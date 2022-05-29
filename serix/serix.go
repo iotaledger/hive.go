@@ -15,6 +15,7 @@ package serix
 
 import (
 	"context"
+	"github.com/iancoleman/orderedmap"
 	"math/big"
 	"reflect"
 	"sort"
@@ -276,7 +277,7 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
-func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (any, error) {
+func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
 		return nil, errors.New("invalid value for destination")
@@ -285,7 +286,11 @@ func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) 
 	for _, o := range opts {
 		o(opt)
 	}
-	return api.mapEncode(ctx, value, opt.ts, opt)
+	m, err := api.mapEncode(ctx, value, opt.ts, opt)
+	if err != nil {
+		return nil, err
+	}
+	return m.(*orderedmap.OrderedMap), nil
 }
 
 // Decode deserializes bytes b into the provided object obj.
@@ -641,6 +646,7 @@ type tagSettings struct {
 	position   int
 	isOptional bool
 	nest       bool
+	omitEmpty  bool
 	ts         TypeSettings
 }
 
@@ -726,6 +732,8 @@ func parseStructTag(tag string) (tagSettings, error) {
 			settings.isOptional = true
 		case "nest":
 			settings.nest = true
+		case "omitempty":
+			settings.omitEmpty = true
 		case "mapKey":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect mapKey tag format: %s", currentPart)

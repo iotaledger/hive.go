@@ -3,7 +3,6 @@ package serix
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"math/big"
@@ -39,7 +38,7 @@ func (api *API) mapEncodeBasedOnType(
 	switch value.Kind() {
 	case reflect.Ptr:
 		if valueBigInt, ok := valueI.(*big.Int); ok {
-			return hexutil.Encode(valueBigInt.Bytes()), nil
+			return EncodeUint256(valueBigInt), nil
 		}
 
 		elemValue := reflect.Indirect(value)
@@ -52,6 +51,8 @@ func (api *API) mapEncodeBasedOnType(
 		if elemValue.Kind() == reflect.Array {
 			sliceValue := sliceFromArray(elemValue)
 			sliceValueType := sliceValue.Type()
+
+			ts, _ = api.getTypeSettings(valueType)
 			return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 		}
 
@@ -71,9 +72,13 @@ func (api *API) mapEncodeBasedOnType(
 		return value.String(), nil
 	case reflect.Bool:
 		return value.Bool(), nil
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int8, reflect.Int16, reflect.Int32:
+		return value.Int(), nil
+	case reflect.Int64:
 		return strconv.FormatInt(value.Int(), 10), nil
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return value.Uint(), nil
+	case reflect.Uint64:
 		return strconv.FormatUint(value.Uint(), 10), nil
 	case reflect.Float32, reflect.Float64:
 		return strconv.FormatFloat(value.Float(), 'E', -1, 64), nil
@@ -149,6 +154,10 @@ func (api *API) mapEncodeStructFields(
 			if err := api.mapEncodeStructFields(ctx, obj, fieldValue, fieldType, opts); err != nil {
 				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}
+			continue
+		}
+
+		if sField.settings.omitEmpty && fieldValue.IsZero() {
 			continue
 		}
 

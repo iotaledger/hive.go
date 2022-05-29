@@ -35,18 +35,19 @@ func TestMapEncodeDecode(t *testing.T) {
 			name: "basic types",
 			paras: func() paras {
 				type example struct {
-					Uint64  uint64  `serix:"0,mapKey=uint64"`
-					Uint32  uint32  `serix:"1,mapKey=uint32"`
-					Uint16  uint16  `serix:"2,mapKey=uint16"`
-					Uint8   uint8   `serix:"3,mapKey=uint8"`
-					Int64   int64   `serix:"4,mapKey=int64"`
-					Int32   int32   `serix:"5,mapKey=int32"`
-					Int16   int16   `serix:"6,mapKey=int16"`
-					Int8    int8    `serix:"7,mapKey=int8"`
-					Float32 float32 `serix:"8,mapKey=float32"`
-					Float64 float64 `serix:"9,mapKey=float64"`
-					String  string  `serix:"10,mapKey=string"`
-					Bool    bool    `serix:"11,mapKey=bool"`
+					Uint64    uint64  `serix:"0,mapKey=uint64"`
+					Uint32    uint32  `serix:"1,mapKey=uint32"`
+					Uint16    uint16  `serix:"2,mapKey=uint16"`
+					Uint8     uint8   `serix:"3,mapKey=uint8"`
+					Int64     int64   `serix:"4,mapKey=int64"`
+					Int32     int32   `serix:"5,mapKey=int32"`
+					Int16     int16   `serix:"6,mapKey=int16"`
+					Int8      int8    `serix:"7,mapKey=int8"`
+					ZeroInt32 int32   `serix:"8,mapKey=zeroInt32,omitempty"`
+					Float32   float32 `serix:"9,mapKey=float32"`
+					Float64   float64 `serix:"10,mapKey=float64"`
+					String    string  `serix:"11,mapKey=string"`
+					Bool      bool    `serix:"12,mapKey=bool"`
 				}
 
 				api := serix.NewAPI()
@@ -55,31 +56,32 @@ func TestMapEncodeDecode(t *testing.T) {
 				return paras{
 					api: api,
 					in: &example{
-						Uint64:  64,
-						Uint32:  32,
-						Uint16:  16,
-						Uint8:   8,
-						Int64:   -64,
-						Int32:   -32,
-						Int16:   -16,
-						Int8:    -8,
-						Float32: 0.33,
-						Float64: 0.44,
-						String:  "abcd",
-						Bool:    true,
+						Uint64:    64,
+						Uint32:    32,
+						Uint16:    16,
+						Uint8:     8,
+						Int64:     -64,
+						Int32:     -32,
+						Int16:     -16,
+						Int8:      -8,
+						ZeroInt32: 0,
+						Float32:   0.33,
+						Float64:   0.44,
+						String:    "abcd",
+						Bool:      true,
 					},
 				}
 			}(),
 			expected: `{
 				"type": 42,
 				"uint64": "64",
-				"uint32": "32",
-				"uint16": "16",
-				"uint8": "8",
+				"uint32": 32,
+				"uint16": 16,
+				"uint8": 8,
 				"int64": "-64",
-				"int32": "-32",
-				"int16": "-16",
-				"int8": "-8",
+				"int32": -32,
+				"int16": -16,
+				"int8": -8,
 				"float32": "3.3000001311302185E-01",
 				"float64": "4.4E-01",
 				"string": "abcd",
@@ -105,7 +107,7 @@ func TestMapEncodeDecode(t *testing.T) {
 			}(),
 			expected: `{
 				"type": 66,
- 				"bigInt": "0x0539"
+ 				"bigInt": "0x539"
 			}`,
 		},
 		{
@@ -209,14 +211,16 @@ func TestMapEncodeDecode(t *testing.T) {
 			}`,
 		},
 		{
-			name: "interface",
+			name: "interface & direct pointer",
 			paras: func() paras {
 				type (
 					InterfaceType      interface{}
 					InterfaceTypeImpl1 [4]byte
+					OtherObj           [2]byte
 
 					example struct {
 						Interface InterfaceType `serix:"0,mapKey=interface"`
+						Other     *OtherObj     `serix:"1,mapKey=other"`
 					}
 				)
 
@@ -226,11 +230,15 @@ func TestMapEncodeDecode(t *testing.T) {
 					serix.TypeSettings{}.WithObjectType(uint8(5)).WithMapKey("customInnerKey")),
 				)
 				must(api.RegisterInterfaceObjects((*InterfaceType)(nil), (*InterfaceTypeImpl1)(nil)))
+				must(api.RegisterTypeSettings(OtherObj{},
+					serix.TypeSettings{}.WithObjectType(uint8(2)).WithMapKey("otherObjKey")),
+				)
 
 				return paras{
 					api: api,
 					in: &example{
 						Interface: &InterfaceTypeImpl1{1, 2, 3, 4},
+						Other:     &OtherObj{1, 2},
 					},
 				}
 			}(),
@@ -239,6 +247,10 @@ func TestMapEncodeDecode(t *testing.T) {
  				"interface": {
 					"type": 5,
 					"customInnerKey": "0x01020304"
+				},
+				"other": {
+					"type": 2,
+					"otherObjKey": "0x0102"
 				}
 			}`,
 		},
@@ -284,7 +296,7 @@ func TestMapEncodeDecode(t *testing.T) {
 					},
 					{
 						"type": 1,
-						"uint16": "1337"
+						"uint16": 1337
 					}
 				]
 			}`,
