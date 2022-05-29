@@ -47,6 +47,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/klauspost/compress v1.12.3 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

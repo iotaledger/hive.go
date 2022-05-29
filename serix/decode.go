@@ -123,7 +123,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		reflect.Float32, reflect.Float64:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
-		_, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
+		_, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
 		addrValue = addrValue.Convert(addrTypeToConvert)
 		deseri.ReadNum(addrValue.Interface(), func(err error) error {
 			return errors.Wrap(err, "failed to read number value from the serializer")
