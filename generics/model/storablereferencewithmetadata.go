@@ -14,6 +14,8 @@ import (
 	"github.com/iotaledger/hive.go/serix"
 )
 
+// StorableReferenceWithMetadata is the base type for all storable reference models with metadata. It should be embedded
+// in a wrapper type. It provides locking and serialization primitives.
 type StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any] struct {
 	SourceID SourceIDType
 	TargetID TargetIDType
@@ -23,6 +25,7 @@ type StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any] st
 	objectstorage.StorableObjectFlags
 }
 
+// NewStorableReferenceWithMetadata creates a new storable reference with metadata model instance.
 func NewStorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any](s SourceIDType, t TargetIDType, m ModelType) (new StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) {
 	new = StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]{
 		SourceID: s,
@@ -35,6 +38,7 @@ func NewStorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType any]
 	return new
 }
 
+// FromBytes deserializes a model from a byte slice.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) FromBytes(bytes []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
@@ -54,6 +58,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) F
 	return nil
 }
 
+// FromObjectStorage deserializes a model stored in the object storage.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
 	if err = s.FromBytes(byteutils.ConcatBytes(key, data)); err != nil {
 		err = errors.Errorf("failed to load object from object storage: %w", err)
@@ -62,6 +67,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) F
 	return
 }
 
+// ObjectStorageKey returns the bytes, that are used as a key to store the object in the k/v store.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) ObjectStorageKey() (key []byte) {
 	s.RLock()
 	defer s.RUnlock()
@@ -69,6 +75,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) O
 	return byteutils.ConcatBytes(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), s.SourceID)), lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), s.TargetID)))
 }
 
+// ObjectStorageValue returns the bytes, that are stored in the value part of the k/v store.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) ObjectStorageValue() (value []byte) {
 	s.RLock()
 	defer s.RUnlock()
@@ -76,6 +83,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) O
 	return lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), &s.M))
 }
 
+// KeyPartitions returns a slice of the key partitions that are used to store the object in the k/v store.
 func (s StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPartitions() []int {
 	var sourceID SourceIDType
 	var targetID TargetIDType
@@ -83,6 +91,7 @@ func (s StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) Ke
 	return []int{len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), sourceID))), len(lo.PanicOnErr(serix.DefaultAPI.Encode(context.Background(), targetID)))}
 }
 
+// Bytes serializes a model to a byte slice.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) Bytes() (bytes []byte, err error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -103,6 +112,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) B
 	return byteutils.ConcatBytes(sourceIDBytes, targetIDBytes, modelBytes), nil
 }
 
+// String returns a string representation of the model.
 func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) String() string {
 	s.RLock()
 	defer s.RUnlock()
