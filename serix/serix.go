@@ -153,6 +153,8 @@ type TypeSettings struct {
 	objectType       interface{}
 	lexicalOrdering  *bool
 	mapKey           *string
+	minLen           *uint64
+	maxLen           *uint64
 	arrayRules       *ArrayRules
 }
 
@@ -190,6 +192,47 @@ func (ts TypeSettings) MustMapKey() string {
 		panic("no map key set")
 	}
 	return *ts.mapKey
+}
+
+// WithMinLen specifies the min length for the object.
+func (ts TypeSettings) WithMinLen(l uint64) TypeSettings {
+	ts.minLen = &l
+	return ts
+}
+
+// MinLen returns min length for the object.
+func (ts TypeSettings) MinLen() (uint64, bool) {
+	if ts.minLen == nil {
+		return 0, false
+	}
+	return *ts.minLen, true
+}
+
+// WithMaxLen specifies the max length for the object.
+func (ts TypeSettings) WithMaxLen(l uint64) TypeSettings {
+	ts.maxLen = &l
+	return ts
+}
+
+// MaxLen returns max length for the object.
+func (ts TypeSettings) MaxLen() (uint64, bool) {
+	if ts.maxLen == nil {
+		return 0, false
+	}
+	return *ts.maxLen, true
+}
+
+// MinMaxLen returns min/max lengths for the object.
+// Returns 0 for either value if they are not set.
+func (ts TypeSettings) MinMaxLen() (int, int) {
+	var min, max int
+	if ts.minLen != nil {
+		min = int(*ts.minLen)
+	}
+	if ts.maxLen != nil {
+		max = int(*ts.maxLen)
+	}
+	return min, max
 }
 
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
@@ -739,6 +782,24 @@ func parseStructTag(tag string) (tagSettings, error) {
 				return tagSettings{}, errors.Errorf("incorrect mapKey tag format: %s", currentPart)
 			}
 			settings.ts = settings.ts.WithMapKey(keyValue[1])
+		case "minLen":
+			if len(keyValue) != 2 {
+				return tagSettings{}, errors.Errorf("incorrect minLen tag format: %s", currentPart)
+			}
+			minLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			if err != nil {
+				return tagSettings{}, errors.Wrapf(err, "failed to parse minLen %s", currentPart)
+			}
+			settings.ts = settings.ts.WithMinLen(minLen)
+		case "maxLen":
+			if len(keyValue) != 2 {
+				return tagSettings{}, errors.Errorf("incorrect maxLen tag format: %s", currentPart)
+			}
+			maxLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			if err != nil {
+				return tagSettings{}, errors.Wrapf(err, "failed to parse maxLen %s", currentPart)
+			}
+			settings.ts = settings.ts.WithMaxLen(maxLen)
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)

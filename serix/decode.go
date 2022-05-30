@@ -101,12 +101,13 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*string)(nil)))
+		minLen, maxLen := ts.MinMaxLen()
 		deseri.ReadString(
 			addrValue.Interface().(*string),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return errors.Wrap(err, "failed to read string value from the deserializer")
-			})
+			}, minLen, maxLen)
 		return deseri.Done()
 
 	case reflect.Bool:
@@ -262,12 +263,13 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*[]byte)(nil)))
+		minLen, maxLen := ts.MinMaxLen()
 		deseri.ReadVariableByteSlice(
 			addrValue.Interface().(*[]byte),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return errors.Wrap(err, "failed to read bytes from the deserializer")
-			})
+			}, minLen, maxLen)
 		return deseri.Done()
 	}
 	deserializeItem := func(b []byte) (bytesRead int, err error) {

@@ -739,7 +739,7 @@ func (d *Deserializer) ReadBytesInPlace(slice []byte, errProducer ErrProducer) *
 }
 
 // ReadVariableByteSlice reads a variable byte slice which is denoted by the given SeriLengthPrefixType.
-func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPrefixType, errProducer ErrProducer, maxRead ...int) *Deserializer {
+func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -750,9 +750,11 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 		return d
 	}
 
-	if len(maxRead) > 0 && sliceLength > maxRead[0] {
-		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, max allowed %d ", ErrDeserializationLengthInvalid, sliceLength, maxRead[0]))
-		return d
+	switch {
+	case maxLen > 0 && sliceLength > maxLen:
+		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, max allowed %d ", ErrDeserializationLengthInvalid, sliceLength, maxLen))
+	case minLen > 0 && sliceLength < minLen:
+		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, min required %d ", ErrDeserializationLengthInvalid, sliceLength, minLen))
 	}
 
 	if sliceLength == 0 {
@@ -1290,7 +1292,7 @@ func (d *Deserializer) readSerializableIntoTarget(target interface{}, s Serializ
 }
 
 // ReadString reads a string.
-func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxLen ...int) *Deserializer {
+func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -1301,8 +1303,11 @@ func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errPr
 		return d
 	}
 
-	if len(maxLen) > 0 && strLen > maxLen[0] {
-		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen[0]))
+	switch {
+	case maxLen > 0 && strLen > maxLen:
+		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen))
+	case minLen > 0 && strLen < minLen:
+		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but min %d is required", ErrDeserializationLengthInvalid, strLen, minLen))
 	}
 
 	if len(d.src[d.offset:]) < strLen {
