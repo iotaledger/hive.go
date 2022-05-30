@@ -67,6 +67,14 @@ func (s *Storable[IDType, ModelType]) SetID(id IDType) {
 	s.id = &id
 }
 
+func (s *Storable[IDType, ModelType]) IDFromBytes(bytes []byte) (err error) {
+	s.idMutex.Lock()
+	defer s.idMutex.Unlock()
+
+	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, &s.id)
+	return
+}
+
 func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
@@ -76,9 +84,7 @@ func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
 }
 
 func (s *Storable[IDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
-	s.idMutex.Lock()
-	defer s.idMutex.Unlock()
-	if _, err = serix.DefaultAPI.Decode(context.Background(), key, &s.id); err != nil {
+	if err = s.IDFromBytes(key); err != nil {
 		return errors.Errorf("failed to decode ID: %w", err)
 	}
 
