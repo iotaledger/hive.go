@@ -2,7 +2,6 @@ package serix
 
 import (
 	"context"
-	"fmt"
 	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
@@ -62,11 +61,12 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 					return errors.Errorf("missing type settings for interface %s", valueType)
 				}
 
-				if innerTs.mapKey == nil {
-					return fmt.Errorf("missing map key for slice")
+				mapKey := mapSliceArrayDefaultKey
+				if innerTs.mapKey != nil {
+					mapKey = *innerTs.mapKey
 				}
 
-				fieldValStr := mapVal.(map[string]any)[*innerTs.mapKey].(string)
+				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
 				byteSlice, err := DecodeHex(fieldValStr)
 				if err != nil {
 					return errors.Wrap(err, "failed to read byte slice from map")

@@ -2,7 +2,6 @@ package serix
 
 import (
 	"context"
-	"fmt"
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 	"math/big"
@@ -11,7 +10,12 @@ import (
 	"time"
 )
 
-const mapTypeKeyName = "type"
+const (
+	// the map key under which the object code is written.
+	mapTypeKeyName = "type"
+	// key used when no map key is defined for types which are slice/arrays of bytes.
+	mapSliceArrayDefaultKey = "data"
+)
 
 func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (any, error) {
 	valueI := value.Interface()
@@ -189,10 +193,11 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	if ts.ObjectType() != nil {
 		m := orderedmap.New()
 		m.Set(mapTypeKeyName, ts.ObjectType())
-		if ts.mapKey == nil {
-			return nil, fmt.Errorf("missing map key for slice/array with registered type")
+		mapKey := mapSliceArrayDefaultKey
+		if ts.mapKey != nil {
+			mapKey = *ts.mapKey
 		}
-		m.Set(*ts.mapKey, EncodeHex(value.Bytes()))
+		m.Set(mapKey, EncodeHex(value.Bytes()))
 		return m, nil
 	}
 
