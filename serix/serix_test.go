@@ -388,12 +388,6 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestMinMax(t *testing.T) {
 	type paras struct {
 		api         *serix.API
