@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"log"
 	"math/big"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/serializer"
 	"github.com/iotaledger/hive.go/serix"
@@ -386,6 +387,12 @@ func TestMain(m *testing.M) {
 		return m.Run()
 	}()
 	os.Exit(exitCode)
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestMinMax(t *testing.T) {
