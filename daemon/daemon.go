@@ -277,6 +277,9 @@ func (d *OrderedDaemon) Run() {
 
 	// wait until all wait groups for all shutdown orders are finished
 	for _, wg := range d.waitGroupsForAllShutdownOrders() {
+		if wg == nil {
+			continue
+		}
 		wg.Wait()
 	}
 }
@@ -286,13 +289,16 @@ func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
-	if len(d.shutdownOrderWorker) == 0 {
+	if len(d.wgPerSameShutdownOrder) == 0 {
 		return nil
 	}
 
-	waitGroups := make([]*sync.WaitGroup, len(d.shutdownOrderWorker))
-	for i := range d.shutdownOrderWorker {
-		waitGroups[i] = d.wgPerSameShutdownOrder[i]
+	waitGroups := make([]*sync.WaitGroup, len(d.wgPerSameShutdownOrder))
+	i := 0
+	for _, wg := range d.wgPerSameShutdownOrder {
+		waitGroup := wg
+		waitGroups[i] = waitGroup
+		i++
 	}
 	return waitGroups
 }
