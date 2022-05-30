@@ -895,3 +895,7 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	}
 	return bitSize, numberType, reflect.PointerTo(numberType)
 }
+
+func mapStringKey(str string) string {
+	return strings.ToLower(str[:1]) + str[1:]
+}

@@ -290,7 +290,12 @@ func (api *API) mapDecodeStructFields(
 			continue
 		}
 
-		mapVal, has := m[sField.settings.ts.MustMapKey()]
+		key := mapStringKey(sField.name)
+		if sField.settings.ts.mapKey != nil {
+			key = sField.settings.ts.MustMapKey()
+		}
+
+		mapVal, has := m[key]
 		if !has {
 			if sField.settings.isOptional || sField.settings.omitEmpty {
 				continue

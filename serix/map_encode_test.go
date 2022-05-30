@@ -301,6 +301,31 @@ func TestMapEncodeDecode(t *testing.T) {
 				]
 			}`,
 		},
+		{
+			name: "no map key",
+			paras: func() paras {
+				type example struct {
+					CaptainHook string `serix:"0"`
+					LiquidSoul  int64  `serix:"1"`
+				}
+
+				api := serix.NewAPI()
+				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(23))))
+
+				return paras{
+					api: api,
+					in: &example{
+						CaptainHook: "jump",
+						LiquidSoul:  30,
+					},
+				}
+			}(),
+			expected: `{
+				"type": 23,
+ 				"captainHook": "jump",
+				"liquidSoul": "30"
+			}`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

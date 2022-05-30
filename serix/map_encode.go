@@ -177,7 +177,7 @@ func (api *API) mapEncodeStructFields(
 		case sField.settings.ts.mapKey != nil:
 			obj.Set(*sField.settings.ts.mapKey, eleOut)
 		default:
-			obj.Set(sField.name, eleOut)
+			obj.Set(mapStringKey(sField.name), eleOut)
 		}
 	}
 	return nil
@@ -190,7 +190,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 		m := orderedmap.New()
 		m.Set(mapTypeKeyName, ts.ObjectType())
 		if ts.mapKey == nil {
-			return nil, fmt.Errorf("missing map key for slice")
+			return nil, fmt.Errorf("missing map key for slice/array with registered type")
 		}
 		m.Set(*ts.mapKey, EncodeHex(value.Bytes()))
 		return m, nil
