@@ -125,7 +125,6 @@ func TestMapEncodeDecode(t *testing.T) {
 					in: &example{
 						Map: map[string]string{
 							"alice": "123",
-							"bob":   "321",
 						},
 					},
 				}
@@ -133,8 +132,7 @@ func TestMapEncodeDecode(t *testing.T) {
 			expected: `{
 				"type": 99,
  				"map": {
-					"alice": "123",
-					"bob": "321"
+					"alice": "123"
 				}
 			}`,
 		},
