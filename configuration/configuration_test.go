@@ -367,9 +367,6 @@ func TestBindAndUpdateParameters(t *testing.T) {
 				},
 				{
 					"name": "Jonas"
-				},
-				{
-					"name": "Max"
 				}
 			]
 		}
@@ -396,7 +393,6 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	expectedOttos = []Otto{
 		{Name: "Hans"},  // three lines of code
 		{Name: "Jonas"}, // ripped hans whisperer
-		{Name: "Max"},   // logs please...
 	}
 
 	assert.Equal(t, "configuration.ottos", config.GetParameterPath(&parameters.Ottos))
