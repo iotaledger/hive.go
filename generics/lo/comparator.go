@@ -1,6 +1,6 @@
 package lo
 
-import "constraints"
+import "github.com/iotaledger/hive.go/generics/constraints"
 
 // Comparator is a generic comparator for two values. It returns 0 if the two values are equal, -1 if the first value is
 //smaller and 1 if the first value is larger.
