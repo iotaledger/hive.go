@@ -78,7 +78,9 @@ func (s *Storable[IDType, ModelType]) IDFromBytes(bytes []byte) (err error) {
 	s.idMutex.Lock()
 	defer s.idMutex.Unlock()
 
-	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, &s.id)
+	id := new(IDType)
+	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, id)
+	s.id = id
 	return
 }
 
