@@ -34,14 +34,14 @@ const (
 
 // ThresholdMap is a data structure that allows to map keys bigger or lower than a certain threshold to a given value.
 type ThresholdMap[K constraints.Ordered, V any] struct {
-	*thresholdmap.ThresholdMap
+	thresholdmap.ThresholdMap
 }
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
 // to support custom key types.
 func New[K constraints.Ordered, V any](mode Mode) *ThresholdMap[K, V] {
 	return &ThresholdMap[K, V]{
-		ThresholdMap: thresholdmap.New(thresholdmap.Mode(mode), func(a interface{}, b interface{}) int {
+		ThresholdMap: *thresholdmap.New(thresholdmap.Mode(mode), func(a interface{}, b interface{}) int {
 			return lo.Comparator(a.(K), b.(K))
 		}),
 	}
@@ -163,6 +163,10 @@ func (t *ThresholdMap[K, V]) wrapNode(node *thresholdmap.Element) (element *Elem
 func (t *ThresholdMap[K, V]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
+	seri.WriteBool(bool(t.Mode()), func(err error) error {
+		return errors.Errorf("failed to write mode: %w", err)
+	})
+
 	seri.WriteNum(uint32(t.ThresholdMap.Size()), func(err error) error {
 		return errors.Wrap(err, "failed to write ThresholdMap size to serializer")
 	})
@@ -190,8 +194,17 @@ func (t *ThresholdMap[K, V]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (t *ThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	var mode thresholdmap.Mode
+	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mode, serix.WithValidation())
+	if err != nil {
+		return bytesRead, errors.Errorf("failed to decode mode: %w", err)
+	}
+
+	t.Init(mode, func(a interface{}, b interface{}) int { return lo.Comparator(a.(K), b.(K)) })
+
 	var mapSize uint32
-	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mapSize)
+	bytesReadMapSize, err := serix.DefaultAPI.Decode(context.Background(), b, &mapSize)
+	bytesRead += bytesReadMapSize
 	if err != nil {
 		return 0, err
 	}

@@ -18,17 +18,31 @@ type ThresholdMap struct {
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
 // to support custom key types.
 func New(mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap {
-	if len(optionalComparator) >= 1 {
-		return &ThresholdMap{
-			mode: mode,
-			tree: redblacktree.NewWith(utils.Comparator(optionalComparator[0])),
-		}
+	return new(ThresholdMap).Init(mode, optionalComparator...)
+}
+
+// Init initializes the ThresholdMap with the given Mode and optional comparator function.
+func (t *ThresholdMap) Init(mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap {
+	if t.tree != nil {
+		panic("ThresholdMap has already been initialized before")
 	}
 
-	return &ThresholdMap{
-		mode: mode,
-		tree: redblacktree.NewWith(genericcomparator.Comparator),
+	if len(optionalComparator) >= 1 {
+		t.mode = mode
+		t.tree = redblacktree.NewWith(utils.Comparator(optionalComparator[0]))
+
+		return t
 	}
+
+	t.mode = mode
+	t.tree = redblacktree.NewWith(genericcomparator.Comparator)
+
+	return t
+}
+
+// Mode returns the mode of this ThresholdMap.
+func (t *ThresholdMap) Mode() Mode {
+	return t.mode
 }
 
 // Set adds a new threshold that maps all keys >= or <= (depending on the Mode) the value given by key to a certain
