@@ -477,10 +477,18 @@ func (c *Configuration) UpdateBoundParameters() {
 			*(boundParameter.BoundPointer.(*map[string]string)) = c.StringMap(parameterName)
 
 		default:
+			// we need to create a new empty object of the same type,
+			// otherwise we may only overwrite first values of a slice of bigger length
+			newBoundParameterPointer := reflect.New(boundParameter.BoundType)
+			newBoundParameter := newBoundParameterPointer.Interface()
+
 			// if we don't know the type, we try to unmarshal it
-			if err := c.Unmarshal(parameterName, &boundParameter.BoundPointer); err != nil {
+			if err := c.Unmarshal(parameterName, newBoundParameter); err != nil {
 				panic(fmt.Sprintf("could not unmarshal value of '%s', error: %s", parameterName, err))
 			}
+
+			// Overwrite the original value with the new value
+			reflect.ValueOf(boundParameter.BoundPointer).Elem().Set(newBoundParameterPointer.Elem())
 		}
 	}
 }
