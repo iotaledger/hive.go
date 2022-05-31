@@ -1,12 +1,12 @@
 package thresholdmap
 
 import (
-	"constraints"
 	"context"
 
 	"github.com/cockroachdb/errors"
 
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
+	"github.com/iotaledger/hive.go/generics/constraints"
 	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/serializer"
 	"github.com/iotaledger/hive.go/serix"
