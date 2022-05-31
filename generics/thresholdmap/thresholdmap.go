@@ -203,7 +203,7 @@ func (t *ThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
 	t.Init(mode, func(a interface{}, b interface{}) int { return lo.Comparator(a.(K), b.(K)) })
 
 	var mapSize uint32
-	bytesReadMapSize, err := serix.DefaultAPI.Decode(context.Background(), b, &mapSize)
+	bytesReadMapSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
 	bytesRead += bytesReadMapSize
 	if err != nil {
 		return 0, err
