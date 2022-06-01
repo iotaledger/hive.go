@@ -15,8 +15,8 @@ type Immutable[ModelType any] struct {
 }
 
 // NewImmutable creates a new immutable model instance.
-func NewImmutable[ModelType any](model ModelType) (newInstance Model[ModelType]) {
-	newInstance = Model[ModelType]{
+func NewImmutable[ModelType any](model ModelType) (newInstance Immutable[ModelType]) {
+	newInstance = Immutable[ModelType]{
 		M: model,
 	}
 
