@@ -14,16 +14,16 @@ import (
 type Model[ModelType any] struct {
 	M ModelType `serix:"0"`
 
-	sync.RWMutex
+	mutex sync.RWMutex
 }
 
 // New creates a new model instance.
-func New[ModelType any](model ModelType) (new Model[ModelType]) {
-	new = Model[ModelType]{
+func New[ModelType any](model ModelType) (newInstance Model[ModelType]) {
+	newInstance = Model[ModelType]{
 		M: model,
 	}
 
-	return new
+	return newInstance
 }
 
 // FromBytes deserializes a model from a byte slice.
@@ -33,6 +33,26 @@ func (m *Model[ModelType]) FromBytes(bytes []byte) (err error) {
 
 	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, &m.M, serix.WithValidation())
 	return
+}
+
+// RLock read-locks the Model.
+func (m *Model[ModelType]) RLock() {
+	m.mutex.RLock()
+}
+
+// RUnlock read-unlocks the Model.
+func (m *Model[ModelType]) RUnlock() {
+	m.mutex.RUnlock()
+}
+
+// Lock write-locks the Model.
+func (m *Model[ModelType]) Lock() {
+	m.mutex.Lock()
+}
+
+// Unlock write-unlocks the Model.
+func (m *Model[ModelType]) Unlock() {
+	m.mutex.Unlock()
 }
 
 // Bytes serializes a model to a byte slice.
