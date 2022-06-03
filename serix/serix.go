@@ -208,6 +208,17 @@ func (ts TypeSettings) ArrayRules() *ArrayRules {
 	return ts.arrayRules
 }
 
+func (ts TypeSettings) ensureOrdering() TypeSettings {
+	newTS := ts.WithLexicalOrdering(true)
+	arrayRules := newTS.ArrayRules()
+	newArrayRules := new(ArrayRules)
+	if arrayRules != nil {
+		*newArrayRules = *arrayRules
+	}
+	newArrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
+	return newTS.WithArrayRules(newArrayRules)
+}
+
 func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.lengthPrefixType == nil {
 		ts.lengthPrefixType = other.lengthPrefixType

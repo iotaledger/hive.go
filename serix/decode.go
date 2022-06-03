@@ -298,6 +298,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 		value.SetMapIndex(keyValue, elemValue)
 		return bytesRead, nil
 	}
+	ts = ts.ensureOrdering()
 	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
 }
 

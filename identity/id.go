@@ -7,12 +7,13 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/iotaledger/hive.go/cerrors"
-	"github.com/iotaledger/hive.go/crypto/ed25519"
-	"github.com/iotaledger/hive.go/marshalutil"
 	"github.com/mr-tron/base58"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+
+	"github.com/iotaledger/hive.go/cerrors"
+	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/marshalutil"
 )
 
 // IDLength defines the length of an ID.
@@ -49,7 +50,7 @@ func (id ID) String() string {
 		return "ID(" + idAlias + ")"
 	}
 
-	return base58.Encode(id[:8])
+	return id.EncodeBase58()[:8]
 }
 
 // EncodeBase58 returns a full version of the ID as a base58 encoded string.

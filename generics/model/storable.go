@@ -8,6 +8,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 
+	"github.com/iotaledger/hive.go/cerrors"
 	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/generics/objectstorage"
 	"github.com/iotaledger/hive.go/serix"
@@ -18,7 +19,6 @@ import (
 // Types that implement interfaces need to override the serialization logic so that the correct interface can be inferred.
 type Storable[IDType, ModelType any] struct {
 	id      *IDType
-	idFunc  func(model *ModelType) IDType
 	idMutex sync.RWMutex
 	M       ModelType `serix:"0"`
 
@@ -27,16 +27,9 @@ type Storable[IDType, ModelType any] struct {
 }
 
 // NewStorable creates a new storable model instance.
-func NewStorable[IDType, ModelType any](model ModelType, optionalIDFunc ...func(model *ModelType) IDType) (new Storable[IDType, ModelType]) {
-	if len(optionalIDFunc) == 0 {
-		optionalIDFunc = append(optionalIDFunc, func(model *ModelType) (key IDType) {
-			return key
-		})
-	}
-
+func NewStorable[IDType, ModelType any](model ModelType) (new Storable[IDType, ModelType]) {
 	new = Storable[IDType, ModelType]{
-		M:      model,
-		idFunc: optionalIDFunc[0],
+		M: model,
 	}
 	new.SetModified()
 	new.Persist()
@@ -47,22 +40,13 @@ func NewStorable[IDType, ModelType any](model ModelType, optionalIDFunc ...func(
 // ID returns the ID of the model.
 func (s *Storable[IDType, ModelType]) ID() (id IDType) {
 	s.idMutex.RLock()
-	if s.id != nil {
-		defer s.idMutex.RUnlock()
-		return *s.id
-	}
-	s.idMutex.RUnlock()
+	defer s.idMutex.RUnlock()
 
-	s.idMutex.Lock()
-	defer s.idMutex.Unlock()
-	if s.id != nil {
-		return *s.id
+	if s.id == nil {
+		panic(fmt.Sprintf("ID is not set for %v", s))
 	}
 
-	id = s.idFunc(&s.M)
-	s.id = &id
-
-	return id
+	return *s.id
 }
 
 // SetID sets the ID of the model.
@@ -89,7 +73,14 @@ func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, &s.M, serix.WithValidation())
+	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, &s.M, serix.WithValidation())
+	if err != nil {
+		return errors.Errorf("could not deserialize model: %w", err)
+	}
+
+	if len(bytes) != consumedBytes {
+		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+	}
 	return
 }
 
