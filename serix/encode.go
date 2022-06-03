@@ -270,11 +270,12 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 	ts = ts.WithLexicalOrdering(true)
 	arrayRules := ts.ArrayRules()
-	if arrayRules == nil {
-		arrayRules = new(ArrayRules)
+	newArrayRules := new(ArrayRules)
+	if arrayRules != nil {
+		*newArrayRules = *arrayRules
 	}
-	arrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
-	ts = ts.WithArrayRules(arrayRules)
+	newArrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
+	ts = ts.WithArrayRules(newArrayRules)
 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }
