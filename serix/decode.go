@@ -30,7 +30,11 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		deserializable = addrDeserializable
 	}
 	if deserializable != nil {
-		globalTS, _ := api.getTypeSettings(valueType.Elem())
+		typeSettingValue := value
+		if valueType.Kind() == reflect.Ptr {
+			typeSettingValue = value.Elem()
+		}
+		globalTS, _ := api.getTypeSettings(typeSettingValue.Type())
 		ts = ts.merge(globalTS)
 		if objectType := ts.ObjectType(); objectType != nil {
 			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
