@@ -10,6 +10,7 @@ type outerModelPtr[OuterModelType any, InnerModelType any] interface {
 type outerStorableModelPtr[OuterModelType any, InnerModelType any] interface {
 	*OuterModelType
 
+	init()
 	setM(*InnerModelType)
 	m() *InnerModelType
 	SetModified(...bool) bool

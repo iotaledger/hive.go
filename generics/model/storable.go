@@ -31,15 +31,12 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPt
 func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	typedInstance := (OuterModelPtrType)(newInstance)
+	typedInstance.init()
 	typedInstance.setM(model)
 	typedInstance.SetModified()
 	typedInstance.Persist()
 
 	return newInstance
-}
-
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
-
 }
 
 // ID returns the ID of the model.
@@ -73,12 +70,27 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID
 	return
 }
 
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
+}
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
+}
+
 // FromBytes deserializes a model from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
-	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, &s.M, serix.WithValidation())
+	outerModel := new(OuterModelType)
+	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerModel, serix.WithValidation())
 	if err != nil {
 		return errors.Errorf("could not deserialize model: %w", err)
 	}
@@ -86,7 +98,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	if len(bytes) != consumedBytes {
 		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
 	}
-	return
+
+	s.M = *(OuterModelPtrType)(outerModel).m()
+
+	return nil
 }
 
 // FromObjectStorage deserializes a model stored in the object storage.
@@ -138,10 +153,14 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) mo
 	return strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}")
 }
 
-func (m *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
-	m.M = *innerModel
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
+	s.M = *innerModel
 }
 
-func (m *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
-	return &m.M
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
+	return &s.M
+}
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) init() {
+	s.id = new(IDType)
 }

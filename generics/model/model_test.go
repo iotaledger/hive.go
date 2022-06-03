@@ -41,8 +41,15 @@ func TestStorable(t *testing.T) {
 	assert.Equal(t, source.Balance(), restored.Balance())
 	assert.Equal(t, source.ObjectStorageKey(), restored.ObjectStorageKey())
 	assert.Equal(t, source.ObjectStorageValue(), restored.ObjectStorageValue())
+	assert.Equal(t, lo.PanicOnErr(source.Bytes()), lo.PanicOnErr(restored.Bytes()))
 
-	fmt.Println(restored)
+	restored = new(SigLockedSingleOutputStorable)
+	assert.NoError(t, restored.FromBytes(lo.PanicOnErr(source.Bytes())))
+
+	assert.Equal(t, source.Address(), restored.Address())
+	assert.Equal(t, source.Balance(), restored.Balance())
+	assert.Equal(t, source.ObjectStorageValue(), restored.ObjectStorageValue())
+	assert.Equal(t, lo.PanicOnErr(source.Bytes()), lo.PanicOnErr(restored.Bytes()))
 }
 
 type SigLockedSingleOutputModel struct {
