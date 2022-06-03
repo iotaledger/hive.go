@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer"
 	"github.com/pkg/errors"
+
+	"github.com/iotaledger/hive.go/serializer"
 )
 
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {

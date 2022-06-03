@@ -152,6 +152,7 @@ type TypeSettings struct {
 	objectType       interface{}
 	lexicalOrdering  *bool
 	arrayRules       *ArrayRules
+	constructor      func(typ reflect.Type) reflect.Value
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.

@@ -6,14 +6,27 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/types"
 )
 
 func TestModel(t *testing.T) {
-	source := NewSigLockedSingleOutput(1337, 2)
+	source := NewSigLockedSingleOutputModel(1337, 2)
+
+	restored := new(SigLockedSingleOutputModel)
+	assert.NoError(t, restored.FromBytes(lo.PanicOnErr(source.Bytes())))
+
+	assert.Equal(t, source.Address(), restored.Address())
+	assert.Equal(t, source.Balance(), restored.Balance())
+
+	fmt.Println(source, restored)
+}
+
+func TestStorable(t *testing.T) {
+	source := NewSigLockedSingleOutputStorable(1337, 2)
 	source.SetID(types.NewIdentifier([]byte("sigLockedSingleOutput")))
 
-	restored := new(SigLockedSingleOutput)
+	restored := new(SigLockedSingleOutputStorable)
 	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
 
 	assert.Equal(t, source.ID(), restored.ID())
@@ -25,8 +38,29 @@ func TestModel(t *testing.T) {
 	fmt.Println(restored)
 }
 
-type SigLockedSingleOutput struct {
-	Storable[types.Identifier, sigLockedSingleOutput]
+type SigLockedSingleOutputModel struct {
+	Model[SigLockedSingleOutputModel, *SigLockedSingleOutputModel, sigLockedSingleOutput] `serix:"0"`
+}
+
+func NewSigLockedSingleOutputModel(balance uint64, address uint64) *SigLockedSingleOutputModel {
+	return Instantiate[SigLockedSingleOutputModel](&sigLockedSingleOutput{
+		Balance: balance,
+		Address: address,
+	})
+}
+
+func (s *SigLockedSingleOutputModel) Balance() uint64 {
+	s.RLock()
+	defer s.RUnlock()
+
+	return s.M.Balance
+}
+
+func (s *SigLockedSingleOutputModel) Address() uint64 {
+	s.RLock()
+	defer s.RUnlock()
+
+	return s.M.Address
 }
 
 type sigLockedSingleOutput struct {
@@ -34,21 +68,25 @@ type sigLockedSingleOutput struct {
 	Address uint64 `serix:"1"`
 }
 
-func NewSigLockedSingleOutput(balance uint64, address uint64) *SigLockedSingleOutput {
-	return &SigLockedSingleOutput{NewStorable[types.Identifier](sigLockedSingleOutput{
+type SigLockedSingleOutputStorable struct {
+	Storable[types.Identifier, sigLockedSingleOutput] `serix:"0"`
+}
+
+func NewSigLockedSingleOutputStorable(balance uint64, address uint64) *SigLockedSingleOutputStorable {
+	return &SigLockedSingleOutputStorable{NewStorable[types.Identifier](sigLockedSingleOutput{
 		Balance: balance,
 		Address: address,
 	})}
 }
 
-func (s *SigLockedSingleOutput) Balance() uint64 {
+func (s *SigLockedSingleOutputStorable) Balance() uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
 	return s.M.Balance
 }
 
-func (s *SigLockedSingleOutput) Address() uint64 {
+func (s *SigLockedSingleOutputStorable) Address() uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
