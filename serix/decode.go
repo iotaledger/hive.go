@@ -19,6 +19,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		}
 	}
 	var deserializable Deserializable
+	var bytesRead int
 
 	if _, ok := value.Interface().(Deserializable); ok {
 		if value.Kind() == reflect.Ptr && value.IsNil() {
@@ -28,10 +29,30 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 	} else if addrDeserializable, ok := value.Addr().Interface().(Deserializable); ok {
 		deserializable = addrDeserializable
 	}
-	var bytesRead int
 	if deserializable != nil {
+		globalTS, _ := api.getTypeSettings(valueType.Elem())
+		ts = ts.merge(globalTS)
+		if objectType := ts.ObjectType(); objectType != nil {
+			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
+			if err != nil {
+				return 0, errors.WithStack(err)
+			}
+
+			deserializer := serializer.NewDeserializer(b)
+			deserializer.CheckTypePrefix(objectCode, typeDen, func(err error) error {
+				return errors.Wrap(err, "failed to check object type")
+			})
+			b = deserializer.RemainingBytes()
+			prefixBytesRead, err := deserializer.Done()
+			if err != nil {
+				return 0, errors.WithStack(err)
+			}
+			bytesRead += prefixBytesRead
+		}
+
 		var err error
-		bytesRead, err = deserializable.Decode(b)
+		bytesDecoded, err := deserializable.Decode(b)
+		bytesRead += bytesDecoded
 		if err != nil {
 			return 0, errors.Wrap(err, "object failed to deserialize itself")
 		}

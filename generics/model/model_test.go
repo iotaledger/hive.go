@@ -1,12 +1,14 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/iotaledger/hive.go/generics/lo"
+	"github.com/iotaledger/hive.go/serix"
 	"github.com/iotaledger/hive.go/types"
 )
 
@@ -14,6 +16,11 @@ func TestModel(t *testing.T) {
 	source := NewSigLockedSingleOutputModel(1337, 2)
 
 	restored := new(SigLockedSingleOutputModel)
+
+	var sth SigLockedSingleOutputModel
+	_, err := serix.DefaultAPI.Decode(context.Background(), lo.PanicOnErr(source.Bytes()), &sth, serix.WithValidation())
+	assert.NoError(t, err)
+
 	assert.NoError(t, restored.FromBytes(lo.PanicOnErr(source.Bytes())))
 
 	assert.Equal(t, source.Address(), restored.Address())
@@ -43,7 +50,7 @@ type SigLockedSingleOutputModel struct {
 }
 
 func NewSigLockedSingleOutputModel(balance uint64, address uint64) *SigLockedSingleOutputModel {
-	return Instantiate[SigLockedSingleOutputModel](&sigLockedSingleOutput{
+	return New[SigLockedSingleOutputModel](&sigLockedSingleOutput{
 		Balance: balance,
 		Address: address,
 	})
@@ -69,14 +76,14 @@ type sigLockedSingleOutput struct {
 }
 
 type SigLockedSingleOutputStorable struct {
-	Storable[types.Identifier, sigLockedSingleOutput] `serix:"0"`
+	Storable[types.Identifier, SigLockedSingleOutputStorable, *SigLockedSingleOutputStorable, sigLockedSingleOutput] `serix:"0"`
 }
 
 func NewSigLockedSingleOutputStorable(balance uint64, address uint64) *SigLockedSingleOutputStorable {
-	return &SigLockedSingleOutputStorable{NewStorable[types.Identifier](sigLockedSingleOutput{
+	return NewStorable[types.Identifier, SigLockedSingleOutputStorable](&sigLockedSingleOutput{
 		Balance: balance,
 		Address: address,
-	})}
+	})
 }
 
 func (s *SigLockedSingleOutputStorable) Balance() uint64 {

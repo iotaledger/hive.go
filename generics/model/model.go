@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/iotaledger/hive.go/serix"
@@ -20,7 +21,8 @@ type Model[OuterModelType any, OuterModelPtrType outerModelPtr[OuterModelType, I
 // New returns a new model instance.
 func New[OuterModelType, InnerModelType any, OuterModelPtrType outerModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
-	(OuterModelPtrType)(newInstance).setM(model)
+	typedInstance := (OuterModelPtrType)(newInstance)
+	typedInstance.setM(model)
 
 	return newInstance
 }
@@ -71,7 +73,11 @@ func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (byte
 // String returns a string representation of the model.
 func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
 	var outerModelType OuterModelType
-	return fmt.Sprintf("Model[%s] %+v", reflect.TypeOf(outerModelType).Name(), m.M)
+	return fmt.Sprintf("%s {\n\t%s\n}", reflect.TypeOf(outerModelType).Name(), m.modelString())
+}
+
+func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) modelString() (humanReadable string) {
+	return strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", m.M), "{"), "}")
 }
 
 func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
@@ -80,11 +86,4 @@ func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerMod
 
 func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
 	return &m.M
-}
-
-type outerModelPtr[OuterModelType any, InnerModelType any] interface {
-	*OuterModelType
-
-	setM(*InnerModelType)
-	m() *InnerModelType
 }

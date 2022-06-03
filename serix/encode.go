@@ -12,30 +12,36 @@ import (
 	"github.com/iotaledger/hive.go/serializer"
 )
 
-func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
+func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (b []byte, err error) {
 	valueI := value.Interface()
 	valueType := value.Type()
 	if opts.validation {
-		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
+		if err = api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return nil, errors.Wrap(err, "pre-serialization validation failed")
 		}
 	}
-	var b []byte
+
 	if serializable, ok := valueI.(Serializable); ok {
-		var err error
+		if value.Kind() == reflect.Interface {
+			b, err = api.encodeInterface(ctx, value, valueType, ts, opts)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return b, nil
+		}
+
 		b, err = serializable.Encode()
 		if err != nil {
 			return nil, errors.Wrap(err, "object failed to serialize itself")
 		}
 	} else {
-		var err error
 		b, err = api.encodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}
 	if opts.validation {
-		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
+		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
 			return nil, errors.Wrap(err, "post-serialization validation failed")
 		}
 	}

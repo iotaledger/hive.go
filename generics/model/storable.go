@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -17,28 +18,32 @@ import (
 // Storable is the base type for all storable models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
 // Types that implement interfaces need to override the serialization logic so that the correct interface can be inferred.
-type Storable[IDType, ModelType any] struct {
+type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
 	idMutex sync.RWMutex
-	M       ModelType `serix:"0"`
+	M       InnerModelType `serix:"0"`
 
 	sync.RWMutex
 	objectstorage.StorableObjectFlags
 }
 
 // NewStorable creates a new storable model instance.
-func NewStorable[IDType, ModelType any](model ModelType) (new Storable[IDType, ModelType]) {
-	new = Storable[IDType, ModelType]{
-		M: model,
-	}
-	new.SetModified()
-	new.Persist()
+func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
+	newInstance = new(OuterModelType)
+	typedInstance := (OuterModelPtrType)(newInstance)
+	typedInstance.setM(model)
+	typedInstance.SetModified()
+	typedInstance.Persist()
 
-	return new
+	return newInstance
+}
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
+
 }
 
 // ID returns the ID of the model.
-func (s *Storable[IDType, ModelType]) ID() (id IDType) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID() (id IDType) {
 	s.idMutex.RLock()
 	defer s.idMutex.RUnlock()
 
@@ -50,15 +55,15 @@ func (s *Storable[IDType, ModelType]) ID() (id IDType) {
 }
 
 // SetID sets the ID of the model.
-func (s *Storable[IDType, ModelType]) SetID(id IDType) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) SetID(id IDType) {
 	s.idMutex.Lock()
 	defer s.idMutex.Unlock()
 
-	s.id = &id
+	*s.id = id
 }
 
 // IDFromBytes deserializes an ID from a byte slice.
-func (s *Storable[IDType, ModelType]) IDFromBytes(bytes []byte) (err error) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
 	s.idMutex.Lock()
 	defer s.idMutex.Unlock()
 
@@ -69,7 +74,7 @@ func (s *Storable[IDType, ModelType]) IDFromBytes(bytes []byte) (err error) {
 }
 
 // FromBytes deserializes a model from a byte slice.
-func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -85,7 +90,7 @@ func (s *Storable[IDType, ModelType]) FromBytes(bytes []byte) (err error) {
 }
 
 // FromObjectStorage deserializes a model stored in the object storage.
-func (s *Storable[IDType, ModelType]) FromObjectStorage(key, data []byte) (err error) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
 	if err = s.IDFromBytes(key); err != nil {
 		return errors.Errorf("failed to decode ID: %w", err)
 	}
@@ -98,7 +103,7 @@ func (s *Storable[IDType, ModelType]) FromObjectStorage(key, data []byte) (err e
 }
 
 // ObjectStorageKey returns the bytes, that are used as a key to store the object in the k/v store.
-func (s *Storable[IDType, ModelType]) ObjectStorageKey() (key []byte) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ObjectStorageKey() (key []byte) {
 	key, err := serix.DefaultAPI.Encode(context.Background(), s.ID(), serix.WithValidation())
 	if err != nil {
 		panic(err)
@@ -108,19 +113,35 @@ func (s *Storable[IDType, ModelType]) ObjectStorageKey() (key []byte) {
 }
 
 // ObjectStorageValue returns the bytes, that are stored in the value part of the k/v store.
-func (s *Storable[IDType, ModelType]) ObjectStorageValue() (value []byte) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ObjectStorageValue() (value []byte) {
 	return lo.PanicOnErr(s.Bytes())
 }
 
 // Bytes serializes a model to a byte slice.
-func (s *Storable[IDType, ModelType]) Bytes() (bytes []byte, err error) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
+	outerModel := new(OuterModelType)
+	(OuterModelPtrType)(outerModel).setM(&s.M)
+
+	return serix.DefaultAPI.Encode(context.Background(), outerModel, serix.WithValidation())
 }
 
 // String returns a string representation of the model.
-func (s *Storable[IDType, ModelType]) String() string {
-	return fmt.Sprintf("Storable[%s] {\n\tID: %+v\n\tModel: %+v\n}", reflect.TypeOf(s.M).Name(), s.id, s.M)
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
+	var outerModel OuterModelType
+	return fmt.Sprintf("%s {\n\tID: %+v\n\t%s\n}", reflect.TypeOf(outerModel).Name(), s.id, s.modelString())
+}
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) modelString() (humanReadable string) {
+	return strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}")
+}
+
+func (m *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
+	m.M = *innerModel
+}
+
+func (m *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
+	return &m.M
 }
