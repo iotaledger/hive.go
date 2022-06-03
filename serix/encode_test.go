@@ -3,9 +3,10 @@ package serix_test
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/serix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serix"
 
 	"github.com/iotaledger/hive.go/serializer"
 )
@@ -26,7 +27,12 @@ func TestEncode_Struct(t *testing.T) {
 func TestEncode_Interface(t *testing.T) {
 	t.Parallel()
 	testObj := StructWithInterface{
-		Interface: &InterfaceImpl{},
+		Interface: &InterfaceImpl{
+			interfaceImpl{
+				A: 1,
+				B: 2,
+			},
+		},
 	}
 	testEncode(t, testObj)
 }

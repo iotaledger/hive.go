@@ -3,6 +3,7 @@ package serix
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/big"
 	"reflect"
 	"time"
@@ -22,14 +23,30 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 	}
 
 	if serializable, ok := valueI.(Serializable); ok {
-		if value.Kind() == reflect.Interface {
-			b, err = api.encodeInterface(ctx, value, valueType, ts, opts)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			return b, nil
+		elemValue := value.Elem()
+		if !elemValue.IsValid() {
+			return nil, errors.Errorf("can't serialize interface %s it must have underlying value", valueType)
+		}
+		registry := api.getInterfaceObjects(valueType)
+		if registry == nil {
+			return nil, errors.Errorf("interface %s isn't registered", valueType)
+		}
+		elemType := elemValue.Type()
+		if _, exists := registry.fromTypeToCode[elemType]; !exists {
+			return nil, errors.Errorf("underlying type %s hasn't been registered for interface type %s",
+				elemType, valueType)
 		}
 
+		globalTS, _ := api.getTypeSettings(value.Elem().Type())
+		fmt.Printf("%#+v\n", globalTS)
+		ts = ts.merge(globalTS)
+		fmt.Printf("%#+v %#+v\n", valueI, valueType.String())
+		if objectType := ts.ObjectType(); objectType != nil {
+			s := serializer.NewSerializer()
+			s.WriteNum(objectType, func(err error) error {
+				return errors.Wrap(err, "failed to write object type code into serializer")
+			})
+		}
 		b, err = serializable.Encode()
 		if err != nil {
 			return nil, errors.Wrap(err, "object failed to serialize itself")

@@ -160,8 +160,7 @@ type interfaceImpl struct {
 }
 
 func (ii *InterfaceImpl) Encode() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	return testAPI.Encode(context.Background(), ii.interfaceImpl, serix.WithValidation())
 }
 
 func (ii *InterfaceImpl) Decode(b []byte) (consumedBytes int, err error) {
