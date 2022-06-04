@@ -4,10 +4,11 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/crypto/ed25519"
 )
 
 func TestID(t *testing.T) {
@@ -19,7 +20,7 @@ func TestID(t *testing.T) {
 	bytes := sha256.Sum256(pub.Bytes())
 
 	assert.Equal(t, id.Bytes(), bytes[:])
-	assert.Equal(t, id.String(), base58.Encode(bytes[:8]))
+	assert.Equal(t, id.String(), base58.Encode(bytes[:])[:8])
 }
 
 func TestNewIdentity(t *testing.T) {
