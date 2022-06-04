@@ -44,6 +44,45 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 	s.Persist()
 }
 
+// InnerModel returns the inner Model that holds the data.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
+	return &s.M
+}
+
+// ID returns the ID of the model.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID() (id IDType) {
+	s.idMutex.RLock()
+	defer s.idMutex.RUnlock()
+
+	if s.id == nil {
+		panic(fmt.Sprintf("ID is not set for %v", s))
+	}
+
+	return *s.id
+}
+
+// SetID sets the ID of the model.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) SetID(id IDType) {
+	s.idMutex.Lock()
+	defer s.idMutex.Unlock()
+
+	*s.id = id
+}
+
+// String returns a string representation of the model.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
+	var outerModel OuterModelType
+
+	return fmt.Sprintf(
+		"%s {\n\tID: %+v\n\t%s\n}",
+		reflect.TypeOf(outerModel).Name(),
+		s.id,
+		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
+	)
+}
+
+// region manual serialization /////////////////////////////////////////////////////////////////////////////////////////
+
 // IDFromBytes deserializes an ID from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
 	s.idMutex.Lock()
@@ -81,31 +120,6 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	return nil
 }
 
-// ID returns the ID of the model.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID() (id IDType) {
-	s.idMutex.RLock()
-	defer s.idMutex.RUnlock()
-
-	if s.id == nil {
-		panic(fmt.Sprintf("ID is not set for %v", s))
-	}
-
-	return *s.id
-}
-
-// SetID sets the ID of the model.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) SetID(id IDType) {
-	s.idMutex.Lock()
-	defer s.idMutex.Unlock()
-
-	*s.id = id
-}
-
-// InnerModel returns the inner Model that holds the data.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
-	return &s.M
-}
-
 // Bytes serializes a model to a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
 	s.RLock()
@@ -117,19 +131,9 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	return serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
 }
 
-// String returns a string representation of the model.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
-	var outerModel OuterModelType
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	return fmt.Sprintf(
-		"%s {\n\tID: %+v\n\t%s\n}",
-		reflect.TypeOf(outerModel).Name(),
-		s.id,
-		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
-	)
-}
-
-// region object storage interface /////////////////////////////////////////////////////////////////////////////////////
+// region object storage support ///////////////////////////////////////////////////////////////////////////////////////
 
 // FromObjectStorage deserializes a model stored in the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
@@ -161,7 +165,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region serix interface //////////////////////////////////////////////////////////////////////////////////////////////
+// region serix support ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	s.RLock()
