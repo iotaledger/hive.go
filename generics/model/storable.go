@@ -21,7 +21,8 @@ import (
 type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
 	idMutex sync.RWMutex
-	M       InnerModelType `serix:"0"`
+
+	M InnerModelType `serix:"0"`
 
 	sync.RWMutex
 	objectstorage.StorableObjectFlags
@@ -30,13 +31,54 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPt
 // NewStorable creates a new storable model instance.
 func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
-	typedInstance := (OuterModelPtrType)(newInstance)
-	typedInstance.init()
-	typedInstance.setM(model)
-	typedInstance.SetModified()
-	typedInstance.Persist()
+	(OuterModelPtrType)(newInstance).Init(model)
 
 	return newInstance
+}
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init(innerModel *InnerModelType) {
+	s.id = new(IDType)
+	s.M = *innerModel
+
+	s.SetModified()
+	s.Persist()
+}
+
+// IDFromBytes deserializes an ID from a byte slice.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
+	s.idMutex.Lock()
+	defer s.idMutex.Unlock()
+
+	if s.id == nil {
+		s.id = new(IDType)
+	}
+
+	if _, err = serix.DefaultAPI.Decode(context.Background(), bytes, s.id); err != nil {
+		return errors.Errorf("failed to read IF from bytes: %w", err)
+	}
+
+	return
+}
+
+// FromBytes deserializes a model from a byte slice.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
+	s.Lock()
+	defer s.Unlock()
+
+	outerInstance := new(OuterModelType)
+
+	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation())
+	if err != nil {
+		return errors.Errorf("could not deserialize model: %w", err)
+	}
+
+	if len(bytes) != consumedBytes {
+		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+	}
+
+	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
+
+	return nil
 }
 
 // ID returns the ID of the model.
@@ -59,50 +101,35 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Se
 	*s.id = id
 }
 
-// IDFromBytes deserializes an ID from a byte slice.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
-	s.idMutex.Lock()
-	defer s.idMutex.Unlock()
-
-	id := new(IDType)
-	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, id)
-	s.id = id
-	return
+// InnerModel returns the inner Model that holds the data.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
+	return &s.M
 }
 
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
+// Bytes serializes a model to a byte slice.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
+	outerInstance := new(OuterModelType)
+	(OuterModelPtrType)(outerInstance).Init(&s.M)
+
+	return serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
 }
 
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
-	s.Lock()
-	defer s.Unlock()
+// String returns a string representation of the model.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
+	var outerModel OuterModelType
 
-	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
+	return fmt.Sprintf(
+		"%s {\n\tID: %+v\n\t%s\n}",
+		reflect.TypeOf(outerModel).Name(),
+		s.id,
+		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
+	)
 }
 
-// FromBytes deserializes a model from a byte slice.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	outerModel := new(OuterModelType)
-	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerModel, serix.WithValidation())
-	if err != nil {
-		return errors.Errorf("could not deserialize model: %w", err)
-	}
-
-	if len(bytes) != consumedBytes {
-		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
-	}
-
-	s.M = *(OuterModelPtrType)(outerModel).m()
-
-	return nil
-}
+// region object storage interface /////////////////////////////////////////////////////////////////////////////////////
 
 // FromObjectStorage deserializes a model stored in the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
@@ -132,35 +159,22 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 	return lo.PanicOnErr(s.Bytes())
 }
 
-// Bytes serializes a model to a byte slice.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region serix interface //////////////////////////////////////////////////////////////////////////////////////////////
+
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	outerModel := new(OuterModelType)
-	(OuterModelPtrType)(outerModel).setM(&s.M)
-
-	return serix.DefaultAPI.Encode(context.Background(), outerModel, serix.WithValidation())
+	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 }
 
-// String returns a string representation of the model.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) String() string {
-	var outerModel OuterModelType
-	return fmt.Sprintf("%s {\n\tID: %+v\n\t%s\n}", reflect.TypeOf(outerModel).Name(), s.id, s.modelString())
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
 }
 
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) modelString() (humanReadable string) {
-	return strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}")
-}
-
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
-	s.M = *innerModel
-}
-
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
-	return &s.M
-}
-
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) init() {
-	s.id = new(IDType)
-}
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

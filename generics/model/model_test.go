@@ -33,6 +33,8 @@ func TestStorable(t *testing.T) {
 	source := NewSigLockedSingleOutputStorable(1337, 2)
 	source.SetID(types.NewIdentifier([]byte("sigLockedSingleOutput")))
 
+	fmt.Println(source)
+
 	restored := new(SigLockedSingleOutputStorable)
 	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
 
