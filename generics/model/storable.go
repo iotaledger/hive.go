@@ -66,7 +66,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) SetID(id IDType) {
 	s.idMutex.Lock()
 	defer s.idMutex.Unlock()
-
+	if s.id == nil {
+		s.id = &id
+		return
+	}
 	*s.id = id
 }
 
@@ -104,7 +107,6 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	defer s.Unlock()
 
 	outerInstance := new(OuterModelType)
-
 	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation())
 	if err != nil {
 		return errors.Errorf("could not deserialize model: %w", err)
@@ -170,7 +172,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) En
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
 	s.Lock()
 	defer s.Unlock()
-
+	s.Init(&s.M)
 	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
 }
 
