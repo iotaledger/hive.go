@@ -18,7 +18,7 @@ import (
 // Storable is the base type for all storable models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
 // Types that implement interfaces need to override the serialization logic so that the correct interface can be inferred.
-type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType], InnerModelType any] struct {
+type Storable[IDType, OuterModelType any, OuterModelPtrType storablePtr[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
 	idMutex sync.RWMutex
 
@@ -29,15 +29,14 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType outerStorableModelPt
 }
 
 // NewStorable creates a new storable model instance.
-func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType outerStorableModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
+func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType storablePtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	(OuterModelPtrType)(newInstance).Init(model)
 
 	return newInstance
 }
 
-// region core methods /////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Init initializes the storable model and sets the initial values.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init(innerModel *InnerModelType) {
 	s.id = new(IDType)
 	s.M = *innerModel
@@ -82,10 +81,6 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) St
 		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
 	)
 }
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region manual serialization /////////////////////////////////////////////////////////////////////////////////////////
 
 // IDFromBytes deserializes an ID from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
@@ -135,11 +130,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	return serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region object storage support ///////////////////////////////////////////////////////////////////////////////////////
-
-// FromObjectStorage deserializes a model stored in the object storage.
+// FromObjectStorage deserializes a model from the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
 	if err = s.IDFromBytes(key); err != nil {
 		return errors.Errorf("failed to decode ID: %w", err)
@@ -167,10 +158,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 	return lo.PanicOnErr(s.Bytes())
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region serix support ////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Encode serializes the "content of the model" to a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -178,6 +166,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) En
 	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 }
 
+// Decode deserializes the model from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -185,4 +174,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) De
 	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// storablePtr is a type constraint that ensures that all the required methods are available in the OuterModelType.
+type storablePtr[OuterModelType any, InnerModelType any] interface {
+	*OuterModelType
+
+	Init(*InnerModelType)
+	InnerModel() *InnerModelType
+}
