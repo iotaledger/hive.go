@@ -36,6 +36,8 @@ func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType o
 	return newInstance
 }
 
+// region core methods /////////////////////////////////////////////////////////////////////////////////////////////////
+
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init(innerModel *InnerModelType) {
 	s.id = new(IDType)
 	s.M = *innerModel
@@ -80,6 +82,8 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) St
 		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
 	)
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region manual serialization /////////////////////////////////////////////////////////////////////////////////////////
 
