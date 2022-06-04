@@ -12,19 +12,27 @@ import (
 
 // Model is the base type for all models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
-type Model[OuterModelType any, OuterModelPtrType outerModelPtr[OuterModelType, InnerModelType], InnerModelType any] struct {
+type Model[OuterModelType any, OuterModelPtrType modelPtr[OuterModelType, InnerModelType], InnerModelType any] struct {
 	M InnerModelType `serix:"0"`
 
-	mutex sync.RWMutex
+	sync.RWMutex
 }
 
 // New returns a new model instance.
-func New[OuterModelType, InnerModelType any, OuterModelPtrType outerModelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
+func New[OuterModelType, InnerModelType any, OuterModelPtrType modelPtr[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	typedInstance := (OuterModelPtrType)(newInstance)
-	typedInstance.setM(model)
+	typedInstance.Init(model)
 
 	return newInstance
+}
+
+func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) Init(innerModel *InnerModelType) {
+	m.M = *innerModel
+}
+
+func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
+	return &m.M
 }
 
 // FromBytes deserializes a model from a byte slice.
@@ -34,29 +42,9 @@ func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(byt
 
 	outerModel := new(OuterModelType)
 	_, err = serix.DefaultAPI.Decode(context.Background(), bytes, outerModel, serix.WithValidation())
-	m.M = *(OuterModelPtrType)(outerModel).m()
+	m.M = *(OuterModelPtrType)(outerModel).InnerModel()
 
 	return
-}
-
-// RLock read-locks the Model.
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) RLock() {
-	m.mutex.RLock()
-}
-
-// RUnlock read-unlocks the Model.
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) RUnlock() {
-	m.mutex.RUnlock()
-}
-
-// Lock write-locks the Model.
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) Lock() {
-	m.mutex.Lock()
-}
-
-// Unlock write-unlocks the Model.
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) Unlock() {
-	m.mutex.Unlock()
 }
 
 // Bytes serializes a model to a byte slice.
@@ -65,7 +53,7 @@ func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (byte
 	defer m.RUnlock()
 
 	outerModel := new(OuterModelType)
-	(OuterModelPtrType)(outerModel).setM(&m.M)
+	(OuterModelPtrType)(outerModel).Init(&m.M)
 
 	return serix.DefaultAPI.Encode(context.Background(), outerModel, serix.WithValidation())
 }
@@ -80,10 +68,10 @@ func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) modelString()
 	return strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", m.M), "{"), "}")
 }
 
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) setM(innerModel *InnerModelType) {
-	m.M = *innerModel
-}
+// modelPtr is a type constraint that ensures that all the required methods are available in the OuterModelType.
+type modelPtr[OuterModelType any, InnerModelType any] interface {
+	*OuterModelType
 
-func (m *Model[OuterModelType, OuterModelPtrType, InnerModelType]) m() *InnerModelType {
-	return &m.M
+	Init(*InnerModelType)
+	InnerModel() *InnerModelType
 }
