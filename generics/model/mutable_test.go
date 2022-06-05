@@ -55,11 +55,11 @@ func TestStorable(t *testing.T) {
 }
 
 type SigLockedSingleOutputModel struct {
-	Model[SigLockedSingleOutputModel, *SigLockedSingleOutputModel, sigLockedSingleOutput] `serix:"0"`
+	Mutable[SigLockedSingleOutputModel, *SigLockedSingleOutputModel, sigLockedSingleOutput] `serix:"0"`
 }
 
 func NewSigLockedSingleOutputModel(balance uint64, address uint64) *SigLockedSingleOutputModel {
-	return New[SigLockedSingleOutputModel](&sigLockedSingleOutput{
+	return NewMutable[SigLockedSingleOutputModel](&sigLockedSingleOutput{
 		Balance: balance,
 		Address: address,
 	})

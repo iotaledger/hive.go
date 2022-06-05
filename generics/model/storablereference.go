@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/cockroachdb/errors"
 
@@ -20,7 +19,6 @@ type StorableReference[SourceIDType, TargetIDType any] struct {
 	SourceID SourceIDType
 	TargetID TargetIDType
 
-	sync.RWMutex
 	objectstorage.StorableObjectFlags
 }
 
@@ -38,9 +36,6 @@ func NewStorableReference[SourceIDType, TargetIDType any](s SourceIDType, t Targ
 
 // FromBytes deserializes a model from a byte slice.
 func (s *StorableReference[SourceIDType, TargetIDType]) FromBytes(bytes []byte) (err error) {
-	s.Lock()
-	defer s.Unlock()
-
 	consumedBytesSource, err := serix.DefaultAPI.Decode(context.Background(), bytes, &s.SourceID, serix.WithValidation())
 	if err != nil {
 		return errors.Errorf("failed to decode SourceID: %w", err)
@@ -84,9 +79,6 @@ func (s StorableReference[SourceIDType, TargetIDType]) KeyPartitions() []int {
 
 // Bytes serializes a model to a byte slice.
 func (s *StorableReference[SourceIDType, TargetIDType]) Bytes() (bytes []byte, err error) {
-	s.RLock()
-	defer s.RUnlock()
-
 	sourceBytes, err := serix.DefaultAPI.Encode(context.Background(), s.SourceID, serix.WithValidation())
 	if err != nil {
 		return nil, errors.Errorf("failed to encode source ID: %w", err)
