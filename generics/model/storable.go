@@ -172,7 +172,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) En
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Decode(b []byte) (int, error) {
 	s.Lock()
 	defer s.Unlock()
-	s.Init(&s.M)
+
 	return serix.DefaultAPI.Decode(context.Background(), b, &s.M, serix.WithValidation())
 }
 
