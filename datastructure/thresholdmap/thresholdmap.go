@@ -16,7 +16,7 @@ type ThresholdMap struct {
 	mode Mode
 	tree *redblacktree.Tree
 
-	mutex sync.RWMutex
+	sync.RWMutex
 }
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
@@ -27,8 +27,8 @@ func New(mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap 
 
 // Init initializes the ThresholdMap with the given Mode and optional comparator function.
 func (t *ThresholdMap) Init(mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	if t.tree != nil {
 		panic("ThresholdMap has already been initialized before")
 	}
@@ -48,24 +48,24 @@ func (t *ThresholdMap) Init(mode Mode, optionalComparator ...genericcomparator.T
 
 // Mode returns the mode of this ThresholdMap.
 func (t *ThresholdMap) Mode() Mode {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.mode
 }
 
 // Set adds a new threshold that maps all keys >= or <= (depending on the Mode) the value given by key to a certain
 // value.
 func (t *ThresholdMap) Set(key interface{}, value interface{}) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.tree.Put(key, value)
 }
 
 // Get returns the value of the next higher or lower existing threshold (depending on the mode) and a flag that
 // indicates if there is a threshold that covers the given value.
 func (t *ThresholdMap) Get(key interface{}) (value interface{}, exists bool) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	var foundNode *redblacktree.Node
 	switch t.mode {
 	case UpperThresholdMode:
@@ -85,8 +85,8 @@ func (t *ThresholdMap) Get(key interface{}) (value interface{}, exists bool) {
 
 // Floor returns the largest key that is <= the given key, it's value and a boolean flag indicating if it exists.
 func (t *ThresholdMap) Floor(key interface{}) (floorKey interface{}, floorValue interface{}, exists bool) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	if node, exists := t.tree.Floor(key); exists {
 		return node.Key, node.Value, true
 	}
@@ -96,8 +96,8 @@ func (t *ThresholdMap) Floor(key interface{}) (floorKey interface{}, floorValue 
 
 // Ceiling returns the smallest key that is >= the given key, it's value and a boolean flag indicating if it exists.
 func (t *ThresholdMap) Ceiling(key interface{}) (floorKey interface{}, floorValue interface{}, exists bool) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	if node, exists := t.tree.Ceiling(key); exists {
 		return node.Key, node.Value, true
 	}
@@ -107,8 +107,8 @@ func (t *ThresholdMap) Ceiling(key interface{}) (floorKey interface{}, floorValu
 
 // Delete removes a threshold from the map.
 func (t *ThresholdMap) Delete(key interface{}) (element *Element, success bool) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	node := t.lookup(key)
 	if node != nil {
 		t.tree.Remove(key)
@@ -135,23 +135,23 @@ func (t *ThresholdMap) lookup(key interface{}) *redblacktree.Node {
 
 // Keys returns a list of thresholds that have been set in the map.
 func (t *ThresholdMap) Keys() []interface{} {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.tree.Keys()
 }
 
 // Values returns a list of values that are associated to the thresholds in the map.
 func (t *ThresholdMap) Values() []interface{} {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.tree.Values()
 }
 
 // GetElement returns the Element that is used to store the next higher or lower threshold (depending on the mode)
 // belonging to the given key (or nil if none exists).
 func (t *ThresholdMap) GetElement(key interface{}) *Element {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	switch t.mode {
 	case UpperThresholdMode:
 		ceiling, _ := t.tree.Ceiling(key)
@@ -164,22 +164,22 @@ func (t *ThresholdMap) GetElement(key interface{}) *Element {
 
 // MinElement returns the smallest threshold in the map (or nil if the map is empty).
 func (t *ThresholdMap) MinElement() *Element {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.wrapNode(t.tree.Left())
 }
 
 // MaxElement returns the largest threshold in the map (or nil if the map is empty).
 func (t *ThresholdMap) MaxElement() *Element {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.wrapNode(t.tree.Right())
 }
 
 // DeleteElement removes the given Element from the map.
 func (t *ThresholdMap) DeleteElement(element *Element) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	if element == nil {
 		return
 	}
@@ -189,8 +189,8 @@ func (t *ThresholdMap) DeleteElement(element *Element) {
 
 // ForEach provides a callback based iterator that iterates through all Elements in the map.
 func (t *ThresholdMap) ForEach(iterator func(node *Element) bool) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.RLock()
+	defer t.RUnlock()
 	for it := t.tree.Iterator(); it.Next(); {
 		if !iterator(t.wrapNode(&redblacktree.Node{Key: it.Key(), Value: it.Value()})) {
 			break
@@ -201,8 +201,8 @@ func (t *ThresholdMap) ForEach(iterator func(node *Element) bool) {
 // Iterator returns an Iterator object that can be used to manually iterate through the Elements in the map. It accepts
 // an optional starting Element where the iteration begins.
 func (t *ThresholdMap) Iterator(optionalStartingNode ...*Element) *Iterator {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	if len(optionalStartingNode) >= 1 {
 		return NewIterator(optionalStartingNode[0])
 	}
@@ -212,22 +212,22 @@ func (t *ThresholdMap) Iterator(optionalStartingNode ...*Element) *Iterator {
 
 // Size returns the amount of thresholds that are stored in the map.
 func (t *ThresholdMap) Size() int {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.tree.Size()
 }
 
 // Empty returns true of the map has no thresholds.
 func (t *ThresholdMap) Empty() bool {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.tree.Empty()
 }
 
 // Clear removes all Elements from the map.
 func (t *ThresholdMap) Clear() {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.Lock()
+	defer t.Unlock()
 	t.tree.Clear()
 }
 

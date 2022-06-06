@@ -20,7 +20,7 @@ type StorableReference[OuterModelType any, OuterModelPtrType ReferencePtrType[Ou
 	sourceID SourceIDType
 	targetID TargetIDType
 
-	objectstorage.StorableObjectFlags
+	*objectstorage.StorableObjectFlags
 }
 
 // NewStorableReference creates a new storable reference model instance.
@@ -33,15 +33,18 @@ func NewStorableReference[OuterModelType any, OuterModelPtrType ReferencePtrType
 
 // New initializes the storable reference model with the necessary values when being manually created through a constructor.
 func (s *StorableReference[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType]) New(sourceID SourceIDType, targetID TargetIDType) {
+	s.Init()
+
 	s.sourceID = sourceID
 	s.targetID = targetID
 
 	s.SetModified()
-	s.Persist()
 }
 
 // Init initializes the storable reference model after it has been restored from it's serialized version.
 func (s *StorableReference[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType]) Init() {
+	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
+
 	s.Persist()
 }
 
@@ -117,7 +120,7 @@ func (s *StorableReference[OuterModelType, OuterModelPtrType, SourceIDType, Targ
 }
 
 // Encode serializes the "content of the model" to a byte slice.
-func (s *StorableReference[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType]) Encode() ([]byte, error) {
+func (s StorableReference[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType]) Encode() ([]byte, error) {
 	sourceIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.sourceID, serix.WithValidation())
 	if err != nil {
 		return nil, errors.Errorf("could not encode source id: %w", err)

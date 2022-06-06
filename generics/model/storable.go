@@ -20,11 +20,11 @@ import (
 // Types that implement interfaces need to override the serialization logic so that the correct interface can be inferred.
 type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
-	idMutex sync.RWMutex
+	idMutex *sync.RWMutex
 	M       InnerModelType
 
-	sync.RWMutex
-	objectstorage.StorableObjectFlags
+	*sync.RWMutex
+	*objectstorage.StorableObjectFlags
 }
 
 // NewStorable creates a new storable model instance.
@@ -37,16 +37,19 @@ func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType P
 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType) {
-	s.id = new(IDType)
-	s.M = *innerModel
+	s.Init()
 
+	s.M = *innerModel
 	s.SetModified()
-	s.Persist()
 }
 
 // Init initializes the model after it has been restored from it's serialized version.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
 	s.id = new(IDType)
+
+	s.idMutex = new(sync.RWMutex)
+	s.RWMutex = new(sync.RWMutex)
+	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
 
 	s.Persist()
 }
@@ -152,7 +155,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 }
 
 // Encode serializes the "content of the model" to a byte slice.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
+func (s Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
 

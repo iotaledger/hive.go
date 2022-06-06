@@ -22,8 +22,8 @@ type StorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType Referen
 	targetID TargetIDType
 	M        InnerModelType
 
-	sync.RWMutex
-	objectstorage.StorableObjectFlags
+	*sync.RWMutex
+	*objectstorage.StorableObjectFlags
 }
 
 // NewStorableReferenceWithMetadata creates a new storable reference model instance.
@@ -36,16 +36,20 @@ func NewStorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType Refe
 
 // New initializes the storable reference model with the necessary values when being manually created through a constructor.
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) New(sourceID SourceIDType, targetID TargetIDType, model *InnerModelType) {
+	s.Init()
+
 	s.sourceID = sourceID
 	s.targetID = targetID
 	s.M = *model
 
 	s.SetModified()
-	s.Persist()
 }
 
 // Init initializes the storable reference model after it has been restored from it's serialized version.
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) Init() {
+	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
+	s.RWMutex = new(sync.RWMutex)
+
 	s.Persist()
 }
 
@@ -57,6 +61,11 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 // TargetID returns the TargetID of the storable reference model.
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) TargetID() TargetIDType {
 	return s.targetID
+}
+
+// InnerModel returns the inner Model that holds the data.
+func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) InnerModel() *InnerModelType {
+	return &s.M
 }
 
 // String returns a string representation of the model.
@@ -145,7 +154,7 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 }
 
 // Encode serializes the "content of the model" to a byte slice.
-func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) Encode() ([]byte, error) {
+func (s StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) Encode() ([]byte, error) {
 	sourceIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.SourceID, serix.WithValidation())
 	if err != nil {
 		return nil, errors.Errorf("could not encode source id: %w", err)

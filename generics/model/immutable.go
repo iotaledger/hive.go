@@ -77,7 +77,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (
 }
 
 // Encode serializes the "content of the model" to a byte slice.
-func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
+func (i Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	return serix.DefaultAPI.Encode(context.Background(), i.M, serix.WithValidation())
 }
 

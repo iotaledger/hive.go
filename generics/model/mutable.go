@@ -18,7 +18,7 @@ import (
 type Mutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	M InnerModelType
 
-	sync.RWMutex
+	*sync.RWMutex
 }
 
 // NewMutable creates a new mutable model instance.
@@ -31,11 +31,15 @@ func NewMutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, In
 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType) {
+	m.Init()
+
 	m.M = *innerModel
 }
 
 // Init initializes the model after it has been restored from it's serialized version.
-func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {}
+func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
+	m.RWMutex = new(sync.RWMutex)
+}
 
 // InnerModel returns the inner Model that holds the data.
 func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
@@ -86,7 +90,7 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (by
 }
 
 // Encode serializes the "content of the model" to a byte slice.
-func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
+func (m Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
 	m.RLock()
 	defer m.RUnlock()
 
