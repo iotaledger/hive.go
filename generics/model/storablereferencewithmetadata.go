@@ -84,7 +84,7 @@ func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) O
 }
 
 // KeyPartitions returns a slice of the key partitions that are used to store the object in the k/v store.
-func (s StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPartitions() []int {
+func (s *StorableReferenceWithMetadata[SourceIDType, TargetIDType, ModelType]) KeyPartitions() []int {
 	var sourceID SourceIDType
 	var targetID TargetIDType
 

@@ -38,10 +38,7 @@ func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType P
 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType) {
-	if s.id == nil {
-		s.id = new(IDType)
-	}
-
+	s.id = new(IDType)
 	s.M = *innerModel
 
 	s.SetModified()
@@ -50,9 +47,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ne
 
 // Init initializes the model after it has been restored from it's serialized version.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
-	if s.id == nil {
-		s.id = new(IDType)
-	}
+	s.id = new(IDType)
 
 	s.Persist()
 }
@@ -108,18 +103,16 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID
 
 // FromBytes deserializes a model from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
-	s.Init()
-
 	outerInstance := new(OuterModelType)
 	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation())
 	if err != nil {
 		return errors.Errorf("could not deserialize model: %w", err)
 	}
-
 	if len(bytes) != consumedBytes {
 		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
 	}
 
+	s.Init()
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
 	return nil
