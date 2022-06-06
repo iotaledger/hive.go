@@ -16,7 +16,7 @@ import (
 // Mutable is the base type for simple mutable models. It should be embedded in a wrapper type.
 // It provides serialization and locking primitives.
 type Mutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
-	M InnerModelType `serix:"0"`
+	M InnerModelType
 
 	sync.RWMutex
 }

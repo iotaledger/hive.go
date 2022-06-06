@@ -15,7 +15,7 @@ import (
 // Immutable is the base type for all immutable models. It should be embedded in a wrapper type.
 // It provides serialization primitives.
 type Immutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
-	M InnerModelType `serix:"0"`
+	M InnerModelType
 }
 
 // NewImmutable creates a new immutable model instance.

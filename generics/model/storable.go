@@ -21,8 +21,7 @@ import (
 type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
 	idMutex sync.RWMutex
-
-	M InnerModelType `serix:"0"`
+	M       InnerModelType
 
 	sync.RWMutex
 	objectstorage.StorableObjectFlags
@@ -84,12 +83,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) St
 
 	var outerModel OuterModelType
 
-	return fmt.Sprintf(
-		"%s {\n\tID: %+v\n\t%s\n}",
-		reflect.TypeOf(outerModel).Name(),
-		s.id,
-		strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"),
-	)
+	return fmt.Sprintf("%s {\n\tID: %+v\n\t%s\n}", reflect.TypeOf(outerModel).Name(), s.id, strings.TrimRight(strings.TrimLeft(fmt.Sprintf("%+v", s.M), "{"), "}"))
 }
 
 // IDFromBytes deserializes an ID from a byte slice.

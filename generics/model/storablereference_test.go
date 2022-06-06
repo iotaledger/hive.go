@@ -9,9 +9,9 @@ import (
 )
 
 func TestReferenceModel(t *testing.T) {
-	source := NewChildBranch[types.Identifier](types.NewIdentifier([]byte("parent")), types.NewIdentifier([]byte("child")))
+	source := NewChildBranch(types.NewIdentifier([]byte("parent")), types.NewIdentifier([]byte("child")))
 
-	restored := new(ChildBranch[types.Identifier])
+	restored := new(ChildBranch)
 	assert.NoError(t, restored.FromObjectStorage(source.ObjectStorageKey(), source.ObjectStorageValue()))
 
 	assert.Equal(t, source.ParentBranchID(), restored.ParentBranchID())
@@ -21,23 +21,21 @@ func TestReferenceModel(t *testing.T) {
 }
 
 // ChildBranch represents the reference between a Conflict and its children.
-type ChildBranch[ConflictID comparable] struct {
-	StorableReference[ConflictID, ConflictID]
+type ChildBranch struct {
+	StorableReference[ChildBranch, *ChildBranch, types.Identifier, types.Identifier] `serix:"0"`
 }
 
 // NewChildBranch return a new ChildBranch reference from the named parent to the named child.
-func NewChildBranch[ConflictID comparable](parentBranchID, childBranchID ConflictID) (new *ChildBranch[ConflictID]) {
-	new = &ChildBranch[ConflictID]{NewStorableReference[ConflictID, ConflictID](parentBranchID, childBranchID)}
-
-	return new
+func NewChildBranch(parentBranchID, childBranchID types.Identifier) (new *ChildBranch) {
+	return NewStorableReference[ChildBranch](parentBranchID, childBranchID)
 }
 
 // ParentBranchID returns the identifier of the parent Conflict.
-func (c *ChildBranch[ConflictID]) ParentBranchID() (parentBranchID ConflictID) {
-	return c.SourceID
+func (c *ChildBranch) ParentBranchID() (parentBranchID types.Identifier) {
+	return c.SourceID()
 }
 
 // ChildBranchID returns the identifier of the child Conflict.
-func (c *ChildBranch[ConflictID]) ChildBranchID() (childBranchID ConflictID) {
-	return c.TargetID
+func (c *ChildBranch) ChildBranchID() (childBranchID types.Identifier) {
+	return c.TargetID()
 }
