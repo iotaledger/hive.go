@@ -4,10 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/iotaledger/hive.go/serializer"
-	"github.com/iotaledger/hive.go/serix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer"
+	"github.com/iotaledger/hive.go/serix"
 )
 
 func TestDecode_Slice(t *testing.T) {
@@ -26,7 +27,12 @@ func TestDecode_Struct(t *testing.T) {
 func TestDecode_Interface(t *testing.T) {
 	t.Parallel()
 	testObj := StructWithInterface{
-		Interface: &InterfaceImpl{},
+		Interface: &InterfaceImpl{
+			interfaceImpl{
+				A: 1,
+				B: 2,
+			},
+		},
 	}
 	testDecode(t, testObj)
 }
