@@ -84,6 +84,16 @@ func (orderedMap *OrderedMap[K, V]) Delete(key K) bool {
 	return orderedMap.OrderedMap.Delete(key)
 }
 
+// Clone returns a copy of the orderedMap.
+func (orderedMap *OrderedMap[K, V]) Clone() (cloned *OrderedMap[K, V]) {
+	cloned = New[K, V]()
+	orderedMap.OrderedMap.ForEach(func(key, value interface{}) bool {
+		cloned.Set(key.(K), value.(V))
+		return true
+	})
+	return
+}
+
 // Encode returns a serialized byte slice of the object.
 func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
