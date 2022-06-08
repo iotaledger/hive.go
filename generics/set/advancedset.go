@@ -1,6 +1,10 @@
 package set
 
 import (
+	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/cockroachdb/errors"
 
 	"github.com/iotaledger/hive.go/generics/orderedmap"
@@ -145,4 +149,18 @@ func (t *AdvancedSet[T]) Slice() (slice []T) {
 // Iterator returns a new iterator for the set.
 func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 	return walker.New[T](false).PushAll(t.Slice()...)
+}
+
+// Intersect returns a new set that contains all elements that are present in both sets.
+func (t *AdvancedSet[T]) String() (humanReadable string) {
+	elementStrings := make([]string, 0)
+	_ = t.ForEach(func(element T) (err error) {
+		elementStrings = append(elementStrings, fmt.Sprintf("%+v", element))
+
+		return nil
+	})
+
+	var elementType T
+
+	return fmt.Sprintf("%ss{%s}", reflect.TypeOf(elementType).Name(), strings.Join(elementStrings, ", "))
 }
