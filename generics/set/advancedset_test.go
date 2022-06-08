@@ -10,9 +10,9 @@ import (
 func TestAdvancedSet_IsEmpty(t *testing.T) {
 	set := initAdvancedSet(1, 0)
 
-	assert.Equal(t, false, set.IsEmpty(), "the set should not be empty")
-	assert.False(t, set.Delete("item1"), "the item should already exist")
-	assert.Equal(t, true, set.IsEmpty(), "the set should be empty")
+	assert.False(t, set.IsEmpty(), "the set should not be empty")
+	assert.True(t, set.Delete("item0"), "the item should already exist")
+	assert.True(t, true, set.IsEmpty(), "the set should be empty")
 }
 
 func TestAdvancedSet_Add(t *testing.T) {
@@ -104,7 +104,7 @@ func TestAdvancedSet_Filter(t *testing.T) {
 
 func TestAdvancedSet_Equal(t *testing.T) {
 	set := initAdvancedSet(3, 0)
-	set2 := initAdvancedSet(2, 1)
+	set2 := initAdvancedSet(3, 0)
 
 	assert.True(t, set.Equal(set2), "the sets should be equal")
 
