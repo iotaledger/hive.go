@@ -59,18 +59,21 @@ func (d *DataFlow[T]) WithSuccessCallback(callback Callback[T]) *DataFlow[T] {
 	return d
 }
 
+// WithAbortCallback modifies the DataFlow to execute a callback after it has been aborted.
 func (d *DataFlow[T]) WithAbortCallback(callback Callback[T]) *DataFlow[T] {
 	d.abortCallback = callback
 
 	return d
 }
 
+// WithErrorCallback modifies the DataFlow to execute a callback after it has ended with an error.
 func (d *DataFlow[T]) WithErrorCallback(callback ErrorCallback[T]) *DataFlow[T] {
 	d.errorCallback = callback
 
 	return d
 }
 
+// WithTerminationCallback modifies the DataFlow to execute a callback after it has terminated.
 func (d *DataFlow[T]) WithTerminationCallback(callback Callback[T]) *DataFlow[T] {
 	d.terminationCallback = callback
 
@@ -138,12 +141,16 @@ var _ ChainedCommand[int] = new(DataFlow[int]).ChainedCommand
 // ChainedCommand represents the interface for the callbacks used in a DataFlow.
 type ChainedCommand[T any] func(param T, next Next[T]) error
 
+// Next represents the interface for next step in ChainedCommand.
 type Next[T any] func(param T) error
 
+// Callback represents the interface for the callback functions.
 type Callback[T any] func(param T)
 
+// ErrorCallback represents the interface for the error callback functions.
 type ErrorCallback[T any] func(err error, param T)
 
+// EmptyNext is an implementation of Next that does nothing.
 func EmptyNext[T any](param T) error {
 	return nil
 }

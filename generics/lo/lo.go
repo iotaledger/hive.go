@@ -1,5 +1,7 @@
 package lo
 
+// Map iterates over elements of collection, applies the mapper function to each element
+// and returns an array of modified TargetType elements.
 func Map[SourceType any, TargetType any](source []SourceType, mapper func(SourceType) TargetType) (target []TargetType) {
 	target = make([]TargetType, len(source))
 	for i, value := range source {
@@ -85,6 +87,9 @@ func ForEach[T any](collection []T, iteratee func(T)) {
 	}
 }
 
+// ReduceProperty reduces collection to a value which is the accumulated result of running each element in collection
+// through property resolver, which extracts a value to be reduced from the type,
+// and then accumulator, where each successive invocation is supplied the return value of the previous.
 func ReduceProperty[A, B, C any](collection []A, propertyResolver func(A) B, accumulator func(C, B) C, initial C) C {
 	for _, item := range collection {
 		initial = accumulator(initial, propertyResolver(item))
@@ -93,6 +98,7 @@ func ReduceProperty[A, B, C any](collection []A, propertyResolver func(A) B, acc
 	return initial
 }
 
+// Bind generates a call wrapper with the second parameter's value fixed.
 func Bind[FirstParamType, ParamType, ReturnType any](secondParam ParamType, callback func(FirstParamType, ParamType) ReturnType) func(FirstParamType) ReturnType {
 	return func(firstParam FirstParamType) ReturnType {
 		return callback(firstParam, secondParam)

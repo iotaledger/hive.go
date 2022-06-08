@@ -29,7 +29,7 @@ func GetEnabled() bool {
 	return enabled
 }
 
-// SetEnable sets if the debug mode is active.
+// SetEnabled sets if the debug mode is active.
 func SetEnabled(newEnabled bool) {
 	enabledMutex.Lock()
 	defer enabledMutex.Unlock()

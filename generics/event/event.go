@@ -15,6 +15,7 @@ type Event[T any] struct {
 	eventHandlers *orderedmap.OrderedMap[uint64, func(T)]
 }
 
+// New creates a new Event.
 func New[T any]() (newEvent *Event[T]) {
 	return &Event[T]{
 		beforeHooks:   orderedmap.New[uint64, func(T)](),
