@@ -145,9 +145,27 @@ func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSe
 
 type Interface interface {
 	Method()
+
+	serix.Serializable
+	serix.Deserializable
 }
 
-type InterfaceImpl struct{}
+type InterfaceImpl struct {
+	interfaceImpl `serix:"0"`
+}
+
+type interfaceImpl struct {
+	A uint8 `serix:"0"`
+	B uint8 `serix:"1"`
+}
+
+func (ii *InterfaceImpl) Encode() ([]byte, error) {
+	return testAPI.Encode(context.Background(), ii.interfaceImpl, serix.WithValidation())
+}
+
+func (ii *InterfaceImpl) Decode(b []byte) (consumedBytes int, err error) {
+	return testAPI.Decode(context.Background(), b, &ii.interfaceImpl, serix.WithValidation())
+}
 
 var interfaceImplObjectCode = uint32(1)
 
@@ -171,6 +189,8 @@ func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerial
 func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	ser := serializer.NewSerializer()
 	ser.WriteNum(interfaceImplObjectCode, defaultErrProducer)
+	ser.WriteNum(ii.A, defaultErrProducer)
+	ser.WriteNum(ii.B, defaultErrProducer)
 	return ser.Serialize()
 }
 

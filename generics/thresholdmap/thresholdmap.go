@@ -5,8 +5,9 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/datastructure/genericcomparator"
 	"github.com/iotaledger/hive.go/datastructure/thresholdmap"
+	"github.com/iotaledger/hive.go/generics/constraints"
+	"github.com/iotaledger/hive.go/generics/lo"
 	"github.com/iotaledger/hive.go/serializer"
 	"github.com/iotaledger/hive.go/serix"
 )
@@ -32,15 +33,17 @@ const (
 // region ThresholdMap /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ThresholdMap is a data structure that allows to map keys bigger or lower than a certain threshold to a given value.
-type ThresholdMap[K comparable, V any] struct {
-	*thresholdmap.ThresholdMap
+type ThresholdMap[K constraints.Ordered, V any] struct {
+	thresholdmap.ThresholdMap
 }
 
 // New returns a ThresholdMap that operates in the given Mode and that can also receive an optional comparator function
 // to support custom key types.
-func New[K comparable, V any](mode Mode, optionalComparator ...genericcomparator.Type) *ThresholdMap[K, V] {
+func New[K constraints.Ordered, V any](mode Mode) *ThresholdMap[K, V] {
 	return &ThresholdMap[K, V]{
-		ThresholdMap: thresholdmap.New(thresholdmap.Mode(mode), optionalComparator...),
+		ThresholdMap: *thresholdmap.New(thresholdmap.Mode(mode), func(a interface{}, b interface{}) int {
+			return lo.Comparator(a.(K), b.(K))
+		}),
 	}
 }
 
@@ -157,8 +160,15 @@ func (t *ThresholdMap[K, V]) wrapNode(node *thresholdmap.Element) (element *Elem
 }
 
 // Encode returns a serialized byte slice of the object.
-func (t *ThresholdMap[K, V]) Encode() ([]byte, error) {
+func (t ThresholdMap[K, V]) Encode() ([]byte, error) {
+	t.RLock()
+	defer t.RUnlock()
+
 	seri := serializer.NewSerializer()
+
+	seri.WriteBool(bool(t.Mode()), func(err error) error {
+		return errors.Errorf("failed to write mode: %w", err)
+	})
 
 	seri.WriteNum(uint32(t.ThresholdMap.Size()), func(err error) error {
 		return errors.Wrap(err, "failed to write ThresholdMap size to serializer")
@@ -187,8 +197,17 @@ func (t *ThresholdMap[K, V]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (t *ThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	var mode thresholdmap.Mode
+	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mode, serix.WithValidation())
+	if err != nil {
+		return bytesRead, errors.Errorf("failed to decode mode: %w", err)
+	}
+
+	t.Init(mode, func(a interface{}, b interface{}) int { return lo.Comparator(a.(K), b.(K)) })
+
 	var mapSize uint32
-	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mapSize)
+	bytesReadMapSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
+	bytesRead += bytesReadMapSize
 	if err != nil {
 		return 0, err
 	}
@@ -219,7 +238,7 @@ func (t *ThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
 // region Element //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Element is a wrapper for the Node used in the underlying red-black RedBlackTree.
-type Element[K comparable, V any] struct {
+type Element[K any, V any] struct {
 	*thresholdmap.Element
 }
 
@@ -239,12 +258,12 @@ func (e *Element[K, V]) Value() V {
 
 // Iterator is an object that allows to iterate over the ThresholdMap by providing methods to walk through the map in a
 // deterministic order.
-type Iterator[K comparable, V any] struct {
+type Iterator[K any, V any] struct {
 	*thresholdmap.Iterator
 }
 
 // NewIterator is the constructor of the Iterator that takes the starting Element as its parameter.
-func NewIterator[K comparable, V any](iterator *thresholdmap.Iterator) *Iterator[K, V] {
+func NewIterator[K any, V any](iterator *thresholdmap.Iterator) *Iterator[K, V] {
 	return &Iterator[K, V]{
 		Iterator: iterator,
 	}
