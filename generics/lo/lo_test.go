@@ -132,3 +132,31 @@ func Test_PanicOnErr(t *testing.T) {
 	}
 	assert.NotPanics(t, fNoPanicCall, "should not panic without error")
 }
+
+func Test_Max(t *testing.T) {
+	maxValueInt := Max(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65, -465, -465, -1, 0)
+
+	assert.Equal(t, 516, maxValueInt, "should correctly select maximum value")
+
+	maxValueFloat := Max(1.0, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.0, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0)
+
+	assert.Equal(t, 1.5, maxValueFloat, "should correctly select maximum value")
+
+	defaultIntValue := Max([]int{}...)
+
+	assert.Equal(t, 0, defaultIntValue, "should return default int value")
+}
+
+func Test_Min(t *testing.T) {
+	maxValueInt := Min(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65, -465, -465, -1, 0)
+
+	assert.Equal(t, -465, maxValueInt, "should correctly select minimum value")
+
+	maxValueFloat := Min(1.0, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.0, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0)
+
+	assert.Equal(t, -1.6, maxValueFloat, "should correctly select minimum value")
+
+	defaultIntValue := Min([]int{}...)
+
+	assert.Equal(t, 0, defaultIntValue, "should return default int value")
+}

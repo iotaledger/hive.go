@@ -1,5 +1,7 @@
 package lo
 
+import "github.com/iotaledger/hive.go/generics/constraints"
+
 // Map iterates over elements of collection, applies the mapper function to each element
 // and returns an array of modified TargetType elements.
 func Map[SourceType any, TargetType any](source []SourceType, mapper func(SourceType) TargetType) (target []TargetType) {
@@ -23,7 +25,7 @@ func Reduce[T any, R any](collection []T, accumulator func(R, T) R, initial R) R
 
 // Filter iterates over elements of collection, returning an array of all elements predicate returns truthy for.
 func Filter[V any](collection []V, predicate func(V) bool) []V {
-	result := []V{}
+	var result []V
 
 	for _, item := range collection {
 		if predicate(item) {
@@ -62,7 +64,7 @@ func FilterByValue[K comparable, V any](collection map[K]V, predicate func(V) bo
 func Keys[K comparable, V any](in map[K]V) []K {
 	result := make([]K, 0, len(in))
 
-	for k, _ := range in {
+	for k := range in {
 		result = append(result, k)
 	}
 
@@ -112,4 +114,34 @@ func PanicOnErr[T any](result T, err error) T {
 	}
 
 	return result
+}
+
+// Max returns the maximum value of the collection.
+func Max[T constraints.Ordered](collection ...T) T {
+	var maxElem T
+	if len(collection) == 0 {
+		return maxElem
+	}
+	maxElem = collection[0]
+	for _, value := range collection {
+		if Comparator(value, maxElem) > 0 {
+			maxElem = value
+		}
+	}
+	return maxElem
+}
+
+// Min returns the minimum value of the collection.
+func Min[T constraints.Ordered](collection ...T) T {
+	var minElem T
+	if len(collection) == 0 {
+		return minElem
+	}
+	minElem = collection[0]
+	for _, value := range collection {
+		if Comparator(value, minElem) < 0 {
+			minElem = value
+		}
+	}
+	return minElem
 }
