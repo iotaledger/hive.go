@@ -42,6 +42,15 @@ func (w *Walker[T]) PushAll(nextElements ...T) (walker *Walker[T]) {
 	return w
 }
 
+// PushFront adds a new element to the next steps of the walk, which can consequently be retrieved by calling the Next method.
+func (w *Walker[T]) PushFront(nextElements ...T) (walker *Walker[T]) {
+	for _, nextElement := range nextElements {
+		w.Walker.PushFront(nextElement)
+	}
+
+	return w
+}
+
 // StopWalk aborts the walk and forces HasNext to always return false.
 func (w *Walker[T]) StopWalk() {
 	w.Walker.StopWalk()

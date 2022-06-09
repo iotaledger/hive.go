@@ -153,14 +153,15 @@ func (t *AdvancedSet[T]) Iterator() *walker.Walker[T] {
 
 // Intersect returns a new set that contains all elements that are present in both sets.
 func (t *AdvancedSet[T]) String() (humanReadable string) {
+	var elementType T
+	elementTypeName := reflect.TypeOf(elementType).Name()
+
 	elementStrings := make([]string, 0)
 	_ = t.ForEach(func(element T) (err error) {
-		elementStrings = append(elementStrings, fmt.Sprintf("%+v", element))
+		elementStrings = append(elementStrings, strings.TrimRight(strings.Replace(fmt.Sprintf("%+v", element), elementTypeName+"(", "", -1), ")"))
 
 		return nil
 	})
 
-	var elementType T
-
-	return fmt.Sprintf("%ss{%s}", reflect.TypeOf(elementType).Name(), strings.Join(elementStrings, ", "))
+	return fmt.Sprintf("%ss(%s)", elementTypeName, strings.Join(elementStrings, ", "))
 }

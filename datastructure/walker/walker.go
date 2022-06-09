@@ -55,6 +55,17 @@ func (w *Walker) Push(nextElement interface{}) (walker *Walker) {
 	return w
 }
 
+// PushFront adds a new element to the front of the queue, which can consequently be retrieved by calling the Next method.
+func (w *Walker) PushFront(nextElement interface{}) (walker *Walker) {
+	if !w.pushedElements.Add(nextElement) && !w.revisitElements {
+		return w
+	}
+
+	w.stack.PushFront(nextElement)
+
+	return w
+}
+
 // StopWalk aborts the walk and forces HasNext to always return false.
 func (w *Walker) StopWalk() {
 	w.walkStopped = true
