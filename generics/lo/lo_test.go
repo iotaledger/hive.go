@@ -160,3 +160,9 @@ func Test_Min(t *testing.T) {
 
 	assert.Equal(t, 0, defaultIntValue, "should return default int value")
 }
+
+func Test_Sum(t *testing.T) {
+	maxValueInt := Sum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+	assert.Equal(t, 55, maxValueInt, "should correctly sum values")
+}

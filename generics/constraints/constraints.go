@@ -35,6 +35,14 @@ type Complex interface {
 	~complex64 | ~complex128
 }
 
+// Numeric is a constraint that permits any numeric type: any type
+// that supports the numeric operators.
+// If future releases of Go add new ordered types,
+// this constraint will be modified to include them.
+type Numeric interface {
+	Integer | Float
+}
+
 // Ordered is a constraint that permits any ordered type: any type
 // that supports the operators < <= >= >.
 // If future releases of Go add new ordered types,

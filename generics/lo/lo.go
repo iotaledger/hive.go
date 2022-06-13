@@ -119,29 +119,32 @@ func PanicOnErr[T any](result T, err error) T {
 // Max returns the maximum value of the collection.
 func Max[T constraints.Ordered](collection ...T) T {
 	var maxElem T
-	if len(collection) == 0 {
-		return maxElem
-	}
-	maxElem = collection[0]
-	for _, value := range collection {
-		if Comparator(value, maxElem) > 0 {
-			maxElem = value
+
+	return Reduce(collection, func(max, value T) T {
+		if Comparator(value, max) > 0 {
+			return value
 		}
-	}
-	return maxElem
+		return max
+	}, maxElem)
 }
 
 // Min returns the minimum value of the collection.
 func Min[T constraints.Ordered](collection ...T) T {
 	var minElem T
-	if len(collection) == 0 {
-		return minElem
-	}
-	minElem = collection[0]
-	for _, value := range collection {
-		if Comparator(value, minElem) < 0 {
-			minElem = value
+
+	return Reduce(collection, func(min, value T) T {
+		if Comparator(value, min) < 0 {
+			return value
 		}
-	}
-	return minElem
+		return min
+	}, minElem)
+}
+
+// Sum returns the sum of the collection
+func Sum[T constraints.Numeric](collection ...T) T {
+	var minElem T
+
+	return Reduce(collection, func(sum, value T) T {
+		return sum + value
+	}, minElem)
 }
