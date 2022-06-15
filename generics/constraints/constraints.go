@@ -50,3 +50,7 @@ type Numeric interface {
 type Ordered interface {
 	Integer | Float | ~string
 }
+
+type Comparable[T any] interface {
+	Compare(other T) int
+}
