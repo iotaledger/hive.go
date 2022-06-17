@@ -42,9 +42,8 @@ func NewStarvingMutex() *StarvingMutex {
 
 // RLock locks starving mutex for reading.
 //
-// It should not be used for recursive read locking; a blocked Lock
-// call excludes new readers from acquiring the lock. See the
-// documentation on the RWMutex type.
+// It should not be used for recursive read locking.
+// A blocked Lock call DOES NOT exclude new readers from acquiring the lock. Hence, it is starving.
 func (f *StarvingMutex) RLock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -95,6 +94,8 @@ func (f *StarvingMutex) RUnlock() {
 // Lock locks starving mutex for writing.
 // If the lock is already locked for reading or writing,
 // Lock blocks until the lock is available.
+//
+// If there are waiting writers these will be served first before ANY reader can read again. Hence, it is starving.
 func (f *StarvingMutex) Lock() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
