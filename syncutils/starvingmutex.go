@@ -10,17 +10,18 @@ import (
 	"github.com/iotaledger/hive.go/types"
 )
 
-// A StarvingMutex is a reader/writer mutual exclusion lock.
+// A StarvingMutex is a reader/writer mutual exclusion lock that allows for starvation of readers or writers by first
+// prioritizing any outstanding reader or writer depending on the current mode (continue reading or continue writing).
 // The lock can be held by an arbitrary number of readers or a single writer.
 // The zero value for a StarvingMutex is an unlocked mutex.
 //
 // A StarvingMutex must not be copied after first use.
 //
 // If a goroutine holds a StarvingMutex for reading and another goroutine might
-// call Lock, other goroutine can acquire a read lock . This allows
-// recursive read locking. However, this can result in starvation of goroutine
+// call Lock, other goroutines can acquire a read lock. This allows
+// recursive read locking. However, this can result in starvation of goroutines
 // that tried to acquire write lock on the mutex.
-//  A blocked Lock call does not exclude new readers from acquiring the lock.
+// A blocked Lock call does not exclude new readers from acquiring the lock.
 type StarvingMutex struct {
 	readersActive  int
 	writerActive   bool
