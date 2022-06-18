@@ -1,6 +1,9 @@
 package lo
 
-import "github.com/iotaledger/hive.go/generics/constraints"
+import (
+	"github.com/iotaledger/hive.go/generics/constraints"
+	"github.com/iotaledger/hive.go/generics/set"
+)
 
 // Map iterates over elements of collection, applies the mapper function to each element
 // and returns an array of modified TargetType elements.
@@ -147,4 +150,14 @@ func Sum[T constraints.Numeric](collection ...T) T {
 	return Reduce(collection, func(sum, value T) T {
 		return sum + value
 	}, minElem)
+}
+
+// Unique returns a set of unique elements from the collection.
+func Unique[T comparable](collection []T) (unique *set.AdvancedSet[T]) {
+	unique = set.NewAdvancedSet[T]()
+	for _, item := range collection {
+		unique.Add(item)
+	}
+
+	return unique
 }
