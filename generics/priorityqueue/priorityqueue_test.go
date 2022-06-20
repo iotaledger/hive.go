@@ -12,11 +12,19 @@ func TestPriorityQueue(t *testing.T) {
 	queue := priorityqueue.New[queueElement]()
 	queue.Push(2)
 	queue.Push(3)
-	assert.Equal(t, queueElement(2), queue.Peek(), "wrong element")
-	assert.Equal(t, queueElement(2), queue.Pop(), "wrong element")
-	assert.Equal(t, queueElement(3), queue.Peek(), "wrong element")
+	peekedElement, exists := queue.Peek()
+	assert.True(t, exists)
+	assert.Equal(t, queueElement(2), peekedElement, "wrong element")
+	poppedElement, exists := queue.Pop()
+	assert.True(t, exists)
+	assert.Equal(t, queueElement(2), poppedElement, "wrong element")
+	peekedElement, exists = queue.Peek()
+	assert.True(t, exists)
+	assert.Equal(t, queueElement(3), peekedElement, "wrong element")
 	queue.Push(1)
-	assert.Equal(t, queueElement(1), queue.Peek(), "wrong element")
+	peekedElement, exists = queue.Peek()
+	assert.True(t, exists)
+	assert.Equal(t, queueElement(1), peekedElement, "wrong element")
 }
 
 type queueElement int

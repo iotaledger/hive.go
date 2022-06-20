@@ -12,7 +12,7 @@ type PriorityQueue[T constraints.Comparable[T]] struct {
 }
 
 // New creates a new PriorityQueue.
-func New[T constraints.Comparable[T]]() *PriorityQueue[T] {
+func New[T constraints.Comparable[T]]() (newPriorityQueue *PriorityQueue[T]) {
 	return &PriorityQueue[T]{
 		heap: make(queue[T], 0),
 	}
@@ -24,26 +24,29 @@ func (p *PriorityQueue[T]) Push(x T) {
 }
 
 // Pop removes and returns the element with the highest priority.
-func (p *PriorityQueue[T]) Pop() T {
-	return *heap.Pop(&p.heap).(*T)
-}
+func (p *PriorityQueue[T]) Pop() (element T, success bool) {
+	if p.IsEmpty() {
+		return element, false
+	}
 
-// PopIndex removes and returns the element at the given index.
-func (p *PriorityQueue[T]) PopIndex(index int) int {
-	return *heap.Remove(&p.heap, index).(*int)
+	return *heap.Pop(&p.heap).(*T), true
 }
 
 // Peek returns the element with the highest priority without removing it.
-func (p *PriorityQueue[T]) Peek() T {
-	return *p.heap[0]
-}
+func (p *PriorityQueue[T]) Peek() (element T, success bool) {
+	if p.IsEmpty() {
+		return element, false
+	}
 
-// PeekIndex returns the element at the given index without removing it.
-func (p *PriorityQueue[T]) PeekIndex(index int) T {
-	return *p.heap[index]
+	return *p.heap[0], true
 }
 
 // Size returns the number of elements in the PriorityQueue.
-func (p *PriorityQueue[T]) Size() int {
+func (p *PriorityQueue[T]) Size() (size int) {
 	return p.heap.Len()
+}
+
+// IsEmpty returns true if the PriorityQueue is empty.
+func (p *PriorityQueue[T]) IsEmpty() (isEmpty bool) {
+	return p.Size() == 0
 }
