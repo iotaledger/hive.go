@@ -6,6 +6,7 @@ const (
 	ConfigurationKeyLevel             = "logger.level"
 	ConfigurationKeyDisableCaller     = "logger.disableCaller"
 	ConfigurationKeyDisableStacktrace = "logger.disableStacktrace"
+	ConfigurationKeyStacktraceLevel   = "logger.stacktraceLevel"
 	ConfigurationKeyEncoding          = "logger.encoding"
 	ConfigurationKeyOutputPaths       = "logger.outputPaths"
 	ConfigurationKeyDisableEvents     = "logger.disableEvents"
@@ -20,8 +21,10 @@ type Config struct {
 	// By default, logs are not annotated.
 	DisableCaller bool `json:"disableCaller"`
 	// DisableStacktrace disables automatic stacktrace capturing.
-	// By default, stacktraces are captured for LevelError and above in production.
 	DisableStacktrace bool `json:"disableStacktrace"`
+	// StacktraceLevel is the level stacktraces are captured and above.
+	// The default is "panic".
+	StacktraceLevel string `json:"stacktraceLevel"`
 	// Encoding sets the logger's encoding. Valid values are "json" and "console".
 	// The default is "console".
 	Encoding string `json:"encoding"`
@@ -37,6 +40,7 @@ var defaultCfg = Config{
 	Level:             "info",
 	DisableCaller:     true,
 	DisableStacktrace: false,
+	StacktraceLevel:   "panic",
 	Encoding:          "console",
 	OutputPaths:       []string{"stdout"},
 	DisableEvents:     true,
