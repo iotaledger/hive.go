@@ -721,6 +721,7 @@ func (a *App) LogError(args ...interface{}) {
 // LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (a *App) LogErrorAndExit(args ...interface{}) {
 	a.log.Error(args...)
+	a.log.Error("Exiting...")
 	os.Exit(1)
 }
 
@@ -732,6 +733,7 @@ func (a *App) LogErrorf(template string, args ...interface{}) {
 // LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
 	a.log.Errorf(template, args...)
+	a.log.Error("Exiting...")
 	os.Exit(1)
 }
 

@@ -55,6 +55,7 @@ func (l *WrappedLogger) LogError(args ...interface{}) {
 func (l *WrappedLogger) LogErrorAndExit(args ...interface{}) {
 	if l.logger != nil {
 		l.logger.Error(args...)
+		l.logger.Error("Exiting...")
 	}
 	os.Exit(1)
 }
@@ -70,6 +71,7 @@ func (l *WrappedLogger) LogErrorf(template string, args ...interface{}) {
 func (l *WrappedLogger) LogErrorfAndExit(template string, args ...interface{}) {
 	if l.logger != nil {
 		l.logger.Errorf(template, args...)
+		l.logger.Error("Exiting...")
 	}
 	os.Exit(1)
 }

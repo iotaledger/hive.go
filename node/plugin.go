@@ -80,6 +80,7 @@ func (p *Plugin) LogError(args ...interface{}) {
 // LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (p *Plugin) LogErrorAndExit(args ...interface{}) {
 	p.Logger().Error(args...)
+	p.Logger().Error("Exiting...")
 	os.Exit(1)
 }
 
@@ -91,6 +92,7 @@ func (p *Plugin) LogErrorf(format string, args ...interface{}) {
 // LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (p *Plugin) LogErrorfAndExit(format string, args ...interface{}) {
 	p.Logger().Errorf(format, args...)
+	p.Logger().Error("Exiting...")
 	os.Exit(1)
 }
 

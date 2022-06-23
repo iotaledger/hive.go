@@ -82,6 +82,7 @@ func (c *Component) LogError(args ...interface{}) {
 // LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (c *Component) LogErrorAndExit(args ...interface{}) {
 	c.Logger().Error(args...)
+	c.Logger().Error("Exiting...")
 	os.Exit(1)
 }
 
@@ -93,6 +94,7 @@ func (c *Component) LogErrorf(template string, args ...interface{}) {
 // LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (c *Component) LogErrorfAndExit(template string, args ...interface{}) {
 	c.Logger().Errorf(template, args...)
+	c.Logger().Error("Exiting...")
 	os.Exit(1)
 }
 
