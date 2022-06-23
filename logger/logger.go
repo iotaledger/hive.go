@@ -80,6 +80,9 @@ func NewRootLoggerFromConfiguration(config *configuration.Configuration, levelOv
 	if val := config.Get(ConfigurationKeyDisableStacktrace); val != nil {
 		cfg.DisableStacktrace = val.(bool)
 	}
+	if val := config.String(ConfigurationKeyStacktraceLevel); val != "" {
+		cfg.StacktraceLevel = val
+	}
 	if val := config.String(ConfigurationKeyEncoding); val != "" {
 		cfg.Encoding = val
 	}
@@ -189,8 +192,13 @@ func buildOptions(cfg Config) []zap.Option {
 		opts = append(opts, zap.AddCaller())
 	}
 	if !cfg.DisableStacktrace {
-		// add stackstrace for error or higher
-		opts = append(opts, zap.AddStacktrace(zap.ErrorLevel))
+
+		var stacktraceLevel Level
+		if err := stacktraceLevel.UnmarshalText([]byte(cfg.StacktraceLevel)); err != nil {
+			stacktraceLevel = LevelPanic
+		}
+
+		opts = append(opts, zap.AddStacktrace(stacktraceLevel))
 	}
 
 	return opts

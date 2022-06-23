@@ -1,6 +1,7 @@
 package node
 
 import (
+	"os"
 	"strings"
 	"sync"
 
@@ -76,18 +77,32 @@ func (p *Plugin) LogError(args ...interface{}) {
 	p.Logger().Error(args...)
 }
 
+// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (p *Plugin) LogErrorAndExit(args ...interface{}) {
+	p.Logger().Error(args...)
+	p.Logger().Error("Exiting...")
+	os.Exit(1)
+}
+
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (p *Plugin) LogErrorf(format string, args ...interface{}) {
 	p.Logger().Errorf(format, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (p *Plugin) LogFatal(args ...interface{}) {
+// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (p *Plugin) LogErrorfAndExit(format string, args ...interface{}) {
+	p.Logger().Errorf(format, args...)
+	p.Logger().Error("Exiting...")
+	os.Exit(1)
+}
+
+// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (p *Plugin) LogFatalAndExit(args ...interface{}) {
 	p.Logger().Fatal(args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (p *Plugin) LogFatalf(format string, args ...interface{}) {
+// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (p *Plugin) LogFatalfAndExit(format string, args ...interface{}) {
 	p.Logger().Fatalf(format, args...)
 }
 
