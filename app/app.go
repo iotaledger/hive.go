@@ -718,18 +718,30 @@ func (a *App) LogError(args ...interface{}) {
 	a.log.Error(args...)
 }
 
+// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (a *App) LogErrorAndExit(args ...interface{}) {
+	a.log.Error(args...)
+	os.Exit(1)
+}
+
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (a *App) LogErrorf(template string, args ...interface{}) {
 	a.log.Errorf(template, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogFatal(args ...interface{}) {
+// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
+	a.log.Errorf(template, args...)
+	os.Exit(1)
+}
+
+// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (a *App) LogFatalAndExit(args ...interface{}) {
 	a.log.Fatal(args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (a *App) LogFatalf(template string, args ...interface{}) {
+// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (a *App) LogFatalfAndExit(template string, args ...interface{}) {
 	a.log.Fatalf(template, args...)
 }
 

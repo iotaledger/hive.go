@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"strings"
 	"sync"
 
@@ -78,18 +79,30 @@ func (c *Component) LogError(args ...interface{}) {
 	c.Logger().Error(args...)
 }
 
+// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (c *Component) LogErrorAndExit(args ...interface{}) {
+	c.Logger().Error(args...)
+	os.Exit(1)
+}
+
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (c *Component) LogErrorf(template string, args ...interface{}) {
 	c.Logger().Errorf(template, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (c *Component) LogFatal(args ...interface{}) {
+// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (c *Component) LogErrorfAndExit(template string, args ...interface{}) {
+	c.Logger().Errorf(template, args...)
+	os.Exit(1)
+}
+
+// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (c *Component) LogFatalAndExit(args ...interface{}) {
 	c.Logger().Fatal(args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (c *Component) LogFatalf(template string, args ...interface{}) {
+// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (c *Component) LogFatalfAndExit(template string, args ...interface{}) {
 	c.Logger().Fatalf(template, args...)
 }
 

@@ -1,5 +1,9 @@
 package logger
 
+import (
+	"os"
+)
+
 // WrappedLogger is a wrapper to call logging functions in case a logger was passed.
 type WrappedLogger struct {
 	logger *Logger
@@ -47,6 +51,14 @@ func (l *WrappedLogger) LogError(args ...interface{}) {
 	}
 }
 
+// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (l *WrappedLogger) LogErrorAndExit(args ...interface{}) {
+	if l.logger != nil {
+		l.logger.Error(args...)
+	}
+	os.Exit(1)
+}
+
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (l *WrappedLogger) LogErrorf(template string, args ...interface{}) {
 	if l.logger != nil {
@@ -54,15 +66,23 @@ func (l *WrappedLogger) LogErrorf(template string, args ...interface{}) {
 	}
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (l *WrappedLogger) LogFatal(args ...interface{}) {
+// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (l *WrappedLogger) LogErrorfAndExit(template string, args ...interface{}) {
+	if l.logger != nil {
+		l.logger.Errorf(template, args...)
+	}
+	os.Exit(1)
+}
+
+// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
+func (l *WrappedLogger) LogFatalAndExit(args ...interface{}) {
 	if l.logger != nil {
 		l.logger.Fatal(args...)
 	}
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (l *WrappedLogger) LogFatalf(template string, args ...interface{}) {
+// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
+func (l *WrappedLogger) LogFatalfAndExit(template string, args ...interface{}) {
 	if l.logger != nil {
 		l.logger.Fatalf(template, args...)
 	}
