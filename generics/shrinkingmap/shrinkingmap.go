@@ -1,7 +1,7 @@
 package shrinkingmap
 
-// ShrinkingMap provides a non concurrent-safe map that shrinks if the amount of deleted keys is larger than the current
-// size than a configurable threshold.
+// ShrinkingMap provides a non concurrent-safe map that shrinks if the ratio between the amount of deleted keys and the
+// map's size grows biggen than a configurable threshold.
 type ShrinkingMap[K comparable, V any] struct {
 	m                  map[K]V
 	shrinkingThreshold int
