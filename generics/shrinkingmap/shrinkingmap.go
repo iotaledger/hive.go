@@ -70,7 +70,7 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 
 // Shrink shrinks the map.
 func (s *ShrinkingMap[K, V]) Shrink() {
-	newMap := make(map[K]V)
+	newMap := make(map[K]V, len(s.m))
 
 	for k, v := range s.m {
 		newMap[k] = v
