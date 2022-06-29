@@ -61,7 +61,7 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	s.deletedKeys++
 	delete(s.m, key)
 
-	if s.deletedKeys/len(s.m) > s.shrinkingThreshold {
+	if s.deletedKeys/len(s.m) >= s.shrinkingThreshold {
 		s.Shrink()
 	}
 

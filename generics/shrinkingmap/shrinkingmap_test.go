@@ -14,7 +14,7 @@ func TestIsMapShrinking(t *testing.T) {
 
 	assert.Equal(t, 0, shrink.deletedKeys)
 
-	for i := 0; i < 75; i++ {
+	for i := 0; i < 67; i++ {
 		assert.Equal(t, i, shrink.deletedKeys)
 		shrink.Delete(i)
 	}
