@@ -1,11 +1,14 @@
 package confirmation
 
 const (
-	// Pending is the default confirmation state (undecided).
-	Pending State = iota
+	// Undefined is the default confirmation state.
+	Undefined State = iota
 
 	// Rejected is the state for rejected entities.
 	Rejected
+
+	// Pending is the state for pending entities.
+	Pending
 
 	// Accepted is the state for accepted entities.
 	Accepted
@@ -39,10 +42,6 @@ func (s State) IsPending() bool {
 
 // Aggregate returns the lowest confirmation state of all given states.
 func (s State) Aggregate(o State) State {
-	if s.IsRejected() || o.IsRejected() {
-		return Rejected
-	}
-
 	if o < s {
 		return o
 	}
@@ -62,6 +61,6 @@ func (s State) String() (humanReadable string) {
 	case Confirmed:
 		return "Confirmed"
 	default:
-		return "Unknown"
+		return "Undefined"
 	}
 }
