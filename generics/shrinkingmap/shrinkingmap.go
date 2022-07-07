@@ -1,28 +1,75 @@
 package shrinkingmap
 
-// ShrinkingMap provides a non concurrent-safe map that shrinks if the ratio between the amount of deleted keys and the
-// map's size grows biggen than a configurable threshold.
+// the default options applied to the ShrinkingMap.
+var defaultOptions = []Option{
+	WithShrinkingThresholdRatio(10.0),
+	WithShrinkingThresholdCount(100),
+}
+
+// Options define options for a ShrinkingMap.
+type Options struct {
+	// The ratio between the amount of deleted keys and
+	// the current map's size before shrinking is triggered.
+	shrinkingThresholdRatio float32
+	// The count of deletions that triggers shrinking of the map.
+	shrinkingThresholdCount int
+}
+
+// applies the given Option.
+func (so *Options) apply(opts ...Option) {
+	for _, opt := range opts {
+		opt(so)
+	}
+}
+
+// WithShrinkingThresholdRatio defines the ratio between the amount
+// of deleted keys and the current map's size before shrinking is triggered.
+func WithShrinkingThresholdRatio(ratio float32) Option {
+	return func(opts *Options) {
+		opts.shrinkingThresholdRatio = ratio
+	}
+}
+
+// WithShrinkingThresholdCount defines the count of
+// deletions that triggers shrinking of the map.
+func WithShrinkingThresholdCount(count int) Option {
+	return func(opts *Options) {
+		opts.shrinkingThresholdCount = count
+	}
+}
+
+// Option is a function setting an Options option.
+type Option func(opts *Options)
+
+// ShrinkingMap provides a non concurrent-safe map
+// that shrinks if certain conditions are met (AND condition).
+// Default values are:
+// - ShrinkingThresholdRatio: 10.0	(set to 0.0 to disable)
+// - ShrinkingThresholdCount: 100	(set to 0 to disable)
 type ShrinkingMap[K comparable, V any] struct {
-	m                  map[K]V
-	shrinkingThreshold int
-	deletedKeys        int
+	m           map[K]V
+	deletedKeys int
+
+	// holds the map options.
+	opts *Options
 }
 
 // New returns a new ShrinkingMap.
-func New[K comparable, V any](shrinkingThreshold ...int) (new *ShrinkingMap[K, V]) {
-	new = &ShrinkingMap[K, V]{
-		m:                  make(map[K]V),
-		shrinkingThreshold: 10,
+func New[K comparable, V any](opts ...Option) *ShrinkingMap[K, V] {
+
+	mapOpts := &Options{}
+	mapOpts.apply(defaultOptions...)
+	mapOpts.apply(opts...)
+
+	shrinkingMap := &ShrinkingMap[K, V]{
+		m:    make(map[K]V),
+		opts: mapOpts,
 	}
 
-	if len(shrinkingThreshold) > 0 {
-		new.shrinkingThreshold = shrinkingThreshold[0]
-	}
-
-	return new
+	return shrinkingMap
 }
 
-// Set adds a key-value pair to the map. It returns true if the key existed.
+// Set adds a key-value pair to the map. It returns true if the key exists.
 func (s *ShrinkingMap[K, V]) Set(key K, value V) (updated bool) {
 	_, updated = s.m[key]
 	s.m[key] = value
@@ -30,7 +77,7 @@ func (s *ShrinkingMap[K, V]) Set(key K, value V) (updated bool) {
 	return updated
 }
 
-// Get returns the value mapped to the given key, and the boolean flag that indicated is the key exists.
+// Get returns the value mapped to the given key, and the boolean flag that indicated if the key exists.
 func (s *ShrinkingMap[K, V]) Get(key K) (value V, exists bool) {
 	value, exists = s.m[key]
 	return
@@ -52,7 +99,8 @@ func (s *ShrinkingMap[K, V]) IsEmpty() (empty bool) {
 	return s.Size() == 0
 }
 
-// Delete removes the entry with the given key, and possibly shrinks the map if the shrinking threshold has been reached.
+// Delete removes the entry with the given key, and possibly
+// shrinks the map if the shrinking conditions have been reached.
 func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	if _, deleted = s.m[key]; !deleted {
 		return false
@@ -61,8 +109,44 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	s.deletedKeys++
 	delete(s.m, key)
 
-	if s.deletedKeys/len(s.m) >= s.shrinkingThreshold {
+	if s.shouldShrink() {
 		s.Shrink()
+	}
+
+	return true
+}
+
+// shouldShrink checks if the conditons to shrink the map are met.
+func (s *ShrinkingMap[K, V]) shouldShrink() bool {
+
+	size := s.Size()
+
+	// check if one of the conditions was defined, otherwise never shrink
+	if !(s.opts.shrinkingThresholdRatio != 0.0 || s.opts.shrinkingThresholdCount != 0) {
+		return false
+	}
+
+	if s.opts.shrinkingThresholdRatio != 0.0 {
+		// ratio was defined
+
+		// check for division by zero
+		if size == 0 {
+			return false
+		}
+
+		if float32(s.deletedKeys)/float32(size) < s.opts.shrinkingThresholdRatio {
+			// condition not reached
+			return false
+		}
+	}
+
+	if s.opts.shrinkingThresholdCount != 0 {
+		// count was defined
+
+		if s.deletedKeys < s.opts.shrinkingThresholdCount {
+			// condition not reached
+			return false
+		}
 	}
 
 	return true
