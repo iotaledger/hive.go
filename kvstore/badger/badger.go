@@ -263,7 +263,7 @@ func (s *badgerStore) Flush() error {
 func (s *badgerStore) Close() error {
 	if s.closed.Swap(true) {
 		// was already closed
-		return kvstore.ErrStoreClosed
+		return nil
 	}
 
 	return s.instance.Close()
