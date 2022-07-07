@@ -122,19 +122,21 @@ func (s *ShrinkingMap[K, V]) shouldShrink() bool {
 	size := s.Size()
 
 	// check if one of the conditions was defined, otherwise never shrink
-	shouldShrink := s.opts.shrinkingThresholdRatio != 0.0 || s.opts.shrinkingThresholdCount != 0
+	if !(s.opts.shrinkingThresholdRatio != 0.0 || s.opts.shrinkingThresholdCount != 0) {
+		return false
+	}
 
 	if s.opts.shrinkingThresholdRatio != 0.0 {
 		// ratio was defined
 
 		// check for division by zero
 		if size == 0 {
-			return true
+			return false
 		}
 
 		if float32(s.deletedKeys)/float32(size) < s.opts.shrinkingThresholdRatio {
 			// condition not reached
-			shouldShrink = false
+			return false
 		}
 	}
 
@@ -143,11 +145,11 @@ func (s *ShrinkingMap[K, V]) shouldShrink() bool {
 
 		if s.deletedKeys < s.opts.shrinkingThresholdCount {
 			// condition not reached
-			shouldShrink = false
+			return false
 		}
 	}
 
-	return shouldShrink
+	return true
 }
 
 // Shrink shrinks the map.
