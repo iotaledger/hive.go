@@ -123,6 +123,11 @@ drainLoop:
 	// So the gracefulness of closing a channel here is not to close the channel.
 }
 
+// Returns the number of websocket clients
+func (h *Hub) Clients() int {
+	return len(h.clients)
+}
+
 // Run starts the hub.
 func (h *Hub) Run(ctx context.Context) {
 
