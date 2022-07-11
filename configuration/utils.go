@@ -1,12 +1,10 @@
 package configuration
 
 import (
-	"runtime"
-	"strings"
 	"unicode"
 )
 
-func lowerCamelCase(str string) string {
+func LowerCamelCase(str string) string {
 	runes := []rune(str)
 	runeCount := len(runes)
 
@@ -28,16 +26,4 @@ func lowerCamelCase(str string) string {
 	}
 
 	return string(runes)
-}
-
-func callerShortPackageName() string {
-	pc, _, _, _ := runtime.Caller(2)
-	funcName := runtime.FuncForPC(pc).Name()
-	lastSlash := strings.LastIndexByte(funcName, '/')
-	if lastSlash < 0 {
-		lastSlash = 0
-	}
-	firstDot := strings.IndexByte(funcName[lastSlash:], '.') + lastSlash
-
-	return funcName[lastSlash+1 : firstDot]
 }

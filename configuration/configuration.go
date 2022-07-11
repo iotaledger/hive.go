@@ -232,7 +232,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		if tagName, exists := typeField.Tag.Lookup("name"); exists {
 			name += tagName
 		} else {
-			name += lowerCamelCase(typeField.Name)
+			name += LowerCamelCase(typeField.Name)
 		}
 
 		shortHand, _ := typeField.Tag.Lookup("shorthand")
