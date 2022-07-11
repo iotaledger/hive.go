@@ -124,8 +124,8 @@ func (p *Protocol) RemoveNeighbor(id identity.ID) {
 
 // BlockNeighbor does everything the RemoveNeighbor() does,
 // but it also adds the neighbor to the blocklist for certain amount of time to prevent future peering.
-func (p *Protocol) BlockNeighbor(id identity.ID) {
-	p.mgr.blockNeighbor(id)
+func (p *Protocol) BlockNeighbor(id identity.ID, ttl ...time.Duration) {
+	p.mgr.blockNeighbor(id, ttl...)
 }
 
 // UnblockNeighbor removes the neighbor from the blocklist to allow future peering.

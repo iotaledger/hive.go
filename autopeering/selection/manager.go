@@ -162,10 +162,17 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 	return status
 }
 
-func (m *manager) blockNeighbor(id identity.ID) {
-	if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
-		m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+func (m *manager) blockNeighbor(id identity.ID, ttl ...time.Duration) {
+	if len(ttl) > 0 {
+		if err := m.blocklist.SetWithTTL(id.EncodeBase58(), nil, ttl[0]); err != nil {
+			m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+		}
+	} else {
+		if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
+			m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+		}
 	}
+
 	m.removeNeighbor(id)
 }
 
