@@ -89,6 +89,26 @@ func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 	return
 }
 
+// ForEachKey iterates through the map and calls the consumer for every element.
+// Returning false from this function indicates to abort the iteration.
+func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
+	for k := range s.m {
+		if !callback(k) {
+			return
+		}
+	}
+}
+
+// ForEach iterates through the map and calls the consumer for every element.
+// Returning false from this function indicates to abort the iteration.
+func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
+	for k, v := range s.m {
+		if !callback(k, v) {
+			return
+		}
+	}
+}
+
 // Size returns the number of entries in the map.
 func (s *ShrinkingMap[K, V]) Size() (size int) {
 	return len(s.m)
