@@ -327,7 +327,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	// Filter out blocklisted peers.
 	allowedPeers := make([]*peer.Peer, 0, len(knownPeers))
 	for _, p := range knownPeers {
-		if !m.isInBlocklist(p) {
+		if !m.isInBlocklist(p.ID()) {
 			allowedPeers = append(allowedPeers, p)
 		}
 	}
@@ -345,7 +345,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	// filter out previous rejections
 	filteredList := make([]peer.PeerDistance, 0, len(distList))
 	for _, dist := range distList {
-		if !m.isInSkiplist(dist.Remote) {
+		if !m.isInSkiplist(dist.Remote.ID()) {
 			filteredList = append(filteredList, dist)
 		}
 	}
@@ -367,7 +367,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	resp = reject
 	defer func() { req.back <- resp }() // assure that a response is always issued
 
-	if m.isInBlocklist(req.peer) {
+	if m.isInBlocklist(req.peer.ID()) {
 		return
 	}
 
@@ -514,22 +514,22 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 	}
 }
 
-func (m *manager) isInBlocklist(p *peer.Peer) bool {
-	if _, err := m.blocklist.Get(p.ID().EncodeBase58()); err != nil {
+func (m *manager) isInBlocklist(id identity.ID) bool {
+	if _, err := m.blocklist.Get(id.EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
-				"peerId", p.ID())
+				"peerId", id)
 		}
 		return false
 	}
 	return true
 }
 
-func (m *manager) isInSkiplist(p *peer.Peer) bool {
-	if _, err := m.skiplist.Get(p.ID().EncodeBase58()); err != nil {
+func (m *manager) isInSkiplist(id identity.ID) bool {
+	if _, err := m.skiplist.Get(id.EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
-				"peerId", p.ID())
+				"peerId", id)
 		}
 		return false
 	}

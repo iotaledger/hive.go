@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -82,7 +83,8 @@ func TestBlocklistNeighbor(t *testing.T) {
 		blocklistedMgr.updateOutbound(resultCh)
 		result := <-resultCh
 		assert.Nil(t, result.Remote)
-		assert.True(t, blocklistedMgr.isInSkiplist(blocklistingMgr.net.local().Peer))
+		assert.True(t, blocklistingMgr.isInBlocklist(blocklistedMgr.getID()))
+		assert.True(t, blocklistedMgr.isInSkiplist(blocklistingMgr.getID()))
 		got := blocklistedMgr.getOutboundPeeringCandidate()
 		assert.Nil(t, got.Remote)
 	})
