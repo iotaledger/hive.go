@@ -844,7 +844,7 @@ func TestStoreClosed(t *testing.T) {
 		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
 
 		err = store.Close()
-		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)
+		require.ErrorIs(t, err, nil, "used db: %s", dbImplementation)
 
 		_, err = store.Batched()
 		require.ErrorIs(t, err, kvstore.ErrStoreClosed, "used db: %s", dbImplementation)

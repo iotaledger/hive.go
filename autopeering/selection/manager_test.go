@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/identity"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -82,9 +83,23 @@ func TestBlocklistNeighbor(t *testing.T) {
 		blocklistedMgr.updateOutbound(resultCh)
 		result := <-resultCh
 		assert.Nil(t, result.Remote)
-		assert.True(t, blocklistedMgr.isInSkiplist(blocklistingMgr.net.local().Peer))
+		assert.True(t, blocklistingMgr.isInBlocklist(blocklistedMgr.getID()))
+		assert.True(t, blocklistedMgr.isInSkiplist(blocklistingMgr.getID()))
 		got := blocklistedMgr.getOutboundPeeringCandidate()
 		assert.Nil(t, got.Remote)
+	})
+	t.Run("Blocklisted manager connects to Blocklisting neighbor after unblocking", func(t *testing.T) {
+		blocklistingMgr.unblockNeighbor(blocklistedMgr.getID())
+		blocklistedMgr.cleanSkiplist()
+		resultCh := make(chan peer.PeerDistance, 1)
+		blocklistedMgr.updateOutbound(resultCh)
+		result := <-resultCh
+		assert.NotNil(t, result.Remote)
+		assert.False(t, blocklistingMgr.isInBlocklist(blocklistingMgr.getID()))
+		assert.False(t, blocklistingMgr.isInSkiplist(blocklistingMgr.getID()))
+		assert.False(t, blocklistedMgr.isInSkiplist(blocklistingMgr.getID()))
+		got := blocklistedMgr.getOutboundPeeringCandidate()
+		assert.NotNil(t, got.Remote)
 	})
 }
 
