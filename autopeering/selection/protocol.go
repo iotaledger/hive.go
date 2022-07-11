@@ -128,6 +128,11 @@ func (p *Protocol) BlockNeighbor(id identity.ID) {
 	p.mgr.blockNeighbor(id)
 }
 
+// UnblockNeighbor removes the neighbor from the blocklist to allow future peering.
+func (p *Protocol) UnblockNeighbor(id identity.ID) {
+	p.mgr.unblockNeighbor(id)
+}
+
 // HandleMessage responds to incoming neighbor selection messages.
 func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
 	if !p.running.IsSet() {

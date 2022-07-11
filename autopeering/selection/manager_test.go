@@ -88,6 +88,19 @@ func TestBlocklistNeighbor(t *testing.T) {
 		got := blocklistedMgr.getOutboundPeeringCandidate()
 		assert.Nil(t, got.Remote)
 	})
+	t.Run("Blocklisted manager connects to Blocklisting neighbor after unblocking", func(t *testing.T) {
+		blocklistingMgr.unblockNeighbor(blocklistedMgr.getID())
+		blocklistedMgr.cleanSkiplist()
+		resultCh := make(chan peer.PeerDistance, 1)
+		blocklistedMgr.updateOutbound(resultCh)
+		result := <-resultCh
+		assert.NotNil(t, result.Remote)
+		assert.False(t, blocklistingMgr.isInBlocklist(blocklistingMgr.getID()))
+		assert.False(t, blocklistingMgr.isInSkiplist(blocklistingMgr.getID()))
+		assert.False(t, blocklistedMgr.isInSkiplist(blocklistingMgr.getID()))
+		got := blocklistedMgr.getOutboundPeeringCandidate()
+		assert.NotNil(t, got.Remote)
+	})
 }
 
 func TestEvents(t *testing.T) {
