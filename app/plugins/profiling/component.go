@@ -12,11 +12,13 @@ import (
 
 func init() {
 	Plugin = &app.Plugin{
-		Status: app.StatusEnabled,
 		Component: &app.Component{
 			Name:   "Profiling",
 			Params: params,
 			Run:    run,
+		},
+		IsEnabled: func() bool {
+			return ParamsProfiling.Enabled
 		},
 	}
 }

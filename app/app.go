@@ -32,9 +32,7 @@ type AppInfo struct {
 }
 
 type ParametersApp struct {
-	CheckForUpdates bool     `default:"true" usage:"whether to check for updates of the application or not"`
-	DisablePlugins  []string `default:"" usage:"a list of plugins that shall be disabled"`
-	EnablePlugins   []string `default:"" usage:"a list of plugins that shall be enabled"`
+	CheckForUpdates bool `default:"true" usage:"whether to check for updates of the application or not"`
 }
 
 type App struct {
@@ -283,20 +281,27 @@ func (a *App) printAppInfo() {
 func (a *App) printConfig() {
 	a.appConfig.Print(a.maskedKeys)
 
-	enablePlugins := a.appParams.EnablePlugins
-	disablePlugins := a.appParams.DisablePlugins
+	enabledPlugins := []string{}
+	for plugin := range a.enabledPlugins {
+		enabledPlugins = append(enabledPlugins, plugin)
+	}
+
+	disabledPlugins := []string{}
+	for plugin := range a.disabledPlugins {
+		disabledPlugins = append(disabledPlugins, plugin)
+	}
 
 	getList := func(a []string) string {
 		sort.Strings(a)
 		return "\n   - " + strings.Join(a, "\n   - ")
 	}
 
-	if len(enablePlugins) > 0 || len(disablePlugins) > 0 {
-		if len(enablePlugins) > 0 {
-			fmt.Printf("\nThe following plugins are enabled: %s\n", getList(enablePlugins))
+	if len(enabledPlugins) > 0 || len(disabledPlugins) > 0 {
+		if len(enabledPlugins) > 0 {
+			fmt.Printf("\nThe following plugins are enabled: %s\n", getList(enabledPlugins))
 		}
-		if len(disablePlugins) > 0 {
-			fmt.Printf("\nThe following plugins are disabled: %s\n", getList(disablePlugins))
+		if len(disabledPlugins) > 0 {
+			fmt.Printf("\nThe following plugins are disabled: %s\n", getList(disabledPlugins))
 		}
 		fmt.Println()
 	}
@@ -331,10 +336,7 @@ func (a *App) initConfig() {
 
 // preProvide stage
 func (a *App) preProvide() {
-	initCfg := &InitConfig{
-		EnabledPlugins:  a.appParams.EnablePlugins,
-		DisabledPlugins: a.appParams.DisablePlugins,
-	}
+	initCfg := &InitConfig{}
 
 	if a.options.initComponent.PreProvide != nil {
 		if err := a.options.initComponent.PreProvide(a.container, a, initCfg); err != nil {
@@ -357,18 +359,22 @@ func (a *App) preProvide() {
 				a.LogPanicf("pre-provide plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
+
+		if plugin.IsEnabled == nil {
+			a.LogPanicf("pre-provide plugin (%s) failed: plugin does not provide an IsEnabled function", plugin.Name)
+		}
+
+		// Enable / disable Components
+		if plugin.IsEnabled() {
+			a.enabledPlugins[plugin.Name] = struct{}{}
+		} else {
+			a.disabledPlugins[plugin.Name] = struct{}{}
+		}
+
 		return true
 	})
 
-	// Enable / (Force-) disable Components
-	for _, name := range initCfg.EnabledPlugins {
-		a.enabledPlugins[strings.ToLower(name)] = struct{}{}
-	}
-
-	for _, name := range initCfg.DisabledPlugins {
-		a.disabledPlugins[strings.ToLower(name)] = struct{}{}
-	}
-
+	// Force disable Components
 	for _, name := range initCfg.forceDisabledComponents {
 		a.forceDisabledComponents[strings.ToLower(name)] = struct{}{}
 	}
@@ -557,9 +563,9 @@ func (a *App) run() {
 
 func (a *App) initializeApp() {
 	a.printAppInfo()
-	a.printConfig()
 	a.initConfig()
 	a.preProvide()
+	a.printConfig()
 	a.addComponents()
 	a.provide()
 	a.invoke()
@@ -662,7 +668,7 @@ func (a *App) IsPluginSkipped(plugin *Plugin) bool {
 
 	// if the plugin was not in the list of disabled plugins, it is only skipped if
 	// the plugin was not enabled and not in the list of enabled plugins.
-	return plugin.Status != StatusEnabled && !a.isPluginEnabled(plugin.Identifier())
+	return !plugin.IsEnabled() && !a.isPluginEnabled(plugin.Identifier())
 }
 
 // CoreComponentForEachFunc is used in ForEachCoreComponent.
