@@ -156,15 +156,8 @@ type CoreComponent struct {
 	*Component
 }
 
-type PluginStatus int
-
-const (
-	StatusDisabled PluginStatus = iota
-	StatusEnabled
-)
-
 type Plugin struct {
 	*Component
-	// The status of the plugin.
-	Status PluginStatus
+	// IsEnabled gets called to check whether the Plugin is enabled.
+	IsEnabled IsEnabledFunc
 }

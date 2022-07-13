@@ -13,6 +13,10 @@ type PreProvideFunc func(c *dig.Container, application *App, initConf *InitConfi
 // ProvideFunc gets called with a dig.Container.
 type ProvideFunc func(c *dig.Container) error
 
+// IsEnabledFunc gets called to check whether the Plugin is enabled.
+// It returns true if the Plugin is enabled.
+type IsEnabledFunc func() bool
+
 // InitFunc gets called as the initialization function of the app.
 type InitFunc func(application *App) error
 
@@ -21,8 +25,6 @@ type Callback func() error
 
 // InitConfig describes the result of a app initialization.
 type InitConfig struct {
-	EnabledPlugins          []string
-	DisabledPlugins         []string
 	forceDisabledComponents []string
 }
 
