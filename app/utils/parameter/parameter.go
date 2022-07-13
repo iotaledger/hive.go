@@ -65,7 +65,13 @@ func createParameter(defaultVal any, usage string, name string) *Parameter {
 		defaultValueStr += "]"
 		typeName = "object"
 	default:
-		panic(fmt.Sprintf("unknown type (%s), name: %s", reflect.TypeOf(defaultVal).Name(), name))
+		switch reflect.ValueOf(v).Kind() {
+		case reflect.Slice, reflect.Map:
+			defaultValueStr = "see example below"
+			typeName = "object"
+		default:
+			panic(fmt.Sprintf("unknown type (%s), name: %s", reflect.ValueOf(defaultVal).Type().String(), name))
+		}
 	}
 
 	var description string
