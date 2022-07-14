@@ -76,8 +76,14 @@ func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask)
 		task.markDone()
 		return
 	}
-
-	b.tasks <- task
+	// Create a new goroutine to submit the task to the queue to avoid deadlocks.
+	// Deadlock could happen when all workers are processing a task which submits a new task to the queue which is full.
+	// Increasing pending task counter allows to successfully wait for all the tasks to be processed.
+	b.increasePendingTaskCounter()
+	go func() {
+		defer b.decreasePendingTasksCounter()
+		b.tasks <- task
+	}()
 }
 
 // TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to

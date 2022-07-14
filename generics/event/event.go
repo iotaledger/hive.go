@@ -91,8 +91,7 @@ func (e *Event[T]) Trigger(event T) {
 			return true
 		})
 	}
-
-	go e.triggerEventHandlers(event)
+	e.triggerEventHandlers(event)
 }
 
 func (e *Event[T]) triggerEventHandlers(event T) {
