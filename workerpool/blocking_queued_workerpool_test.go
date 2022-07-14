@@ -32,17 +32,18 @@ func Test_SimpleCounter(t *testing.T) {
 			assert.False(t, added)
 		}
 	}
-
-	assert.Equal(t, queueSize, el.GetPendingQueueSize())
+	// tasks are added asynchronously so we might need to wait for all of them to be added
+	assert.Eventually(t, func() bool {
+		return queueSize == el.GetPendingQueueSize()
+	}, time.Second, 10*time.Millisecond)
 
 	el.Start()
 
 	for i := 0; i < incCount-queueSize; i++ {
 		el.Submit(incAtomic)
 	}
-
+	el.WaitUntilAllTasksProcessed()
 	el.StopAndWait()
-
 	assert.Equal(t, uint64(incCount), counter)
 }
 
