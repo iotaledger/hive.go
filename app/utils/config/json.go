@@ -65,5 +65,5 @@ func GetDefaultAppConfigJSON(config *configuration.Configuration, flagset *flag.
 		paramMapJSON.AddEntry(group)
 	}
 
-	return paramMapJSON.PrettyPrint("", "  ")
+	return paramMapJSON.PrettyPrint("", "  ") + "\n"
 }
