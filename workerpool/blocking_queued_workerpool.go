@@ -59,7 +59,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 
 // CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
 func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) (new *BlockingQueueWorkerPoolTask) {
-	b.increasePendingTaskCounter()
+	b.IncreasePendingTasksCounter()
 
 	var stackTrace string
 	if len(optionalStackTrace) > 1 {
@@ -76,14 +76,7 @@ func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask)
 		task.markDone()
 		return
 	}
-	// Create a new goroutine to submit the task to the queue to avoid deadlocks.
-	// Deadlock could happen when all workers are processing a task which submits a new task to the queue which is full.
-	// Increasing pending task counter allows to successfully wait for all the tasks to be processed.
-	b.increasePendingTaskCounter()
-	go func() {
-		defer b.decreasePendingTasksCounter()
-		b.tasks <- task
-	}()
+	b.tasks <- task
 }
 
 // TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to
@@ -216,14 +209,16 @@ func (b *BlockingQueuedWorkerPool) startWorkers() {
 	}
 }
 
-func (b *BlockingQueuedWorkerPool) increasePendingTaskCounter() {
+// IncreasePendingTasksCounter increases the pending task counter.
+func (b *BlockingQueuedWorkerPool) IncreasePendingTasksCounter() {
 	b.pendingTasksMutex.Lock()
 	defer b.pendingTasksMutex.Unlock()
 
 	b.pendingTasksCounter++
 }
 
-func (b *BlockingQueuedWorkerPool) decreasePendingTasksCounter() {
+// DecreasePendingTasksCounter decreases the pending task counter.
+func (b *BlockingQueuedWorkerPool) DecreasePendingTasksCounter() {
 	b.pendingTasksMutex.Lock()
 
 	b.pendingTasksCounter--
@@ -274,7 +269,7 @@ func (t *BlockingQueueWorkerPoolTask) run() {
 // markDone marks the task as done.
 func (t *BlockingQueueWorkerPoolTask) markDone() {
 	close(t.doneChan)
-	t.workerPool.decreasePendingTasksCounter()
+	t.workerPool.DecreasePendingTasksCounter()
 }
 
 // detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
