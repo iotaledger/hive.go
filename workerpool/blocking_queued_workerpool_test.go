@@ -32,17 +32,13 @@ func Test_SimpleCounter(t *testing.T) {
 			assert.False(t, added)
 		}
 	}
-
 	assert.Equal(t, queueSize, el.GetPendingQueueSize())
-
 	el.Start()
 
 	for i := 0; i < incCount-queueSize; i++ {
 		el.Submit(incAtomic)
 	}
-
 	el.StopAndWait()
-
 	assert.Equal(t, uint64(incCount), counter)
 }
 
