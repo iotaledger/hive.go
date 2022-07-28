@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/iotaledger/hive.go/core/datastructure/orderedmap"
+	"github.com/iancoleman/orderedmap"
 	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/core/configuration"

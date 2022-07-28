@@ -9,7 +9,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/configuration"
 
-	"github.com/iotaledger/hive.go/core/app/utils/parameter"
+	"github.com/iotaledger/hive.go/apputils/parameter"
 )
 
 func escapeAsterisk(text string) string {

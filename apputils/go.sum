@@ -63,6 +63,8 @@ github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6
 github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
 github.com/iotaledger/hive.go v0.0.0-20220711211336-0ec84a23cf1c h1:Buj6vqXaX4LerdjTyL8SWIEoGX+IlApXxTkrnkcCgVo=
 github.com/iotaledger/hive.go v0.0.0-20220711211336-0ec84a23cf1c/go.mod h1:qY0Eg2w/r+Ot0KrocMQHrtHzrcYKxDAEf33c6nSd8mI=
+github.com/iotaledger/hive.go/core v0.0.0-20220728095724-50f81465a1a5 h1:kgD4tUwPt3aebeG/7UrtguK/iaFDhtxtujcMmT6v6ew=
+github.com/iotaledger/hive.go/core v0.0.0-20220728095724-50f81465a1a5/go.mod h1:vLuNFPEdLiRjK1nKrf8Eb9DMOTadwiS+q/gRrbKkSww=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/joho/godotenv v1.3.0 h1:Zjp+RcGpHhGlrMbJzXTrZZPrWj+1vfm90La1wgB6Bhc=
