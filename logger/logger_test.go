@@ -25,8 +25,9 @@ func TestNewRootLogger(t *testing.T) {
 		{
 			name: "console",
 			cfg: Config{
-				Level:    "info",
-				Encoding: "console",
+				Level:           "info",
+				Encoding:        "console",
+				StacktraceLevel: "error",
 			},
 			expectRx: `INFO\tlogger/logger_test.go:\d+\tinfo\n` +
 				`WARN\tlogger/logger_test.go:\d+\twarn\n`,
@@ -34,8 +35,9 @@ func TestNewRootLogger(t *testing.T) {
 		{
 			name: "json",
 			cfg: Config{
-				Level:    "info",
-				Encoding: "json",
+				Level:           "info",
+				Encoding:        "json",
+				StacktraceLevel: "error",
 			},
 			expectRx: `{"level":"INFO","caller":"logger/logger_test.go:\d+","msg":"info"}\n` +
 				`{"level":"WARN","caller":"logger/logger_test.go:\d+","msg":"warn"}`,
@@ -43,7 +45,8 @@ func TestNewRootLogger(t *testing.T) {
 		{
 			name: "debug",
 			cfg: Config{
-				Level: "debug",
+				Level:           "debug",
+				StacktraceLevel: "error",
 			},
 			expectRx: `DEBUG\tlogger/logger_test.go:\d+\tdebug\n` +
 				`INFO\tlogger/logger_test.go:\d+\tinfo\n` +
@@ -52,7 +55,8 @@ func TestNewRootLogger(t *testing.T) {
 		{
 			name: "noCaller",
 			cfg: Config{
-				DisableCaller: true,
+				DisableCaller:   true,
+				StacktraceLevel: "error",
 			},
 			expectRx: "INFO\tinfo\n" +
 				"WARN\twarn\n",

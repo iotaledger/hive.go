@@ -274,23 +274,33 @@ func (d *OrderedDaemon) Start() {
 // Run runs the daemon and then waits for the daemon to shutdown.
 func (d *OrderedDaemon) Run() {
 	d.Start()
-	if wg := d.waitGroupForLastPriority(); wg != nil {
+
+	// wait until all wait groups for all shutdown orders are finished
+	for _, wg := range d.waitGroupsForAllShutdownOrders() {
+		if wg == nil {
+			continue
+		}
 		wg.Wait()
 	}
 }
 
-// returns on the waitGroup of the lowest shutdownOrderWorker or nil if not workers.
-func (d *OrderedDaemon) waitGroupForLastPriority() *sync.WaitGroup {
+// returns all waitgroups of all existing shutdown orders or nil if none.
+func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
-	if len(d.shutdownOrderWorker) == 0 {
+	if len(d.wgPerSameShutdownOrder) == 0 {
 		return nil
 	}
-	// find lowest shutdown priority
-	lowestShutdownPriorityWorker := d.workers[d.shutdownOrderWorker[len(d.shutdownOrderWorker)-1]]
-	// return waitGroup for lowest priority
-	return d.wgPerSameShutdownOrder[lowestShutdownPriorityWorker.shutdownOrder]
+
+	waitGroups := make([]*sync.WaitGroup, len(d.wgPerSameShutdownOrder))
+	i := 0
+	for _, wg := range d.wgPerSameShutdownOrder {
+		waitGroup := wg
+		waitGroups[i] = waitGroup
+		i++
+	}
+	return waitGroups
 }
 
 func (d *OrderedDaemon) shutdown() {

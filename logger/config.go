@@ -6,6 +6,7 @@ const (
 	ConfigurationKeyLevel             = "logger.level"
 	ConfigurationKeyDisableCaller     = "logger.disableCaller"
 	ConfigurationKeyDisableStacktrace = "logger.disableStacktrace"
+	ConfigurationKeyStacktraceLevel   = "logger.stacktraceLevel"
 	ConfigurationKeyEncoding          = "logger.encoding"
 	ConfigurationKeyOutputPaths       = "logger.outputPaths"
 	ConfigurationKeyDisableEvents     = "logger.disableEvents"
@@ -17,11 +18,13 @@ type Config struct {
 	// The default is "info".
 	Level string `json:"level"`
 	// DisableCaller stops annotating logs with the calling function's file name and line number.
-	// By default, all logs are annotated.
+	// By default, logs are not annotated.
 	DisableCaller bool `json:"disableCaller"`
 	// DisableStacktrace disables automatic stacktrace capturing.
-	// By default, stacktraces are captured for LevelError and above in production.
 	DisableStacktrace bool `json:"disableStacktrace"`
+	// StacktraceLevel is the level stacktraces are captured and above.
+	// The default is "panic".
+	StacktraceLevel string `json:"stacktraceLevel"`
 	// Encoding sets the logger's encoding. Valid values are "json" and "console".
 	// The default is "console".
 	Encoding string `json:"encoding"`
@@ -29,15 +32,18 @@ type Config struct {
 	// The default is ["stdout"].
 	OutputPaths []string `json:"outputPaths"`
 	// DisableEvents prevents log messages from being raced as events.
-	// By default, the corresponding events are triggered.
+	// By default, the corresponding events are not triggered.
 	DisableEvents bool `json:"disableEvents"`
 }
 
 var defaultCfg = Config{
-	Level:         "info",
-	Encoding:      "console",
-	OutputPaths:   []string{"stdout"},
-	DisableEvents: true,
+	Level:             "info",
+	DisableCaller:     true,
+	DisableStacktrace: false,
+	StacktraceLevel:   "panic",
+	Encoding:          "console",
+	OutputPaths:       []string{"stdout"},
+	DisableEvents:     true,
 }
 
 var defaultEncoderConfig = zapcore.EncoderConfig{

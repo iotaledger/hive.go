@@ -604,89 +604,79 @@ func (d *Deserializer) ReadUint256(dest **big.Int, errProducer ErrProducer) *Des
 	return d
 }
 
+// numSize returns the size of the data required to represent the data when encoded.
+func numSize(data any) int {
+	switch data := data.(type) {
+	case bool, int8, uint8, *bool, *int8, *uint8:
+		return OneByte
+	case int16, *int16:
+		return Int16ByteSize
+	case uint16, *uint16:
+		return UInt16ByteSize
+	case int32, *int32:
+		return Int32ByteSize
+	case uint32, *uint32:
+		return UInt32ByteSize
+	case int64, *int64:
+		return Int64ByteSize
+	case uint64, *uint64:
+		return UInt64ByteSize
+	case float32, *float32:
+		return Float32ByteSize
+	case float64, *float64:
+		return Float64ByteSize
+	default:
+		panic(fmt.Sprintf("unsupported numSize type %T", data))
+	}
+}
+
 // ReadNum reads a number into dest.
-func (d *Deserializer) ReadNum(dest interface{}, errProducer ErrProducer) *Deserializer {
+func (d *Deserializer) ReadNum(dest any, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
 	}
 
 	l := len(d.src[d.offset:])
 
+	dataSize := numSize(dest)
+	if l < dataSize {
+		d.err = errProducer(ErrDeserializationNotEnoughData)
+		return d
+	}
+	l = dataSize
+
+	data := d.src[d.offset : d.offset+l]
+
 	switch x := dest.(type) {
-	case *uint8:
-		if l < OneByte {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = OneByte
-		*x = d.src[d.offset : d.offset+1][0]
-
-	case *uint16:
-		if l < UInt16ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt16ByteSize
-		*x = binary.LittleEndian.Uint16(d.src[d.offset : d.offset+UInt16ByteSize])
-
-	case *uint32:
-		if l < UInt32ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt32ByteSize
-		*x = binary.LittleEndian.Uint32(d.src[d.offset : d.offset+UInt32ByteSize])
-	case *uint64:
-		if l < UInt64ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt64ByteSize
-		*x = binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize])
 	case *int8:
-		if l < OneByte {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = OneByte
-		*x = int8(d.src[d.offset : d.offset+1][0])
+		*x = int8(data[0])
+
+	case *uint8:
+		*x = data[0]
 
 	case *int16:
-		if l < UInt16ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt16ByteSize
-		*x = int16(binary.LittleEndian.Uint16(d.src[d.offset : d.offset+UInt16ByteSize]))
+		*x = int16(binary.LittleEndian.Uint16(data))
+
+	case *uint16:
+		*x = binary.LittleEndian.Uint16(data)
 
 	case *int32:
-		if l < UInt32ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt32ByteSize
-		*x = int32(binary.LittleEndian.Uint32(d.src[d.offset : d.offset+UInt32ByteSize]))
+		*x = int32(binary.LittleEndian.Uint32(data))
+
+	case *uint32:
+		*x = binary.LittleEndian.Uint32(data)
+
 	case *int64:
-		if l < UInt64ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = UInt64ByteSize
-		*x = int64(binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize]))
+		*x = int64(binary.LittleEndian.Uint64(data))
+
+	case *uint64:
+		*x = binary.LittleEndian.Uint64(data)
+
 	case *float32:
-		if l < Float32ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = Float32ByteSize
-		*x = math.Float32frombits(binary.LittleEndian.Uint32(d.src[d.offset : d.offset+UInt32ByteSize]))
+		*x = math.Float32frombits(binary.LittleEndian.Uint32(data))
+
 	case *float64:
-		if l < Float64ByteSize {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-			return d
-		}
-		l = Float64ByteSize
-		*x = math.Float64frombits(binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize]))
+		*x = math.Float64frombits(binary.LittleEndian.Uint64(data))
 
 	default:
 		panic(fmt.Sprintf("unsupported ReadNum type %T", dest))

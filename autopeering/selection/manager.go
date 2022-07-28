@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ReneKroon/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v2"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/autopeering/mana"
@@ -156,11 +156,30 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 	return status
 }
 
-func (m *manager) blockNeighbor(id identity.ID) {
-	if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
-		m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+func (m *manager) blockNeighbor(id identity.ID, ttl ...time.Duration) {
+	if len(ttl) > 0 {
+		if err := m.blocklist.SetWithTTL(id.EncodeBase58(), nil, ttl[0]); err != nil {
+			m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+		}
+	} else {
+		if err := m.blocklist.Set(id.EncodeBase58(), nil); err != nil {
+			m.log.Warnw("Failed to set neighbor to blocklist cache", "err", err)
+		}
 	}
+
 	m.removeNeighbor(id)
+}
+
+func (m *manager) unblockNeighbor(id identity.ID) {
+	if err := m.blocklist.Remove(id.EncodeBase58()); err != nil && err != ttlcache.ErrNotFound {
+		m.log.Warnw("Failed to remove neighbor from blocklist cache", "err", err)
+	}
+
+	// we need to remove the neighbor from the skiplist as well,
+	// because they are added to the skiplist at first connection attempt if they were blocked.
+	if err := m.skiplist.Remove(id.EncodeBase58()); err != nil && err != ttlcache.ErrNotFound {
+		m.log.Warnw("Failed to remove neighbor from skiplist cache", "err", err)
+	}
 }
 
 func (m *manager) removeNeighbor(id identity.ID) {
@@ -321,7 +340,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	// Filter out blocklisted peers.
 	allowedPeers := make([]*peer.Peer, 0, len(knownPeers))
 	for _, p := range knownPeers {
-		if !m.isInBlocklist(p) {
+		if !m.isInBlocklist(p.ID()) {
 			allowedPeers = append(allowedPeers, p)
 		}
 	}
@@ -339,7 +358,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	// filter out previous rejections
 	filteredList := make([]peer.PeerDistance, 0, len(distList))
 	for _, dist := range distList {
-		if !m.isInSkiplist(dist.Remote) {
+		if !m.isInSkiplist(dist.Remote.ID()) {
 			filteredList = append(filteredList, dist)
 		}
 	}
@@ -361,7 +380,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	resp = reject
 	defer func() { req.back <- resp }() // assure that a response is always issued
 
-	if m.isInBlocklist(req.peer) {
+	if m.isInBlocklist(req.peer.ID()) {
 		return
 	}
 
@@ -508,22 +527,22 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 	}
 }
 
-func (m *manager) isInBlocklist(p *peer.Peer) bool {
-	if _, err := m.blocklist.Get(p.ID().EncodeBase58()); err != nil {
+func (m *manager) isInBlocklist(id identity.ID) bool {
+	if _, err := m.blocklist.Get(id.EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
-				"peerId", p.ID())
+				"peerId", id)
 		}
 		return false
 	}
 	return true
 }
 
-func (m *manager) isInSkiplist(p *peer.Peer) bool {
-	if _, err := m.skiplist.Get(p.ID().EncodeBase58()); err != nil {
+func (m *manager) isInSkiplist(id identity.ID) bool {
+	if _, err := m.skiplist.Get(id.EncodeBase58()); err != nil {
 		if !errors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
-				"peerId", p.ID())
+				"peerId", id)
 		}
 		return false
 	}

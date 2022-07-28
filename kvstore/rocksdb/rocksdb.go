@@ -235,7 +235,7 @@ func (s *rocksDBStore) Flush() error {
 func (s *rocksDBStore) Close() error {
 	if s.closed.Swap(true) {
 		// was already closed
-		return kvstore.ErrStoreClosed
+		return nil
 	}
 
 	return s.instance.Close()
