@@ -2,6 +2,10 @@ module github.com/iotaledger/hive.go/core
 
 go 1.18
 
+replace (
+	github.com/iotaledger/hive.go/serializer/v2 => ../serializer
+)
+
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/cockroachdb/pebble v0.0.0-20220506213004-f8897076324b
