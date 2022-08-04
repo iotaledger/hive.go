@@ -11,7 +11,7 @@ import (
 func BenchmarkEvent_Trigger(b *testing.B) {
 	event := NewEvent(intStringCaller)
 
-	event.Attach(NewClosure(func(param1 int, param2 string) {
+	event.Hook(NewClosure(func(param1 int, param2 string) {
 		// do nothing just get called
 	}))
 
@@ -40,9 +40,9 @@ func Test_ExampleEvent(t *testing.T) {
 		triggerCountClosure1++
 	})
 
-	// multiple subscribers can attach to an event (closures can be inlined)
-	event.Attach(closure1)
-	event.Attach(NewClosure(func(param1 int, param2 string) {
+	// multiple subscribers can hook to an event (closures can be inlined)
+	event.Hook(closure1)
+	event.Hook(NewClosure(func(param1 int, param2 string) {
 		fmt.Println("#2 " + param2 + ": " + strconv.Itoa(param1))
 		triggerCountClosure2++
 	}))
@@ -85,10 +85,10 @@ func Test_ExampleEvent_MaxTriggerCount(t *testing.T) {
 		triggerCountClosure2++
 	})
 
-	// multiple subscribers can attach to an event (closures can be inlined)
-	event.Attach(closure1)
-	event.Attach(closure2, 1)
-	event.Attach(NewClosure(func(param1 int, param2 string) {
+	// multiple subscribers can hook to an event (closures can be inlined)
+	event.Hook(closure1)
+	event.Hook(closure2, 1)
+	event.Hook(NewClosure(func(param1 int, param2 string) {
 		fmt.Println("#3 " + param2 + ": " + strconv.Itoa(param1))
 		triggerCountClosure3++
 	}), 3)
