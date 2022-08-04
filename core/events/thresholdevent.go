@@ -42,7 +42,7 @@ func NewThresholdEvent(options ...ThresholdEventOption) (thresholdEvent *Thresho
 	}
 
 	thresholdEvent.Event = NewEvent(func(handler interface{}, params ...interface{}) {
-		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(ThresholdEventTransition))
+		thresholdEvent.configuration.CallbackTypecaster(handler, params[0], params[1].(int), params[2].(ThresholdEventTransition))
 	})
 
 	return
@@ -80,7 +80,7 @@ func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options
 	}
 
 	thresholdEvent.Event = NewEvent(func(handler interface{}, params ...interface{}) {
-		thresholdEvent.configuration.CallbackTypecaster(handler, params[0].(interface{}), params[1].(int), params[2].(ThresholdEventTransition))
+		thresholdEvent.configuration.CallbackTypecaster(handler, params[0], params[1].(int), params[2].(ThresholdEventTransition))
 	})
 
 	levelCount, err := marshalUtil.ReadUint64()

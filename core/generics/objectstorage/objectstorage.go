@@ -24,7 +24,7 @@ func NewStructStorage[U any, T PtrStorableObject[U]](store kvstore.KVStore, opti
 		ObjectStorage: objectstorage.New(store, objectFactory[T, U], optionalOptions...),
 	}
 
-	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
+	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
 		newObjectStorage.Events.ObjectEvicted.Trigger(key, object.(T))
 	}))
 
@@ -41,7 +41,7 @@ func NewInterfaceStorage[T StorableObject](store kvstore.KVStore, objectFactory 
 		ObjectStorage: objectstorage.New(store, func(key, data []byte) (objectstorage.StorableObject, error) { return objectFactory(key, data) }, optionalOptions...),
 	}
 
-	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Attach(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
+	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
 		newObjectStorage.Events.ObjectEvicted.Trigger(key, object.(T))
 	}))
 
