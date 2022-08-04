@@ -47,10 +47,10 @@ func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback)
 	case 0:
 		// plugin doesn't have any callbacks (i.e. plugins that execute stuff on init())
 	case 1:
-		plugin.Events.Run.Attach(events.NewClosure(callbacks[0]))
+		plugin.Events.Run.Hook(events.NewClosure(callbacks[0]))
 	case 2:
-		plugin.Events.Configure.Attach(events.NewClosure(callbacks[0]))
-		plugin.Events.Run.Attach(events.NewClosure(callbacks[1]))
+		plugin.Events.Configure.Hook(events.NewClosure(callbacks[0]))
+		plugin.Events.Run.Hook(events.NewClosure(callbacks[1]))
 	default:
 		panic("too many callbacks in NewPlugin(...)")
 	}

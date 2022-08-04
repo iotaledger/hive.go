@@ -3,12 +3,13 @@ package node_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"go.uber.org/dig"
+
 	"github.com/iotaledger/hive.go/configuration"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/node"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/dig"
 )
 
 func TestDependencyInjection(t *testing.T) {
@@ -28,7 +29,7 @@ func TestDependencyInjection(t *testing.T) {
 
 	pluginB := node.NewPlugin("B", nil, node.Enabled)
 
-	pluginB.Events.Init.Attach(events.NewClosure(func(_ *node.Plugin, container *dig.Container) {
+	pluginB.Events.Init.Hook(events.NewClosure(func(_ *node.Plugin, container *dig.Container) {
 		require.NoError(t, container.Provide(func() string {
 			return stringVal
 		}, dig.Name("providedByB")))

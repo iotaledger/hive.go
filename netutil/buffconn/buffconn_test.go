@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/events"
 )
 
 const graceTime = 10 * time.Millisecond
@@ -28,7 +29,7 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(2)
-		buffConn2.Events.Close.Attach(events.NewClosure(func() { wg.Done() }))
+		buffConn2.Events.Close.Hook(events.NewClosure(func() { wg.Done() }))
 		go func() {
 			err := buffConn2.Read()
 			assert.True(t, errors.Is(err, io.ErrClosedPipe), "unexpected error: %s", err)
@@ -66,7 +67,7 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(2)
-		buffConn2.Events.ReceiveMessage.Attach(events.NewClosure(func(data []byte) {
+		buffConn2.Events.ReceiveMessage.Hook(events.NewClosure(func(data []byte) {
 			assert.EqualValues(t, testMsg, data)
 			wg.Done()
 		}))
@@ -98,7 +99,7 @@ func TestBufferedConnection(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(numWrites)
-		buffConn2.Events.ReceiveMessage.Attach(events.NewClosure(func(data []byte) {
+		buffConn2.Events.ReceiveMessage.Hook(events.NewClosure(func(data []byte) {
 			assert.Equal(t, testMsg, data)
 			wg.Done()
 		}))

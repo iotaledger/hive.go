@@ -27,7 +27,7 @@ func TestThresholdEvent(t *testing.T) {
 	eventHandler := newMockedEventHandler(t)
 
 	thresholdEvent := NewThresholdEvent(options...)
-	thresholdEvent.Attach(NewClosure(eventHandler.Trigger))
+	thresholdEvent.Hook(NewClosure(eventHandler.Trigger))
 
 	eventHandler.Expect(identifierType(1), 1, ThresholdLevelIncreased)
 	thresholdEvent.Set(identifierType(1), 0.2)
@@ -59,7 +59,7 @@ func TestThresholdEvent(t *testing.T) {
 
 	unmarshaledEvent, err := ThresholdEventFromMarshalUtil(marshalutil.New(thresholdEvent.Bytes()), options...)
 	assert.NoError(t, err)
-	unmarshaledEvent.Attach(NewClosure(eventHandler.Trigger))
+	unmarshaledEvent.Hook(NewClosure(eventHandler.Trigger))
 
 	eventHandler.Expect(identifierType(1), 2, ThresholdLevelDecreased)
 	eventHandler.Expect(identifierType(1), 1, ThresholdLevelDecreased)

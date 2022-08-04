@@ -3,10 +3,11 @@ package logger
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+
+	"github.com/iotaledger/hive.go/events"
 )
 
 const (
@@ -76,12 +77,12 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	panicC := events.NewClosure(m.panic)
 	anyC := events.NewClosure(m.any)
 
-	Events.DebugMsg.Attach(debugC)
-	Events.InfoMsg.Attach(infoC)
-	Events.WarningMsg.Attach(warnC)
-	Events.ErrorMsg.Attach(errorC)
-	Events.PanicMsg.Attach(panicC)
-	Events.AnyMsg.Attach(anyC)
+	Events.DebugMsg.Hook(debugC)
+	Events.InfoMsg.Hook(infoC)
+	Events.WarningMsg.Hook(warnC)
+	Events.ErrorMsg.Hook(errorC)
+	Events.PanicMsg.Hook(panicC)
+	Events.AnyMsg.Hook(anyC)
 
 	teardown := func() {
 		Events.DebugMsg.Detach(debugC)

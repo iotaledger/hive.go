@@ -13,13 +13,13 @@ func TestQueue(t *testing.T) {
 	event2 := NewEvent(VoidCaller)
 	event3 := NewEvent(VoidCaller)
 
-	event1.Attach(NewClosure(func() {
+	event1.Hook(NewClosure(func() {
 		executionResult += "first"
 	}))
-	event2.Attach(NewClosure(func() {
+	event2.Hook(NewClosure(func() {
 		executionResult += "second"
 	}))
-	event3.Attach(NewClosure(func() {
+	event3.Hook(NewClosure(func() {
 		executionResult += "third"
 	}))
 

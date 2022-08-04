@@ -6,11 +6,12 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/protocol"
 	"github.com/iotaledger/hive.go/protocol/message"
 	"github.com/iotaledger/hive.go/protocol/tlv"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -48,7 +49,7 @@ func TestProtocol_Read(t *testing.T) {
 	p := protocol.New(msgRegistry)
 
 	var receivedMessages [][]byte
-	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+	p.Events.Received[testMessageDefinition.ID].Hook(events.NewClosure(func(message []byte) {
 		receivedMessages = append(receivedMessages, message)
 	}))
 
@@ -67,7 +68,7 @@ func TestProtocol_ReadTwice(t *testing.T) {
 	p := protocol.New(msgRegistry)
 
 	var receivedMessages [][]byte
-	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+	p.Events.Received[testMessageDefinition.ID].Hook(events.NewClosure(func(message []byte) {
 		receivedMessages = append(receivedMessages, message)
 	}))
 
@@ -92,7 +93,7 @@ func TestProtocol_ReadSplit(t *testing.T) {
 	p := protocol.New(msgRegistry)
 
 	var receivedMessages [][]byte
-	p.Events.Received[testMessageDefinition.ID].Attach(events.NewClosure(func(message []byte) {
+	p.Events.Received[testMessageDefinition.ID].Hook(events.NewClosure(func(message []byte) {
 		receivedMessages = append(receivedMessages, message)
 	}))
 
