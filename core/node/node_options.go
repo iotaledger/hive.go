@@ -1,12 +1,12 @@
 package node
 
 import (
-	daemon2 "github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/core/daemon"
 )
 
 type NodeOptions struct {
 	plugins []*Plugin
-	daemon  daemon2.Daemon
+	daemon  daemon.Daemon
 }
 
 func newNodeOptions(optionalOptions []NodeOption) *NodeOptions {
@@ -17,7 +17,7 @@ func newNodeOptions(optionalOptions []NodeOption) *NodeOptions {
 	}
 
 	if result.daemon == nil {
-		result.daemon = daemon2.New()
+		result.daemon = daemon.New()
 	}
 
 	return result
@@ -31,8 +31,8 @@ func Plugins(plugins ...*Plugin) NodeOption {
 	}
 }
 
-func Daemon(daemon daemon2.Daemon) NodeOption {
+func Daemon(d daemon.Daemon) NodeOption {
 	return func(args *NodeOptions) {
-		args.daemon = daemon
+		args.daemon = d
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	ed255192 "github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
@@ -164,10 +164,10 @@ func (db *DB) expireNodes() error {
 }
 
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
-func (db *DB) LocalPrivateKey() (privateKey ed255192.PrivateKey, err error) {
+func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	value, err := db.store.Get(localFieldKey(dbLocalKey))
 	if err == kvstore.ErrKeyNotFound {
-		key, genErr := ed255192.GeneratePrivateKey()
+		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
 		}
@@ -182,7 +182,7 @@ func (db *DB) LocalPrivateKey() (privateKey ed255192.PrivateKey, err error) {
 }
 
 // UpdateLocalPrivateKey stores the provided key in the database.
-func (db *DB) UpdateLocalPrivateKey(key ed255192.PrivateKey) error {
+func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
 	if err := db.store.Set(localFieldKey(dbLocalKey), key.Bytes()); err != nil {
 		return err
 	}

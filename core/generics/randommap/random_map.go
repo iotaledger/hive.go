@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/core/datastructure/randommap"
 )
 
-// RandomMap defines a  map with extended ability to return a random entry.
+// RandomMap defines a map with extended ability to return a random entry.
 type RandomMap[K comparable, V any] struct {
 	*randommap.RandomMap
 }

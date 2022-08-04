@@ -4,7 +4,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
-	stringify2 "github.com/iotaledger/hive.go/core/stringify"
+	"github.com/iotaledger/hive.go/core/stringify"
 )
 
 // EndPoint contains information about where ValueRanges start and end. It combines a threshold value with a BoundType.
@@ -68,8 +68,8 @@ func (e *EndPoint) Bytes() []byte {
 
 // String returns a human readable version of the EndPoint.
 func (e *EndPoint) String() string {
-	return stringify2.Struct("EndPoint",
-		stringify2.StructField("value", e.value),
-		stringify2.StructField("boundType", e.boundType),
+	return stringify.Struct("EndPoint",
+		stringify.StructField("value", e.value),
+		stringify.StructField("boundType", e.boundType),
 	)
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/debug"
-	stringify2 "github.com/iotaledger/hive.go/core/stringify"
+	"github.com/iotaledger/hive.go/core/stringify"
 	"github.com/iotaledger/hive.go/core/types"
 )
 
@@ -144,10 +144,10 @@ func (f *StarvingMutex) Unlock() {
 
 // String returns a string representation of the StarvingMutex.
 func (f *StarvingMutex) String() (humanReadable string) {
-	return stringify2.Struct("StarvingMutex",
-		stringify2.StructField("WriterActive", f.writerActive),
-		stringify2.StructField("ReadersActive", f.readersActive),
-		stringify2.StructField("PendingWriters", f.pendingWriters),
+	return stringify.Struct("StarvingMutex",
+		stringify.StructField("WriterActive", f.writerActive),
+		stringify.StructField("ReadersActive", f.readersActive),
+		stringify.StructField("PendingWriters", f.pendingWriters),
 	)
 }
 

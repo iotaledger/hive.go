@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	set2 "github.com/iotaledger/hive.go/core/datastructure/set"
+	"github.com/iotaledger/hive.go/core/datastructure/set"
 )
 
 func TestThreadSafeSet_Add(t *testing.T) {
@@ -68,7 +68,7 @@ func TestThreadSafeSet_Size(t *testing.T) {
 }
 
 func initThreadSafeSet(count int, start int) Set[string] {
-	set := newGenericSet[string](set2.New(true))
+	set := newGenericSet[string](set.New(true))
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))

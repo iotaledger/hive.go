@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	stack2 "github.com/iotaledger/hive.go/core/datastructure/stack"
+	"github.com/iotaledger/hive.go/core/datastructure/stack"
 )
 
 func BenchmarkList(b *testing.B) {
@@ -30,7 +30,7 @@ func BenchmarkStack(b *testing.B) {
 }
 
 func TestSimpleStack_Push(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 
 	assert.Equal(t, stack.Size(), 0, "stack should initially be empty")
 	stack.Push(1)
@@ -42,7 +42,7 @@ func TestSimpleStack_Push(t *testing.T) {
 }
 
 func TestSimpleStack_Pop(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 	_, exists := stack.Pop()
 	assert.False(t, exists, "stack should return false when its empty")
 	stack.Push(1)
@@ -61,7 +61,7 @@ func TestSimpleStack_Pop(t *testing.T) {
 }
 
 func TestSimpleStack_Peek(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 
 	_, exists := stack.Peek()
 	assert.False(t, exists, "stack should return false when its empty")
@@ -80,7 +80,7 @@ func TestSimpleStack_Peek(t *testing.T) {
 }
 
 func TestSimpleStack_Clear(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 
 	stack.Push(1)
 	stack.Push(2)
@@ -95,7 +95,7 @@ func TestSimpleStack_Clear(t *testing.T) {
 }
 
 func TestSimpleStack_Size(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 
 	assert.Equal(t, stack.Size(), 0, "wrong stack size")
 	stack.Push(1)
@@ -109,7 +109,7 @@ func TestSimpleStack_Size(t *testing.T) {
 }
 
 func TestSimpleStack_IsEmpty(t *testing.T) {
-	stack := newGenericStack[int](stack2.New())
+	stack := newGenericStack[int](stack.New())
 
 	assert.True(t, stack.IsEmpty(), "stack should be empty")
 	stack.Push(1)

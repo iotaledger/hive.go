@@ -145,11 +145,11 @@ func Min[T constraints.Ordered](collection ...T) T {
 
 // Sum returns the sum of the collection
 func Sum[T constraints.Numeric](collection ...T) T {
-	var minElem T
+	var sumElem T
 
 	return Reduce(collection, func(sum, value T) T {
 		return sum + value
-	}, minElem)
+	}, sumElem)
 }
 
 // Unique returns a set of unique elements from the collection.

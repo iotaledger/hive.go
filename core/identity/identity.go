@@ -3,18 +3,18 @@
 package identity
 
 import (
-	ed255192 "github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/marshalutil"
 )
 
 // LocalIdentity is a node's identity.
 type Identity struct {
-	id        ID                 // comparable node identifier
-	publicKey ed255192.PublicKey // public key used to verify signatures
+	id        ID                // comparable node identifier
+	publicKey ed25519.PublicKey // public key used to verify signatures
 }
 
 // New creates a new identity from the given PublicKey.
-func New(publicKey ed255192.PublicKey) *Identity {
+func New(publicKey ed25519.PublicKey) *Identity {
 	return &Identity{
 		id:        NewID(publicKey),
 		publicKey: publicKey,
@@ -32,7 +32,7 @@ func Parse(marshalUtil *marshalutil.MarshalUtil, optionalTargetObject ...*Identi
 		panic("too many arguments in call to Parse")
 	}
 
-	result.publicKey, err = ed255192.ParsePublicKey(marshalUtil)
+	result.publicKey, err = ed25519.ParsePublicKey(marshalUtil)
 	if err != nil {
 		return
 	}
@@ -45,12 +45,12 @@ func (i Identity) ID() ID {
 	return i.id
 }
 
-func (i Identity) PublicKey() ed255192.PublicKey {
+func (i Identity) PublicKey() ed25519.PublicKey {
 	return i.publicKey
 }
 
 func GenerateIdentity() *Identity {
-	publicKey, _, err := ed255192.GenerateKey()
+	publicKey, _, err := ed25519.GenerateKey()
 	if err != nil {
 		panic(err)
 	}

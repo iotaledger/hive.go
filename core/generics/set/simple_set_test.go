@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	set2 "github.com/iotaledger/hive.go/core/datastructure/set"
+	"github.com/iotaledger/hive.go/core/datastructure/set"
 )
 
 func TestSimpleSet_Add(t *testing.T) {
@@ -68,7 +68,7 @@ func TestSimpleSet_Size(t *testing.T) {
 }
 
 func initSimpleSet(count int, start int) Set[string] {
-	set := newGenericSet[string](set2.New())
+	set := newGenericSet[string](set.New())
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))

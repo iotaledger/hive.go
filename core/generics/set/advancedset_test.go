@@ -124,7 +124,7 @@ func TestAdvancedSet_Slice(t *testing.T) {
 	setSlice := set.Slice()
 
 	assert.Equal(t, set.Size(), len(setSlice), "length should be equal")
-	assert.True(t, NewAdvancedSet[string](setSlice...).Equal(set), "sets should be equal")
+	assert.True(t, NewAdvancedSet(setSlice...).Equal(set), "sets should be equal")
 }
 
 func TestAdvancedSet_Iterator(t *testing.T) {

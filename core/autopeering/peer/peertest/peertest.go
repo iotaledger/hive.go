@@ -9,7 +9,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
-	ed255192 "github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -17,7 +17,7 @@ import (
 func NewPeer(network string, ip string, port int) *peer.Peer {
 	services := service.New()
 	services.Update(service.PeeringKey, network, port)
-	key := ed255192.PublicKey{}
+	key := ed25519.PublicKey{}
 	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
 	return peer.NewPeer(identity.New(key), net.ParseIP(ip), services)
 }
@@ -34,7 +34,7 @@ func NewLocal(network string, ip net.IP, port int, db *peer.DB) *peer.Local {
 }
 
 func randomSeed() []byte {
-	seed := make([]byte, ed255192.SeedSize)
+	seed := make([]byte, ed25519.SeedSize)
 	rand.Read(seed)
 	return seed
 }

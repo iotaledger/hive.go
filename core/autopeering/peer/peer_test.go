@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
-	ed255192 "github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -28,13 +28,13 @@ func newTestServiceRecord() *service.Record {
 }
 
 func newTestPeer(name string) *Peer {
-	key := ed255192.PublicKey{}
+	key := ed25519.PublicKey{}
 	copy(key[:], name)
 	return NewPeer(identity.New(key), testIP, newTestServiceRecord())
 }
 
 func TestNoServicePeer(t *testing.T) {
-	key := ed255192.PublicKey{}
+	key := ed25519.PublicKey{}
 	services := service.New()
 
 	assert.Panics(t, func() {
@@ -43,7 +43,7 @@ func TestNoServicePeer(t *testing.T) {
 }
 
 func TestInvalidServicePeer(t *testing.T) {
-	key := ed255192.PublicKey{}
+	key := ed25519.PublicKey{}
 	services := service.New()
 	services.Update(service.FPCKey, "network", 8001)
 
@@ -92,7 +92,7 @@ func TestMarshalUnmarshalJSONSlice(t *testing.T) {
 func TestRecoverKeyFromSignedData(t *testing.T) {
 	msg := []byte(testMessage)
 
-	pub, priv, err := ed255192.GenerateKey()
+	pub, priv, err := ed25519.GenerateKey()
 	require.NoError(t, err)
 
 	sig := priv.Sign(msg)

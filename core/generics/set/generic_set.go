@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-// type genericSet[T comparable] struct { implements a generic wrapper for a non-generic Set.
+// genericSet implements a generic wrapper for a non-generic Set.
 type genericSet[T comparable] struct {
 	set.Set
 }

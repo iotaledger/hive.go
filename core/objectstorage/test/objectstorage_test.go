@@ -21,8 +21,8 @@ import (
 	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/testutil"
 	"github.com/iotaledger/hive.go/core/types"
-	typeutils2 "github.com/iotaledger/hive.go/core/typeutils"
-	workerpool2 "github.com/iotaledger/hive.go/core/workerpool"
+	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/core/workerpool"
 )
 
 const (
@@ -80,7 +80,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool2.NewBlockingQueuedWorkerPool(workerpool2.WorkerCount(1024), workerpool2.QueueSize(objectCount), workerpool2.FlushTasksAtShutdown(true))
+	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
 	wp.Start()
 
 	// result counters
@@ -101,7 +101,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
 				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, x))
 				if stored {
-					createdMap.Store(typeutils2.BytesToString(key), "CREATED")
+					createdMap.Store(typeutils.BytesToString(key), "CREATED")
 
 					cachedMissingMessage.Release()
 
@@ -618,14 +618,14 @@ func TestStoreIfAbsent(t *testing.T) {
 
 	storedObject1, stored1 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
-	if typeutils2.IsInterfaceNil(storedObject1) {
+	if typeutils.IsInterfaceNil(storedObject1) {
 		t.Error("the testObject should NOT be nil if it was stored")
 	}
 	storedObject1.Release()
 
 	storedObject2, stored2 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, false, stored2)
-	if !typeutils2.IsInterfaceNil(storedObject2) {
+	if !typeutils.IsInterfaceNil(storedObject2) {
 		t.Error("the testObject should be nil if it wasn't stored")
 	}
 
@@ -650,14 +650,14 @@ func TestStoreOnCreation(t *testing.T) {
 	storedObject1, stored1 := objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 
-	if typeutils2.IsInterfaceNil(storedObject1) {
+	if typeutils.IsInterfaceNil(storedObject1) {
 		t.Error("the testObject should NOT be nil if it was stored")
 	}
 
 	// give the batchWriter some time to persist it
 	time.Sleep(time.Second)
 
-	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); !typeutils2.IsInterfaceNil(loadedObject) {
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); !typeutils.IsInterfaceNil(loadedObject) {
 		t.Error("the testObject should NOT be stored in the database yet stored")
 	}
 
@@ -680,14 +680,14 @@ func TestStoreOnCreation(t *testing.T) {
 	storedObject1, stored1 = objects.StoreIfAbsent(newTestObject("Hans", 33))
 	assert.Equal(t, true, stored1)
 
-	if typeutils2.IsInterfaceNil(storedObject1) {
+	if typeutils.IsInterfaceNil(storedObject1) {
 		t.Error("the testObject should NOT be nil if it was stored")
 	}
 
 	// give the batchWriter some time to persist it
 	time.Sleep(time.Second)
 
-	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); typeutils2.IsInterfaceNil(loadedObject) {
+	if loadedObject := objects.LoadObjectFromStore([]byte("Hans")); typeutils.IsInterfaceNil(loadedObject) {
 		t.Error("the testObject should NOT be nil if it was stored")
 	}
 

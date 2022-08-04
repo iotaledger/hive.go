@@ -6,7 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
-	ed255192 "github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -24,7 +24,7 @@ type Local struct {
 }
 
 // newLocal creates a new local peer.
-func newLocal(key ed255192.PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
+func newLocal(key ed25519.PrivateKey, ip net.IP, serviceRecord *service.Record, db *DB) *Local {
 	id := identity.New(key.Public())
 
 	return &Local{
@@ -39,9 +39,9 @@ func newLocal(key ed255192.PrivateKey, ip net.IP, serviceRecord *service.Record,
 // If an optional seed is provided, the seed is used to generate the private key. Without a seed,
 // the provided key is loaded from the provided database and generated if not stored there.
 func NewLocal(ip net.IP, serviceRecord *service.Record, db *DB, seed ...[]byte) (*Local, error) {
-	var key ed255192.PrivateKey
+	var key ed25519.PrivateKey
 	if len(seed) > 0 {
-		key = ed255192.PrivateKeyFromSeed(seed[0])
+		key = ed25519.PrivateKeyFromSeed(seed[0])
 		if db != nil {
 			if err := db.UpdateLocalPrivateKey(key); err != nil {
 				return nil, err
@@ -106,7 +106,7 @@ func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 }
 
 // Sign signs a message using the node's LocalIdentity.
-func (l *Local) Sign(message []byte) ed255192.Signature {
+func (l *Local) Sign(message []byte) ed25519.Signature {
 	return l.identity.Sign(message)
 }
 

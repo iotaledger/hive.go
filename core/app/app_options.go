@@ -1,17 +1,17 @@
 package app
 
 import (
-	daemon2 "github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/core/daemon"
 )
 
 // the default options applied to the App.
 var defaultAppOptions = []AppOption{
-	WithDaemon(daemon2.New()),
+	WithDaemon(daemon.New()),
 }
 
 // AppOptions defines options for an App.
 type AppOptions struct {
-	daemon                 daemon2.Daemon
+	daemon                 daemon.Daemon
 	initComponent          *InitComponent
 	coreComponents         []*CoreComponent
 	plugins                []*Plugin
@@ -39,9 +39,9 @@ func WithInitComponent(initComponent *InitComponent) AppOption {
 }
 
 // WithDaemon sets the used daemon.
-func WithDaemon(daemon daemon2.Daemon) AppOption {
+func WithDaemon(d daemon.Daemon) AppOption {
 	return func(args *AppOptions) {
-		args.daemon = daemon
+		args.daemon = d
 	}
 }
 

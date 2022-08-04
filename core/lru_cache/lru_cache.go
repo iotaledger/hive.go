@@ -2,7 +2,7 @@ package lru_cache
 
 import (
 	"github.com/iotaledger/hive.go/core/list"
-	syncutils2 "github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/core/syncutils"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
@@ -17,8 +17,8 @@ type LRUCache struct {
 	capacity         int
 	size             int
 	options          *LRUCacheOptions
-	mutex            syncutils2.RWMutex
-	krwMutex         *syncutils2.KRWMutex
+	mutex            syncutils.RWMutex
+	krwMutex         *syncutils.KRWMutex
 }
 
 func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
@@ -42,7 +42,7 @@ func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
 		doublyLinkedList: &list.DoublyLinkedList{},
 		capacity:         capacity,
 		options:          currentOptions,
-		krwMutex:         syncutils2.NewKRWMutex(),
+		krwMutex:         syncutils.NewKRWMutex(),
 	}
 }
 

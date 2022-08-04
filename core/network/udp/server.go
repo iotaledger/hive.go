@@ -4,7 +4,7 @@ import (
 	"net"
 	"strconv"
 
-	events2 "github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
@@ -62,10 +62,10 @@ func NewServer(receiveBufferSize int) *UDPServer {
 	return &UDPServer{
 		ReceiveBufferSize: receiveBufferSize,
 		Events: udpServerEvents{
-			Start:       events2.NewEvent(events2.VoidCaller),
-			Shutdown:    events2.NewEvent(events2.VoidCaller),
-			ReceiveData: events2.NewEvent(udpAddrAndDataCaller),
-			Error:       events2.NewEvent(events2.ErrorCaller),
+			Start:       events.NewEvent(events.VoidCaller),
+			Shutdown:    events.NewEvent(events.VoidCaller),
+			ReceiveData: events.NewEvent(udpAddrAndDataCaller),
+			Error:       events.NewEvent(events.ErrorCaller),
 		},
 	}
 }

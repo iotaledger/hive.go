@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/daemon"
-	events2 "github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/logger"
 )
 
@@ -26,9 +26,9 @@ type selfShutdownRequest struct {
 // Events holds Shutdown related events.
 type Events struct {
 	// Fired when a app self shutdown was caused by an error.
-	AppSelfShutdown *events2.Event
+	AppSelfShutdown *events.Event
 	// Fired when a clean shutdown was requested.
-	AppShutdown *events2.Event
+	AppShutdown *events.Event
 }
 
 // ShutdownHandler waits until a shutdown signal was received or the app tried to shutdown itself,
@@ -54,8 +54,8 @@ func NewShutdownHandler(log *logger.Logger, daemon daemon.Daemon) *ShutdownHandl
 		gracefulStop:    make(chan os.Signal, 1),
 		appSelfShutdown: make(chan selfShutdownRequest),
 		Events: &Events{
-			AppSelfShutdown: events2.NewEvent(AppSelfShutdownCaller),
-			AppShutdown:     events2.NewEvent(events2.VoidCaller),
+			AppSelfShutdown: events.NewEvent(AppSelfShutdownCaller),
+			AppShutdown:     events.NewEvent(events.VoidCaller),
 		},
 	}
 
