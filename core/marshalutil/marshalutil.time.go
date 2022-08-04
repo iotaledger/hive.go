@@ -9,10 +9,7 @@ const TimeSize = Int64Size
 
 // WriteTime writes a marshaled Time value to the internal buffer.
 func (util *MarshalUtil) WriteTime(timeToWrite time.Time) *MarshalUtil {
-	nanoSeconds := timeToWrite.UnixNano()
-
-	// the zero value of time translates to -6795364578871345152
-	if nanoSeconds == -6795364578871345152 {
+	if timeToWrite.IsZero() {
 		util.WriteInt64(0)
 	} else {
 		util.WriteInt64(timeToWrite.UnixNano())
