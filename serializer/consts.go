@@ -34,6 +34,8 @@ const (
 // TypeDenotationType defines a type denotation.
 type TypeDenotationType byte
 
+//go:generate stringer -type=TypeDenotationType
+
 const (
 	// TypeDenotationUint32 defines a denotation which defines a type ID by a uint32.
 	TypeDenotationUint32 TypeDenotationType = iota

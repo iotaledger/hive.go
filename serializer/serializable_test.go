@@ -7,8 +7,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 const (
