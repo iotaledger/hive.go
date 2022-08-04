@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
-	"github.com/iotaledger/hive.go/serializer/v2"
 
 	"github.com/iotaledger/hive.go/core/datastructure/set"
 	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 // type genericSet[T comparable] struct { implements a generic wrapper for a non-generic Set.

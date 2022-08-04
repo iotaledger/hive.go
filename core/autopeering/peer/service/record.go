@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"golang.org/x/xerrors"
-
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/core/autopeering/peer/service/proto"

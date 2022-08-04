@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
+	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
 )

@@ -5,7 +5,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/byteutils"
-
 	"github.com/iotaledger/hive.go/core/marshalutil"
 )
 

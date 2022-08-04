@@ -4,7 +4,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/cerrors"
-
 	"github.com/iotaledger/hive.go/core/marshalutil"
 )
 

@@ -3,11 +3,11 @@ package orderedmap
 import (
 	"context"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/core/datastructure/orderedmap"
 	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.

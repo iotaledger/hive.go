@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/core/byteutils"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (b []byte, err error) {

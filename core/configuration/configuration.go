@@ -12,11 +12,10 @@ import (
 	"strings"
 	"time"
 
-	flag "github.com/spf13/pflag"
-
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
+	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/core/ioutils"
 	reflectutils "github.com/iotaledger/hive.go/core/reflect"

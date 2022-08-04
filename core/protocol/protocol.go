@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/byteutils"
-
 	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/protocol/message"
 	"github.com/iotaledger/hive.go/core/protocol/tlv"

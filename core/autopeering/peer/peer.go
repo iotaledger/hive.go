@@ -7,12 +7,10 @@ import (
 	"net"
 
 	"golang.org/x/xerrors"
-
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/core/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
-
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/identity"
 )

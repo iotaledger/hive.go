@@ -5,12 +5,11 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
-
 	"github.com/iotaledger/hive.go/core/datastructure/thresholdmap"
 	"github.com/iotaledger/hive.go/core/generics/constraints"
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 // region Mode /////////////////////////////////////////////////////////////////////////////////////////////////////////

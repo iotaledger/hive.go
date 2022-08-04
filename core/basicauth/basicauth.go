@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 
 	"github.com/pkg/errors"
-
 	"golang.org/x/crypto/scrypt"
 )
 

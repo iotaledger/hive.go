@@ -2,7 +2,6 @@ package discover
 
 import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
-
 	"github.com/iotaledger/hive.go/core/generics/event"
 )
 
