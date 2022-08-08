@@ -9,10 +9,10 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20220803145439-69c6e876a3f5
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
-	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-version v1.6.0
+	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220728084428-b181c31593a2
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/knadh/koanf v1.4.2

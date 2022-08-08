@@ -5,8 +5,7 @@ package rocksdb
 import (
 	"fmt"
 
-	"github.com/gohornet/grocksdb"
-
+	"github.com/iotaledger/grocksdb"
 	"github.com/iotaledger/hive.go/core/ioutils"
 )
 
