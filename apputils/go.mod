@@ -2,12 +2,10 @@ module github.com/iotaledger/hive.go/apputils
 
 go 1.18
 
-replace github.com/iotaledger/hive.go/core => ../core
-
 require (
 	github.com/fbiville/markdown-table-formatter v0.3.0
 	github.com/iancoleman/orderedmap v0.2.0
-	github.com/iotaledger/hive.go/core v0.0.0-00010101000000-000000000000
+	github.com/iotaledger/hive.go/core v1.0.0-beta.2
 	github.com/spf13/pflag v1.0.5
 )
 
