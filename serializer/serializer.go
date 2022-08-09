@@ -1076,15 +1076,18 @@ func (d *Deserializer) ReadSliceOfObjects(
 	}
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		var seri Serializable
+
 		// this mutates d.src/d.offset
 		subDeseri := NewDeserializer(b)
 		_, ty := subDeseri.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
 			return errProducer(err)
 		})
+
 		bytesRead, err = subDeseri.Done()
 		if err != nil {
 			return 0, err
 		}
+
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			seenTypes[ty] = struct{}{}
 			if arrayRules.Guards.PostReadGuard != nil {
@@ -1093,17 +1096,25 @@ func (d *Deserializer) ReadSliceOfObjects(
 				}
 			}
 		}
+
 		seris = append(seris, seri)
 		return bytesRead, nil
-
 	}
+
 	d.ReadSequenceOfObjects(deserializeItem, deSeriMode, lenType, arrayRules, errProducer)
+	if d.err != nil {
+		return d
+	}
 
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if !arrayRules.MustOccur.Subset(seenTypes) {
 			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
 			return d
 		}
+	}
+
+	if len(seris) == 0 {
+		return d
 	}
 
 	d.readSerializablesIntoTarget(target, seris)

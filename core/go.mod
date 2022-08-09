@@ -6,14 +6,14 @@ replace github.com/iotaledger/hive.go/serializer/v2 => ../serializer
 
 require (
 	github.com/cockroachdb/errors v1.9.0
-	github.com/cockroachdb/pebble v0.0.0-20220803145439-69c6e876a3f5
+	github.com/cockroachdb/pebble v0.0.0-20220808190747-1e4c2b60c887
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220728084428-b181c31593a2
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-00010101000000-000000000000
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/knadh/koanf v1.4.2
 	github.com/kr/text v0.2.0
@@ -29,7 +29,7 @@ require (
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.uber.org/atomic v1.9.0
 	go.uber.org/dig v1.15.0
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.22.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f
 	google.golang.org/protobuf v1.28.1
@@ -68,9 +68,9 @@ require (
 	go.dedis.ch/fixbuf v1.0.3 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/net v0.0.0-20220802222814-0bcc04d9c69b // indirect
+	golang.org/x/net v0.0.0-20220809012201-f428fae20770 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220803195053-6e608f9ce704 // indirect
+	golang.org/x/sys v0.0.0-20220808155132-1c4a2a72c664 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
