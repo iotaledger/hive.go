@@ -6,9 +6,9 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20220428002600-b9e970a83ddd
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
-	github.com/gohornet/grocksdb v1.7.1-0.20220426081058-60f50d7c59e8
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
+	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
 	github.com/knadh/koanf v1.4.1
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
@@ -18,7 +18,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/spf13/cast v1.4.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	go.dedis.ch/kyber/v3 v3.0.13
 	go.uber.org/atomic v1.9.0
 	go.uber.org/dig v1.14.1
@@ -59,11 +59,11 @@ require (
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210909193231-528a39cd75f3 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 )
