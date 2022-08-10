@@ -214,6 +214,8 @@ github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d h1:KYc/EkMX3
 github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d/go.mod h1:DuNKJ1G/vKugT7WGAoftMTu2aApNNxF4ADFMxLmKS2Y=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.1 h1:0NwAA/6N8/pUm7IQdd6rjmExfdwNZigYFhE31fOuQrU=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.1/go.mod h1:beZKjVT4HPayWfwsmItNNI5E81rS783vGx5ZwRbZQgY=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.2 h1:3eiiw4JazsOgDcyxT5dA4UhFRHO5NCAWyWwOl8aRa94=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.2/go.mod h1:beZKjVT4HPayWfwsmItNNI5E81rS783vGx5ZwRbZQgY=
 github.com/iris-contrib/blackfriday v2.0.0+incompatible/go.mod h1:UzZ2bDEoaSGPbkg6SAB4att1aAwTmVIx/5gCVqeyUdI=
 github.com/iris-contrib/go.uuid v2.0.0+incompatible/go.mod h1:iz2lgM/1UnEf1kP0L/+fafWORmlnuysV2EMP8MW+qe0=
 github.com/iris-contrib/i18n v0.0.0-20171121225848-987a633949d0/go.mod h1:pMCz62A0xJL6I+umB2YTlFRwWXaDFA0jy+5HzGiJjqI=
