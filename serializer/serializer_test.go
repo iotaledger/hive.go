@@ -206,7 +206,7 @@ func TestDeserializer_ReadString(t *testing.T) {
 			_, err := serializer.NewDeserializer(tt.args.data).
 				ReadString(&s, serializer.SeriLengthPrefixTypeAsUint16, func(err error) error {
 					return err
-				}).
+				}, 0, 0).
 				ConsumedAll(func(left int, err error) error { return err }).
 				Done()
 			if (err != nil) != tt.wantErr {
