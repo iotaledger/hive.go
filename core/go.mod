@@ -7,9 +7,11 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20220808190747-1e4c2b60c887
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
+	github.com/ethereum/go-ethereum v1.10.21
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-version v1.6.0
+	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.1
 	github.com/jellydator/ttlcache/v2 v2.11.1

@@ -67,6 +67,13 @@ func (api *API) encodeBasedOnType(
 ) ([]byte, error) {
 	globalTS, _ := api.getTypeSettings(valueType)
 	ts = ts.merge(globalTS)
+
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return nil, err
+		}
+	}
+
 	switch value.Kind() {
 	case reflect.Ptr:
 		if valueBigInt, ok := valueI.(*big.Int); ok {
@@ -123,7 +130,7 @@ func (api *API) encodeBasedOnType(
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
-		typeToConvert, _ := getNumberTypeToConvert(valueType.Kind())
+		_, typeToConvert, _ := getNumberTypeToConvert(valueType.Kind())
 		value = value.Convert(typeToConvert)
 		valueI = value.Interface()
 		seri := serializer.NewSerializer()
@@ -133,6 +140,40 @@ func (api *API) encodeBasedOnType(
 	default:
 	}
 	return nil, errors.Errorf("can't encode: unsupported type %T", valueI)
+}
+
+// checks whether the given value is within its defined bounds in case it has a length.
+func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
+	if has := hasLength(v); !has {
+		return nil
+	}
+
+	l := uint64(v.Len())
+	if minLen, ok := ts.MinLen(); ok {
+		if l < minLen {
+			return errors.Errorf("can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
+		}
+	}
+	if maxLen, ok := ts.MaxLen(); ok {
+		if l > maxLen {
+			return errors.Errorf("can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
+		}
+	}
+	return nil
+}
+
+// checks whether the given value has the concept of a length.
+func hasLength(v reflect.Value) bool {
+	k := v.Kind()
+	switch k {
+	case reflect.Array:
+	case reflect.Map:
+	case reflect.Slice:
+	case reflect.String:
+	default:
+		return false
+	}
+	return true
 }
 
 func (api *API) encodeInterface(
