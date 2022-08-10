@@ -15,7 +15,6 @@ package serix
 
 import (
 	"context"
-	"github.com/iancoleman/orderedmap"
 	"math/big"
 	"reflect"
 	"sort"
@@ -23,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/iancoleman/orderedmap"
 
 	"github.com/pkg/errors"
 
@@ -690,6 +691,8 @@ type tagSettings struct {
 	isOptional bool
 	nest       bool
 	omitEmpty  bool
+	minLen     uint64
+	maxLen     uint64
 	ts         TypeSettings
 }
 
