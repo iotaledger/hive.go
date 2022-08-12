@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 )
@@ -94,6 +95,13 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	case reflect.Interface:
 		return api.mapDecodeInterface(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.String:
+		str, ok := mapVal.(string)
+		if !ok {
+			return fmt.Errorf("non string value for string field")
+		}
+		if !utf8.ValidString(str) {
+			return ErrNonUTF8String
+		}
 		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 		return nil

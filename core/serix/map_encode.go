@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
@@ -16,6 +17,11 @@ const (
 	mapTypeKeyName = "type"
 	// key used when no map key is defined for types which are slice/arrays of bytes.
 	mapSliceArrayDefaultKey = "data"
+)
+
+var (
+	// ErrNonUTF8String gets returned when a non UTF-8 string is being encoded/decoded.
+	ErrNonUTF8String = errors.New("non UTF-8 string value")
 )
 
 func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (any, error) {
@@ -74,6 +80,10 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Interface:
 		return api.mapEncodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
+		str := value.String()
+		if !utf8.ValidString(str) {
+			return nil, ErrNonUTF8String
+		}
 		return value.String(), nil
 	case reflect.Bool:
 		return value.Bool(), nil
