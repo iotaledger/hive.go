@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
@@ -323,6 +324,31 @@ func TestMapEncodeDecode(t *testing.T) {
 				"type": 23,
  				"captainHook": "jump",
 				"liquidSoul": "30"
+			}`,
+		},
+		{
+			name: "time",
+			paras: func() paras {
+				type example struct {
+					CreationDate time.Time `serix:"0"`
+				}
+
+				api := serix.NewAPI()
+				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(23))))
+
+				exampleTime, err := time.Parse(time.RFC3339Nano, "2022-08-12T12:51:18.120072+02:00")
+				require.NoError(t, err)
+
+				return paras{
+					api: api,
+					in: &example{
+						CreationDate: exampleTime,
+					},
+				}
+			}(),
+			expected: `{
+				"type": 23,
+ 				"creationDate": "2022-08-12T12:51:18.120072+02:00"
 			}`,
 		},
 	}

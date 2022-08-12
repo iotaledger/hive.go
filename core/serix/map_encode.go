@@ -2,12 +2,13 @@ package serix
 
 import (
 	"context"
-	"github.com/iancoleman/orderedmap"
-	"github.com/pkg/errors"
 	"math/big"
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/iancoleman/orderedmap"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -123,7 +124,7 @@ func (api *API) mapEncodeStruct(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (any, error) {
 	if valueTime, ok := valueI.(time.Time); ok {
-		return valueTime.String(), nil
+		return valueTime.Format(time.RFC3339Nano), nil
 	}
 
 	obj := orderedmap.New()

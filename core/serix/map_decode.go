@@ -2,8 +2,10 @@ package serix
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -226,7 +228,12 @@ func (api *API) mapDecodeInterface(
 func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	if valueType == timeType {
-		// TODO
+		strVal := mapVal.(string)
+		parsedTime, err := time.Parse(time.RFC3339Nano, strVal)
+		if err != nil {
+			return fmt.Errorf("unable to parse time %s map value: %w", strVal, err)
+		}
+		value.Set(reflect.ValueOf(parsedTime))
 		return nil
 	}
 
