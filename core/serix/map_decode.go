@@ -26,7 +26,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	switch value.Kind() {
 	case reflect.Ptr:
 		if valueType == bigIntPtrType {
-			bigIntHexStr := mapVal.(string)
+			bigIntHexStr, ok := mapVal.(string)
+			if !ok {
+				return fmt.Errorf("non string value in map when decoding a big.Int, got %T instead", mapVal)
+			}
 			bigInt, err := DecodeUint256(bigIntHexStr)
 			if err != nil {
 				return errors.Wrap(err, "failed to read big.Int from map")
