@@ -11,17 +11,8 @@ import (
 )
 
 func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, ts TypeSettings, opts *options) error {
-	valueType := value.Type()
-	if opts.validation {
-		// TODO: add map validator?
-	}
-
-	if err := api.mapDecodeBasedOnType(ctx, mapVal, value, valueType, ts, opts); err != nil {
+	if err := api.mapDecodeBasedOnType(ctx, mapVal, value, value.Type(), ts, opts); err != nil {
 		return errors.WithStack(err)
-	}
-
-	if opts.validation {
-		// TODO: add post map validator?
 	}
 
 	return nil
@@ -279,7 +270,6 @@ func (api *API) mapDecodeStructFields(
 		if sField.isEmbeddedStruct && !sField.settings.nest {
 			fieldType := sField.fType
 			if fieldType.Kind() == reflect.Ptr {
-				// TODO: how can an embedded struct be of kind pointer?
 				if fieldValue.IsNil() {
 					if sField.isUnexported {
 						return errors.Errorf(

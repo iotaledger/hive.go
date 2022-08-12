@@ -15,6 +15,7 @@ package serix
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"reflect"
 	"sort"
@@ -249,7 +250,7 @@ func (ts TypeSettings) ObjectType() interface{} {
 	return ts.objectType
 }
 
-//WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
+// WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
 func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
 	ts.lexicalOrdering = &val
 	return ts
@@ -331,6 +332,18 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
+// JSONEncode serializes the provided object obj into its JSON representation.
+func (api *API) JSONEncode(ctx context.Context, obj any, opts ...Option) ([]byte, error) {
+	orderedMap, err := api.MapEncode(ctx, obj, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(orderedMap)
+}
+
+// MapEncode serializes the provided object obj into an ordered map.
+// serix traverses the object recursively and serializes everything based on the type.
+// Use the options list opts to customize the serialization behaviour.
 func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
@@ -374,6 +387,19 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 	return api.decode(ctx, b, value, opt.ts, opt)
 }
 
+// JSONDecode deserializes json data into the provided object obj.
+func (api *API) JSONDecode(ctx context.Context, data []byte, obj interface{}, opts ...Option) error {
+	m := map[string]any{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	return api.MapDecode(ctx, m, obj, opts...)
+}
+
+// MapDecode deserializes generic map m into the provided object obj.
+// obj must be a non-nil pointer for serix to deserialize into it.
+// serix traverses the object recursively and deserializes everything based on its type.
+// Use the options list opts to customize the deserialization behavior.
 func (api *API) MapDecode(ctx context.Context, m map[string]any, obj interface{}, opts ...Option) error {
 	value := reflect.ValueOf(obj)
 	if err := checkDecodeDestination(obj, value); err != nil {
