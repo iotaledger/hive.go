@@ -1,14 +1,16 @@
 package identity
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/cockroachdb/errors"
+	"github.com/iotaledger/hive.go/core/serix"
 	"math/rand"
 	"strings"
 
 	"github.com/mr-tron/base58"
-	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/cerrors"
@@ -42,6 +44,15 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 // Bytes returns the byte slice representation of the ID
 func (id ID) Bytes() []byte {
 	return id[:]
+}
+
+// IdentityFromBytes decodes ID from bytes.
+func (id *ID) IdentityFromBytes(bytes []byte) error {
+	_, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id)
+	if err != nil {
+		return errors.Wrap(err, "failed to decode node identity from bytes")
+	}
+	return nil
 }
 
 // String returns a shortened version of the ID as a base58 encoded string.
