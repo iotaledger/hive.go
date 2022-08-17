@@ -46,10 +46,9 @@ func (id ID) Bytes() []byte {
 	return id[:]
 }
 
-// IdentityFromBytes decodes ID from bytes.
-func (id *ID) IdentityFromBytes(bytes []byte) error {
-	_, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id)
-	if err != nil {
+// FromBytes decodes ID from bytes.
+func (id *ID) FromBytes(bytes []byte) error {
+	if _, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
 		return errors.Wrap(err, "failed to decode node identity from bytes")
 	}
 	return nil
