@@ -34,7 +34,7 @@ var (
 	ErrDeserializationLengthInvalid = errors.New("length denotation invalid")
 	// ErrDeserializationNotAllConsumed gets returned if not all bytes were consumed during deserialization of a given type.
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
-	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit
+	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit.
 	ErrUint256NumNegative = errors.New("uint256 is negative")
 	// ErrStringTooLong gets returned if a string exceeds a max length.
 	ErrStringTooLong = errors.New("string is too long")

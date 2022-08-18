@@ -72,7 +72,7 @@ type replyMatcher struct {
 	errc chan error
 }
 
-// reply is a reply packet from a certain peer
+// reply is a reply packet from a certain peer.
 type reply struct {
 	fromIP         net.IP
 	fromID         identity.ID
@@ -126,7 +126,7 @@ func (s *Server) LocalAddr() *net.UDPAddr {
 	return s.conn.LocalAddr().(*net.UDPAddr)
 }
 
-// Send sends a message to the given address
+// Send sends a message to the given address.
 func (s *Server) Send(toAddr *net.UDPAddr, data []byte) {
 	pkt := s.encode(data)
 	s.write(pkt, toAddr)

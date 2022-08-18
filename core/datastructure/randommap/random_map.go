@@ -26,7 +26,7 @@ type RandomMap struct {
 	mutex  sync.RWMutex
 }
 
-// New creates a new random map
+// New creates a new random map.
 func New() *RandomMap {
 	return &RandomMap{
 		rawMap: make(map[interface{}]*randomMapEntry),

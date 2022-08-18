@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	// remove peers from DB, when the last received ping was older than this
+	// remove peers from DB, when the last received ping was older than this.
 	peerExpiration = 24 * time.Hour
-	// interval in which expired peers are checked
+	// interval in which expired peers are checked.
 	cleanupInterval = time.Hour
 
-	// number of peers used for bootstrapping
+	// number of peers used for bootstrapping.
 	seedCount = 10
-	// time after which potential seed peers should expire
+	// time after which potential seed peers should expire.
 	seedExpiration = 5 * 24 * time.Hour
 )
 

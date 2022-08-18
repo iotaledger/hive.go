@@ -6,7 +6,7 @@ import (
 
 // region Queue ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Queue represents an Event
+// Queue represents an Event.
 type Queue struct {
 	queuedElements      []*queueElement
 	queuedElementsMutex sync.Mutex

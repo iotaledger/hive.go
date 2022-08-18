@@ -8,7 +8,7 @@ const (
 	panicMissingRocksDB = "For RocksDB support please compile with '-tags rocksdb'"
 )
 
-// RocksDB holds the underlying grocksdb.DB instance and options
+// RocksDB holds the underlying grocksdb.DB instance and options.
 type RocksDB struct {
 }
 

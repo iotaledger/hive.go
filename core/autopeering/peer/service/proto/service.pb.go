@@ -26,7 +26,7 @@ const (
 const _ = proto.ProtoPackageIsVersion4
 
 // Mapping between a service ID and its tuple network_address
-// e.g., map[autopeering:&{tcp, 198.51.100.1:80}]
+// e.g., map[autopeering:&{tcp, 198.51.100.1:80}].
 type ServiceMap struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -77,7 +77,7 @@ func (x *ServiceMap) GetMap() map[string]*NetworkAddress {
 	return nil
 }
 
-// The service type (e.g., tcp, upd) and the address (e.g., 198.51.100.1:80)
+// The service type (e.g., tcp, upd) and the address (e.g., 198.51.100.1:80).
 type NetworkAddress struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -93,7 +93,7 @@ type Client struct {
 // checkPong checks if the client is still available and answers to the ping messages
 // that are sent periodically in the writePump function.
 //
-// at most one reader per websocket connection is allowed
+// at most one reader per websocket connection is allowed.
 func (c *Client) checkPong() {
 
 	defer func() {
@@ -157,7 +157,7 @@ func (c *Client) checkPong() {
 
 // writePump pumps messages from the node to the websocket connection.
 //
-// at most one writer per websocket connection is allowed
+// at most one writer per websocket connection is allowed.
 func (c *Client) writePump() {
 
 	pingTicker := time.NewTicker(pingPeriod)
@@ -225,7 +225,7 @@ func (c *Client) writePump() {
 	}
 }
 
-// Send sends a message to the client
+// Send sends a message to the client.
 func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	if c.hub.shutdownFlag.Load() {
 		// hub was already shut down

@@ -57,5 +57,5 @@ func (s *simpleStack) IsEmpty() bool {
 	return len(*s) == 0
 }
 
-// code contract - make sure the type implements the interface
+// code contract - make sure the type implements the interface.
 var _ Stack = &simpleStack{}

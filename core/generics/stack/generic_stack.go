@@ -43,5 +43,5 @@ func (s *genericStack[T]) Peek() (value T, exists bool) {
 	return
 }
 
-// code contract - make sure the type implements the interface
+// code contract - make sure the type implements the interface.
 var _ Stack[int] = &genericStack[int]{}

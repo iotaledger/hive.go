@@ -78,7 +78,7 @@ func (ips *IPAddresses) Len() int {
 	return len(ips.IPs)
 }
 
-// OriginAddress represents a tuple of a IP or hostname, port, alias and IPv6 preference
+// OriginAddress represents a tuple of a IP or hostname, port, alias and IPv6 preference.
 type OriginAddress struct {
 	Addr       string
 	Port       uint16
@@ -113,7 +113,7 @@ var ErrInvalidIPAddressOrHost = errors.New("invalid IP address or hostname")
 var ErrNoIPAddressesFound = errors.New("could not resolve any IP address")
 
 // GetIPAddressesFromHost returns all resolvable IP addresses (*IPAddresses) from a host.
-// If it is an IP address this IP address will be returned as *IPAddresses
+// If it is an IP address this IP address will be returned as *IPAddresses.
 func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	ipAddresses := NewIPAddresses()
 

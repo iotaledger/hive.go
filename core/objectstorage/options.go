@@ -57,17 +57,17 @@ func CacheTime(duration time.Duration) Option {
 	}
 }
 
-// logChannelBufferSize defines the size of the buffer used for the log writer
+// logChannelBufferSize defines the size of the buffer used for the log writer.
 const logChannelBufferSize = 10240
 
-// logEntry is a container for the
+// logEntry is a container for the.
 type logEntry struct {
 	time       time.Time
 	command    debug.Command
 	parameters [][]byte
 }
 
-// String returns a string representation of the log entry
+// String returns a string representation of the log entry.
 func (l *logEntry) String() string {
 	result := l.time.Format("15:04:05") + " " + debug.CommandNames[l.command]
 	for _, parameter := range l.parameters {

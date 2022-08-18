@@ -7,7 +7,7 @@ import (
 
 // BySalt returns the distance (uint32) between x and y
 // by xoring the hash of x and y + salt
-// xor(hash(x), hash(y+salt))[:4]
+// xor(hash(x), hash(y+salt))[:4].
 func BySalt(x, y, salt []byte) uint32 {
 	return xorSHA32(x, joinBytes(y, salt))
 }

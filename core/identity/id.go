@@ -43,7 +43,7 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 	return
 }
 
-// Bytes returns the byte slice representation of the ID
+// Bytes returns the byte slice representation of the ID.
 func (id ID) Bytes() []byte {
 	return id[:]
 }

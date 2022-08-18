@@ -281,7 +281,7 @@ func (i Int8Value) String() string {
 	return "Int8Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int8Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +366,7 @@ func (i Int16Value) String() string {
 	return "Int16Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int16Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,7 +451,7 @@ func (i Int32Value) String() string {
 	return "Int32Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int32Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -536,7 +536,7 @@ func (i Int64Value) String() string {
 	return "Int64Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int64Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -621,7 +621,7 @@ func (i Uint8Value) String() string {
 	return "Uint8Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint8Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -706,7 +706,7 @@ func (i Uint16Value) String() string {
 	return "Uint16Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint16Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -791,7 +791,7 @@ func (i Uint32Value) String() string {
 	return "Uint32Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint32Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -876,7 +876,7 @@ func (i Uint64Value) String() string {
 	return "Uint64Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint64Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

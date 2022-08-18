@@ -101,7 +101,7 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	return a
 }
 
-// init stage collects all parameters and loads the config files
+// init stage collects all parameters and loads the config files.
 func (a *App) init() {
 	version := flag.BoolP("version", "v", false, "prints the app version")
 	help := flag.BoolP("help", "h", false, "prints the app help (--full for all parameters)")
@@ -265,7 +265,7 @@ Command line flags:
 	a.log = logger.NewLogger("App")
 }
 
-// printAppInfo prints app name and version info
+// printAppInfo prints app name and version info.
 func (a *App) printAppInfo() {
 	versionString := a.Info().Version
 	if _, err := goversion.NewSemver(a.Info().Version); err == nil {
@@ -310,7 +310,7 @@ func (a *App) printConfig() {
 	}
 }
 
-// initConfig stage
+// initConfig stage.
 func (a *App) initConfig() {
 	if a.options.initComponent.InitConfigPars != nil {
 		if err := a.options.initComponent.InitConfigPars(a.container); err != nil {
@@ -339,7 +339,7 @@ func (a *App) initConfig() {
 	})
 }
 
-// preProvide stage
+// preProvide stage.
 func (a *App) preProvide() {
 	initCfg := &InitConfig{}
 
@@ -386,7 +386,7 @@ func (a *App) preProvide() {
 	}
 }
 
-// addComponents stage
+// addComponents stage.
 func (a *App) addComponents() {
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		if a.isComponentForceDisabled(coreComponent.Identifier()) {
@@ -409,7 +409,7 @@ func (a *App) addComponents() {
 	})
 }
 
-// provide stage
+// provide stage.
 func (a *App) provide() {
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
@@ -438,7 +438,7 @@ func (a *App) provide() {
 	})
 }
 
-// invoke stage
+// invoke stage.
 func (a *App) invoke() {
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
@@ -467,7 +467,7 @@ func (a *App) invoke() {
 	})
 }
 
-// configure stage
+// configure stage.
 func (a *App) configure() {
 	a.LogInfo("Loading core components ...")
 
@@ -502,7 +502,7 @@ func (a *App) configure() {
 	})
 }
 
-// initializeVersionCheck stage
+// initializeVersionCheck stage.
 func (a *App) initializeVersionCheck() {
 	// do not check for updates if it was disabled
 	if !a.options.versionCheckEnabled {
@@ -543,7 +543,7 @@ func (a *App) initializeVersionCheck() {
 	}
 }
 
-// run stage
+// run stage.
 func (a *App) run() {
 	a.LogInfo("Executing core components ...")
 

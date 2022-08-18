@@ -28,7 +28,7 @@ const (
 	logSends        = true
 )
 
-// policy for retrying failed network calls
+// policy for retrying failed network calls.
 var retryPolicy = backoff.ExponentialBackOff(backoffInterval, 1.5).With(
 	backoff.Jitter(0.5), backoff.MaxRetries(maxRetries))
 

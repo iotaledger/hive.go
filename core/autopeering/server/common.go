@@ -48,7 +48,7 @@ func (f HandlerFunc) HandleMessage(s *Server, fromAddr *net.UDPAddr, from *ident
 	return f(s, fromAddr, from, data)
 }
 
-// PacketHash returns the hash of a packet
+// PacketHash returns the hash of a packet.
 func PacketHash(data []byte) []byte {
 	sum := sha256.Sum256(data)
 

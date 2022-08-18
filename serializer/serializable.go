@@ -23,7 +23,7 @@ type Serializable interface {
 }
 
 // SerializableWithSize implements Serializable interface and has the extra functionality of returning the size of the
-// resulting serialized object (ideally without actually serializing it)
+// resulting serialized object (ideally without actually serializing it).
 type SerializableWithSize interface {
 	Serializable
 	// Size returns the size of the serialized object

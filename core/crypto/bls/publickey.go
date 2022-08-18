@@ -76,7 +76,7 @@ func (p PublicKey) Bytes() []byte {
 	return bytes
 }
 
-// Base58 returns a base58 encoded version of the PublicKey
+// Base58 returns a base58 encoded version of the PublicKey.
 func (p PublicKey) Base58() string {
 	return base58.Encode(p.Bytes())
 }

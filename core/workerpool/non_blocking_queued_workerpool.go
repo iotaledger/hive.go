@@ -83,7 +83,7 @@ func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
 	}
 }
 
-// Submit is an alias for TrySubmit
+// Submit is an alias for TrySubmit.
 func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan interface{}, bool) {
 	return wp.TrySubmit(params...)
 }

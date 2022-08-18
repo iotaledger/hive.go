@@ -8,7 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/core/protocol/message"
 )
 
-// message definition for testing
+// message definition for testing.
 var (
 	DummyMessageType       message.Type = 0
 	DummyMessageDefinition              = &message.Definition{

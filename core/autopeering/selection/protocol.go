@@ -27,7 +27,7 @@ const (
 	defaultNeighborSkipTimeout   = 5 * time.Minute
 )
 
-// policy for retrying failed network calls
+// policy for retrying failed network calls.
 var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 	backoff.Jitter(0.5), backoff.MaxRetries(maxRetries))
 

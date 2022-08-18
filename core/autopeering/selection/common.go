@@ -8,7 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/core/logger"
 )
 
-// Default values for the global parameters
+// Default values for the global parameters.
 const (
 	DefaultInboundNeighborSize        = 4
 	DefaultOutboundNeighborSize       = 4
@@ -47,49 +47,49 @@ type optionFunc func(*options)
 
 func (f optionFunc) apply(opts *options) { f(opts) }
 
-// Logger sets the logger
+// Logger sets the logger.
 func Logger(log *logger.Logger) Option {
 	return optionFunc(func(opts *options) {
 		opts.log = log
 	})
 }
 
-// DropOnUpdate sets the Option to drop all neighbors when the salt is updated
+// DropOnUpdate sets the Option to drop all neighbors when the salt is updated.
 func DropOnUpdate(dropOnUpdate bool) Option {
 	return optionFunc(func(opts *options) {
 		opts.dropOnUpdate = dropOnUpdate
 	})
 }
 
-// NeighborValidator sets the potential neighbor validator
+// NeighborValidator sets the potential neighbor validator.
 func NeighborValidator(neighborValidator Validator) Option {
 	return optionFunc(func(opts *options) {
 		opts.neighborValidator = neighborValidator
 	})
 }
 
-// UseMana sets the Option to use mana
+// UseMana sets the Option to use mana.
 func UseMana(useMana bool) Option {
 	return optionFunc(func(opts *options) {
 		opts.useMana = useMana
 	})
 }
 
-// ManaFunc sets the Option of the mana function to use
+// ManaFunc sets the Option of the mana function to use.
 func ManaFunc(manaFunc mana.Func) Option {
 	return optionFunc(func(opts *options) {
 		opts.manaFunc = manaFunc
 	})
 }
 
-// R sets the Option for R
+// R sets the Option for R.
 func R(r int) Option {
 	return optionFunc(func(opts *options) {
 		opts.r = r
 	})
 }
 
-// Ro sets the Option for Ro
+// Ro sets the Option for Ro.
 func Ro(ro float64) Option {
 	return optionFunc(func(opts *options) {
 		opts.ro = ro
@@ -111,7 +111,7 @@ func NeighborSkipTimeout(skipTimeout time.Duration) Option {
 	})
 }
 
-// A Validator checks whether a peer is a valid neighbor
+// A Validator checks whether a peer is a valid neighbor.
 type Validator interface {
 	IsValid(*peer.Peer) bool
 }

@@ -22,7 +22,7 @@ func BenchmarkEvent_Trigger(b *testing.B) {
 	}
 }
 
-// define how the event converts the generic parameters to the typed params - ugly but go has no generics :(
+// define how the event converts the generic parameters to the typed params - ugly but go has no generics :(.
 func intStringCaller(handler interface{}, params ...interface{}) {
 	handler.(func(int, string))(params[0].(int), params[1].(string))
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore/badger"
 )
 
-// variables for keeping track of how many databases have been created by the given test
+// variables for keeping track of how many databases have been created by the given test.
 var databaseCounter = make(map[string]int)
 var databaseCounterMutex sync.Mutex
 

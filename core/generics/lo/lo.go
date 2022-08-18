@@ -154,7 +154,7 @@ func Min[T constraints.Ordered](collection ...T) T {
 	}, minElem)
 }
 
-// Sum returns the sum of the collection
+// Sum returns the sum of the collection.
 func Sum[T constraints.Numeric](collection ...T) T {
 	var sumElem T
 

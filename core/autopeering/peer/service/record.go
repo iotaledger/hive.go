@@ -11,12 +11,12 @@ import (
 )
 
 // Record defines the mapping between a service ID and its tuple TypePort
-// e.g., map[autopeering:&{TCP, 8000}]
+// e.g., map[autopeering:&{TCP, 8000}].
 type Record struct {
 	m map[string]endpoint
 }
 
-// endpoint implements net.Addr
+// endpoint implements net.Addr.
 type endpoint struct {
 	network string
 	port    int
@@ -37,7 +37,7 @@ func (a endpoint) String() string {
 	return fmt.Sprintf("%d/%s", a.port, a.network)
 }
 
-// New initializes and returns an empty new Record
+// New initializes and returns an empty new Record.
 func New() *Record {
 	return &Record{
 		m: make(map[string]endpoint),

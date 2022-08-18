@@ -235,7 +235,7 @@ func (t *TimedQueue) removeElement(element *QueueElement) {
 
 // region QueueElement /////////////////////////////////////////////////////////////////////////////////////////////////
 
-// QueueElement is an element in the TimedQueue. It
+// QueueElement is an element in the TimedQueue. It.
 type QueueElement struct {
 	// Value represents the value of the queued element.
 	Value interface{}

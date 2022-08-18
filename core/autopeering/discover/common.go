@@ -7,7 +7,7 @@ import (
 	"github.com/iotaledger/hive.go/core/logger"
 )
 
-// Default values for the global parameters
+// Default values for the global parameters.
 const (
 	DefaultReverifyInterval = 10 * time.Second
 	DefaultQueryInterval    = 60 * time.Second
@@ -37,14 +37,14 @@ type optionFunc func(*options)
 
 func (f optionFunc) apply(opts *options) { f(opts) }
 
-// Logger sets the logger
+// Logger sets the logger.
 func Logger(log *logger.Logger) Option {
 	return optionFunc(func(opts *options) {
 		opts.log = log
 	})
 }
 
-// MasterPeers sets the masterPeers to use
+// MasterPeers sets the masterPeers to use.
 func MasterPeers(masterPeers []*peer.Peer) Option {
 	return optionFunc(func(opts *options) {
 		opts.masterPeers = masterPeers

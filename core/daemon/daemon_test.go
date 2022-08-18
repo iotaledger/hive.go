@@ -14,7 +14,7 @@ import (
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
-// graceTime for go routines to start
+// graceTime for go routines to start.
 const graceTime = 5 * time.Millisecond
 
 var ErrDaemonStopped = errors.New("daemon was stopped")

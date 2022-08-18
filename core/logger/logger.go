@@ -172,7 +172,7 @@ func NewExampleLogger(name string) *Logger {
 }
 
 // NewNopLogger returns a no-op Logger.
-// It never writes out logs or internal errors
+// It never writes out logs or internal errors.
 func NewNopLogger() *Logger {
 	return zap.NewNop().Sugar()
 }

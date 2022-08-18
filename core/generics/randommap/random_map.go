@@ -9,7 +9,7 @@ type RandomMap[K comparable, V any] struct {
 	*randommap.RandomMap
 }
 
-// New creates a new random map
+// New creates a new random map.
 func New[K comparable, V any]() *RandomMap[K, V] {
 	return &RandomMap[K, V]{
 		RandomMap: randommap.New(),

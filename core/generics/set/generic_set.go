@@ -88,5 +88,5 @@ func (set *genericSet[T]) Decode(b []byte) (bytesRead int, err error) {
 	return bytesRead, nil
 }
 
-// code contract - make sure the type implements the interface
+// code contract - make sure the type implements the interface.
 var _ Set[int] = &genericSet[int]{}

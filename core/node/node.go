@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	// plugins
+	// plugins.
 	plugins         = make(map[string]*Plugin)
 	DisabledPlugins = make(map[string]bool)
 	EnabledPlugins  = make(map[string]bool)

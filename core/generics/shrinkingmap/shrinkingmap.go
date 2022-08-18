@@ -45,7 +45,7 @@ type Option func(opts *Options)
 // that shrinks if certain conditions are met (AND condition).
 // Default values are:
 // - ShrinkingThresholdRatio: 10.0	(set to 0.0 to disable)
-// - ShrinkingThresholdCount: 100	(set to 0 to disable)
+// - ShrinkingThresholdCount: 100	(set to 0 to disable).
 type ShrinkingMap[K comparable, V any] struct {
 	m           map[K]V
 	deletedKeys int

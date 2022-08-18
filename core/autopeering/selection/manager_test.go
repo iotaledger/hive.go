@@ -179,7 +179,7 @@ type neighbors struct {
 	out, in map[identity.ID]*peer.Peer
 }
 
-// eventNetwork reconstructs the neighbors for the triggered events
+// eventNetwork reconstructs the neighbors for the triggered events.
 type eventNetwork struct {
 	sync.Mutex
 	t *testing.T

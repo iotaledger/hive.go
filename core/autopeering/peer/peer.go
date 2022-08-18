@@ -83,7 +83,7 @@ func NewPeer(id *identity.Identity, ip net.IP, services service.Service) *Peer {
 	}
 }
 
-// ToProto encodes a given peer into a proto buffer Peer message
+// ToProto encodes a given peer into a proto buffer Peer message.
 func (p *Peer) ToProto() *pb.Peer {
 	return &pb.Peer{
 		PublicKey: p.PublicKey().Bytes(),

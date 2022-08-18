@@ -1293,7 +1293,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 	return d
 }
 
-// ReadPayloadLength reads the payload length from the deserializer
+// ReadPayloadLength reads the payload length from the deserializer.
 func (d *Deserializer) ReadPayloadLength() (uint32, error) {
 	if len(d.src[d.offset:]) < PayloadLengthByteSize {
 		return 0, fmt.Errorf("%w: data is smaller than payload length denotation", ErrDeserializationNotEnoughData)

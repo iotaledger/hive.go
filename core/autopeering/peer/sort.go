@@ -6,20 +6,20 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/distance"
 )
 
-// PeerDistance defines the relative distance wrt a remote peer
+// PeerDistance defines the relative distance wrt a remote peer.
 type PeerDistance struct {
 	Remote   *Peer
 	Distance uint32
 }
 
-// byDistance is a slice of PeerDistance used to sort
+// byDistance is a slice of PeerDistance used to sort.
 type byDistance []PeerDistance
 
 func (a byDistance) Len() int           { return len(a) }
 func (a byDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byDistance) Less(i, j int) bool { return a[i].Distance < a[j].Distance }
 
-// NewPeerDistance returns a new PeerDistance
+// NewPeerDistance returns a new PeerDistance.
 func NewPeerDistance(anchorID, salt []byte, remote *Peer) PeerDistance {
 	return PeerDistance{
 		Remote:   remote,
@@ -27,7 +27,7 @@ func NewPeerDistance(anchorID, salt []byte, remote *Peer) PeerDistance {
 	}
 }
 
-// SortBySalt returns a slice of PeerDistance given a list of remote peers
+// SortBySalt returns a slice of PeerDistance given a list of remote peers.
 func SortBySalt(anchor, salt []byte, remotePeers []*Peer) (result []PeerDistance) {
 	result = make(byDistance, len(remotePeers))
 	for i, remote := range remotePeers {
