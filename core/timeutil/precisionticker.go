@@ -91,7 +91,7 @@ func (p *PrecisionTicker) waitIfNecessary(start time.Time) {
 }
 
 // incrementIterations increases the number of iterations by one. It returns the number of iterations after the
-//increment.
+// increment.
 func (p *PrecisionTicker) increaseIterations() (newIterations int) {
 	p.iterationsMutex.Lock()
 	defer p.iterationsMutex.Unlock()
