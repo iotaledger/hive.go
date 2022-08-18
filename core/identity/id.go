@@ -5,17 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/cockroachdb/errors"
-	"github.com/iotaledger/hive.go/core/serix"
 	"math/rand"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/core/serix"
 )
 
 // IDLength defines the length of an ID.
