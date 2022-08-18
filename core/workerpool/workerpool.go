@@ -55,6 +55,7 @@ func (wp *WorkerPool) Submit(params ...interface{}) (result chan interface{}, ad
 			params:     params,
 			resultChan: result,
 		}
+
 		return result, true
 	}
 
@@ -78,6 +79,7 @@ func (wp *WorkerPool) TrySubmit(params ...interface{}) (result chan interface{},
 		default:
 			// Queue full => drop the BlockingQueueWorkerPoolTask
 			close(result)
+
 			return nil, false
 		}
 	}

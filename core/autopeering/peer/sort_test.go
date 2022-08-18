@@ -13,6 +13,7 @@ import (
 func newTestPeerWithID(ID byte) *Peer {
 	var key ed25519.PublicKey
 	key[0] = ID
+
 	return NewPeer(identity.New(key), net.IPv4zero, newTestServiceRecord())
 }
 

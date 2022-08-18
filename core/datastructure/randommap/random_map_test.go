@@ -39,5 +39,6 @@ func containsUniqueElements(list []interface{}) bool {
 	for _, element := range list {
 		elementSet.Add(element)
 	}
+
 	return elementSet.Size() == len(list)
 }

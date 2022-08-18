@@ -67,5 +67,6 @@ func getLocalUDPAddr() (*net.UDPAddr, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return conn.LocalAddr().(*net.UDPAddr), conn.Close()
 }

@@ -80,6 +80,7 @@ func (s Stringers) ToSerializables() serializer.Serializables {
 	for i, x := range s {
 		seris[i] = x.(serializer.Serializable)
 	}
+
 	return seris
 }
 
@@ -128,6 +129,7 @@ func TestDeserializer_ReadPayload(t *testing.T) {
 
 	data, _ := serializer.NewSerializer().WritePayload(source, serializer.DeSeriModePerformValidation, nil, dummyTypeArrayRules.Guards.WriteGuard, func(err error) error {
 		require.NoError(t, err)
+
 		return err
 	}).Serialize()
 
@@ -211,6 +213,7 @@ func TestDeserializer_ReadString(t *testing.T) {
 				Done()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadStringFromBytes() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if s != tt.want {
@@ -285,6 +288,7 @@ func TestReadWriteNum(t *testing.T) {
 			serializedBytes, err := serializer.NewSerializer().WriteNum(tt.x, returnErr).Serialize()
 			if err != nil && tt.expectedErr != nil {
 				require.Equal(t, tt.expectedErr, err)
+
 				return
 			}
 			require.NoError(t, err)
@@ -293,6 +297,7 @@ func TestReadWriteNum(t *testing.T) {
 			_, err = serializer.NewDeserializer(serializedBytes).ReadNum(y, returnErr).Done()
 			if err != nil && tt.expectedErr != nil {
 				require.Equal(t, tt.expectedErr, err)
+
 				return
 			}
 
@@ -347,6 +352,7 @@ func TestReadWriteUint256(t *testing.T) {
 			serializedBytes, err := serializer.NewSerializer().WriteUint256(tt.x, returnErr).Serialize()
 			if err != nil && tt.expectedErr != nil {
 				require.Equal(t, tt.expectedErr, err)
+
 				return
 			}
 
@@ -356,6 +362,7 @@ func TestReadWriteUint256(t *testing.T) {
 			_, err = serializer.NewDeserializer(serializedBytes).ReadUint256(&y, returnErr).Done()
 			if err != nil && tt.expectedErr != nil {
 				require.Equal(t, tt.expectedErr, err)
+
 				return
 			}
 			require.NoError(t, err)

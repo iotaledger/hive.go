@@ -64,6 +64,7 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 	if element, exists := directory[key]; exists {
 		element.Value.(*lruCacheElement).value = value
 		cache.promoteElement(element)
+
 		return
 	}
 

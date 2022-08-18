@@ -23,6 +23,7 @@ func NewIdentity(identities []*identity.Identity, f Func) Identity {
 		mana := f.Eval(identity)
 		manaRank[mana] = append(manaRank[mana], identity)
 	}
+
 	return manaRank
 }
 
@@ -119,6 +120,7 @@ func RankByFixedRange(f Func, target *identity.Identity, identities []*identity.
 
 	if len(manaRank) < 2*r {
 		fmt.Println("returning full identities", len(manaRank))
+
 		return identities
 	}
 
@@ -221,6 +223,7 @@ func findIndex(target uint64, set []uint64) int {
 			return i
 		}
 	}
+
 	return -1
 }
 
@@ -236,6 +239,7 @@ func filter(target int, set []uint64, r int, mode int) []uint64 {
 		if start < 0 {
 			start = 0
 		}
+
 		return set[start:target]
 	case up:
 		end := target + r + 1
@@ -245,6 +249,7 @@ func filter(target int, set []uint64, r int, mode int) []uint64 {
 		if target+1 >= len(set) {
 			return []uint64{}
 		}
+
 		return set[target+1 : end]
 	default:
 		return nil
@@ -256,5 +261,6 @@ func Total(f Func, identities []*identity.Identity) (total uint64) {
 	for _, identity := range identities {
 		total += f(identity)
 	}
+
 	return total
 }

@@ -110,6 +110,7 @@ func (typePrefixes TypePrefixes) Subset(other TypePrefixes) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -138,6 +139,7 @@ func (ar *ArrayRules) CheckBounds(count uint) error {
 	if ar.Max != 0 && count > ar.Max {
 		return fmt.Errorf("%w: max is %d but count is %d", ErrArrayValidationMaxElementsExceeded, ar.Max, count)
 	}
+
 	return nil
 }
 
@@ -154,6 +156,7 @@ type ElementValidationFunc func(index int, next []byte) error
 // ElementUniqueValidator returns an ElementValidationFunc which returns an error if the given element is not unique.
 func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 	set := map[string]int{}
+
 	return func(index int, next []byte) error {
 		if ar.UniquenessSliceFunc != nil {
 			next = ar.UniquenessSliceFunc(next)
@@ -163,6 +166,7 @@ func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 			return fmt.Errorf("%w: element %d and %d are duplicates", ErrArrayValidationViolatesUniqueness, j, index)
 		}
 		set[k] = index
+
 		return nil
 	}
 }
@@ -172,6 +176,7 @@ func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 func (ar *ArrayRules) LexicalOrderValidator() ElementValidationFunc {
 	var prev []byte
 	var prevIndex int
+
 	return func(index int, next []byte) error {
 		switch {
 		case prev == nil:
@@ -183,6 +188,7 @@ func (ar *ArrayRules) LexicalOrderValidator() ElementValidationFunc {
 			prev = next
 			prevIndex = index
 		}
+
 		return nil
 	}
 }
@@ -192,14 +198,17 @@ func (ar *ArrayRules) LexicalOrderValidator() ElementValidationFunc {
 func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 	var prev []byte
 	var prevIndex int
+
 	return func(index int, next []byte) error {
 		if prev == nil {
 			prevIndex = index
 			if ar.UniquenessSliceFunc != nil {
 				prev = ar.UniquenessSliceFunc(next)
+
 				return nil
 			}
 			prev = next
+
 			return nil
 		}
 		if ar.UniquenessSliceFunc != nil {
@@ -215,9 +224,11 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 		prevIndex = index
 		if ar.UniquenessSliceFunc != nil {
 			prev = ar.UniquenessSliceFunc(next)
+
 			return nil
 		}
 		prev = next
+
 		return nil
 	}
 }
@@ -226,6 +237,7 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 // times within the array.
 func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotationType) ElementValidationFunc {
 	seen := map[uint32]int{}
+
 	return func(index int, next []byte) error {
 		var key uint32
 		switch typeDenotation {
@@ -247,6 +259,7 @@ func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotation
 			return fmt.Errorf("%w: element %d and %d have the same type", ErrArrayValidationViolatesTypeUniqueness, index, prevIndex)
 		}
 		seen[key] = index
+
 		return nil
 	}
 }
@@ -262,6 +275,7 @@ func (ar *ArrayRules) ElementValidationFunc() ElementValidationFunc {
 					return err
 				}
 			}
+
 			return f2(index, next)
 		}
 	}
@@ -279,6 +293,7 @@ func (ar *ArrayRules) ElementValidationFunc() ElementValidationFunc {
 			// to the previous element can be done instead of using a map
 			if ar.ValidationMode.HasMode(ArrayValidationModeNoDuplicates) {
 				arrayElementValidator = wrap(arrayElementValidator, ar.LexicalOrderWithoutDupsValidator())
+
 				continue
 			}
 			arrayElementValidator = wrap(arrayElementValidator, ar.LexicalOrderValidator())
@@ -353,6 +368,7 @@ func (ss SortedSerializables) Len() int {
 func (ss SortedSerializables) Less(i, j int) bool {
 	iData, _ := ss[i].Serialize(DeSeriModeNoValidation, nil)
 	jData, _ := ss[j].Serialize(DeSeriModeNoValidation, nil)
+
 	return bytes.Compare(iData, jData) < 0
 }
 

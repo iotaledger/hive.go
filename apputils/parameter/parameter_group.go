@@ -94,6 +94,7 @@ func analyzeBoundParameter(groupsMap map[string]*ParameterGroup, groups []*Param
 					name, usage, defaultVal := getParameterValues(groupBaseName, valueField, typeField)
 					addParameter(groupsMap, defaultVal, usage, groupBaseName, name)
 				}
+
 				return groups
 			}
 		}

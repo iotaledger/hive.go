@@ -47,6 +47,7 @@ func TestZeroBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -72,6 +73,7 @@ func TestConstantBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -101,6 +103,7 @@ func TestExponentialBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -134,6 +137,7 @@ func TestExponentialBackOffParallel(t *testing.T) {
 				return nil
 			}
 			count++
+
 			return errTest
 		})
 		assert.NoError(t, err)

@@ -21,6 +21,7 @@ import (
 func newTestIdentity(name string) *identity.Identity {
 	key := ed25519.PublicKey{}
 	copy(key[:], name)
+
 	return identity.New(key)
 }
 
@@ -29,6 +30,7 @@ func newTestIdentities(n int) (identities []*identity.Identity) {
 	for i := 0; i < n; i++ {
 		identities[i] = newTestIdentity(fmt.Sprintf("%d", i))
 	}
+
 	return
 }
 
@@ -39,6 +41,7 @@ func newTestMana(identities []*identity.Identity) (m map[*identity.Identity]uint
 	for i, p := range identities {
 		m[p] = uint64(i)
 	}
+
 	return m
 }
 

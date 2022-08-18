@@ -58,8 +58,10 @@ func (x *Packet) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -72,6 +74,7 @@ func (x *Packet) GetType() uint32 {
 	if x != nil {
 		return x.Type
 	}
+
 	return 0
 }
 
@@ -79,6 +82,7 @@ func (x *Packet) GetData() []byte {
 	if x != nil {
 		return x.Data
 	}
+
 	return nil
 }
 
@@ -86,6 +90,7 @@ func (x *Packet) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
 	}
+
 	return nil
 }
 
@@ -93,6 +98,7 @@ func (x *Packet) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
 	}
+
 	return nil
 }
 
@@ -124,6 +130,7 @@ func file_autopeering_server_proto_packet_proto_rawDescGZIP() []byte {
 	file_autopeering_server_proto_packet_proto_rawDescOnce.Do(func() {
 		file_autopeering_server_proto_packet_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_server_proto_packet_proto_rawDescData)
 	})
+
 	return file_autopeering_server_proto_packet_proto_rawDescData
 }
 

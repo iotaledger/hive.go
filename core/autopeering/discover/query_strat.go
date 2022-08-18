@@ -42,6 +42,7 @@ func (m *manager) requestWorker(mp *mpeer, wg *sync.WaitGroup) {
 			"err", err,
 		)
 		m.deletePeer(p.ID())
+
 		return
 	}
 

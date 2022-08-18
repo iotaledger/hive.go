@@ -136,6 +136,7 @@ func Max[T constraints.Ordered](collection ...T) T {
 		if Comparator(value, max) > 0 {
 			return value
 		}
+
 		return max
 	}, maxElem)
 }
@@ -148,6 +149,7 @@ func Min[T constraints.Ordered](collection ...T) T {
 		if Comparator(value, min) < 0 {
 			return value
 		}
+
 		return min
 	}, minElem)
 }

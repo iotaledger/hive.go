@@ -56,6 +56,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 			for lvl, parameterName := range ignoredSettingSplitted {
 				if lvl == len(ignoredSettingSplitted)-1 {
 					delete(parameter, parameterName)
+
 					continue
 				}
 
@@ -116,6 +117,7 @@ func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]st
 			for lvl, parameterName := range ignoredSettingSplitted {
 				if lvl == len(ignoredSettingSplitted)-1 {
 					delete(parameter, parameterName)
+
 					continue
 				}
 
@@ -179,6 +181,7 @@ func (c *Configuration) LoadEnvironmentVars(prefix string) error {
 			// only accept values from env vars that already exist in the config
 			return ""
 		}
+
 		return mapKey
 	}), nil)
 }
@@ -254,6 +257,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 				panic(fmt.Sprintf("could not set default value of %s, error: %s", name, err))
 			}
 			addParameter(name, shortHand, usage, valueField.Interface(), valueField)
+
 			continue
 		}
 
@@ -427,6 +431,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 			// recursively walk the value, but do no add it as a parameter
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
+
 			continue
 		}
 		addParameter(name, shortHand, usage, valueField.Interface(), valueField)

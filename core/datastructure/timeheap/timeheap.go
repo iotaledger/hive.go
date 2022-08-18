@@ -23,6 +23,7 @@ type TimeHeap struct {
 func NewTimeHeap() *TimeHeap {
 	h := &TimeHeap{lock: &sync.Mutex{}}
 	heap.Init(h)
+
 	return h
 }
 
@@ -46,6 +47,7 @@ func (h *TimeHeap) AveragePerSecond(timeBefore time.Duration) float32 {
 			oldest := heap.Pop(h)
 			if time.Since(oldest.(*timeHeapEntry).timestamp) < timeBefore {
 				heap.Push(h, oldest)
+
 				break
 			}
 			h.total -= oldest.(*timeHeapEntry).count
@@ -71,5 +73,6 @@ func (h *TimeHeap) Pop() interface{} {
 	x := old[n-1]
 	old[n-1] = nil // avoid memory leak
 	(*h).list = old[0 : n-1]
+
 	return x
 }

@@ -29,5 +29,6 @@ func (queue *Queue[T]) Poll() (element T, success bool) {
 	if success {
 		element = e.(T)
 	}
+
 	return
 }

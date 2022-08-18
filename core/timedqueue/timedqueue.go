@@ -171,6 +171,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 		for len(t.heap) == 0 {
 			if !waitIfEmpty || t.IsShutdown() {
 				t.heapMutex.Unlock()
+
 				return nil
 			}
 
@@ -316,6 +317,7 @@ func (h *timedHeap) Pop() interface{} {
 	(*h)[n-1] = nil // avoid memory leak
 	*h = (*h)[:n-1]
 	data.index = -1
+
 	return data
 }
 

@@ -58,8 +58,10 @@ func (x *Salt) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -72,6 +74,7 @@ func (x *Salt) GetBytes() []byte {
 	if x != nil {
 		return x.Bytes
 	}
+
 	return nil
 }
 
@@ -79,6 +82,7 @@ func (x *Salt) GetExpTime() uint64 {
 	if x != nil {
 		return x.ExpTime
 	}
+
 	return 0
 }
 
@@ -107,6 +111,7 @@ func file_autopeering_salt_proto_salt_proto_rawDescGZIP() []byte {
 	file_autopeering_salt_proto_salt_proto_rawDescOnce.Do(func() {
 		file_autopeering_salt_proto_salt_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_salt_proto_salt_proto_rawDescData)
 	})
+
 	return file_autopeering_salt_proto_salt_proto_rawDescData
 }
 

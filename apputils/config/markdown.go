@@ -19,6 +19,7 @@ func groupNameUpper(g *parameter.ParameterGroup, replaceTopicNames map[string]st
 	if topicNameReplaced, exists := replaceTopicNames[g.Name]; exists {
 		return topicNameReplaced
 	}
+
 	return strings.ToUpper(g.Name[:1]) + g.Name[1:]
 }
 
@@ -101,6 +102,7 @@ func createMarkdownTables(groups []*parameter.ParameterGroup, replaceTopicNames 
 			result += "\n"
 		}
 	}
+
 	return result
 }
 

@@ -30,11 +30,13 @@ func PublicKeyFromBase58EncodedString(base58String string) (publicKey PublicKey,
 	bytes, err := base58.Decode(base58String)
 	if err != nil {
 		err = xerrors.Errorf("error while decoding base58 encoded PublicKey (%v): %w", err, ErrBase58DecodeFailed)
+
 		return
 	}
 
 	if publicKey, _, err = PublicKeyFromBytes(bytes); err != nil {
 		err = xerrors.Errorf("failed to parse PublicKey from bytes: %w", err)
+
 		return
 	}
 
@@ -46,11 +48,13 @@ func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey P
 	bytes, err := marshalUtil.ReadBytes(PublicKeySize)
 	if err != nil {
 		err = xerrors.Errorf("failed to read PublicKey bytes (%v): %w", err, ErrParseBytesFailed)
+
 		return
 	}
 	publicKey.Point = blsSuite.G2().Point()
 	if err = publicKey.Point.UnmarshalBinary(bytes); err != nil {
 		err = xerrors.Errorf("failed to unmarshal PublicKey (%v): %w", err, ErrParseBytesFailed)
+
 		return
 	}
 

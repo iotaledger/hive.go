@@ -145,6 +145,7 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 		if err == pebble.ErrNotFound {
 			return nil, kvstore.ErrKeyNotFound
 		}
+
 		return nil, err
 	}
 
@@ -210,6 +211,7 @@ func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 		for it.First(); it.Valid(); it.Next() {
 			if err := b.Delete(it.Key(), nil); err != nil {
 				b.Close()
+
 				return err
 			}
 		}

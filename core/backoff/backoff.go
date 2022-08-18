@@ -19,6 +19,7 @@ func Permanent(err error) error {
 	if err == nil {
 		panic("no error specified")
 	}
+
 	return &permanentError{
 		err: err,
 	}
@@ -39,6 +40,7 @@ func NewBackOff(policy Policy) *BackOff {
 	if b, ok := policy.(*BackOff); ok {
 		return b
 	}
+
 	return &BackOff{Policy: policy}
 }
 
@@ -53,6 +55,7 @@ func (b *BackOff) With(opts ...Option) *BackOff {
 	for _, opt := range opts {
 		p = opt.apply(p)
 	}
+
 	return NewBackOff(p)
 }
 
@@ -79,6 +82,7 @@ func Retry(p Policy, f func() error) (err error) {
 
 		time.Sleep(duration)
 	}
+
 	return err
 }
 
@@ -130,6 +134,7 @@ func ExponentialBackOff(initialInterval time.Duration, factor float64) *BackOff 
 		factor:          factor,
 		currentInterval: initialInterval,
 	}
+
 	return NewBackOff(p)
 }
 
@@ -141,6 +146,7 @@ type exponentialPolicy struct {
 
 func (b *exponentialPolicy) NextBackOff() time.Duration {
 	defer b.incrementCurrentInterval()
+
 	return b.currentInterval
 }
 

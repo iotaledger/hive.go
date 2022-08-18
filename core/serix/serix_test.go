@@ -47,6 +47,7 @@ func (b Bool) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode
 func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	ser := serializer.NewSerializer()
 	ser.WriteBool(bool(b), defaultErrProducer)
+
 	return ser.Serialize()
 }
 
@@ -72,6 +73,7 @@ func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMo
 func (bs Bools) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -80,6 +82,7 @@ func (bs Bools) ToSerializables() serializer.Serializables {
 	for i, b := range bs {
 		serializables[i] = b
 	}
+
 	return serializables
 }
 
@@ -143,6 +146,7 @@ func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSe
 	s.WriteTime(ss.Time, defaultErrProducer)
 	s.WriteNum(ss.Int, defaultErrProducer)
 	s.WriteNum(ss.Float, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -194,6 +198,7 @@ func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, de
 	ser.WriteNum(interfaceImplObjectCode, defaultErrProducer)
 	ser.WriteNum(ii.A, defaultErrProducer)
 	ser.WriteNum(ii.B, defaultErrProducer)
+
 	return ser.Serialize()
 }
 
@@ -219,6 +224,7 @@ func (si StructWithInterface) Deserialize(data []byte, deSeriMode serializer.DeS
 func (si StructWithInterface) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WriteObject(si.Interface.(serializer.Serializable), defaultSeriMode, deSeriCtx, defaultWriteGuard, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -244,6 +250,7 @@ func (so StructWithOptionalField) Deserialize(data []byte, deSeriMode serializer
 func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WritePayloadLength(0, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -272,6 +279,7 @@ func (se StructWithEmbeddedStructs) Serialize(deSeriMode serializer.DeSerializat
 	s.WriteNum(se.unexportedStruct.Foo, defaultErrProducer)
 	s.WriteNum(exportedStructObjectCode, defaultErrProducer)
 	s.WriteNum(se.ExportedStruct.Bar, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -322,6 +330,7 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 	mode := defaultSeriMode | serializer.DeSeriModePerformLexicalOrdering
 	arrayRules := &serializer.ArrayRules{ValidationMode: serializer.ArrayValidationModeLexicalOrdering}
 	s.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -348,6 +357,7 @@ func (cs CustomSerializable) Serialize(deSeriMode serializer.DeSerializationMode
 
 func (cs CustomSerializable) Encode() ([]byte, error) {
 	b := []byte(fmt.Sprintf("int: %d", cs))
+
 	return b, nil
 }
 
@@ -356,6 +366,7 @@ func (cs *CustomSerializable) Decode(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return len(b), nil
 }
 
@@ -404,6 +415,7 @@ func TestMain(m *testing.M) {
 		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
 			log.Panic(err)
 		}
+
 		return m.Run()
 	}()
 	os.Exit(exitCode)
@@ -431,6 +443,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Str: "abcde"},
@@ -448,6 +461,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Str: "abc"},
@@ -465,6 +479,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Slice: []byte{1, 2, 3, 4, 5}},
@@ -482,6 +497,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Slice: []byte{1, 2, 3, 4}},
@@ -497,6 +513,7 @@ func TestMinMax(t *testing.T) {
 				_, err := test.paras.api.Encode(context.Background(), test.paras.encodeInput, serix.WithValidation())
 				if test.error {
 					require.Error(t, err)
+
 					return
 				}
 				require.NoError(t, err)
@@ -506,6 +523,7 @@ func TestMinMax(t *testing.T) {
 				_, err := test.paras.api.Decode(context.Background(), test.paras.decodeInput, dest, serix.WithValidation())
 				if test.error {
 					require.Error(t, err)
+
 					return
 				}
 				require.NoError(t, err)

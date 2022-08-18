@@ -19,6 +19,7 @@ func (l *WrappedLogger) Logger() *Logger {
 	if l.logger != nil {
 		return l.logger
 	}
+
 	return nil
 }
 
@@ -27,6 +28,7 @@ func (l *WrappedLogger) LoggerNamed(name string) *Logger {
 	if l.logger != nil {
 		return l.logger.Named(name)
 	}
+
 	return nil
 }
 

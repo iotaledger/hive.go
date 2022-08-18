@@ -9,6 +9,7 @@ func ExampleRetry() {
 	// An operation that may fail.
 	operation := func() error {
 		fmt.Println("do something")
+
 		return nil // or an error
 	}
 
@@ -25,6 +26,7 @@ func ExampleMaxRetries() {
 	// An operation that may fail.
 	operation := func() error {
 		fmt.Println("do something")
+
 		return errTest
 	}
 

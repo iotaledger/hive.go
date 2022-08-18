@@ -33,12 +33,14 @@ func (list *DoublyLinkedList) AddEntry(entry *DoublyLinkedListEntry) {
 func (list *DoublyLinkedList) AddLast(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddLastEntry(newEntry)
+
 	return newEntry
 }
 
 func (list *DoublyLinkedList) AddFirst(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddFirstEntry(newEntry)
+
 	return newEntry
 }
 
@@ -102,6 +104,7 @@ func (list *DoublyLinkedList) GetFirstEntry() (*DoublyLinkedListEntry, error) {
 	if list.head == nil {
 		return nil, ErrNoSuchElement
 	}
+
 	return list.head, nil
 }
 
@@ -109,6 +112,7 @@ func (list *DoublyLinkedList) GetLastEntry() (*DoublyLinkedListEntry, error) {
 	if list.tail == nil {
 		return nil, ErrNoSuchElement
 	}
+
 	return list.tail, nil
 }
 
@@ -117,6 +121,7 @@ func (list *DoublyLinkedList) RemoveFirstEntry() (*DoublyLinkedListEntry, error)
 	if err := list.RemoveEntry(entryToRemove); err != nil {
 		return nil, err
 	}
+
 	return entryToRemove, nil
 }
 
@@ -125,6 +130,7 @@ func (list *DoublyLinkedList) RemoveLastEntry() (*DoublyLinkedListEntry, error) 
 	if err := list.RemoveEntry(entryToRemove); err != nil {
 		return nil, err
 	}
+
 	return entryToRemove, nil
 }
 

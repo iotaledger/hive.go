@@ -108,6 +108,7 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 	if !wp.doSubmit(t) {
 		wp.tasksWg.Done()
 		close(result)
+
 		return nil, false
 	}
 

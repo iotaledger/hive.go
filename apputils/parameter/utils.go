@@ -13,5 +13,6 @@ func durationShortened(d time.Duration) string {
 	if strings.HasSuffix(s, "h0m") {
 		s = s[:len(s)-2]
 	}
+
 	return s
 }

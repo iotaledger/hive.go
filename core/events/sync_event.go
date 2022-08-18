@@ -23,6 +23,7 @@ func (se *SyncEvent) RegisterEvent(key interface{}) chan struct{} {
 	// check if the channel already exists
 	if ch, exists := se.syncMap[key]; exists {
 		se.RUnlock()
+
 		return ch
 	}
 	se.RUnlock()
@@ -53,6 +54,7 @@ func (se *SyncEvent) Trigger(key interface{}) {
 	// check if the key was registered
 	if _, exists := se.syncMap[key]; !exists {
 		se.RUnlock()
+
 		return
 	}
 	se.RUnlock()

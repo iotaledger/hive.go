@@ -28,6 +28,7 @@ func (rmap *RandomMap[K, V]) Get(key K) (result V, exists bool) {
 	if exists {
 		result = value.(V)
 	}
+
 	return
 }
 
@@ -37,6 +38,7 @@ func (rmap *RandomMap[K, V]) Delete(key K) (result V, exists bool) {
 	if exists {
 		result = value.(V)
 	}
+
 	return
 }
 
@@ -53,6 +55,7 @@ func (rmap *RandomMap[K, V]) RandomKey() (result K, exists bool) {
 	if randKey != nil {
 		return randKey.(K), true
 	}
+
 	return result, false
 }
 
@@ -62,6 +65,7 @@ func (rmap *RandomMap[K, V]) RandomEntry() (result V, exists bool) {
 	if randEntry != nil {
 		return randEntry.(V), true
 	}
+
 	return result, false
 
 }
@@ -74,6 +78,7 @@ func (rmap *RandomMap[K, V]) RandomUniqueEntries(count int) (results []V) {
 	for i, v := range entries {
 		results[i] = v.(V)
 	}
+
 	return
 }
 
@@ -84,5 +89,6 @@ func (rmap *RandomMap[K, V]) Keys() (result []K) {
 	for i, v := range entries {
 		result[i] = v.(K)
 	}
+
 	return
 }

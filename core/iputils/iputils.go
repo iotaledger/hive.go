@@ -40,6 +40,7 @@ func (ips *IPAddresses) Union(other *IPAddresses) *IPAddresses {
 			union.Add(*ip)
 		}
 	}
+
 	return union
 }
 
@@ -61,6 +62,7 @@ func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) net.IP {
 	for ip := range ips.IPs {
 		return *ip
 	}
+
 	return nil
 }
 
@@ -103,6 +105,7 @@ func ParseOriginAddress(s string) (*OriginAddress, error) {
 		return nil, ErrOriginAddrInvalidPort
 	}
 	port := uint16(portInt)
+
 	return &OriginAddress{Addr: addr, Port: port}, nil
 }
 
@@ -124,6 +127,7 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 		}
 
 		ipAddresses.Add(ip)
+
 		return ipAddresses, nil
 
 	}
@@ -131,6 +135,7 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	// Check if it's an IPv4 address
 	if ip := net.ParseIP(hostname); ip != nil {
 		ipAddresses.Add(ip)
+
 		return ipAddresses, nil
 	}
 

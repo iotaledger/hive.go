@@ -30,11 +30,13 @@ func PrivateKeyFromBase58EncodedString(base58String string) (privateKey PrivateK
 	bytes, err := base58.Decode(base58String)
 	if err != nil {
 		err = xerrors.Errorf("error while decoding base58 encoded PrivateKey (%v): %w", err, ErrBase58DecodeFailed)
+
 		return
 	}
 
 	if privateKey, _, err = PrivateKeyFromBytes(bytes); err != nil {
 		err = xerrors.Errorf("failed to parse PrivateKey from bytes: %w", err)
+
 		return
 	}
 
@@ -46,11 +48,13 @@ func PrivateKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (privateKey
 	bytes, err := marshalUtil.ReadBytes(PrivateKeySize)
 	if err != nil {
 		err = xerrors.Errorf("failed to read PrivateKey bytes (%v): %w", err, ErrParseBytesFailed)
+
 		return
 	}
 
 	if err = privateKey.Scalar.UnmarshalBinary(bytes); err != nil {
 		err = xerrors.Errorf("failed to unmarshal PrivateKey (%v): %w", err, ErrParseBytesFailed)
+
 		return
 	}
 
@@ -76,6 +80,7 @@ func (p PrivateKey) Sign(data []byte) (signatureWithPublicKey SignatureWithPubli
 	sig, err := bdn.Sign(blsSuite, p.Scalar, data)
 	if err != nil {
 		err = xerrors.Errorf("failed to sign data (%v): %w", err, ErrBLSFailed)
+
 		return
 	}
 

@@ -16,6 +16,7 @@ func joinBytes(a, b []byte) (out []byte) {
 	out = make([]byte, len(a)+len(b))
 	copy(out[0:], a)
 	copy(out[len(a):], b)
+
 	return out
 }
 
@@ -29,5 +30,6 @@ func xorSHA(a, b [sha256.Size]byte) (out []byte) {
 	for i := 0; i < sha256.Size; i++ {
 		out[i] = a[i] ^ b[i]
 	}
+
 	return out
 }

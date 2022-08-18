@@ -18,6 +18,7 @@ type UDPServer struct {
 func (srv *UDPServer) GetSocket() net.PacketConn {
 	srv.socketMutex.RLock()
 	defer srv.socketMutex.RUnlock()
+
 	return srv.socket
 }
 

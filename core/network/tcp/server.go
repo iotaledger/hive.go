@@ -17,6 +17,7 @@ type TCPServer struct {
 func (srv *TCPServer) GetSocket() net.Listener {
 	srv.socketMutex.RLock()
 	defer srv.socketMutex.RUnlock()
+
 	return srv.socket
 }
 

@@ -17,6 +17,7 @@ type OrderedMap struct {
 func New() *OrderedMap {
 	orderedMap := new(OrderedMap)
 	orderedMap.Initialize()
+
 	return orderedMap
 }
 
@@ -74,6 +75,7 @@ func (orderedMap *OrderedMap) Get(key interface{}) (interface{}, bool) {
 	if !orderedMapElementExists {
 		return nil, false
 	}
+
 	return orderedMapElement.value, true
 }
 

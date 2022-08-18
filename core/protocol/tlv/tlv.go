@@ -51,6 +51,7 @@ func WriteHeader(buf io.Writer, msgType message.Type, msgBytesLength uint16) err
 	if err := binary.Write(buf, binary.LittleEndian, byte(msgType)); err != nil {
 		return err
 	}
+
 	return binary.Write(buf, binary.LittleEndian, msgBytesLength)
 }
 

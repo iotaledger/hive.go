@@ -34,10 +34,12 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 	idBytes, err := marshalUtil.ReadBytes(IDLength)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ID (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	copy(id[:], idBytes)
+
 	return
 }
 
@@ -51,6 +53,7 @@ func (id *ID) FromBytes(bytes []byte) error {
 	if _, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
 		return errors.Wrap(err, "failed to decode node identity from bytes")
 	}
+
 	return nil
 }
 
@@ -76,6 +79,7 @@ func DecodeIDBase58(s string) (ID, error) {
 	}
 	var id ID
 	copy(id[:], b)
+
 	return id, nil
 }
 
@@ -90,6 +94,7 @@ func ParseID(s string) (ID, error) {
 		return id, fmt.Errorf("invalid length: need %d hex chars", hex.EncodedLen(len(ID{})))
 	}
 	copy(id[:], b)
+
 	return id, nil
 }
 

@@ -62,6 +62,7 @@ func InitGlobalLogger(config *configuration.Configuration) error {
 
 	logger = root
 	initialized.Set()
+
 	return nil
 }
 
@@ -157,6 +158,7 @@ func NewLogger(name string) *Logger {
 	if !initialized.IsSet() {
 		panic("global logger not initialized")
 	}
+
 	return logger.Named(name)
 }
 
@@ -165,6 +167,7 @@ func NewLogger(name string) *Logger {
 // example output short and deterministic.
 func NewExampleLogger(name string) *Logger {
 	root := zap.NewExample()
+
 	return root.Named(name).Sugar()
 }
 
@@ -181,6 +184,7 @@ func newEncoder(name string, cfg zapcore.EncoderConfig) (zapcore.Encoder, error)
 	case "json":
 		return zapcore.NewJSONEncoder(cfg), nil
 	}
+
 	return nil, fmt.Errorf("no encoder registered for name %q", name)
 }
 

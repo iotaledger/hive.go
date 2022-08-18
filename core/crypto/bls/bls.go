@@ -32,11 +32,13 @@ var randomness = random.New(crypto.Randomness)
 func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (aggregatedSignature SignatureWithPublicKey, err error) {
 	if len(signaturesWithPublicKey) == 0 {
 		err = xerrors.Errorf("not enough signatures to aggregate: %w", ErrInvalidArgument)
+
 		return
 	}
 
 	if len(signaturesWithPublicKey) == 1 {
 		aggregatedSignature = signaturesWithPublicKey[0]
+
 		return
 	}
 
@@ -50,6 +52,7 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 	mask, err := sign.NewMask(blsSuite, publicKeyPoints, nil)
 	if err != nil {
 		err = xerrors.Errorf("failed to create mask (%v): %w", err, ErrBLSFailed)
+
 		return
 	}
 	for i := range publicKeyPoints {
@@ -59,11 +62,13 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 	rawAggregatedSignature, err := bdn.AggregateSignatures(blsSuite, signaturesBytes, mask)
 	if err != nil {
 		err = xerrors.Errorf("failed to aggregate Signatures (%v): %w", err, ErrBLSFailed)
+
 		return
 	}
 	signatureBytes, err := rawAggregatedSignature.MarshalBinary()
 	if err != nil {
 		err = xerrors.Errorf("failed to marshal aggregated Signature (%v): %w", err, ErrBLSFailed)
+
 		return
 	}
 	copy(aggregatedSignature.Signature[:], signatureBytes)
@@ -71,6 +76,7 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 	aggregatedSignature.PublicKey.Point, err = bdn.AggregatePublicKeys(blsSuite, mask)
 	if err != nil {
 		err = xerrors.Errorf("failed to aggregate PublicKeys (%v): %w", err, ErrBLSFailed)
+
 		return
 	}
 

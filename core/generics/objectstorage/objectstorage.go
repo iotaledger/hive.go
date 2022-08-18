@@ -109,6 +109,7 @@ func (o *ObjectStorage[T]) StoreIfAbsent(object T) (result *CachedObject[T], sto
 	if stored {
 		return newCachedObject[T](untypedObject), stored
 	}
+
 	return nil, stored
 }
 

@@ -27,12 +27,14 @@ func (list *SyncDoublyLinkedList) AddEntry(entry *DoublyLinkedListEntry) {
 func (list *SyncDoublyLinkedList) AddLast(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddLastEntry(newEntry)
+
 	return newEntry
 }
 
 func (list *SyncDoublyLinkedList) AddFirst(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddFirstEntry(newEntry)
+
 	return newEntry
 }
 
@@ -83,30 +85,35 @@ func (list *SyncDoublyLinkedList) AddFirstEntry(entry *DoublyLinkedListEntry) {
 func (list *SyncDoublyLinkedList) GetFirstEntry() (*DoublyLinkedListEntry, error) {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
+
 	return list.Unsafe.GetFirstEntry()
 }
 
 func (list *SyncDoublyLinkedList) GetLastEntry() (*DoublyLinkedListEntry, error) {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
+
 	return list.Unsafe.GetLastEntry()
 }
 
 func (list *SyncDoublyLinkedList) RemoveFirstEntry() (*DoublyLinkedListEntry, error) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
+
 	return list.Unsafe.RemoveFirstEntry()
 }
 
 func (list *SyncDoublyLinkedList) RemoveLastEntry() (*DoublyLinkedListEntry, error) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
+
 	return list.Unsafe.RemoveLastEntry()
 }
 
 func (list *SyncDoublyLinkedList) RemoveEntry(entry *DoublyLinkedListEntry) error {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
+
 	return list.Unsafe.RemoveEntry(entry)
 }
 
@@ -140,5 +147,6 @@ func (list *SyncDoublyLinkedList) Clear() {
 func (list *SyncDoublyLinkedList) GetSize() int {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
+
 	return list.Unsafe.count
 }

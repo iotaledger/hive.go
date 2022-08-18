@@ -141,6 +141,7 @@ func (m *manager) doReverify(done chan<- struct{}) {
 	// could not verify the peer
 	if m.net.Ping(p) != nil {
 		m.deletePeer(p.ID())
+
 		return
 	}
 
@@ -163,6 +164,7 @@ func (m *manager) deletePeer(id identity.ID) {
 		// reset verifiedCount and re-add them to the front of the active peers
 		mp.verifiedCount.Store(0)
 		m.active = unshiftPeer(m.active, mp, maxManaged)
+
 		return
 	}
 
@@ -206,9 +208,11 @@ func (m *manager) updatePeer(update *peer.Peer) uint {
 			}
 			// update the wrapped peer and verifiedCount
 			p.setPeer(update)
+
 			return uint(p.verifiedCount.Inc())
 		}
 	}
+
 	return 0
 }
 
@@ -217,6 +221,7 @@ func (m *manager) addReplacement(p *mpeer) bool {
 		return false // already in the list
 	}
 	m.replacements = unshiftPeer(m.replacements, p, maxReplacements)
+
 	return true
 }
 
@@ -258,6 +263,7 @@ func (m *manager) addDiscoveredPeer(p *peer.Peer) bool {
 	}
 
 	m.active = pushPeer(m.active, mp, maxManaged)
+
 	return true
 }
 
@@ -283,6 +289,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 		if v == 1 {
 			m.events.PeerDiscovered.Trigger(&PeerDiscoveredEvent{Peer: p})
 		}
+
 		return false
 	}
 
@@ -297,6 +304,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 
 	// new nodes are added to the front
 	m.active = unshiftPeer(m.active, mp, maxManaged)
+
 	return true
 }
 

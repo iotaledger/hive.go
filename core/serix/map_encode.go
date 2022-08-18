@@ -64,6 +64,7 @@ func (api *API) mapEncodeBasedOnType(
 			sliceValueType := sliceValue.Type()
 
 			ts, _ = api.getTypeSettings(valueType)
+
 			return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 		}
 
@@ -76,6 +77,7 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
+
 		return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.mapEncodeInterface(ctx, value, valueType, ts, opts)
@@ -84,6 +86,7 @@ func (api *API) mapEncodeBasedOnType(
 		if !utf8.ValidString(str) {
 			return nil, ErrNonUTF8String
 		}
+
 		return value.String(), nil
 	case reflect.Bool:
 		return value.Bool(), nil
@@ -99,6 +102,7 @@ func (api *API) mapEncodeBasedOnType(
 		return strconv.FormatFloat(value.Float(), 'E', -1, 64), nil
 	default:
 	}
+
 	return nil, errors.Errorf("can't encode: unsupported type %T", valueI)
 }
 
@@ -127,6 +131,7 @@ func (api *API) mapEncodeInterface(
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode interface element %s", elemType)
 	}
+
 	return ele, nil
 }
 
@@ -144,6 +149,7 @@ func (api *API) mapEncodeStruct(
 	if err := api.mapEncodeStructFields(ctx, obj, value, valueType, opts); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	return obj, nil
 }
 
@@ -169,6 +175,7 @@ func (api *API) mapEncodeStructFields(
 			if err := api.mapEncodeStructFields(ctx, obj, fieldValue, fieldType, opts); err != nil {
 				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}
+
 			continue
 		}
 
@@ -195,6 +202,7 @@ func (api *API) mapEncodeStructFields(
 			obj.Set(mapStringKey(sField.name), eleOut)
 		}
 	}
+
 	return nil
 }
 
@@ -209,6 +217,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 			mapKey = *ts.mapKey
 		}
 		m.Set(mapKey, EncodeHex(value.Bytes()))
+
 		return m, nil
 	}
 
@@ -226,6 +235,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 		}
 		data[i] = elem
 	}
+
 	return data, nil
 }
 
@@ -255,5 +265,6 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "failed to encode map element of type %s", val.Type())
 	}
+
 	return k.(string), v, nil
 }

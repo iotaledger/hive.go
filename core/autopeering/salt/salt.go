@@ -38,12 +38,14 @@ func NewSalt(lifetime time.Duration) (salt *Salt, err error) {
 func (s *Salt) GetBytes() []byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+
 	return append([]byte{}, s.bytes...)
 }
 
 func (s *Salt) GetExpiration() time.Time {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+
 	return s.expirationTime
 }
 
@@ -69,6 +71,7 @@ func FromProto(in *pb.Salt) (*Salt, error) {
 		bytes:          in.GetBytes(),
 		expirationTime: time.Unix(int64(in.GetExpTime()), 0),
 	}
+
 	return out, nil
 }
 
@@ -83,5 +86,6 @@ func Unmarshal(data []byte) (*Salt, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }

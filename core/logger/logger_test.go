@@ -173,5 +173,6 @@ func initGlobal(t require.TestingT, cfg Config) func() {
 func getLogs(t require.TestingT, file *os.File) string {
 	byteContents, err := ioutil.ReadAll(file)
 	require.NoError(t, err, "Couldn't read log contents from file.")
+
 	return string(byteContents)
 }

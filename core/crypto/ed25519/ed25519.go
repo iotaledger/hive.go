@@ -24,5 +24,6 @@ func GenerateKey() (publicKey PublicKey, privateKey PrivateKey, err error) {
 // GenerateKey creates a private key.
 func GeneratePrivateKey() (privateKey PrivateKey, err error) {
 	_, privateKey, err = GenerateKey()
+
 	return
 }

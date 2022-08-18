@@ -38,6 +38,7 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvsto
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
+
 		return badger.New(db).WithRealm(realm)
 
 	case "mapDB":
@@ -48,6 +49,7 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvsto
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
+
 		return pebble.New(db).WithRealm(realm)
 
 	case "rocksdb":
@@ -55,6 +57,7 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvsto
 		require.NoError(t, err, "used db: %s", dbImplementation)
 		db, err := rocksdb.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
+
 		return rocksdb.New(db).WithRealm(realm)
 
 	case "debug":
@@ -76,9 +79,11 @@ func countKeys(t *testing.T, store kvstore.KVStore) int {
 	count := 0
 	err := store.IterateKeys(kvstore.EmptyPrefix, func(k kvstore.Key) bool {
 		count++
+
 		return true
 	})
 	require.NoError(t, err)
+
 	return count
 }
 
@@ -264,6 +269,7 @@ func TestIterate(t *testing.T) {
 			require.True(t, found, "used db: %s", dbImplementation)
 			require.Equal(t, expectedValue, string(value), "used db: %s", dbImplementation)
 			delete(insertedValues, string(key))
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -307,6 +313,7 @@ func TestIterateDirection(t *testing.T) {
 			require.Equal(t, expectedValue, string(value), "direction forward, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionForward)
 		require.NoError(t, err, "direction forward, used db: %s", dbImplementation)
@@ -323,6 +330,7 @@ func TestIterateDirection(t *testing.T) {
 			require.Equal(t, expectedValue, string(value), "direction backward, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionBackward)
 		require.NoError(t, err, "direction backward, used db: %s", dbImplementation)
@@ -356,6 +364,7 @@ func TestIterateDirection(t *testing.T) {
 			require.Equal(t, expectedValue, string(value), "direction forward with prefix, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionForward)
 		require.NoError(t, err, "direction forward with prefix, used db: %s", dbImplementation)
@@ -372,6 +381,7 @@ func TestIterateDirection(t *testing.T) {
 			require.Equal(t, expectedValue, string(value), "direction backward with prefix, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionBackward)
 		require.NoError(t, err, "direction backward with prefix, used db: %s", dbImplementation)
@@ -412,6 +422,7 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 			require.Equal(t, expectedKey, string(key), "direction forward, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionForward)
 		require.NoError(t, err, "direction forward, used db: %s", dbImplementation)
@@ -426,6 +437,7 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 			require.Equal(t, expectedKey, string(key), "direction backward, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionBackward)
 		require.NoError(t, err, "direction backward, used db: %s", dbImplementation)
@@ -457,6 +469,7 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 			require.Equal(t, expectedKey, string(key), "direction forward with prefix, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionForward)
 		require.NoError(t, err, "direction forward with prefix, used db: %s", dbImplementation)
@@ -471,6 +484,7 @@ func TestIterateDirectionKeyOnly(t *testing.T) {
 			require.Equal(t, expectedKey, string(key), "direction backward with prefix, used db: %s", dbImplementation)
 
 			i++
+
 			return true
 		}, kvstore.IterDirectionBackward)
 		require.NoError(t, err, "direction backward with prefix, used db: %s", dbImplementation)
@@ -510,6 +524,7 @@ func TestIteratePrefix(t *testing.T) {
 			require.True(t, found, "used db: %s", dbImplementation)
 			require.Equal(t, expectedValue, string(value), "used db: %s", dbImplementation)
 			delete(insertedValues, string(key))
+
 			return true
 		})
 
@@ -550,6 +565,7 @@ func TestIteratePrefixKeyOnly(t *testing.T) {
 			_, found := insertedValues[string(key)]
 			require.True(t, found, "used db: %s", dbImplementation)
 			delete(insertedValues, string(key))
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -595,6 +611,7 @@ func TestDeletePrefix(t *testing.T) {
 			require.True(t, found, "used db: %s", dbImplementation)
 			require.Equal(t, expectedValue, string(value), "used db: %s", dbImplementation)
 			delete(insertedValues, string(key))
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -626,6 +643,7 @@ func TestDeletePrefixIsEmpty(t *testing.T) {
 		// Verify, that the database does not contain any items since we deleted using the prefix
 		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			t.Fail()
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -653,6 +671,7 @@ func TestSetAndOverwrite(t *testing.T) {
 		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			require.True(t, bytes.Equal([]byte{0}, value), "used db: %s", dbImplementation)
 			verifyCount = verifyCount + 1
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -679,6 +698,7 @@ func TestSetAndOverwrite(t *testing.T) {
 		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			require.True(t, bytes.Equal([]byte{1}, value), "used db: %s", dbImplementation)
 			verifyCount++
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -724,6 +744,7 @@ func TestBatchedWithSetAndDelete(t *testing.T) {
 			} else {
 				t.Fail()
 			}
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -755,6 +776,7 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 			} else {
 				t.Fail()
 			}
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)
@@ -789,6 +811,7 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 		// Verify, that all entries were changed
 		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			verifyCount++
+
 			return true
 		})
 		require.NoError(t, err, "used db: %s", dbImplementation)

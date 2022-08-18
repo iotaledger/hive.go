@@ -33,6 +33,7 @@ var (
 				case *B:
 					return ErrUnknownDummyType
 				}
+
 				return nil
 			},
 		},
@@ -49,6 +50,7 @@ func DummyTypeSelector(dummyType uint32) (serializer.Serializable, error) {
 	default:
 		return nil, ErrUnknownDummyType
 	}
+
 	return seri, nil
 }
 
@@ -79,6 +81,7 @@ func (a *A) UnmarshalJSON(i []byte) error {
 func (a *A) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(a.Key[:], data[:aKeyLength])
+
 	return typeALength, nil
 }
 
@@ -86,6 +89,7 @@ func (a *A) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inter
 	var b [typeALength]byte
 	b[0] = TypeA
 	copy(b[serializer.SmallTypeDenotationByteSize:], a.Key[:])
+
 	return b[:], nil
 }
 
@@ -96,6 +100,7 @@ func (a As) ToSerializables() serializer.Serializables {
 	for i, x := range a {
 		seris[i] = x
 	}
+
 	return seris
 }
 
@@ -113,6 +118,7 @@ func (k Keyers) ToSerializables() serializer.Serializables {
 	for i, x := range k {
 		seris[i] = x.(serializer.Serializable)
 	}
+
 	return seris
 }
 
@@ -129,6 +135,7 @@ func RandBytes(length int) []byte {
 	for i := 0; i < length; i++ {
 		b = append(b, byte(rand.Intn(256)))
 	}
+
 	return b
 }
 
@@ -137,12 +144,14 @@ func randSerializedA() []byte {
 	b[0] = TypeA
 	keyData := RandBytes(aKeyLength)
 	copy(b[serializer.SmallTypeDenotationByteSize:], keyData)
+
 	return b[:]
 }
 
 func randA() *A {
 	var k [aKeyLength]byte
 	copy(k[:], RandBytes(aKeyLength))
+
 	return &A{Key: k}
 }
 
@@ -165,6 +174,7 @@ func (b *B) UnmarshalJSON(i []byte) error {
 func (b *B) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
 	data = data[serializer.SmallTypeDenotationByteSize:]
 	copy(b.Name[:], data[:bNameLength])
+
 	return typeBLength, nil
 }
 
@@ -172,12 +182,14 @@ func (b *B) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inter
 	var bf [typeBLength]byte
 	bf[0] = TypeB
 	copy(bf[serializer.SmallTypeDenotationByteSize:], b.Name[:])
+
 	return bf[:], nil
 }
 
 func randB() *B {
 	var n [bNameLength]byte
 	copy(n[:], RandBytes(bNameLength))
+
 	return &B{Name: n}
 }
 

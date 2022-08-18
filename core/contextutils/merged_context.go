@@ -110,6 +110,7 @@ func (mc *mergedContext) Done() <-chan struct{} {
 func (mc *mergedContext) Err() error {
 	mc.RLock()
 	defer mc.RUnlock()
+
 	return mc.err
 }
 

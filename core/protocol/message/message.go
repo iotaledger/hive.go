@@ -48,6 +48,7 @@ func NewRegistry(defs []*Definition) *Registry {
 		// add definition to Registry
 		r.definitions[def.ID] = def
 	}
+
 	return r
 }
 
@@ -65,5 +66,6 @@ func (r *Registry) DefinitionForType(msgType Type) (*Definition, error) {
 	if def == nil {
 		return nil, ErrUnknownType
 	}
+
 	return def, nil
 }

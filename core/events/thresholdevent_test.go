@@ -104,6 +104,7 @@ func (e *mockedEventHandler) AssertExpectations() bool {
 	expectedEvents := e.expectedTriggers.Load()
 	if calledEvents != expectedEvents {
 		e.test.Errorf("number of called (%d) events is not equal to number of expected events (%d)", calledEvents, expectedEvents)
+
 		return false
 	}
 

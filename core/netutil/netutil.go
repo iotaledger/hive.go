@@ -51,6 +51,7 @@ func GetPublicIP(preferIPv6 bool) (net.IP, error) {
 	if ip == nil {
 		return nil, fmt.Errorf("not an IP: %s", body)
 	}
+
 	return ip, nil
 }
 
@@ -59,6 +60,7 @@ func IsTemporaryError(err error) bool {
 	tempErr, ok := err.(interface {
 		Temporary() bool
 	})
+
 	return ok && tempErr.Temporary()
 }
 
@@ -105,5 +107,6 @@ func CheckUDP(local, remote *net.UDPAddr, checkAddress bool, checkPort bool) err
 func generateNonce() []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, rand.Uint64())
+
 	return b
 }

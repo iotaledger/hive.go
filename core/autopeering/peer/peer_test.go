@@ -30,6 +30,7 @@ func newTestServiceRecord() *service.Record {
 func newTestPeer(name string) *Peer {
 	key := ed25519.PublicKey{}
 	copy(key[:], name)
+
 	return NewPeer(identity.New(key), testIP, newTestServiceRecord())
 }
 

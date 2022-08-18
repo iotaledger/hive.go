@@ -300,6 +300,7 @@ func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 		waitGroups[i] = waitGroup
 		i++
 	}
+
 	return waitGroups
 }
 
@@ -331,6 +332,7 @@ func (d *OrderedDaemon) stopWorkers() {
 			worker := workers[name]
 			if !worker.running.IsSet() {
 				worker.ctxCancel()
+
 				continue
 			}
 			// if the current worker has a lower priority...

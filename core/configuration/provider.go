@@ -54,6 +54,7 @@ func (p *lowerPosflag) Read() (map[string]interface{}, error) {
 
 		mp[strings.ToLower(f.Name)] = posflag.FlagVal(p.flagset, f)
 	})
+
 	return maps.Unflatten(mp, p.delim), nil
 }
 

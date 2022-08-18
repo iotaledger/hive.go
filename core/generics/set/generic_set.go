@@ -63,6 +63,7 @@ func (set *genericSet[T]) Encode() ([]byte, error) {
 			return errors.Wrap(err, "failed to write elem to serializer")
 		})
 	})
+
 	return seri.Serialize()
 }
 
@@ -83,6 +84,7 @@ func (set *genericSet[T]) Decode(b []byte) (bytesRead int, err error) {
 		bytesRead += bytesReadVoter
 		set.Set.Add(elem)
 	}
+
 	return bytesRead, nil
 }
 

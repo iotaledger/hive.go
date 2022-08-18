@@ -12,6 +12,7 @@ func RandBytes(length int) []byte {
 	for i := 0; i < length; i++ {
 		b = append(b, byte(rand.Intn(256)))
 	}
+
 	return b
 }
 
@@ -20,6 +21,7 @@ func Rand32ByteArray() [32]byte {
 	var h [32]byte
 	b := RandBytes(32)
 	copy(h[:], b)
+
 	return h
 }
 
@@ -28,6 +30,7 @@ func Rand49ByteArray() [49]byte {
 	var h [49]byte
 	b := RandBytes(49)
 	copy(h[:], b)
+
 	return h
 }
 
@@ -36,6 +39,7 @@ func Rand64ByteArray() [64]byte {
 	var h [64]byte
 	b := RandBytes(64)
 	copy(h[:], b)
+
 	return h
 }
 
@@ -48,5 +52,6 @@ func SortedRand32BytArray(count int) [][32]byte {
 	sort.Slice(hashes, func(i, j int) bool {
 		return bytes.Compare(hashes[i][:], hashes[j][:]) < 0
 	})
+
 	return hashes
 }

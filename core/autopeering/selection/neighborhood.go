@@ -44,6 +44,7 @@ func (nh *Neighborhood) getFurthest() (peer.PeerDistance, int) {
 			index = i
 		}
 	}
+
 	return furthest, index
 }
 
@@ -56,6 +57,7 @@ func (nh *Neighborhood) Select(candidates []peer.PeerDistance) peer.PeerDistance
 			}
 		}
 	}
+
 	return peer.PeerDistance{}
 }
 
@@ -68,6 +70,7 @@ func (nh *Neighborhood) Add(toAdd peer.PeerDistance) bool {
 		return false
 	}
 	nh.neighbors = append(nh.neighbors, toAdd)
+
 	return true
 }
 
@@ -99,6 +102,7 @@ func (nh *Neighborhood) getPeerIndex(id identity.ID) int {
 			return i
 		}
 	}
+
 	return -1
 }
 
@@ -113,6 +117,7 @@ func (nh *Neighborhood) UpdateDistance(anchor, salt []byte) {
 func (nh *Neighborhood) IsFull() bool {
 	nh.mu.RLock()
 	defer nh.mu.RUnlock()
+
 	return len(nh.neighbors) >= nh.size
 }
 
@@ -123,11 +128,13 @@ func (nh *Neighborhood) GetPeers() []*peer.Peer {
 	for i, n := range nh.neighbors {
 		result[i] = n.Remote
 	}
+
 	return result
 }
 
 func (nh *Neighborhood) GetNumPeers() int {
 	nh.mu.RLock()
 	defer nh.mu.RUnlock()
+
 	return len(nh.neighbors)
 }

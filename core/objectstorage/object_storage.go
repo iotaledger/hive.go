@@ -135,6 +135,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) 
 	if !opts.skipCache {
 		if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
 			defer cachedObject.Release()
+
 			return cachedObject.waitForInitialResult().Exists()
 		}
 	}
@@ -404,8 +405,10 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
 					// stop if maximum amount of iterations reached
 					cachedObject.Release(true)
+
 					return false
 				}
+
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -418,8 +421,10 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
 					// stop if maximum amount of iterations reached
 					cachedObject.Release(true)
+
 					return false
 				}
+
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -479,6 +484,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix, func(key kvstore.Key) bool {
 			return consumeFunc(key, []byte{})
 		})
+
 		return
 	}
 
@@ -511,6 +517,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 					// stop if maximum amount of iterations reached
 					return false
 				}
+
 				return consumer(key)
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -525,6 +532,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 					// stop if maximum amount of iterations reached
 					return false
 				}
+
 				return consumer(key)
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -577,6 +585,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	if err := objectStorage.options.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
+
 		return err
 	}
 
@@ -643,6 +652,7 @@ func (objectStorage *ObjectStorage) FreeMemory() {
 				// recursively call for every partition
 				partitions[key] = deepIterateCacheAndFreeMemory(partition)
 			}
+
 			return partitions
 		}
 
@@ -681,6 +691,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
+
 		return
 	}
 	objectStorage.cacheMutex.RUnlock()
@@ -697,6 +708,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
+
 		return
 	}
 
@@ -710,6 +722,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 
 	currentMap[objectKey] = newlyCachedObject
 	objectStorage.size++
+
 	return newlyCachedObject, false
 }
 
@@ -958,6 +971,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 	// publish the result to the cached object and return
 	cachedObject.publishResult(object)
 	cachedObject.storeOnCreation()
+
 	return wrapCachedObject(cachedObject, 0)
 }
 
@@ -1029,6 +1043,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) error 
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
+
 			return err
 		}
 	}
@@ -1051,6 +1066,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 			panic(err)
 		}
 	}
+
 	return has
 }
 
@@ -1208,6 +1224,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 				return seenElements
 			}
 			currentPartition = subPartition.(map[string]interface{})
+
 			continue
 		}
 

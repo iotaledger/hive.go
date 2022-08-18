@@ -39,6 +39,7 @@ func (m *mpeer) setPeer(p *peer.Peer) {
 func newMPeer(p *peer.Peer) *mpeer {
 	m := new(mpeer)
 	m.setPeer(p)
+
 	return m
 }
 
@@ -51,6 +52,7 @@ func wrapPeers(ps []*peer.Peer) []*mpeer {
 	for i, n := range ps {
 		result[i] = wrapPeer(n)
 	}
+
 	return result
 }
 
@@ -63,6 +65,7 @@ func unwrapPeers(ps []*mpeer) []*peer.Peer {
 	for i, n := range ps {
 		result[i] = unwrapPeer(n)
 	}
+
 	return result
 }
 
@@ -73,6 +76,7 @@ func containsPeer(list []*mpeer, id identity.ID) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -111,6 +115,7 @@ func deletePeerByID(list []*mpeer, id identity.ID) ([]*mpeer, *mpeer) {
 			return deletePeer(list, i)
 		}
 	}
+
 	return list, nil
 }
 
@@ -123,6 +128,7 @@ func pushPeer(list []*mpeer, p *mpeer, max int) []*mpeer {
 	if len(list) == max {
 		copy(list, list[1:])
 		list[len(list)-1] = p
+
 		return list
 	}
 

@@ -32,11 +32,13 @@ func (ver *versionCheckerMock) Fetch() (*latest.FetchResponse, error) {
 	for _, name := range ver.tags {
 		if !ver.tagFilterFunc(name) {
 			fr.Malformeds = append(fr.Malformeds, name)
+
 			continue
 		}
 		v, err := version.NewVersion(ver.fixVersionStrFunc(name))
 		if err != nil {
 			fr.Malformeds = append(fr.Malformeds, ver.fixVersionStrFunc(name))
+
 			continue
 		}
 		fr.Versions = append(fr.Versions, v)

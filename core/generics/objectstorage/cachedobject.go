@@ -57,6 +57,7 @@ func (c *CachedObject[T]) Unwrap() (result T, exists bool) {
 	r := c.Get()
 	result = r
 	exists = true
+
 	return
 }
 
@@ -183,6 +184,7 @@ func (c CachedObjects[T]) Consume(consumer func(T), forceRelease ...bool) (consu
 	for _, cachedObject := range c {
 		consumed = cachedObject.Consume(consumer, forceRelease...) || consumed
 	}
+
 	return
 }
 

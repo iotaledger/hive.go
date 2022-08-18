@@ -45,6 +45,7 @@ func MaxInterval(maxInterval time.Duration) Option {
 		if duration > maxInterval {
 			return maxInterval
 		}
+
 		return duration
 	})
 }
@@ -62,6 +63,7 @@ func Timeout(timeout time.Time) Option {
 		if now.Add(duration).After(timeout) {
 			return timeout.Sub(now)
 		}
+
 		return duration
 	})
 }
@@ -74,6 +76,7 @@ func Cancel(ctx context.Context) Option {
 			return Stop
 		default:
 		}
+
 		return duration
 	})
 }
@@ -89,6 +92,7 @@ func Jitter(randomFactor float64) Option {
 			return duration
 		}
 		delta := randomFactor * float64(duration)
+
 		return time.Duration(float64(duration) - rand.Float64()*delta)
 	})
 }
@@ -132,6 +136,7 @@ func (b *maxRetriesOption) NextBackOff() time.Duration {
 		}
 		b.numTries++
 	}
+
 	return b.delegate.NextBackOff()
 }
 

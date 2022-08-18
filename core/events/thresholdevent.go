@@ -53,6 +53,7 @@ func ThresholdEventFromBytes(bytes []byte, options ...ThresholdEventOption) (thr
 	marshalUtil := marshalutil.New(bytes)
 	if thresholdEvent, err = ThresholdEventFromMarshalUtil(marshalUtil, options...); err != nil {
 		err = xerrors.Errorf("failed to parse ThresholdEvent from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -86,6 +87,7 @@ func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options
 	levelCount, err := marshalUtil.ReadUint64()
 	if err != nil {
 		err = xerrors.Errorf("failed to read level count (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
@@ -93,12 +95,14 @@ func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options
 		value, valueErr := marshalUtil.ReadInt64()
 		if valueErr != nil {
 			err = xerrors.Errorf("failed to read level (%v): %w", valueErr, cerrors.ErrParseBytesFailed)
+
 			return
 		}
 
 		identifier, identifierErr := thresholdEvent.configuration.IdentifierParser(marshalUtil)
 		if identifierErr != nil {
 			err = xerrors.Errorf("failed to read identifier (%v): %w", identifierErr, cerrors.ErrParseBytesFailed)
+
 			return
 		}
 

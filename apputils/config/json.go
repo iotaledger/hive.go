@@ -55,6 +55,7 @@ func (p *parameterMapJSON) PrettyPrint(prefix string, ident string) string {
 func prettyPrintParameterGroup(g *parameter.ParameterGroup, prefix string, indent string) string {
 	paramMapJSON := newParameterMapJSON()
 	paramMapJSON.AddEntry(g)
+
 	return paramMapJSON.PrettyPrint(prefix, indent)
 }
 

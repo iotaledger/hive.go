@@ -50,5 +50,6 @@ func (ab *AtomicBool) SetToIf(old, new bool) (set bool) {
 	if new {
 		n = 1
 	}
+
 	return atomic.CompareAndSwapInt32((*int32)(ab), o, n)
 }

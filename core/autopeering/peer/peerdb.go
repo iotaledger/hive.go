@@ -50,6 +50,7 @@ func NewDB(store kvstore.KVStore) (*DB, error) {
 		quit:  make(chan struct{}),
 	}
 	go pDB.expirer()
+
 	return pDB, nil
 }
 
@@ -77,6 +78,7 @@ func parseInt64(blob []byte) int64 {
 	if read <= 0 {
 		return 0
 	}
+
 	return val
 }
 
@@ -86,6 +88,7 @@ func (db *DB) getInt64(key []byte) int64 {
 	if err != nil {
 		return 0
 	}
+
 	return parseInt64(value)
 }
 
@@ -93,6 +96,7 @@ func (db *DB) getInt64(key []byte) int64 {
 func (db *DB) setInt64(key []byte, n int64) error {
 	blob := make([]byte, binary.MaxVarintLen64)
 	blob = blob[:binary.PutVarint(blob, n)]
+
 	return db.store.Set(key, blob)
 }
 
@@ -142,6 +146,7 @@ func (db *DB) expireNodes() error {
 				batchedMuts.Delete(append([]byte{}, key...))
 			}
 		}
+
 		return true
 	})
 	if err != nil {
@@ -160,6 +165,7 @@ func (db *DB) expireNodes() error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -171,6 +177,7 @@ func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)
 		}
+
 		return key, err
 	}
 	if err != nil {
@@ -178,6 +185,7 @@ func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	}
 
 	copy(privateKey[:], value)
+
 	return
 }
 
@@ -186,6 +194,7 @@ func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
 	if err := db.store.Set(localFieldKey(dbLocalKey), key.Bytes()); err != nil {
 		return err
 	}
+
 	return db.store.Flush()
 }
 
@@ -215,6 +224,7 @@ func (db *DB) UpdatePeer(p *Peer) error {
 	if err != nil {
 		return err
 	}
+
 	return db.store.Set(nodeKey(p.ID()), data)
 }
 
@@ -223,6 +233,7 @@ func parsePeer(data []byte) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 
@@ -232,6 +243,7 @@ func (db *DB) Peer(id identity.ID) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return parsePeer(data)
 }
 
@@ -246,6 +258,7 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 			result = append(result, p)
 		}
 	}
+
 	return result
 }
 
@@ -269,12 +282,14 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 		}
 
 		peers = append(peers, p)
+
 		return true
 	})
 
 	if err != nil {
 		return nil
 	}
+
 	return peers
 }
 
@@ -282,5 +297,6 @@ func (db *DB) getPeers(maxAge time.Duration) (peers []*Peer) {
 func (db *DB) SeedPeers() []*Peer {
 	// get not expired stored peers and select subset
 	peers := db.getPeers(seedExpiration)
+
 	return randomSubset(peers, seedCount)
 }

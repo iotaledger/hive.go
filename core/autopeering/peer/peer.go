@@ -127,6 +127,7 @@ func Unmarshal(data []byte) (*Peer, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }
 
@@ -151,6 +152,7 @@ func (p *Peer) UnmarshalJSON(b []byte) error {
 		return xerrors.Errorf("invalid services json: %w", ErrNeedsPeeringService)
 	}
 	*p = *NewPeer(id, pj.IP, pj.Services)
+
 	return nil
 }
 
@@ -161,5 +163,6 @@ func (p *Peer) MarshalJSON() ([]byte, error) {
 		IP:        p.ip,
 		Services:  p.services,
 	}
+
 	return json.Marshal(pj)
 }

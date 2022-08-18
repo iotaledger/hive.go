@@ -18,6 +18,7 @@ func fixVersion(version string) string {
 			ver = strings.Replace(ver, prerelease, prerelease_dot, 1)
 		}
 	}
+
 	return ver
 }
 

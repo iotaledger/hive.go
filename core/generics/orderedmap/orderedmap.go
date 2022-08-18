@@ -29,6 +29,7 @@ func (orderedMap *OrderedMap[K, V]) Head() (key K, value V, exists bool) {
 		key = k.(K)
 		value = v.(V)
 	}
+
 	return
 }
 
@@ -39,6 +40,7 @@ func (orderedMap *OrderedMap[K, V]) Tail() (key K, value V, exists bool) {
 		key = k.(K)
 		value = v.(V)
 	}
+
 	return
 }
 
@@ -53,6 +55,7 @@ func (orderedMap *OrderedMap[K, V]) Get(key K) (value V, exists bool) {
 	if exists {
 		value = v.(V)
 	}
+
 	return
 }
 
@@ -89,8 +92,10 @@ func (orderedMap *OrderedMap[K, V]) Clone() (cloned *OrderedMap[K, V]) {
 	cloned = New[K, V]()
 	orderedMap.OrderedMap.ForEach(func(key, value interface{}) bool {
 		cloned.Set(key.(K), value.(V))
+
 		return true
 	})
+
 	return
 }
 
@@ -120,8 +125,10 @@ func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 		seri.WriteBytes(valBytes, func(err error) error {
 			return errors.Wrap(err, "failed to write OrderedMap value to serializer")
 		})
+
 		return true
 	})
+
 	return seri.Serialize()
 }
 

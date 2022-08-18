@@ -37,5 +37,6 @@ func (bitmask BitMask) ModifyBit(pos uint, state bool) BitMask {
 	if state {
 		return bitmask.SetBit(pos)
 	}
+
 	return bitmask.ClearBit(pos)
 }

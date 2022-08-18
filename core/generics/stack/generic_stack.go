@@ -28,6 +28,7 @@ func (s *genericStack[T]) Pop() (value T, exists bool) {
 		value = elem.(T)
 		exists = true
 	}
+
 	return
 }
 
@@ -38,6 +39,7 @@ func (s *genericStack[T]) Peek() (value T, exists bool) {
 		value = elem.(T)
 		exists = true
 	}
+
 	return
 }
 

@@ -35,6 +35,7 @@ func (t *testObject) ObjectStorageValue() []byte {
 	defer t.Unlock()
 
 	binary.LittleEndian.PutUint32(result, t.value)
+
 	return result
 }
 
@@ -61,6 +62,7 @@ func (t *testObject) UnmarshalObjectStorageValue(data []byte) (consumedBytes int
 func (t *testObject) get() uint32 {
 	t.Lock()
 	defer t.Unlock()
+
 	return t.value
 }
 
@@ -100,6 +102,7 @@ func (t threeLevelObj) ObjectStorageKey() []byte {
 	b.WriteByte(t.id)
 	b.WriteByte(t.id2)
 	b.WriteByte(t.id3)
+
 	return b.Bytes()
 }
 
@@ -109,5 +112,6 @@ func (t threeLevelObj) ObjectStorageValue() []byte {
 
 func (t threeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
 	t.id3 = data[0]
+
 	return len(data), nil
 }

@@ -60,6 +60,7 @@ func (t *ThresholdMap[K, V]) Get(key K) (value V, exists bool) {
 	if exists {
 		value = v.(V)
 	}
+
 	return
 }
 
@@ -70,6 +71,7 @@ func (t *ThresholdMap[K, V]) Floor(key K) (floorKey K, floorValue V, exists bool
 		floorKey = floor.(K)
 		floorValue = value.(V)
 	}
+
 	return
 }
 
@@ -80,6 +82,7 @@ func (t *ThresholdMap[K, V]) Ceiling(key K) (floorKey K, floorValue V, exists bo
 		floorKey = ceil.(K)
 		floorValue = value.(V)
 	}
+
 	return
 }
 
@@ -89,6 +92,7 @@ func (t *ThresholdMap[K, V]) Delete(key K) (element *Element[K, V], success bool
 	if success {
 		element = t.wrapNode(elem)
 	}
+
 	return
 }
 
@@ -99,6 +103,7 @@ func (t *ThresholdMap[K, V]) Keys() []K {
 	for i, v := range rawKeys {
 		result[i] = v.(K)
 	}
+
 	return result
 }
 
@@ -109,6 +114,7 @@ func (t *ThresholdMap[K, V]) Values() []V {
 	for i, v := range rawVals {
 		result[i] = v.(V)
 	}
+
 	return result
 }
 
@@ -116,6 +122,7 @@ func (t *ThresholdMap[K, V]) Values() []V {
 // belonging to the given key (or nil if none exists).
 func (t *ThresholdMap[K, V]) GetElement(key K) *Element[K, V] {
 	elem := t.ThresholdMap.GetElement(key)
+
 	return t.wrapNode(elem)
 }
 
@@ -148,6 +155,7 @@ func (t *ThresholdMap[K, V]) Iterator(optionalStartingNode ...*Element[K, V]) *I
 	if len(optionalStartingNode) > 0 {
 		return NewIterator[K, V](t.ThresholdMap.Iterator(optionalStartingNode[0].Element))
 	}
+
 	return NewIterator[K, V](t.ThresholdMap.Iterator())
 }
 
@@ -156,6 +164,7 @@ func (t *ThresholdMap[K, V]) wrapNode(node *thresholdmap.Element) (element *Elem
 	if node == nil {
 		return
 	}
+
 	return &Element[K, V]{node}
 }
 
@@ -190,8 +199,10 @@ func (t ThresholdMap[K, V]) Encode() ([]byte, error) {
 		seri.WriteBytes(valBytes, func(err error) error {
 			return errors.Wrap(err, "failed to write ThresholdMap value to serializer")
 		})
+
 		return true
 	})
+
 	return seri.Serialize()
 }
 

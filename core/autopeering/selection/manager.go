@@ -73,6 +73,7 @@ func newManager(net network, peersFunc func() []*peer.Peer, log *logger.Logger, 
 	if err := skiplist.SetTTL(opts.neighborSkipTimeout); err != nil {
 		log.Panicw("Failed to set TTL for neighbors skiplist cache", "err", err)
 	}
+
 	return &manager{
 		net:               net,
 		getPeersToConnect: peersFunc,
@@ -153,6 +154,7 @@ func (m *manager) requestPeering(p *peer.Peer, s *salt.Salt) bool {
 		// a full queue should count as a failed request
 		status = false
 	}
+
 	return status
 }
 
@@ -278,6 +280,7 @@ func (m *manager) getUpdateTimeout() time.Duration {
 	if saltExpiration < result {
 		result = saltExpiration
 	}
+
 	return result
 }
 
@@ -297,11 +300,13 @@ func (m *manager) updateOutbound(resultChan chan<- peer.PeerDistance) {
 			"id", candidate.Remote.ID(),
 			"addr", candidate.Remote.Address(), "err", err,
 		)
+
 		return
 	}
 	if !status {
 		m.addToSkiplist(candidate.Remote.ID())
 		m.triggerPeeringEvent(true, candidate.Remote, false)
+
 		return
 	}
 
@@ -373,6 +378,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 
 	// select new candidate
 	candidate = m.outbound.Select(filteredList)
+
 	return candidate
 }
 
@@ -403,6 +409,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 	if m.addNeighbor(m.inbound, toAccept) {
 		resp = accept
 	}
+
 	return
 }
 
@@ -465,6 +472,7 @@ func (m *manager) getConnectedFilter() *Filter {
 	filter.AddPeer(m.getID())              // set filter for oneself
 	filter.AddPeers(m.inbound.GetPeers())  // set filter for inbound neighbors
 	filter.AddPeers(m.outbound.GetPeers()) // set filter for outbound neighbors
+
 	return filter
 }
 
@@ -482,6 +490,7 @@ func (m *manager) isValidNeighbor(p *peer.Peer) bool {
 		for _, peer := range m.rankedPeers {
 			if p.ID() == peer.ID() {
 				exist = true
+
 				break
 			}
 		}
@@ -494,6 +503,7 @@ func (m *manager) isValidNeighbor(p *peer.Peer) bool {
 	if m.neighborValidator == nil {
 		return true
 	}
+
 	return m.neighborValidator.IsValid(p)
 }
 
@@ -533,8 +543,10 @@ func (m *manager) isInBlocklist(id identity.ID) bool {
 			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
 				"peerId", id)
 		}
+
 		return false
 	}
+
 	return true
 }
 
@@ -544,7 +556,9 @@ func (m *manager) isInSkiplist(id identity.ID) bool {
 			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
 				"peerId", id)
 		}
+
 		return false
 	}
+
 	return true
 }

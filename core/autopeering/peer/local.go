@@ -81,6 +81,7 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 func (l *Local) GetPublicSalt() *salt.Salt {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+
 	return l.publicSalt
 }
 
@@ -95,6 +96,7 @@ func (l *Local) SetPublicSalt(salt *salt.Salt) {
 func (l *Local) GetPrivateSalt() *salt.Salt {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+
 	return l.privateSalt
 }
 

@@ -312,6 +312,7 @@ func (e *eventNetwork) peers() []*peer.Peer {
 	for _, p := range e.m {
 		result = append(result, p)
 	}
+
 	return result
 }
 
@@ -396,6 +397,7 @@ func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, mast
 		srv.Close()
 		prot.Close()
 	}
+
 	return prot, teardown
 }
 

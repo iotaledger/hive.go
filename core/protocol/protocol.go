@@ -88,6 +88,7 @@ func (p *Protocol) Read(data []byte) (int, error) {
 			header, err := tlv.ParseHeader(p.readBuffer, p.msgRegistry)
 			if err != nil {
 				p.Events.Error.Trigger(err)
+
 				return offset, err
 			}
 
@@ -96,6 +97,7 @@ func (p *Protocol) Read(data []byte) (int, error) {
 
 			// allocate enough space for it
 			p.readBuffer = make([]byte, header.MessageBytesLength)
+
 			continue
 		}
 

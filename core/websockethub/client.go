@@ -134,6 +134,7 @@ func (c *Client) checkPong() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				c.hub.logger.Warnf("Websocket error: %v", err)
 			}
+
 			return
 		}
 
@@ -197,6 +198,7 @@ func (c *Client) writePump() {
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+
 			return
 
 		case msg, ok := <-c.sendChan:
@@ -204,11 +206,13 @@ func (c *Client) writePump() {
 			if !ok {
 				// the Hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+
 				return
 			}
 
 			if err := c.conn.WriteJSON(msg); err != nil {
 				c.hub.logger.Warnf("Websocket error: %v", err)
+
 				return
 			}
 
@@ -240,6 +244,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 		case <-c.sendChanClosed:
 		case c.sendChan <- msg:
 		}
+
 		return
 	}
 

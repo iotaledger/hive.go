@@ -50,6 +50,7 @@ func (s *Record) Get(key Key) Endpoint {
 	if !ok {
 		return nil
 	}
+
 	return val
 }
 
@@ -59,6 +60,7 @@ func (s *Record) CreateRecord() *Record {
 	for k, v := range s.m {
 		result.m[k] = v
 	}
+
 	return result
 }
 
@@ -89,6 +91,7 @@ func FromProto(in *pb.ServiceMap) (*Record, error) {
 			port:    int(addr.GetPort()),
 		}
 	}
+
 	return services, nil
 }
 
@@ -127,6 +130,7 @@ func (s *Record) UnmarshalJSON(b []byte) error {
 		services.m[service] = endpoint{network: addr.Network, port: addr.Port}
 	}
 	*s = *services
+
 	return nil
 }
 
@@ -139,6 +143,7 @@ func (s *Record) MarshalJSON() ([]byte, error) {
 			Port:    addr.port,
 		}
 	}
+
 	return json.Marshal(m)
 }
 
@@ -153,5 +158,6 @@ func Unmarshal(data []byte) (*Record, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }

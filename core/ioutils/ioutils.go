@@ -21,6 +21,7 @@ func PathExists(path string) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	}
+
 	return false, err
 }
 
@@ -35,6 +36,7 @@ func CreateDirectory(dir string, perm os.FileMode) error {
 	if !exists {
 		return os.Mkdir(dir, perm)
 	}
+
 	return nil
 }
 
@@ -68,6 +70,7 @@ func ReadFromFile(filename string, data interface{}) error {
 		return err
 	}
 	defer func() { _ = f.Close() }()
+
 	return binary.Read(f, binary.LittleEndian, data)
 }
 
@@ -86,6 +89,7 @@ func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error
 			err = closeErr
 		}
 	}()
+
 	return binary.Write(f, binary.LittleEndian, data)
 }
 
@@ -97,6 +101,7 @@ func ReadJSONFromFile(filename string, data interface{}) error {
 	if err != nil {
 		return fmt.Errorf("unable to read JSON file %s: %w", filename, err)
 	}
+
 	return json.Unmarshal(jsonData, data)
 }
 
@@ -141,6 +146,7 @@ func ReadTOMLFromFile(filename string, data interface{}) error {
 	if err != nil {
 		return fmt.Errorf("unable to read TOML file %s: %w", filename, err)
 	}
+
 	return toml.Unmarshal(tomlData, data)
 }
 
@@ -194,6 +200,7 @@ func CreateTempFile(filePath string) (*os.File, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to create temp file: %w", err)
 	}
+
 	return fileDescriptor, filePathTmp, nil
 }
 
@@ -205,6 +212,7 @@ func CloseFileAndRename(fileDescriptor *os.File, sourceFilePath string, targetFi
 	if err := os.Rename(sourceFilePath, targetFilePath); err != nil {
 		return fmt.Errorf("unable to rename file: %w", err)
 	}
+
 	return nil
 }
 

@@ -57,6 +57,7 @@ func (c *BufferedConnection) Close() (err error) {
 		// close in separate go routine to avoid deadlocks
 		c.Events.Close.Trigger(&CloseEvent{})
 	})
+
 	return err
 }
 
@@ -122,6 +123,7 @@ func (c *BufferedConnection) Write(msg []byte) (int, error) {
 			return bytesWritten, err
 		}
 	}
+
 	return toWrite - headerSize, nil
 }
 
@@ -135,6 +137,7 @@ func (c *BufferedConnection) read(buffer []byte) (int, error) {
 			return bytesRead, err
 		}
 	}
+
 	return toRead, nil
 }
 
@@ -158,6 +161,7 @@ func (c *BufferedConnection) readMessage(buffer []byte) (int, error) {
 	if err := c.conn.SetReadDeadline(time.Now().Add(IOTimeout)); err != nil {
 		return 0, fmt.Errorf("error while setting timeout: %w", err)
 	}
+
 	return c.read(buffer[:msgLength])
 }
 
@@ -169,6 +173,7 @@ func (c *BufferedConnection) parseHeader() (int, error) {
 	if msgLength > c.maxMessageSize {
 		return 0, ErrInvalidHeader
 	}
+
 	return msgLength, nil
 }
 
@@ -176,5 +181,6 @@ func newHeader(msgLength int) []byte {
 	// the header only consists of the message length
 	header := make([]byte, headerSize)
 	binary.BigEndian.PutUint32(header, uint32(msgLength))
+
 	return header
 }

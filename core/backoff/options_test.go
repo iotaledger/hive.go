@@ -18,6 +18,7 @@ func TestMaxRetries(t *testing.T) {
 	var count uint
 	err := Retry(p, func() error {
 		count++
+
 		return errTest
 	})
 	assert.True(t, errors.Is(err, errTest))
@@ -33,6 +34,7 @@ func TestMaxRetriesNew(t *testing.T) {
 		var count uint
 		err := Retry(p, func() error {
 			count++
+
 			return errTest
 		})
 		assert.True(t, errors.Is(err, errTest))
@@ -54,6 +56,7 @@ func TestMaxRetriesParallel(t *testing.T) {
 		var count uint
 		err := Retry(p, func() error {
 			count++
+
 			return errTest
 		})
 		assert.True(t, errors.Is(err, errTest))
@@ -86,6 +89,7 @@ func TestMaxInterval(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -100,6 +104,7 @@ func TestTimeout(t *testing.T) {
 
 	err := Retry(p, func() error {
 		assert.LessOrEqual(t, time.Now().UnixNano(), max.UnixNano())
+
 		return errTest
 	})
 	assert.True(t, errors.Is(err, errTest))
@@ -154,6 +159,7 @@ func TestJitter(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)

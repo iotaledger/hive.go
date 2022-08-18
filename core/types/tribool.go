@@ -26,6 +26,7 @@ func TriBoolFromBytes(bytes []byte) (triBool TriBool, consumedBytes int, err err
 	marshalUtil := marshalutil.New(bytes)
 	if triBool, err = TriBoolFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse TriBool from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -38,10 +39,12 @@ func TriBoolFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (triBool TriBo
 	untypedTriBool, err := marshalUtil.ReadUint8()
 	if err != nil {
 		err = xerrors.Errorf("failed to parse TriBool (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	if untypedTriBool >= 3 {
 		err = xerrors.Errorf("failed to parse TriBool (out of bounds): %w", cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	triBool = TriBool(untypedTriBool)

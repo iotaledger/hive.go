@@ -15,6 +15,7 @@ type Signature [SignatureSize]byte
 func SignatureFromBytes(bytes []byte) (result Signature, consumedBytes int, err error) {
 	if len(bytes) < SignatureSize {
 		err = fmt.Errorf("bytes too short")
+
 		return
 	}
 
@@ -48,6 +49,7 @@ func (signature *Signature) UnmarshalBinary(bytes []byte) (err error) {
 	}
 
 	copy(signature[:], bytes)
+
 	return
 }
 

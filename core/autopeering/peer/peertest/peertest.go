@@ -19,6 +19,7 @@ func NewPeer(network string, ip string, port int) *peer.Peer {
 	services.Update(service.PeeringKey, network, port)
 	key := ed25519.PublicKey{}
 	copy(key[:], net.JoinHostPort(ip, strconv.Itoa(port)))
+
 	return peer.NewPeer(identity.New(key), net.ParseIP(ip), services)
 }
 
@@ -30,11 +31,13 @@ func NewLocal(network string, ip net.IP, port int, db *peer.DB) *peer.Local {
 	if err != nil {
 		log.Panic(err)
 	}
+
 	return local
 }
 
 func randomSeed() []byte {
 	seed := make([]byte, ed25519.SeedSize)
 	rand.Read(seed)
+
 	return seed
 }

@@ -151,6 +151,7 @@ func newManagerTest(t require.TestingT) (*manager, *NetworkMock, func()) {
 		loc: local,
 	}
 	mgr := newManager(networkMock, nil, log)
+
 	return mgr, networkMock, mgr.close
 }
 
@@ -160,10 +161,12 @@ func (m *NetworkMock) local() *peer.Local {
 
 func (m *NetworkMock) Ping(p *peer.Peer) error {
 	args := m.Called(p)
+
 	return args.Error(0)
 }
 
 func (m *NetworkMock) DiscoveryRequest(p *peer.Peer) ([]*peer.Peer, error) {
 	args := m.Called(p)
+
 	return args.Get(0).([]*peer.Peer), args.Error(1)
 }

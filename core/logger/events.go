@@ -75,6 +75,7 @@ func (c *eventCore) With(fields []zapcore.Field) zapcore.Core {
 	for i := range fields {
 		fields[i].AddTo(clone.enc)
 	}
+
 	return clone
 }
 
@@ -82,6 +83,7 @@ func (c *eventCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.
 	if c.Enabled(ent.Level) {
 		return ce.AddCore(ent, c)
 	}
+
 	return ce
 }
 

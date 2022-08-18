@@ -52,6 +52,7 @@ func TestMapDB_Iterate(t *testing.T) {
 		}{key, value}
 		assert.Contains(t, testEntries, entry)
 		i++
+
 		return true
 	})
 	assert.NoError(t, err)
@@ -74,6 +75,7 @@ func TestMapDB_IterateDirection(t *testing.T) {
 		}{key, value}
 		assert.Equal(t, testEntries[i], entry, "entries are not equal")
 		i++
+
 		return true
 	}, kvstore.IterDirectionForward)
 	assert.NoError(t, err)
@@ -88,6 +90,7 @@ func TestMapDB_IterateDirection(t *testing.T) {
 		}{key, value}
 		assert.Equal(t, testEntries[len(testEntries)-1-i], entry, "entries are not equal")
 		i++
+
 		return true
 	}, kvstore.IterDirectionBackward)
 	assert.NoError(t, err)
@@ -148,8 +151,10 @@ func countKeys(t *testing.T, store kvstore.KVStore) int {
 	count := 0
 	err := store.IterateKeys(kvstore.EmptyPrefix, func(k kvstore.Key) bool {
 		count++
+
 		return true
 	})
 	require.NoError(t, err)
+
 	return count
 }

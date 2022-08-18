@@ -22,6 +22,7 @@ func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 		return publicKey, xerrors.Errorf("failed to parse public key %s from base58 string: %w", s, err)
 	}
 	publicKey, _, err = PublicKeyFromBytes(b)
+
 	return publicKey, err
 }
 
@@ -29,6 +30,7 @@ func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
 	if len(bytes) < PublicKeySize {
 		err = fmt.Errorf("bytes too short")
+
 		return
 	}
 
@@ -43,18 +45,22 @@ func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err 
 func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 	if l := len(key); l != PublicKeySize {
 		err = fmt.Errorf("invalid key length: %d, need %d", l, PublicKeySize)
+
 		return
 	}
 	if l := len(sig); l != SignatureSize {
 		err = fmt.Errorf("invalid signature length: %d, need %d", l, SignatureSize)
+
 		return
 	}
 	if !ed25519.Verify(key, data, sig) {
 		err = fmt.Errorf("invalid signature")
+
 		return
 	}
 
 	copy(result[:], key)
+
 	return
 }
 
@@ -107,5 +113,6 @@ func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("failed to parse public key from JSON: %w", err)
 	}
 	*publicKey = pk
+
 	return nil
 }

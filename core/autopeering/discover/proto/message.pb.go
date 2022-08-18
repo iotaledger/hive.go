@@ -67,8 +67,10 @@ func (x *Ping) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -81,6 +83,7 @@ func (x *Ping) GetVersion() uint32 {
 	if x != nil {
 		return x.Version
 	}
+
 	return 0
 }
 
@@ -88,6 +91,7 @@ func (x *Ping) GetNetworkId() uint32 {
 	if x != nil {
 		return x.NetworkId
 	}
+
 	return 0
 }
 
@@ -95,6 +99,7 @@ func (x *Ping) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
+
 	return 0
 }
 
@@ -102,6 +107,7 @@ func (x *Ping) GetSrcAddr() string {
 	if x != nil {
 		return x.SrcAddr
 	}
+
 	return ""
 }
 
@@ -109,6 +115,7 @@ func (x *Ping) GetSrcPort() uint32 {
 	if x != nil {
 		return x.SrcPort
 	}
+
 	return 0
 }
 
@@ -116,6 +123,7 @@ func (x *Ping) GetDstAddr() string {
 	if x != nil {
 		return x.DstAddr
 	}
+
 	return ""
 }
 
@@ -155,8 +163,10 @@ func (x *Pong) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -169,6 +179,7 @@ func (x *Pong) GetReqHash() []byte {
 	if x != nil {
 		return x.ReqHash
 	}
+
 	return nil
 }
 
@@ -176,6 +187,7 @@ func (x *Pong) GetServices() *proto1.ServiceMap {
 	if x != nil {
 		return x.Services
 	}
+
 	return nil
 }
 
@@ -183,6 +195,7 @@ func (x *Pong) GetDstAddr() string {
 	if x != nil {
 		return x.DstAddr
 	}
+
 	return ""
 }
 
@@ -217,8 +230,10 @@ func (x *DiscoveryRequest) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -231,6 +246,7 @@ func (x *DiscoveryRequest) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
+
 	return 0
 }
 
@@ -267,8 +283,10 @@ func (x *DiscoveryResponse) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -281,6 +299,7 @@ func (x *DiscoveryResponse) GetReqHash() []byte {
 	if x != nil {
 		return x.ReqHash
 	}
+
 	return nil
 }
 
@@ -288,6 +307,7 @@ func (x *DiscoveryResponse) GetPeers() []*proto2.Peer {
 	if x != nil {
 		return x.Peers
 	}
+
 	return nil
 }
 
@@ -344,6 +364,7 @@ func file_autopeering_discover_proto_message_proto_rawDescGZIP() []byte {
 	file_autopeering_discover_proto_message_proto_rawDescOnce.Do(func() {
 		file_autopeering_discover_proto_message_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_discover_proto_message_proto_rawDescData)
 	})
+
 	return file_autopeering_discover_proto_message_proto_rawDescData
 }
 

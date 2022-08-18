@@ -28,6 +28,7 @@ func NewIdentifier(data []byte) (new Identifier) {
 // FromRandomness generates a random Identifier.
 func (t *Identifier) FromRandomness() (err error) {
 	_, err = rand.Read((*t)[:])
+
 	return
 }
 
@@ -80,6 +81,7 @@ func (t *Identifier) Decode(data []byte) (consumed int, err error) {
 		return 0, errors.New("not enough data to decode Identifier")
 	}
 	copy(t[:], data[:IdentifierLength])
+
 	return IdentifierLength, nil
 }
 

@@ -39,6 +39,7 @@ func FromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes in
 	marshalUtil := marshalutil.New(valueRangeBytes)
 	if valueRange, err = FromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse ValueRange from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -51,6 +52,7 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRan
 	endPointExistsMaskByte, err := marshalUtil.ReadByte()
 	if err != nil {
 		err = xerrors.Errorf("failed to read endpoint exists mask (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
@@ -59,12 +61,14 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRan
 	if endPointExistsMask.HasBit(0) {
 		if valueRange.lowerEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
 			err = xerrors.Errorf("failed to parse lower EndPoint from MarshalUtil: %w", cerrors.ErrParseBytesFailed)
+
 			return
 		}
 	}
 	if endPointExistsMask.HasBit(1) {
 		if valueRange.upperEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
 			err = xerrors.Errorf("failed to parse upper EndPoint from MarshalUtil: %w", cerrors.ErrParseBytesFailed)
+
 			return
 		}
 	}

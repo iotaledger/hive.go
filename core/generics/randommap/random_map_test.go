@@ -53,5 +53,6 @@ func containsUniqueElements[V any](list []V) bool {
 	for _, element := range list {
 		elementSet.Add(element)
 	}
+
 	return elementSet.Size() == len(list)
 }

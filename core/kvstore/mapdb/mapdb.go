@@ -53,6 +53,7 @@ func (s *mapDB) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.IteratorK
 	}
 
 	s.m.iterate(s.realm, prefix, consumerFunc, iterDirection...)
+
 	return nil
 }
 
@@ -64,6 +65,7 @@ func (s *mapDB) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.Itera
 	}
 
 	s.m.iterateKeys(s.realm, prefix, consumerFunc, iterDirection...)
+
 	return nil
 }
 
@@ -76,6 +78,7 @@ func (s *mapDB) Clear() error {
 	defer s.Unlock()
 
 	s.m.deletePrefix(s.realm)
+
 	return nil
 }
 
@@ -91,6 +94,7 @@ func (s *mapDB) Get(key kvstore.Key) (kvstore.Value, error) {
 	if !contains {
 		return nil, kvstore.ErrKeyNotFound
 	}
+
 	return value, nil
 }
 
@@ -107,6 +111,7 @@ func (s *mapDB) Set(key kvstore.Key, value kvstore.Value) error {
 
 func (s *mapDB) set(key kvstore.Key, value kvstore.Value) error {
 	s.m.set(byteutils.ConcatBytes(s.realm, key), value)
+
 	return nil
 }
 
@@ -119,6 +124,7 @@ func (s *mapDB) Has(key kvstore.Key) (bool, error) {
 	defer s.RUnlock()
 
 	contains := s.m.has(byteutils.ConcatBytes(s.realm, key))
+
 	return contains, nil
 }
 
@@ -135,6 +141,7 @@ func (s *mapDB) Delete(key kvstore.Key) error {
 
 func (s *mapDB) delete(key kvstore.Key) error {
 	s.m.delete(byteutils.ConcatBytes(s.realm, key))
+
 	return nil
 }
 
@@ -147,6 +154,7 @@ func (s *mapDB) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	defer s.Unlock()
 
 	s.m.deletePrefix(byteutils.ConcatBytes(s.realm, prefix))
+
 	return nil
 }
 

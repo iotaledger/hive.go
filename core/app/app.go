@@ -195,11 +195,13 @@ func (a *App) init() {
 
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		collectParameters(coreComponent.Component)
+
 		return true
 	})
 
 	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
 		collectParameters(plugin.Component)
+
 		return true
 	})
 
@@ -293,6 +295,7 @@ func (a *App) printConfig() {
 
 	getList := func(a []string) string {
 		sort.Strings(a)
+
 		return "\n   - " + strings.Join(a, "\n   - ")
 	}
 
@@ -321,6 +324,7 @@ func (a *App) initConfig() {
 				a.LogPanicf("failed to initialize core component (%s) config parameters: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -330,6 +334,7 @@ func (a *App) initConfig() {
 				a.LogPanicf("failed to initialize plugin (%s) config parameters: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
@@ -350,6 +355,7 @@ func (a *App) preProvide() {
 				a.LogPanicf("pre-provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -388,6 +394,7 @@ func (a *App) addComponents() {
 		}
 
 		a.addCoreComponent(coreComponent)
+
 		return true
 	})
 
@@ -397,6 +404,7 @@ func (a *App) addComponents() {
 		}
 
 		a.addPlugin(plugin)
+
 		return true
 	})
 }
@@ -415,6 +423,7 @@ func (a *App) provide() {
 				a.LogPanicf("provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -424,6 +433,7 @@ func (a *App) provide() {
 				a.LogPanicf("provide plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
@@ -442,6 +452,7 @@ func (a *App) invoke() {
 				a.LogPanicf("invoke core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -451,6 +462,7 @@ func (a *App) invoke() {
 				a.LogPanicf("invoke plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
@@ -472,6 +484,7 @@ func (a *App) configure() {
 			}
 		}
 		a.LogInfof("Loading core components: %s ... done", coreComponent.Name)
+
 		return true
 	})
 
@@ -484,6 +497,7 @@ func (a *App) configure() {
 			}
 		}
 		a.LogInfof("Loading plugin: %s ... done", plugin.Name)
+
 		return true
 	})
 }
@@ -506,6 +520,7 @@ func (a *App) initializeVersionCheck() {
 		res, err := checker.CheckForUpdates()
 		if err != nil {
 			a.LogWarnf("Update check failed: %s", err)
+
 			return
 		}
 
@@ -545,6 +560,7 @@ func (a *App) run() {
 			}
 		}
 		a.LogInfof("Starting core component: %s ... done", coreComponent.Name)
+
 		return true
 	})
 
@@ -557,6 +573,7 @@ func (a *App) run() {
 			}
 		}
 		a.LogInfof("Starting plugin: %s ... done", plugin.Name)
+
 		return true
 	})
 }
@@ -646,16 +663,19 @@ func (a *App) addPlugin(plugin *Plugin) {
 
 func (a *App) isPluginEnabled(identifier string) bool {
 	_, exists := a.enabledPlugins[identifier]
+
 	return exists
 }
 
 func (a *App) isPluginDisabled(identifier string) bool {
 	_, exists := a.disabledPlugins[identifier]
+
 	return exists
 }
 
 func (a *App) isComponentForceDisabled(identifier string) bool {
 	_, exists := a.forceDisabledComponents[identifier]
+
 	return exists
 }
 

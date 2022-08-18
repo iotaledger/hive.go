@@ -16,6 +16,7 @@ func XORBytes(dst, a, b []byte) int {
 	}
 	_ = dst[n-1]
 	xorBytesSSE2(&dst[0], &a[0], &b[0], n) // amd64 must have SSE2
+
 	return n
 }
 

@@ -50,6 +50,7 @@ func (mc *ManagedConnection) Read(p []byte) (int, error) {
 		mc.bytesRead.Add(uint64(n))
 		if err != nil {
 			mc.Events.Error.Trigger(err)
+
 			return read, err
 		}
 		if n > 0 {
@@ -68,6 +69,7 @@ func (mc *ManagedConnection) Write(p []byte) (int, error) {
 
 	n, err := mc.Conn.Write(p)
 	mc.bytesWritten.Add(uint64(n))
+
 	return n, err
 }
 
@@ -80,6 +82,7 @@ func (mc *ManagedConnection) Close() (err error) {
 		// trigger Close event in separate go routine to prevent deadlocks
 		go mc.Events.Close.Trigger(&CloseEvent{})
 	})
+
 	return err
 }
 

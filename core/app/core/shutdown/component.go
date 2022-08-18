@@ -41,5 +41,6 @@ func provide(c *dig.Container) error {
 
 func configure() error {
 	deps.ShutdownHandler.Run()
+
 	return nil
 }

@@ -35,6 +35,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				return errors.Wrap(err, "failed to read big.Int from map")
 			}
 			value.Addr().Elem().Set(reflect.ValueOf(bigInt))
+
 			return nil
 		}
 
@@ -44,6 +45,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				value.Set(reflect.New(elemType))
 			}
 			elemValue := value.Elem()
+
 			return api.mapDecodeStruct(ctx, mapVal, elemValue, elemType, ts, opts)
 		}
 
@@ -71,8 +73,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				}
 				copy(sliceValue.Bytes(), byteSlice)
 				fillArrayFromSlice(value.Elem(), sliceValue)
+
 				return nil
 			}
+
 			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 		}
 
@@ -92,8 +96,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			}
 			copy(sliceValue.Bytes(), byteSlice)
 			fillArrayFromSlice(value, sliceValue)
+
 			return nil
 		}
+
 		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.mapDecodeInterface(ctx, mapVal, value, valueType, ts, opts)
@@ -107,10 +113,12 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		}
 		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
+
 		return nil
 	case reflect.Bool:
 		addrValue := value.Addr().Convert(reflect.TypeOf((*bool)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
+
 		return nil
 	case reflect.Int8, reflect.Int16, reflect.Int32:
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), true))
@@ -126,6 +134,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		return api.mapDecodeFloat(value, valueType, mapVal, 64)
 	default:
 	}
+
 	return errors.Errorf("can't map decode: unsupported type %s", valueType)
 }
 
@@ -164,6 +173,7 @@ func strNumParser(str string, bitSize int, signed bool) numParseFunc {
 		if signed {
 			return strconv.ParseInt(str, 10, bitSize)
 		}
+
 		return strconv.ParseUint(str, 10, bitSize)
 	}
 }
@@ -179,6 +189,7 @@ func (api *API) mapDecodeNum(value reflect.Value, valueType reflect.Type, parser
 	}
 
 	addrValue.Elem().Set(reflect.ValueOf(num))
+
 	return nil
 }
 
@@ -192,6 +203,7 @@ func (api *API) mapDecodeFloat(value reflect.Value, valueType reflect.Type, mapV
 		return err
 	}
 	addrValue.Elem().SetFloat(f)
+
 	return nil
 }
 
@@ -224,6 +236,7 @@ func (api *API) mapDecodeInterface(
 		return errors.WithStack(err)
 	}
 	value.Set(objectValue)
+
 	return nil
 }
 
@@ -236,6 +249,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 			return fmt.Errorf("unable to parse time %s map value: %w", strVal, err)
 		}
 		value.Set(reflect.ValueOf(parsedTime))
+
 		return nil
 	}
 
@@ -296,6 +310,7 @@ func (api *API) mapDecodeStructFields(
 			if err := api.mapDecodeStructFields(ctx, m, fieldValue, fieldType, opts); err != nil {
 				return errors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
 			}
+
 			continue
 		}
 
@@ -309,6 +324,7 @@ func (api *API) mapDecodeStructFields(
 			if sField.settings.isOptional || sField.settings.omitEmpty {
 				continue
 			}
+
 			return errors.Wrapf(err, "missing map entry for field %s", sField.name)
 		}
 
@@ -316,6 +332,7 @@ func (api *API) mapDecodeStructFields(
 			return errors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
 		}
 	}
+
 	return nil
 }
 
@@ -330,6 +347,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 
 		addrValue := value.Addr().Convert(reflect.TypeOf((*[]byte)(nil)))
 		addrValue.Elem().SetBytes(byteSlice)
+
 		return nil
 	}
 

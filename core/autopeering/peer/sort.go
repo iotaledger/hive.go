@@ -34,5 +34,6 @@ func SortBySalt(anchor, salt []byte, remotePeers []*Peer) (result []PeerDistance
 		result[i] = NewPeerDistance(anchor, salt, remote)
 	}
 	sort.Sort(byDistance(result))
+
 	return result
 }

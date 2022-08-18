@@ -171,6 +171,7 @@ func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
 		rmap.forEach(func(key interface{}, value interface{}) {
 			results = append(results, value)
 		})
+
 		return
 	}
 

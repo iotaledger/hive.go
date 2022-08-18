@@ -11,11 +11,13 @@ import (
 // MultiMutex is a mutex that allows to lock multiple entities exclusively.
 // Entities are represented by interface{} identifiers and can be presented in arbitrary order.
 // Goroutine 1        Goroutine 2        Goroutine 3
-//   Lock(a,c)           		-          Lock(c,b) <- blocking
-//        work            Lock(b)   	        wait
+//
+//	Lock(a,c)           		-          Lock(c,b) <- blocking
+//	     work            Lock(b)   	        wait
+//
 // Unlock(a,c)               work   	        wait
-//           -          Unlock(b)   	        wait
-//           -                  -   	   Lock(c,b) <- successful
+//   - Unlock(b)   	        wait
+//   - -   	   Lock(c,b) <- successful
 type MultiMutex struct {
 	locks     map[interface{}]types.Empty
 	locksCond *sync.Cond
@@ -47,6 +49,7 @@ TryAcquireLocks:
 	for _, id := range ids {
 		if _, exists := m.locks[id]; exists {
 			m.locksCond.Wait()
+
 			goto TryAcquireLocks
 		}
 	}

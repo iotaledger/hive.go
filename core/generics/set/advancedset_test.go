@@ -81,6 +81,7 @@ func TestAdvancedSet_ForEach(t *testing.T) {
 	assert.Equal(t, 3, expectedElements.Size(), "wrong size")
 	err := set.ForEach(func(element string) error {
 		assert.True(t, expectedElements.Delete(element))
+
 		return nil
 	})
 	assert.NoError(t, err)

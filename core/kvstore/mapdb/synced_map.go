@@ -18,6 +18,7 @@ func (s *syncedKVMap) has(key []byte) bool {
 	s.RLock()
 	defer s.RUnlock()
 	_, ok := s.m[string(key)]
+
 	return ok
 }
 

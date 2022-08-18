@@ -30,6 +30,7 @@ func FuncPreCallback(fnc interface{}, callback func()) interface{} {
 	return copyFuncSignature(fnc, func(args []reflect.Value) (results []reflect.Value) {
 		callback()
 		results = reflect.ValueOf(fnc).Call(args)
+
 		return results
 	})
 }
@@ -39,6 +40,7 @@ func FuncPostCallback(fnc interface{}, callback func()) interface{} {
 	return copyFuncSignature(fnc, func(args []reflect.Value) (results []reflect.Value) {
 		results = reflect.ValueOf(fnc).Call(args)
 		callback()
+
 		return results
 	})
 }

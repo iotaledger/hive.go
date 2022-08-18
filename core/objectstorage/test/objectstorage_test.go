@@ -43,6 +43,7 @@ func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 		require.NoError(t, err)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
+
 		return badger.New(db).WithRealm(realm)
 
 	case dbMapDB:
@@ -53,6 +54,7 @@ func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 		require.NoError(t, err)
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err)
+
 		return pebble.New(db).WithRealm(realm)
 	}
 
@@ -428,6 +430,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	})
 
@@ -441,6 +444,7 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	})
 
@@ -455,6 +459,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("")))
 
@@ -469,6 +474,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -482,6 +488,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("12")))
 
@@ -898,6 +905,7 @@ func TestDeleteAndCreate(t *testing.T) {
 		newlyAdded := false
 		cachedObject = objects.ComputeIfAbsent([]byte("Hans"), func(key []byte) objectstorage.StorableObject {
 			newlyAdded = true
+
 			return newTestObject("Hans", 33)
 		})
 		cachedObject.Release()
@@ -948,6 +956,7 @@ func TestForEachWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -992,6 +1001,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -1036,6 +1046,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")), objectstorage.WithIteratorSkipCache(true))
 

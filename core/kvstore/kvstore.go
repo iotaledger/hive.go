@@ -112,6 +112,7 @@ func GetIterDirection(iterDirection ...IterDirection) IterDirection {
 			panic(fmt.Sprintf("unknown iteration direction: %d", iterDirection[0]))
 		}
 	}
+
 	return direction
 }
 
@@ -176,6 +177,7 @@ func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
 
 	if innerErr != nil {
 		batchedMutation.Cancel()
+
 		return innerErr
 	}
 
