@@ -27,7 +27,6 @@ import (
 
 const (
 	dbBadger = iota
-	dbBolt
 	dbMapDB
 	dbPebble
 )

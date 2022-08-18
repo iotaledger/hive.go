@@ -23,10 +23,6 @@ type WorkerPool struct {
 	wait  sync.WaitGroup
 }
 
-func voidCaller(handler interface{}, params ...interface{}) {
-	handler.(func())()
-}
-
 func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
 	options := DEFAULT_OPTIONS.Override(optionalOptions...)
 
