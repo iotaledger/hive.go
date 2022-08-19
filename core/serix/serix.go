@@ -15,6 +15,7 @@ package serix
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"reflect"
 	"sort"
@@ -23,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -151,6 +153,9 @@ type TypeSettings struct {
 	lengthPrefixType *LengthPrefixType
 	objectType       interface{}
 	lexicalOrdering  *bool
+	mapKey           *string
+	minLen           *uint64
+	maxLen           *uint64
 	arrayRules       *ArrayRules
 }
 
@@ -168,6 +173,69 @@ func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
 	return *ts.lengthPrefixType, true
 }
 
+// WithMapKey specifies the name for the map key.
+func (ts TypeSettings) WithMapKey(name string) TypeSettings {
+	ts.mapKey = &name
+	return ts
+}
+
+// MapKey returns the map key name.
+func (ts TypeSettings) MapKey() (string, bool) {
+	if ts.mapKey == nil {
+		return "", false
+	}
+	return *ts.mapKey, true
+}
+
+// MustMapKey must return a map key name.
+func (ts TypeSettings) MustMapKey() string {
+	if ts.mapKey == nil {
+		panic("no map key set")
+	}
+	return *ts.mapKey
+}
+
+// WithMinLen specifies the min length for the object.
+func (ts TypeSettings) WithMinLen(l uint64) TypeSettings {
+	ts.minLen = &l
+	return ts
+}
+
+// MinLen returns min length for the object.
+func (ts TypeSettings) MinLen() (uint64, bool) {
+	if ts.minLen == nil {
+		return 0, false
+	}
+	return *ts.minLen, true
+}
+
+// WithMaxLen specifies the max length for the object.
+func (ts TypeSettings) WithMaxLen(l uint64) TypeSettings {
+	ts.maxLen = &l
+	return ts
+}
+
+// MaxLen returns max length for the object.
+func (ts TypeSettings) MaxLen() (uint64, bool) {
+	if ts.maxLen == nil {
+		return 0, false
+	}
+	return *ts.maxLen, true
+}
+
+// MinMaxLen returns min/max lengths for the object.
+// Returns 0 for either value if they are not set.
+func (ts TypeSettings) MinMaxLen() (int, int) {
+	var min, max int
+	if ts.minLen != nil {
+		min = int(*ts.minLen)
+	}
+	if ts.maxLen != nil {
+		max = int(*ts.maxLen)
+	}
+	return min, max
+}
+
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
 // The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
 // serix uses object type to actually encode the number
@@ -182,7 +250,7 @@ func (ts TypeSettings) ObjectType() interface{} {
 	return ts.objectType
 }
 
-//WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
+// WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
 func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
 	ts.lexicalOrdering = &val
 	return ts
@@ -231,6 +299,9 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.arrayRules == nil {
 		ts.arrayRules = other.arrayRules
 	}
+	if ts.mapKey == nil {
+		ts.mapKey = other.mapKey
+	}
 	return ts
 }
 
@@ -261,6 +332,34 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
+// JSONEncode serializes the provided object obj into its JSON representation.
+func (api *API) JSONEncode(ctx context.Context, obj any, opts ...Option) ([]byte, error) {
+	orderedMap, err := api.MapEncode(ctx, obj, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(orderedMap)
+}
+
+// MapEncode serializes the provided object obj into an ordered map.
+// serix traverses the object recursively and serializes everything based on the type.
+// Use the options list opts to customize the serialization behaviour.
+func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
+	value := reflect.ValueOf(obj)
+	if !value.IsValid() {
+		return nil, errors.New("invalid value for destination")
+	}
+	opt := &options{}
+	for _, o := range opts {
+		o(opt)
+	}
+	m, err := api.mapEncode(ctx, value, opt.ts, opt)
+	if err != nil {
+		return nil, err
+	}
+	return m.(*orderedmap.OrderedMap), nil
+}
+
 // Decode deserializes bytes b into the provided object obj.
 // obj must be a non-nil pointer for serix to deserialize into it.
 // serix traverses the object recursively and deserializes everything based on its type.
@@ -286,6 +385,46 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 		o(opt)
 	}
 	return api.decode(ctx, b, value, opt.ts, opt)
+}
+
+// JSONDecode deserializes json data into the provided object obj.
+func (api *API) JSONDecode(ctx context.Context, data []byte, obj interface{}, opts ...Option) error {
+	m := map[string]any{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	return api.MapDecode(ctx, m, obj, opts...)
+}
+
+// MapDecode deserializes generic map m into the provided object obj.
+// obj must be a non-nil pointer for serix to deserialize into it.
+// serix traverses the object recursively and deserializes everything based on its type.
+// Use the options list opts to customize the deserialization behavior.
+func (api *API) MapDecode(ctx context.Context, m map[string]any, obj interface{}, opts ...Option) error {
+	value := reflect.ValueOf(obj)
+	if err := checkDecodeDestination(obj, value); err != nil {
+		return err
+	}
+	opt := &options{}
+	for _, o := range opts {
+		o(opt)
+	}
+	return api.mapDecode(ctx, m, value, opt.ts, opt)
+}
+
+func checkDecodeDestination(obj any, value reflect.Value) error {
+	if !value.IsValid() {
+		return errors.New("invalid value for destination")
+	}
+	if value.Kind() != reflect.Ptr {
+		return errors.Errorf(
+			"can't decode, the destination object must be a pointer, got: %T(%s)", obj, value.Kind(),
+		)
+	}
+	if value.IsNil() {
+		return errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
+	}
+	return nil
 }
 
 // RegisterValidators registers validator functions that serix will call during the Encode and Decode processes.
@@ -595,6 +734,7 @@ type tagSettings struct {
 	position   int
 	isOptional bool
 	nest       bool
+	omitEmpty  bool
 	ts         TypeSettings
 }
 
@@ -680,6 +820,31 @@ func parseStructTag(tag string) (tagSettings, error) {
 			settings.isOptional = true
 		case "nest":
 			settings.nest = true
+		case "omitempty":
+			settings.omitEmpty = true
+		case "mapKey":
+			if len(keyValue) != 2 {
+				return tagSettings{}, errors.Errorf("incorrect mapKey tag format: %s", currentPart)
+			}
+			settings.ts = settings.ts.WithMapKey(keyValue[1])
+		case "minLen":
+			if len(keyValue) != 2 {
+				return tagSettings{}, errors.Errorf("incorrect minLen tag format: %s", currentPart)
+			}
+			minLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			if err != nil {
+				return tagSettings{}, errors.Wrapf(err, "failed to parse minLen %s", currentPart)
+			}
+			settings.ts = settings.ts.WithMinLen(minLen)
+		case "maxLen":
+			if len(keyValue) != 2 {
+				return tagSettings{}, errors.Errorf("incorrect maxLen tag format: %s", currentPart)
+			}
+			maxLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			if err != nil {
+				return tagSettings{}, errors.Wrapf(err, "failed to parse maxLen %s", currentPart)
+			}
+			settings.ts = settings.ts.WithMaxLen(maxLen)
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
@@ -736,31 +901,46 @@ func deRefPointer(t reflect.Type) reflect.Type {
 	return t
 }
 
-func getNumberTypeToConvert(kind reflect.Kind) (reflect.Type, reflect.Type) {
+func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type) {
 	var numberType reflect.Type
+	var bitSize int
 	switch kind {
 	case reflect.Int8:
 		numberType = reflect.TypeOf(int8(0))
+		bitSize = 8
 	case reflect.Int16:
 		numberType = reflect.TypeOf(int16(0))
+		bitSize = 16
 	case reflect.Int32:
 		numberType = reflect.TypeOf(int32(0))
+		bitSize = 32
 	case reflect.Int64:
 		numberType = reflect.TypeOf(int64(0))
+		bitSize = 64
 	case reflect.Uint8:
 		numberType = reflect.TypeOf(uint8(0))
+		bitSize = 8
 	case reflect.Uint16:
 		numberType = reflect.TypeOf(uint16(0))
+		bitSize = 16
 	case reflect.Uint32:
 		numberType = reflect.TypeOf(uint32(0))
+		bitSize = 32
 	case reflect.Uint64:
 		numberType = reflect.TypeOf(uint64(0))
+		bitSize = 64
 	case reflect.Float32:
 		numberType = reflect.TypeOf(float32(0))
+		bitSize = 32
 	case reflect.Float64:
 		numberType = reflect.TypeOf(float64(0))
+		bitSize = 64
 	default:
-		return nil, nil
+		return -1, nil, nil
 	}
-	return numberType, reflect.PointerTo(numberType)
+	return bitSize, numberType, reflect.PointerTo(numberType)
+}
+
+func mapStringKey(str string) string {
+	return strings.ToLower(str[:1]) + str[1:]
 }

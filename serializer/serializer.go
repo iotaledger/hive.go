@@ -726,7 +726,7 @@ func (d *Deserializer) ReadBytesInPlace(slice []byte, errProducer ErrProducer) *
 }
 
 // ReadVariableByteSlice reads a variable byte slice which is denoted by the given SeriLengthPrefixType.
-func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPrefixType, errProducer ErrProducer, maxRead ...int) *Deserializer {
+func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -737,9 +737,11 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 		return d
 	}
 
-	if len(maxRead) > 0 && sliceLength > maxRead[0] {
-		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, max allowed %d ", ErrDeserializationLengthInvalid, sliceLength, maxRead[0]))
-		return d
+	switch {
+	case maxLen > 0 && sliceLength > maxLen:
+		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, max allowed %d ", ErrDeserializationLengthInvalid, sliceLength, maxLen))
+	case minLen > 0 && sliceLength < minLen:
+		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, min required %d ", ErrDeserializationLengthInvalid, sliceLength, minLen))
 	}
 
 	if sliceLength == 0 {
@@ -1076,15 +1078,18 @@ func (d *Deserializer) ReadSliceOfObjects(
 	}
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		var seri Serializable
+
 		// this mutates d.src/d.offset
 		subDeseri := NewDeserializer(b)
 		_, ty := subDeseri.readObject(func(readSeri Serializable) { seri = readSeri }, deSeriMode, deSeriCtx, typeDen, arrayRules.Guards.ReadGuard, func(err error) error {
 			return errProducer(err)
 		})
+
 		bytesRead, err = subDeseri.Done()
 		if err != nil {
 			return 0, err
 		}
+
 		if deSeriMode.HasMode(DeSeriModePerformValidation) {
 			seenTypes[ty] = struct{}{}
 			if arrayRules.Guards.PostReadGuard != nil {
@@ -1093,17 +1098,25 @@ func (d *Deserializer) ReadSliceOfObjects(
 				}
 			}
 		}
+
 		seris = append(seris, seri)
 		return bytesRead, nil
-
 	}
+
 	d.ReadSequenceOfObjects(deserializeItem, deSeriMode, lenType, arrayRules, errProducer)
+	if d.err != nil {
+		return d
+	}
 
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if !arrayRules.MustOccur.Subset(seenTypes) {
 			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
 			return d
 		}
+	}
+
+	if len(seris) == 0 {
+		return d
 	}
 
 	d.readSerializablesIntoTarget(target, seris)
@@ -1277,7 +1290,7 @@ func (d *Deserializer) readSerializableIntoTarget(target interface{}, s Serializ
 }
 
 // ReadString reads a string.
-func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxLen ...int) *Deserializer {
+func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Deserializer {
 	if d.err != nil {
 		return d
 	}
@@ -1288,8 +1301,11 @@ func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errPr
 		return d
 	}
 
-	if len(maxLen) > 0 && strLen > maxLen[0] {
-		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen[0]))
+	switch {
+	case maxLen > 0 && strLen > maxLen:
+		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen))
+	case minLen > 0 && strLen < minLen:
+		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but min %d is required", ErrDeserializationLengthInvalid, strLen, minLen))
 	}
 
 	if len(d.src[d.offset:]) < strLen {

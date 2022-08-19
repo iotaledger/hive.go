@@ -5,10 +5,10 @@ package rocksdb
 import (
 	"sync"
 
-	"github.com/gohornet/grocksdb"
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
+	"github.com/iotaledger/grocksdb"
 	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/kvstore/utils"
