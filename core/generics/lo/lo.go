@@ -161,3 +161,11 @@ func Unique[T comparable](collection []T) (unique *set.AdvancedSet[T]) {
 
 	return unique
 }
+
+// MergeMaps updates the base map with values from the update map and returns the extended base map.
+func MergeMaps[K comparable, V any](base, update map[K]V) map[K]V {
+	for k, v := range update {
+		base[k] = v
+	}
+	return base
+}
