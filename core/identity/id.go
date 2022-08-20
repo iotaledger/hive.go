@@ -45,7 +45,7 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 // IDFromBytes decodes ID from bytes.
 func IDFromBytes(bytes []byte) (id ID, err error) {
 	if _, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
-		return ID{}, errors.Wrap(err, "failed to decode node identity from bytes")
+		return ID{}, errors.Wrap(err, "failed to decode identity from bytes")
 	}
 	return
 }
