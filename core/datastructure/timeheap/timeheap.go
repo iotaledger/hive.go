@@ -15,14 +15,14 @@ type timeHeapEntry struct {
 // TimeHeap implements a heap sorted by time, where older elements are popped during AveragePerSecond call.
 type TimeHeap struct {
 	lock  *sync.Mutex
-	list  []*timeHeapEntry
+	heap  timeHeap
 	total uint64
 }
 
 // NewTimeHeap creates a new TimeHeap object.
 func NewTimeHeap() *TimeHeap {
 	h := &TimeHeap{lock: &sync.Mutex{}}
-	heap.Init(h)
+	heap.Init(&h.heap)
 
 	return h
 }
@@ -31,8 +31,18 @@ func NewTimeHeap() *TimeHeap {
 func (h *TimeHeap) Add(count uint64) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	heap.Push(h, &timeHeapEntry{timestamp: time.Now(), count: count})
+	heap.Push(&h.heap, &timeHeapEntry{timestamp: time.Now(), count: count})
 	h.total += count
+}
+
+// Clear removes all elements from the container.
+func (h *TimeHeap) Clear() {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	for h.heap.Len() > 0 {
+		_ = h.heap.Pop()
+	}
 }
 
 // AveragePerSecond calculates the average per second of all entries in the given duration.
@@ -41,12 +51,12 @@ func (h *TimeHeap) AveragePerSecond(timeBefore time.Duration) float32 {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	lenHeap := len((*h).list)
+	lenHeap := h.heap.Len()
 	if lenHeap > 0 {
 		for i := 0; i < lenHeap; i++ {
-			oldest := heap.Pop(h)
+			oldest := heap.Pop(&h.heap)
 			if time.Since(oldest.(*timeHeapEntry).timestamp) < timeBefore {
-				heap.Push(h, oldest)
+				heap.Push(&h.heap, oldest)
 
 				break
 			}
@@ -59,20 +69,35 @@ func (h *TimeHeap) AveragePerSecond(timeBefore time.Duration) float32 {
 
 ///////////////// heap interface /////////////////
 
-func (h TimeHeap) Len() int           { return len(h.list) }
-func (h TimeHeap) Less(i, j int) bool { return h.list[i].timestamp.Before(h.list[j].timestamp) }
-func (h TimeHeap) Swap(i, j int)      { h.list[i], h.list[j] = h.list[j], h.list[i] }
+// timedHeap defines a heap based on timeHeapEntries.
+type timeHeap []*timeHeapEntry
 
-func (h *TimeHeap) Push(x interface{}) {
-	(*h).list = append((*h).list, x.(*timeHeapEntry))
+// Len is the number of elements in the collection.
+func (h timeHeap) Len() int {
+	return len(h)
 }
 
-func (h *TimeHeap) Pop() interface{} {
-	old := (*h).list
-	n := len(old)
-	x := old[n-1]
-	old[n-1] = nil // avoid memory leak
-	(*h).list = old[0 : n-1]
+// Less reports whether the element with index i should sort before the element with index j.
+func (h timeHeap) Less(i, j int) bool {
+	return h[i].timestamp.Before(h[j].timestamp)
+}
 
-	return x
+// Swap swaps the elements with indexes i and j.
+func (h timeHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+// Push adds x as the last element to the heap.
+func (h *timeHeap) Push(x interface{}) {
+	*h = append(*h, x.(*timeHeapEntry))
+}
+
+// Pop removes and returns the last element of the heap.
+func (h *timeHeap) Pop() interface{} {
+	n := len(*h)
+	data := (*h)[n-1]
+	(*h)[n-1] = nil // avoid memory leak
+	*h = (*h)[:n-1]
+
+	return data
 }
