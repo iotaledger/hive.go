@@ -28,7 +28,7 @@ type NonBlockingQueuedWorkerPool struct {
 
 // NewNonBlockingQueuedWorkerPool creates and starts a new worker pool for the supplied function, with the supplied options.
 func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Option) (result *NonBlockingQueuedWorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 
 	result = &NonBlockingQueuedWorkerPool{
 		workerFunc: workerFunc,

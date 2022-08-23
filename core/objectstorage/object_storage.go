@@ -901,7 +901,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 	traversedPartitions := make([]string, 0)
 
 	// iterate through partitions towards the value
-	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
+	for keyPartitionID, keyPartitionLength := range objectStorage.options.keyPartitions {
 		// retrieve current partition
 		currentMap := mapStack[len(mapStack)-1]
 
@@ -910,7 +910,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		keyOffset += keyPartitionLength
 
 		// if we didn't arrive at the values, yet
-		if keyPartitionId != keyPartitionCount-1 {
+		if keyPartitionID != keyPartitionCount-1 {
 			// retrieve next partition
 			subMap, subMapExists := currentMap[stringKey]
 
@@ -934,16 +934,16 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 			objectStorage.size--
 
 			// clean up empty parent partitions (recursively)
-			parentKeyPartitionId := keyPartitionId
+			parentKeyPartitionID := keyPartitionID
 			keyOffset -= keyPartitionLength
-			for parentKeyPartitionId >= 1 && len(mapStack[parentKeyPartitionId]) == 0 {
-				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
+			for parentKeyPartitionID >= 1 && len(mapStack[parentKeyPartitionID]) == 0 {
+				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionID]) {
 					return
 				}
 
-				parentKeyPartitionId--
-				parentMap := mapStack[parentKeyPartitionId]
-				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
+				parentKeyPartitionID--
+				parentMap := mapStack[parentKeyPartitionID]
+				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionID]
 
 				delete(parentMap, string(key[keyOffset-parentKeyLength:keyOffset]))
 				keyOffset -= parentKeyLength

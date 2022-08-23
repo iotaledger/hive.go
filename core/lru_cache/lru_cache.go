@@ -16,15 +16,15 @@ type LRUCache struct {
 	doublyLinkedList *list.DoublyLinkedList
 	capacity         int
 	size             int
-	options          *LRUCacheOptions
+	options          *Options
 	mutex            syncutils.RWMutex
 	krwMutex         *syncutils.KRWMutex
 }
 
-func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
-	var currentOptions *LRUCacheOptions
+func NewLRUCache(capacity int, options ...*Options) *LRUCache {
+	var currentOptions *Options
 	if len(options) < 1 || options[0] == nil {
-		currentOptions = DEFAULT_OPTIONS
+		currentOptions = defaultOptions
 	} else {
 		currentOptions = options[0]
 	}

@@ -5,15 +5,15 @@ import (
 	"github.com/iotaledger/hive.go/core/network"
 )
 
-type tcpServerEvents struct {
+type serverEvents struct {
 	Start    *event.Event[*StartEvent]
 	Shutdown *event.Event[*ShutdownEvent]
 	Connect  *event.Event[*ConnectEvent]
 	Error    *event.Event[error]
 }
 
-func newTcpServerEvents() (new *tcpServerEvents) {
-	return &tcpServerEvents{
+func newServerEvents() (new *serverEvents) {
+	return &serverEvents{
 		Start:    event.New[*StartEvent](),
 		Shutdown: event.New[*ShutdownEvent](),
 		Connect:  event.New[*ConnectEvent](),

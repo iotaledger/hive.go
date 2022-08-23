@@ -124,7 +124,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 		called = true
 	}
 
-	cache := lrucache.NewLRUCache(10, &lrucache.LRUCacheOptions{
+	cache := lrucache.NewLRUCache(10, &lrucache.Options{
 		EvictionCallback:  cb,
 		EvictionBatchSize: 5,
 		IdleTimeout:       0,
@@ -146,7 +146,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 
 func TestLRUCache_Eviction(t *testing.T) {
 
-	cache := lrucache.NewLRUCache(100, &lrucache.LRUCacheOptions{
+	cache := lrucache.NewLRUCache(100, &lrucache.Options{
 		EvictionCallback: func(key interface{}, value interface{}) {
 			evictedKey := key.(string)
 			evictedObj := value.(int)

@@ -24,7 +24,7 @@ type WorkerPool struct {
 }
 
 func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 

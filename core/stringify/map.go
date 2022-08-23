@@ -22,7 +22,7 @@ func mapReflect(value reflect.Value) (result string) {
 	for _, mapKey := range mapKeys {
 		item := value.MapIndex(mapKey)
 
-		result += text.Indent("["+Interface(mapKey)+"]: "+Interface(item)+",\n", strings.Repeat(" ", INDENTATION_SIZE))
+		result += text.Indent("["+Interface(mapKey)+"]: "+Interface(item)+",\n", strings.Repeat(" ", IndentationSize))
 	}
 
 	result += "}"

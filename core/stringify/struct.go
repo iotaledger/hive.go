@@ -36,7 +36,7 @@ func (stringifyStruct *structBuilder) String() (result string) {
 	result = stringifyStruct.name + " {\n"
 
 	for _, field := range stringifyStruct.fields {
-		result += text.Indent(field.String()+"\n", strings.Repeat(" ", INDENTATION_SIZE))
+		result += text.Indent(field.String()+"\n", strings.Repeat(" ", IndentationSize))
 	}
 
 	result += "}"

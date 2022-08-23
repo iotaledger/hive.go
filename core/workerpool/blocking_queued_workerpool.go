@@ -32,7 +32,7 @@ type BlockingQueuedWorkerPool struct {
 
 // NewBlockingQueuedWorkerPool returns a new stopped WorkerPool.
 func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQueuedWorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	result = &BlockingQueuedWorkerPool{

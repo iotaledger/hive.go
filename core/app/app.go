@@ -24,8 +24,8 @@ const (
 	DefaultFlagSetName = "appConfig"
 )
 
-// AppInfo provides informations about the app.
-type AppInfo struct {
+// Info provides informations about the app.
+type Info struct {
 	Name                string
 	Version             string
 	LatestGitHubVersion string
@@ -36,7 +36,7 @@ type ParametersApp struct {
 }
 
 type App struct {
-	appInfo                 *AppInfo
+	appInfo                 *Info
 	enabledPlugins          map[string]struct{}
 	disabledPlugins         map[string]struct{}
 	forceDisabledComponents map[string]struct{}
@@ -51,16 +51,16 @@ type App struct {
 	appParams               *ParametersApp
 	configs                 ConfigurationSets
 	maskedKeys              []string
-	options                 *AppOptions
+	options                 *Options
 }
 
-func New(name string, version string, optionalOptions ...AppOption) *App {
-	appOpts := &AppOptions{}
-	appOpts.apply(defaultAppOptions...)
+func New(name string, version string, optionalOptions ...Option) *App {
+	appOpts := &Options{}
+	appOpts.apply(defaultOptions...)
 	appOpts.apply(optionalOptions...)
 
 	a := &App{
-		appInfo: &AppInfo{
+		appInfo: &Info{
 			Name:                name,
 			Version:             version,
 			LatestGitHubVersion: "",
@@ -89,7 +89,7 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	}
 
 	// provide the app info in the container
-	if err := a.container.Provide(func() *AppInfo {
+	if err := a.container.Provide(func() *Info {
 		return a.appInfo
 	}); err != nil {
 		panic(err)
@@ -611,7 +611,7 @@ func (a *App) Shutdown() {
 	a.Daemon().ShutdownAndWait()
 }
 
-func (a *App) Info() *AppInfo {
+func (a *App) Info() *Info {
 	return a.appInfo
 }
 

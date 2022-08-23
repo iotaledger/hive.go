@@ -68,6 +68,8 @@ func versionFilterFunc(fixedAppVersion string) latest.TagFilterFunc {
 }
 
 // VersionChecker can be used to check for updates on GitHub.
+//
+//nolint:revive // better be explicit here
 type VersionChecker struct {
 	fixedAppVersion string
 	versionSource   latest.Source

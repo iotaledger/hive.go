@@ -15,6 +15,7 @@ var (
 	ErrUnknownEntryType = errors.New("unknown entry type")
 )
 
+//nolint:revive // better be explicit here
 type ParameterGroup struct {
 	Parameters []*Parameter
 	SubGroups  []*ParameterGroup

@@ -7,6 +7,8 @@ import (
 )
 
 // PeerDistance defines the relative distance wrt a remote peer.
+//
+//nolint:revive // better be explicit here
 type PeerDistance struct {
 	Remote   *Peer
 	Distance uint32

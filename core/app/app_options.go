@@ -5,12 +5,12 @@ import (
 )
 
 // the default options applied to the App.
-var defaultAppOptions = []AppOption{
+var defaultOptions = []Option{
 	WithDaemon(daemon.New()),
 }
 
-// AppOptions defines options for an App.
-type AppOptions struct {
+// Options defines options for an App.
+type Options struct {
 	daemon                 daemon.Daemon
 	initComponent          *InitComponent
 	coreComponents         []*CoreComponent
@@ -21,55 +21,55 @@ type AppOptions struct {
 	usageText              string
 }
 
-// AppOption is a function setting a AppOptions option.
-type AppOption func(opts *AppOptions)
+// Option is a function setting a Options option.
+type Option func(opts *Options)
 
-// applies the given AppOption.
-func (no *AppOptions) apply(opts ...AppOption) {
+// applies the given Option.
+func (no *Options) apply(opts ...Option) {
 	for _, opt := range opts {
 		opt(no)
 	}
 }
 
 // WithInitComponent sets the init component.
-func WithInitComponent(initComponent *InitComponent) AppOption {
-	return func(opts *AppOptions) {
+func WithInitComponent(initComponent *InitComponent) Option {
+	return func(opts *Options) {
 		opts.initComponent = initComponent
 	}
 }
 
 // WithDaemon sets the used daemon.
-func WithDaemon(d daemon.Daemon) AppOption {
-	return func(args *AppOptions) {
+func WithDaemon(d daemon.Daemon) Option {
+	return func(args *Options) {
 		args.daemon = d
 	}
 }
 
 // WithCoreComponents sets the core components.
-func WithCoreComponents(coreComponents ...*CoreComponent) AppOption {
-	return func(args *AppOptions) {
+func WithCoreComponents(coreComponents ...*CoreComponent) Option {
+	return func(args *Options) {
 		args.coreComponents = append(args.coreComponents, coreComponents...)
 	}
 }
 
 // WithPlugins sets the plugins.
-func WithPlugins(plugins ...*Plugin) AppOption {
-	return func(args *AppOptions) {
+func WithPlugins(plugins ...*Plugin) Option {
+	return func(args *Options) {
 		args.plugins = append(args.plugins, plugins...)
 	}
 }
 
 // WithVersionCheck enables the GitHub version check.
-func WithVersionCheck(owner string, repository string) AppOption {
-	return func(opts *AppOptions) {
+func WithVersionCheck(owner string, repository string) Option {
+	return func(opts *Options) {
 		opts.versionCheckOwner = owner
 		opts.versionCheckRepository = repository
 	}
 }
 
 // WithUsageText overwrites the default usage text of the app.
-func WithUsageText(usageText string) AppOption {
-	return func(opts *AppOptions) {
+func WithUsageText(usageText string) Option {
+	return func(opts *Options) {
 		opts.usageText = usageText
 	}
 }

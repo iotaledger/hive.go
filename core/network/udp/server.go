@@ -8,6 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
+//nolint:revive // better be explicit here
 type UDPServer struct {
 	socket            net.PacketConn
 	socketMutex       syncutils.RWMutex

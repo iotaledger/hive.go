@@ -33,6 +33,8 @@ type Events struct {
 
 // ShutdownHandler waits until a shutdown signal was received or the app tried to shutdown itself,
 // and shuts down all processes gracefully.
+//
+//nolint:revive // better be explicit here
 type ShutdownHandler struct {
 	// the logger used to log events.
 	*logger.WrappedLogger

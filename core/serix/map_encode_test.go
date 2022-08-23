@@ -363,12 +363,12 @@ func TestMapEncodeDecode(t *testing.T) {
 			// re-arrange expected json output to conform to same indentation
 			aux := orderedmap.New()
 			require.NoError(t, json.Unmarshal([]byte(test.expected), aux))
-			expectedJson, err := json.MarshalIndent(aux, "", "\t")
+			expectedJSON, err := json.MarshalIndent(aux, "", "\t")
 			require.NoError(t, err)
-			require.EqualValues(t, string(expectedJson), string(jsonOut))
+			require.EqualValues(t, string(expectedJSON), string(jsonOut))
 
 			mapTarget := map[string]any{}
-			require.NoError(t, json.Unmarshal(expectedJson, &mapTarget))
+			require.NoError(t, json.Unmarshal(expectedJSON, &mapTarget))
 
 			dest := reflect.New(reflect.TypeOf(test.paras.in).Elem()).Interface()
 			require.NoError(t, test.paras.api.MapDecode(context.Background(), mapTarget, dest))

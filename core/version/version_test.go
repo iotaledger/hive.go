@@ -1,4 +1,4 @@
-//nolint:golint // we don't care about these linters in test cases
+//nolint:golint,revive // we don't care about these linters in test cases
 package version
 
 import (
