@@ -1,4 +1,4 @@
-package lru_cache
+package lrucache
 
 import (
 	"github.com/iotaledger/hive.go/core/list"

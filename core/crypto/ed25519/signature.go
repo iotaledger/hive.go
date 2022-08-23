@@ -26,11 +26,12 @@ func SignatureFromBytes(bytes []byte) (result Signature, consumedBytes int, err 
 }
 
 func ParseSignature(marshalUtil *marshalutil.MarshalUtil) (Signature, error) {
-	if id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return SignatureFromBytes(data) }); err != nil {
+	id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return SignatureFromBytes(data) })
+	if err != nil {
 		return Signature{}, err
-	} else {
-		return id.(Signature), nil
 	}
+
+	return id.(Signature), nil
 }
 
 // Bytes returns the signature in bytes.

@@ -2,6 +2,7 @@ package profiling
 
 import (
 	"net/http"
+	// import pprof.
 	_ "net/http/pprof"
 	"runtime"
 

@@ -45,35 +45,39 @@ func (list *DoublyLinkedList) AddFirst(value interface{}) *DoublyLinkedListEntry
 }
 
 func (list *DoublyLinkedList) GetFirst() (interface{}, error) {
-	if firstEntry, err := list.GetFirstEntry(); err != nil {
+	firstEntry, err := list.GetFirstEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return firstEntry.GetValue(), nil
 	}
+
+	return firstEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) GetLast() (interface{}, error) {
-	if lastEntry, err := list.GetLastEntry(); err != nil {
+	lastEntry, err := list.GetLastEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return lastEntry.GetValue(), nil
 	}
+
+	return lastEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) RemoveFirst() (interface{}, error) {
-	if firstEntry, err := list.RemoveFirstEntry(); err != nil {
+	firstEntry, err := list.RemoveFirstEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return firstEntry.GetValue(), nil
 	}
+
+	return firstEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) RemoveLast() (interface{}, error) {
-	if lastEntry, err := list.RemoveLastEntry(); err != nil {
+	lastEntry, err := list.RemoveLastEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return lastEntry.GetValue(), nil
 	}
+
+	return lastEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) AddLastEntry(entry *DoublyLinkedListEntry) {

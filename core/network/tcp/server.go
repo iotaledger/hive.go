@@ -39,11 +39,11 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 		srv.Events.Error.Trigger(err)
 
 		return srv
-	} else {
-		srv.socketMutex.Lock()
-		srv.socket = socket
-		srv.socketMutex.Unlock()
 	}
+
+	srv.socketMutex.Lock()
+	srv.socket = socket
+	srv.socketMutex.Unlock()
 
 	srv.Events.Start.Trigger(&StartEvent{})
 	defer srv.Events.Shutdown.Trigger(&ShutdownEvent{})

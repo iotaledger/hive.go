@@ -65,11 +65,12 @@ func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 }
 
 func ParsePublicKey(marshalUtil *marshalutil.MarshalUtil) (PublicKey, error) {
-	if id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return PublicKeyFromBytes(data) }); err != nil {
+	id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return PublicKeyFromBytes(data) })
+	if err != nil {
 		return PublicKey{}, err
-	} else {
-		return id.(PublicKey), nil
 	}
+
+	return id.(PublicKey), nil
 }
 
 // VerifySignature reports whether signature is a valid signature of message by publicKey.

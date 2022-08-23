@@ -34,15 +34,16 @@ func (srv *UDPServer) Shutdown() {
 }
 
 func (srv *UDPServer) Listen(address string, port int) {
-	if socket, err := net.ListenPacket("udp", address+":"+strconv.Itoa(port)); err != nil {
+	socket, err := net.ListenPacket("udp", address+":"+strconv.Itoa(port))
+	if err != nil {
 		srv.Events.Error.Trigger(err)
 
 		return
-	} else {
-		srv.socketMutex.Lock()
-		srv.socket = socket
-		srv.socketMutex.Unlock()
 	}
+
+	srv.socketMutex.Lock()
+	srv.socket = socket
+	srv.socketMutex.Unlock()
 
 	srv.Events.Start.Trigger()
 	defer srv.Events.Shutdown.Trigger()

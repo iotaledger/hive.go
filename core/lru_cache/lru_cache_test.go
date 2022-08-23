@@ -1,15 +1,15 @@
-package lru_cache_test
+package lrucache_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/iotaledger/hive.go/core/lru_cache"
+	lrucache "github.com/iotaledger/hive.go/core/lru_cache"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 func TestLRUCache(t *testing.T) {
-	cache := lru_cache.NewLRUCache(5)
+	cache := lrucache.NewLRUCache(5)
 
 	cache.ComputeIfAbsent("test", func() interface{} {
 		return 12
@@ -89,7 +89,7 @@ func TestLRUCache(t *testing.T) {
 }
 
 func TestLRUCache_ComputeIfPresent(t *testing.T) {
-	cache := lru_cache.NewLRUCache(5)
+	cache := lrucache.NewLRUCache(5)
 	cache.Set(8, 9)
 
 	cache.ComputeIfPresent(8, func(value interface{}) interface{} {
@@ -124,7 +124,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 		called = true
 	}
 
-	cache := lru_cache.NewLRUCache(10, &lru_cache.LRUCacheOptions{
+	cache := lrucache.NewLRUCache(10, &lrucache.LRUCacheOptions{
 		EvictionCallback:  cb,
 		EvictionBatchSize: 5,
 		IdleTimeout:       0,
@@ -146,7 +146,7 @@ func TestBatchedEvictLRUCache(t *testing.T) {
 
 func TestLRUCache_Eviction(t *testing.T) {
 
-	cache := lru_cache.NewLRUCache(100, &lru_cache.LRUCacheOptions{
+	cache := lrucache.NewLRUCache(100, &lrucache.LRUCacheOptions{
 		EvictionCallback: func(key interface{}, value interface{}) {
 			evictedKey := key.(string)
 			evictedObj := value.(int)

@@ -13,9 +13,9 @@ func fixVersion(version string) string {
 
 	for _, prerelease := range []string{"rc", "alpha", "beta"} {
 		prerelease = "-" + prerelease
-		prerelease_dot := prerelease + "."
-		if !strings.Contains(ver, prerelease_dot) {
-			ver = strings.Replace(ver, prerelease, prerelease_dot, 1)
+		prereleaseDot := prerelease + "."
+		if !strings.Contains(ver, prereleaseDot) {
+			ver = strings.Replace(ver, prerelease, prereleaseDot, 1)
 		}
 	}
 

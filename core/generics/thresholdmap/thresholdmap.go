@@ -1,3 +1,4 @@
+//nolint:golint // golint throws false positives with generics here
 package thresholdmap
 
 import (

@@ -41,11 +41,11 @@ func (bytesFilter *BytesFilter) Add(bytes []byte) bool {
 		bytesFilter.mutex.Unlock()
 
 		return true
-	} else {
-		bytesFilter.mutex.Unlock()
-
-		return false
 	}
+
+	bytesFilter.mutex.Unlock()
+
+	return false
 }
 
 func (bytesFilter *BytesFilter) Contains(byteArray []byte) (exists bool) {

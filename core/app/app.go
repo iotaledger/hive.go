@@ -721,8 +721,8 @@ func forEachPlugin(plugins []*Plugin, f PluginForEachFunc) {
 }
 
 // ForEachPlugin calls the given PluginForEachFunc on each loaded plugin.
-func (n *App) ForEachPlugin(f PluginForEachFunc) {
-	forEachPlugin(n.plugins, f)
+func (a *App) ForEachPlugin(f PluginForEachFunc) {
+	forEachPlugin(a.plugins, f)
 }
 
 //

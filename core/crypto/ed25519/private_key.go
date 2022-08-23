@@ -11,7 +11,7 @@ import (
 type PrivateKey [PrivateKeySize]byte
 
 // PrivateKeyFromBytes creates a PrivateKey from the given bytes.
-func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, err error, consumedBytes int) {
+func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, consumedBytes int, err error) {
 	if len(bytes) < PrivateKeySize {
 		err = fmt.Errorf("bytes too short")
 

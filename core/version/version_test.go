@@ -1,3 +1,4 @@
+//nolint:golint // we don't care about these linters in test cases
 package version
 
 import (

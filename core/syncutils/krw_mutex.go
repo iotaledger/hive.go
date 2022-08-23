@@ -13,37 +13,37 @@ func NewKRWMutex() *KRWMutex {
 	}
 }
 
-func (krwMutex *KRWMutex) Register(key interface{}) (result *RWMutex) {
-	krwMutex.mutex.Lock()
+func (k *KRWMutex) Register(key interface{}) (result *RWMutex) {
+	k.mutex.Lock()
 
-	if val, exists := krwMutex.keyMutexConsumers[key]; exists {
-		krwMutex.keyMutexConsumers[key] = val + 1
-		result = krwMutex.keyMutexes[key]
+	if val, exists := k.keyMutexConsumers[key]; exists {
+		k.keyMutexConsumers[key] = val + 1
+		result = k.keyMutexes[key]
 	} else {
 		result = &RWMutex{}
 
-		krwMutex.keyMutexConsumers[key] = 1
-		krwMutex.keyMutexes[key] = result
+		k.keyMutexConsumers[key] = 1
+		k.keyMutexes[key] = result
 	}
 
-	krwMutex.mutex.Unlock()
+	k.mutex.Unlock()
 
 	return
 }
 
-func (kwrMutex *KRWMutex) Free(key interface{}) {
-	kwrMutex.mutex.Lock()
+func (k *KRWMutex) Free(key interface{}) {
+	k.mutex.Lock()
 
-	if val, exists := kwrMutex.keyMutexConsumers[key]; exists {
+	if val, exists := k.keyMutexConsumers[key]; exists {
 		if val == 1 {
-			delete(kwrMutex.keyMutexConsumers, key)
-			delete(kwrMutex.keyMutexes, key)
+			delete(k.keyMutexConsumers, key)
+			delete(k.keyMutexes, key)
 		} else {
-			kwrMutex.keyMutexConsumers[key] = val - 1
+			k.keyMutexConsumers[key] = val - 1
 		}
 	} else {
 		panic("trying to free non-existent key")
 	}
 
-	kwrMutex.mutex.Unlock()
+	k.mutex.Unlock()
 }
