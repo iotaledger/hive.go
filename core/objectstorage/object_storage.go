@@ -920,6 +920,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 			}
 
 			// advance to the next "level" of partitions
+			//nolint:makezero // false positive
 			mapStack = append(mapStack, subMap.(map[string]interface{}))
 			traversedPartitions = append(traversedPartitions, stringKey)
 
