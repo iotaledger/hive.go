@@ -31,7 +31,7 @@ func tempFile(t *testing.T, pattern string) (string, *os.File) {
 
 func TestFetchGlobalFlags(t *testing.T) {
 	flag.String("A", "321", "test")
-	flag.Set("A", "321")
+	require.NoError(t, flag.Set("A", "321"))
 
 	config := New()
 
@@ -45,7 +45,7 @@ func TestFetchGlobalFlags(t *testing.T) {
 func TestFetchFlagset(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.String("A", "321", "test")
-	testFlagSet.Set("A", "321")
+	require.NoError(t, testFlagSet.Set("A", "321"))
 
 	flag.Parse()
 	config := New()
@@ -60,7 +60,7 @@ func TestFetchFlagset(t *testing.T) {
 func TestFetchEnvVars(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.String("B", "322", "test")
-	testFlagSet.Set("B", "322")
+	require.NoError(t, testFlagSet.Set("B", "322"))
 
 	os.Setenv("TEST_B", "321")
 
@@ -191,9 +191,9 @@ func TestMergeParameters(t *testing.T) {
 
 func TestSaveConfigFile(t *testing.T) {
 	config1 := New()
-	config1.Set("test.integer", 321)
-	config1.Set("test.slice", []string{"string1", "string2", "string3"})
-	config1.Set("test.bool.ignore", true)
+	require.NoError(t, config1.Set("test.integer", 321))
+	require.NoError(t, config1.Set("test.slice", []string{"string1", "string2", "string3"}))
+	require.NoError(t, config1.Set("test.bool.ignore", true))
 
 	jsonConfFileName, _ := tempFile(t, "config*.json")
 	err := config1.StoreFile(jsonConfFileName, []string{"test.bool.ignore"})

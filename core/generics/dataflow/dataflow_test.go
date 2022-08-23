@@ -6,6 +6,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Benchmark(b *testing.B) {
@@ -26,7 +27,7 @@ func Benchmark(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		dataFlow1.Run(i)
+		require.NoError(b, dataFlow1.Run(i))
 	}
 }
 
@@ -86,6 +87,6 @@ func TestDataFlow_WithDoneCallback(t *testing.T) {
 	})
 
 	fmt.Println("START")
-	dataFlow2.Run(1)
+	require.NoError(t, dataFlow2.Run(1))
 	fmt.Println("END")
 }

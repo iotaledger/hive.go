@@ -798,8 +798,10 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 		for i := 0; i < count; i++ {
 			testKey := make([]byte, 49)
 			testValue := make([]byte, 156)
-			rand.Read(testKey)
-			rand.Read(testValue)
+			_, err = rand.Read(testKey)
+			require.NoError(t, err)
+			_, err = rand.Read(testValue)
+			require.NoError(t, err)
 			err = batch.Set(testKey, testValue)
 			require.NoError(t, err, "used db: %s", dbImplementation)
 		}

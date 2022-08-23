@@ -120,13 +120,15 @@ func GetIterDirection(iterDirection ...IterDirection) IterDirection {
 func Copy(source KVStore, target KVStore) error {
 
 	var innerErr error
-	source.Iterate(EmptyPrefix, func(key, value Value) bool {
+	if err := source.Iterate(EmptyPrefix, func(key, value Value) bool {
 		if err := target.Set(key, value); err != nil {
 			innerErr = err
 		}
 
 		return innerErr == nil
-	})
+	}); err != nil {
+		return err
+	}
 
 	if innerErr != nil {
 		return innerErr
@@ -152,7 +154,7 @@ func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
 	}
 
 	var innerErr error
-	source.Iterate(EmptyPrefix, func(key, value Value) bool {
+	if err := source.Iterate(EmptyPrefix, func(key, value Value) bool {
 		currentBatchSize++
 
 		if err := batchedMutation.Set(key, value); err != nil {
@@ -173,7 +175,11 @@ func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
 		}
 
 		return innerErr == nil
-	})
+	}); err != nil {
+		batchedMutation.Cancel()
+
+		return err
+	}
 
 	if innerErr != nil {
 		batchedMutation.Cancel()

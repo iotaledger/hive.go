@@ -56,6 +56,7 @@ func NewDB(store kvstore.KVStore) (*DB, error) {
 
 // Close closes the peer database.
 func (db *DB) Close() {
+	// ToDo: add waitgroup to wait until the expirer is done
 	close(db.quit)
 }
 
@@ -105,10 +106,12 @@ func (db *DB) setInt64(key []byte, n int64) error {
 func (db *DB) expirer() {
 	tick := time.NewTicker(cleanupInterval)
 	defer tick.Stop()
+
 	for {
 		select {
 		case <-tick.C:
-			db.expireNodes()
+			// ToDo: add callback to DB to handle errors?
+			_ = db.expireNodes()
 		case <-db.quit:
 			return
 		}
@@ -125,6 +128,7 @@ func (db *DB) expireNodes() error {
 		return err
 	}
 
+	var innerErr error
 	err = db.store.Iterate(kvstore.KeyPrefix(dbNodePrefix), func(key kvstore.Key, value kvstore.Value) bool {
 		var id identity.ID
 		copy(id[:], key[len(dbNodePrefix):])
@@ -137,21 +141,39 @@ func (db *DB) expireNodes() error {
 			}
 			if t < threshold {
 				// copy the key to be sure
-				batchedMuts.Delete(append([]byte{}, key...))
+				if err := batchedMuts.Delete(append([]byte{}, key...)); err != nil {
+					innerErr = err
+
+					return false
+				}
 			}
+
 		case bytes.HasSuffix(key, []byte(dbNodePing)):
 			t := parseInt64(value)
 			if t < threshold {
 				// copy the key to be sure
-				batchedMuts.Delete(append([]byte{}, key...))
+				if err := batchedMuts.Delete(append([]byte{}, key...)); err != nil {
+					innerErr = err
+
+					return false
+				}
 			}
 		}
 
 		return true
 	})
 	if err != nil {
+		batchedMuts.Cancel()
+
 		return err
 	}
+
+	if innerErr != nil {
+		batchedMuts.Cancel()
+
+		return innerErr
+	}
+
 	err = batchedMuts.Commit()
 	if err != nil {
 		return err

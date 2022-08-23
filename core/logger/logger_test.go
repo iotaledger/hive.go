@@ -126,12 +126,12 @@ func TestInitGlobalAfterError(t *testing.T) {
 	cfg.Level = "invalid"
 
 	c := configuration.New()
-	c.Set(ConfigurationKeyLevel, cfg.Level)
-	c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller)
-	c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace)
-	c.Set(ConfigurationKeyEncoding, cfg.Encoding)
-	c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths)
-	c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents)
+	require.NoError(t, c.Set(ConfigurationKeyLevel, cfg.Level))
+	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller))
+	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace))
+	require.NoError(t, c.Set(ConfigurationKeyEncoding, cfg.Encoding))
+	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths))
+	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents))
 	require.Error(t, InitGlobalLogger(c))
 
 	initGlobal(t, defaultCfg)()
@@ -139,12 +139,12 @@ func TestInitGlobalAfterError(t *testing.T) {
 
 func TestInitGlobalTwice(t *testing.T) {
 	c := configuration.New()
-	c.Set(ConfigurationKeyLevel, defaultCfg.Level)
-	c.Set(ConfigurationKeyDisableCaller, defaultCfg.DisableCaller)
-	c.Set(ConfigurationKeyDisableStacktrace, defaultCfg.DisableStacktrace)
-	c.Set(ConfigurationKeyEncoding, defaultCfg.Encoding)
-	c.Set(ConfigurationKeyOutputPaths, defaultCfg.OutputPaths)
-	c.Set(ConfigurationKeyDisableEvents, defaultCfg.DisableEvents)
+	require.NoError(t, c.Set(ConfigurationKeyLevel, defaultCfg.Level))
+	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, defaultCfg.DisableCaller))
+	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, defaultCfg.DisableStacktrace))
+	require.NoError(t, c.Set(ConfigurationKeyEncoding, defaultCfg.Encoding))
+	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, defaultCfg.OutputPaths))
+	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, defaultCfg.DisableEvents))
 
 	require.NoError(t, InitGlobalLogger(c))
 	assert.Errorf(t, InitGlobalLogger(c), ErrGlobalLoggerAlreadyInitialized.Error())
@@ -152,12 +152,12 @@ func TestInitGlobalTwice(t *testing.T) {
 
 func initGlobal(t require.TestingT, cfg Config) func() {
 	c := configuration.New()
-	c.Set(ConfigurationKeyLevel, cfg.Level)
-	c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller)
-	c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace)
-	c.Set(ConfigurationKeyEncoding, cfg.Encoding)
-	c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths)
-	c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents)
+	require.NoError(t, c.Set(ConfigurationKeyLevel, cfg.Level))
+	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller))
+	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace))
+	require.NoError(t, c.Set(ConfigurationKeyEncoding, cfg.Encoding))
+	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths))
+	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents))
 
 	err := InitGlobalLogger(c)
 	require.NoError(t, err, "Failed to init global logger.")
