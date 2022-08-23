@@ -56,14 +56,14 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			sliceValue := sliceFromArray(value.Elem())
 			sliceValueType := sliceValue.Type()
 			if sliceValueType.AssignableTo(bytesType) {
-				innerTs, ok := api.getTypeSettings(valueType)
+				innerTS, ok := api.getTypeSettings(valueType)
 				if !ok {
 					return errors.Errorf("missing type settings for interface %s", valueType)
 				}
 
 				mapKey := mapSliceArrayDefaultKey
-				if innerTs.mapKey != nil {
-					mapKey = *innerTs.mapKey
+				if innerTS.mapKey != nil {
+					mapKey = *innerTS.mapKey
 				}
 
 				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
