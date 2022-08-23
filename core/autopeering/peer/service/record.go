@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"golang.org/x/xerrors"
@@ -81,7 +82,7 @@ func (s *Record) String() string {
 func FromProto(in *pb.ServiceMap) (*Record, error) {
 	m := in.GetMap()
 	if m == nil {
-		return nil, nil
+		return nil, errors.New("service map is nil")
 	}
 
 	services := New()

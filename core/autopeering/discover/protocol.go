@@ -486,7 +486,13 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 }
 
 func (p *Protocol) handlePong(fromAddr *net.UDPAddr, from *identity.Identity, m *pb.Pong) {
-	services, _ := service.FromProto(m.GetServices())
+	services, err := service.FromProto(m.GetServices())
+	if err != nil {
+		p.log.Warnf("failed to get services from protocol: %v", err)
+
+		return
+	}
+
 	peering := services.Get(service.PeeringKey)
 	if peering == nil {
 		p.log.Warn("invalid services")

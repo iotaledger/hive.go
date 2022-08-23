@@ -109,6 +109,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if services.Get(service.PeeringKey) == nil {
 		return nil, ErrNeedsPeeringService
 	}
