@@ -40,7 +40,7 @@ func createParameter(defaultVal any, usage string, name string) *Parameter {
 		defaultValueStr = fmt.Sprintf("\"%s\"", v)
 		typeName = "string"
 	case time.Duration:
-		defaultValue = fmt.Sprintf("%s", durationShortened(v))
+		defaultValue = durationShortened(v)
 		defaultValueStr = fmt.Sprintf("\"%s\"", durationShortened(v))
 		typeName = "string"
 	case []string:

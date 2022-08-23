@@ -153,7 +153,7 @@ type CachedObjects[T StorableObject] []*CachedObject[T]
 // that do not exist or are deleted, sets default type value for missing elements.
 func (c CachedObjects[T]) Unwrap(skip ...bool) (unwrappedChildBranches []T) {
 	skipMissing := false
-	if len(skip) > 0 && skip[0] == true {
+	if len(skip) > 0 && skip[0] {
 		skipMissing = true
 	}
 	unwrappedChildBranches = make([]T, 0, len(c))

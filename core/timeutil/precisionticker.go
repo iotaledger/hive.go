@@ -85,7 +85,7 @@ func (p *PrecisionTicker) run() {
 // waitIfNecessary waits for the next tick if the observed execution time is smaller than the expected execution time by
 // a margin that is larger than the minimum time precision.
 func (p *PrecisionTicker) waitIfNecessary(start time.Time) {
-	if tickerOffset := start.Add(time.Duration(p.increaseIterations()) * p.rate).Sub(time.Now()); tickerOffset > p.options.minTimePrecision {
+	if tickerOffset := time.Until(start.Add(time.Duration(p.increaseIterations()) * p.rate)); tickerOffset > p.options.minTimePrecision {
 		time.Sleep(tickerOffset)
 	}
 }
