@@ -1,6 +1,7 @@
 package netutil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -28,6 +29,12 @@ func TestIsIPv4(t *testing.T) {
 			assert.Equal(t, IsIPv4(tt.in), tt.out)
 		})
 	}
+}
+
+func TestGetPublicIP(t *testing.T) {
+	ip, err := GetPublicIP(context.Background(), false)
+	require.NoError(t, err)
+	require.NotNil(t, ip)
 }
 
 func TestIsTemporaryError(t *testing.T) {

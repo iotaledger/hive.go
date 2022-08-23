@@ -3,6 +3,7 @@ package netutil
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -28,14 +29,22 @@ func IsValidPort(port int) bool {
 }
 
 // GetPublicIP queries the ipify API for the public IP address.
-func GetPublicIP(preferIPv6 bool) (net.IP, error) {
+func GetPublicIP(ctx context.Context, preferIPv6 bool) (net.IP, error) {
 	var url string
 	if preferIPv6 {
 		url = "https://api6.ipify.org"
 	} else {
 		url = "https://api.ipify.org"
 	}
-	resp, err := http.Get(url)
+
+	// construct request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build http request: %w", err)
+	}
+
+	// make the request
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get failed: %w", err)
 	}
