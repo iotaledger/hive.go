@@ -4,10 +4,10 @@ package marshalutil
 const BoolSize = 1
 
 // WriteBool writes a marshaled bool value to the internal buffer.
-func (util *MarshalUtil) WriteBool(bool bool) *MarshalUtil {
+func (util *MarshalUtil) WriteBool(b bool) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(1)
 
-	if bool {
+	if b {
 		util.bytes[util.writeOffset] = 1
 	} else {
 		util.bytes[util.writeOffset] = 0

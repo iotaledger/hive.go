@@ -10,6 +10,7 @@ type StorableObject interface {
 
 	// Marks the object to be deleted from the persistence layer.
 	// Returns the former state of the boolean.
+	//nolint:predeclared // lets keep this for now
 	Delete(delete ...bool) (wasSet bool)
 
 	// Returns true if the object was marked as deleted.

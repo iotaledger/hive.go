@@ -12,7 +12,7 @@ type serverEvents struct {
 	Error    *event.Event[error]
 }
 
-func newServerEvents() (new *serverEvents) {
+func newServerEvents() *serverEvents {
 	return &serverEvents{
 		Start:    event.New[*StartEvent](),
 		Shutdown: event.New[*ShutdownEvent](),

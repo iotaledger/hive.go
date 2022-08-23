@@ -42,12 +42,12 @@ func (ab *AtomicBool) SetTo(yes bool) {
 
 // SetToIf sets the Boolean to new only if the Boolean matches the old
 // Returns whether the set was done.
-func (ab *AtomicBool) SetToIf(old, new bool) (set bool) {
+func (ab *AtomicBool) SetToIf(oldBool, newBool bool) (set bool) {
 	var o, n int32
-	if old {
+	if oldBool {
 		o = 1
 	}
-	if new {
+	if newBool {
 		n = 1
 	}
 

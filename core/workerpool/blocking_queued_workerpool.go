@@ -58,7 +58,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 }
 
 // CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
-func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) (new *BlockingQueueWorkerPoolTask) {
+func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *BlockingQueueWorkerPoolTask {
 	b.IncreasePendingTasksCounter()
 
 	var stackTrace string

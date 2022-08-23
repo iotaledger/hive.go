@@ -19,7 +19,7 @@ type EventsStruct struct {
 	AnyMsg     *event.Event[*LogEvent]
 }
 
-func newEventsStruct() (new *EventsStruct) {
+func newEventsStruct() *EventsStruct {
 	return &EventsStruct{
 		DebugMsg:   event.New[*LogEvent](),
 		InfoMsg:    event.New[*LogEvent](),

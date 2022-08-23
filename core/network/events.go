@@ -10,7 +10,7 @@ type ManagedConnectionEvents struct {
 	Error       *event.Event[error]
 }
 
-func newManagedConnectionEvents() (new *ManagedConnectionEvents) {
+func newManagedConnectionEvents() *ManagedConnectionEvents {
 	return &ManagedConnectionEvents{
 		ReceiveData: event.New[*ReceivedDataEvent](),
 		Close:       event.New[*CloseEvent](),

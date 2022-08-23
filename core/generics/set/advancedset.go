@@ -20,13 +20,13 @@ type AdvancedSet[T comparable] struct {
 }
 
 // NewAdvancedSet creates a new AdvancedSet with given elements.
-func NewAdvancedSet[T comparable](elements ...T) (new *AdvancedSet[T]) {
-	new = &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
+func NewAdvancedSet[T comparable](elements ...T) *AdvancedSet[T] {
+	a := &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
-		new.Set(element, types.Void)
+		a.Set(element, types.Void)
 	}
 
-	return new
+	return a
 }
 
 // IsEmpty returns true if the set is empty.

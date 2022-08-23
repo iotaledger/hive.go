@@ -128,7 +128,7 @@ type ChildBranch struct {
 }
 
 // NewChildBranch return a new ChildBranch reference from the named parent to the named child.
-func NewChildBranch(parentBranchID, childBranchID types.Identifier) (new *ChildBranch) {
+func NewChildBranch(parentBranchID, childBranchID types.Identifier) *ChildBranch {
 	return NewStorableReference[ChildBranch](parentBranchID, childBranchID)
 }
 

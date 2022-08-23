@@ -21,7 +21,7 @@ func init() {
 type Identifier [IdentifierLength]byte
 
 // NewIdentifier returns a new Identifier for the given data.
-func NewIdentifier(data []byte) (new Identifier) {
+func NewIdentifier(data []byte) Identifier {
 	return blake2b.Sum256(data)
 }
 

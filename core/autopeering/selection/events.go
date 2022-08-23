@@ -19,7 +19,7 @@ type Events struct {
 	Dropped *event.Event[*DroppedEvent]
 }
 
-func newEvents() (new *Events) {
+func newEvents() *Events {
 	return &Events{
 		SaltUpdated:     event.New[*SaltUpdatedEvent](),
 		OutgoingPeering: event.New[*PeeringEvent](),
