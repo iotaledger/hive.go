@@ -266,6 +266,7 @@ func (api *API) encodeStructFields(
 				s.WritePayloadLength(0, func(err error) error {
 					return errors.Wrapf(err,
 						"failed to write zero length for an optional struct field %s to serializer",
+						//nolint:scopelint // false positive
 						sField.name,
 					)
 				})
@@ -279,6 +280,7 @@ func (api *API) encodeStructFields(
 			s.WritePayloadLength(len(fieldBytes), func(err error) error {
 				return errors.Wrapf(err,
 					"failed to write length for an optional struct field %s to serializer",
+					//nolint:scopelint // false positive
 					sField.name,
 				)
 			})
@@ -292,6 +294,7 @@ func (api *API) encodeStructFields(
 		s.WriteBytes(fieldBytes, func(err error) error {
 			return errors.Wrapf(err,
 				"failed to write serialized struct field bytes to serializer, field=%s",
+				//nolint:scopelint // false positive
 				sField.name,
 			)
 		})
