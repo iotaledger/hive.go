@@ -82,6 +82,7 @@ func (l *logEntry) String() string {
 func LogAccess(fileName string, commandsFilter ...debug.Command) Option {
 	return func(args *Options) {
 		// open log file
+		//nolint:nosnakecase // os package uses underlines in constants
 		logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		writer := bufio.NewWriter(logFile)
 		if err != nil {

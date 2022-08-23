@@ -59,7 +59,7 @@ func (id *ID) FromBytes(bytes []byte) error {
 
 // String returns a shortened version of the ID as a base58 encoded string.
 func (id ID) String() string {
-	if idAlias, exists := _idAlias[id]; exists {
+	if idAlias, exists := idAliases[id]; exists {
 		return "ID(" + idAlias + ")"
 	}
 
@@ -112,16 +112,16 @@ func RandomID() (id ID, err error) {
 	return
 }
 
-// _idAliases contains a list of aliases registered for a set of IDs.
-var _idAlias = make(map[ID]string)
+// idAliases contains a list of aliases registered for a set of IDs.
+var idAliases = make(map[ID]string)
 
 // RegisterIDAlias registers an alias that will modify the String() output of the ID to show a human
 // readable string instead of the base58 encoded version of itself.
 func RegisterIDAlias(id ID, alias string) {
-	_idAlias[id] = alias
+	idAliases[id] = alias
 }
 
 // UnregisterIDAliases removes all aliases registered through the RegisterIDAlias function.
 func UnregisterIDAliases() {
-	_idAlias = make(map[ID]string)
+	idAliases = make(map[ID]string)
 }

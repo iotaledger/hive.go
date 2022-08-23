@@ -1,3 +1,4 @@
+//nolint:nosnakecase // os package uses underlines in constants
 package ioutils
 
 import (

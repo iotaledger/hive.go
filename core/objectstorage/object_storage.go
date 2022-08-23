@@ -867,13 +867,13 @@ func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
-	_cachedObject, cachedObjectExists := objectStorage.cachedObjects[string(key)]
+	cachedObject, cachedObjectExists := objectStorage.cachedObjects[string(key)]
 	if cachedObjectExists {
 		delete(objectStorage.cachedObjects, string(key))
 
 		objectStorage.size--
 
-		cachedObject := _cachedObject.(*CachedObjectImpl)
+		cachedObject := cachedObject.(*CachedObjectImpl)
 		storableObject := cachedObject.Get()
 		if !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 			objectStorage.Events.ObjectEvicted.Trigger(key, cachedObject.Get())
