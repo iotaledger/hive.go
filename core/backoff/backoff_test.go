@@ -1,6 +1,7 @@
 package backoff
 
 import (
+	"context"
 	"errors"
 	"math"
 	"sync"
@@ -156,7 +157,7 @@ func BenchmarkBackOff(b *testing.B) {
 		MaxRetries(b.N),
 		MaxInterval(time.Microsecond),
 		Timeout(time.Now().Add(time.Minute)),
-		Cancel(nil),
+		Cancel(context.Background()),
 		Jitter(0.5),
 	)
 

@@ -3,7 +3,7 @@ package test
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -38,7 +38,7 @@ const (
 func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbBadger:
-		dir, err := ioutil.TempDir("", "database.badger")
+		dir, err := os.MkdirTemp("", "database.badger")
 		require.NoError(t, err)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
@@ -49,7 +49,7 @@ func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 		return mapdb.NewMapDB().WithRealm(realm)
 
 	case dbPebble:
-		dir, err := ioutil.TempDir("", "database.pebble")
+		dir, err := os.MkdirTemp("", "database.pebble")
 		require.NoError(t, err)
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -151,7 +150,7 @@ func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]st
 		return fmt.Errorf("unable to marshal config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(filePath, data, 0666); err != nil {
+	if err := os.WriteFile(filePath, data, 0666); err != nil {
 		return fmt.Errorf("unable to save config file: %w", err)
 	}
 

@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"sync"
 	"testing"
@@ -65,7 +65,7 @@ func TestNewRootLogger(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			temp, err := ioutil.TempFile("", "hive-logger-test")
+			temp, err := os.CreateTemp("", "hive-logger-test")
 			require.NoError(t, err, "Failed to create temp file.")
 			defer os.Remove(temp.Name())
 
@@ -84,7 +84,7 @@ func TestNewRootLogger(t *testing.T) {
 }
 
 func TestNewLogger(t *testing.T) {
-	temp, err := ioutil.TempFile("", "hive-logger-test")
+	temp, err := os.CreateTemp("", "hive-logger-test")
 	require.NoError(t, err, "Failed to create temp file.")
 	defer os.Remove(temp.Name())
 
@@ -171,7 +171,7 @@ func initGlobal(t require.TestingT, cfg Config) func() {
 }
 
 func getLogs(t require.TestingT, file *os.File) string {
-	byteContents, err := ioutil.ReadAll(file)
+	byteContents, err := io.ReadAll(file)
 	require.NoError(t, err, "Couldn't read log contents from file.")
 
 	return string(byteContents)

@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -18,7 +17,7 @@ import (
 )
 
 func tempFile(t *testing.T, pattern string) (string, *os.File) {
-	tmpfile, err := ioutil.TempFile("", pattern)
+	tmpfile, err := os.CreateTemp("", pattern)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

@@ -89,7 +89,7 @@ func newThreeLevelObj(id1 byte, id2 byte, id3Value byte) *threeLevelObj {
 	}
 }
 
-func (t threeLevelObj) Update(object objectstorage.StorableObject) {
+func (t *threeLevelObj) Update(object objectstorage.StorableObject) {
 	if obj, ok := object.(*threeLevelObj); !ok {
 		panic("invalid testObject passed to threeLevelObj.Update()")
 	} else {
@@ -97,7 +97,7 @@ func (t threeLevelObj) Update(object objectstorage.StorableObject) {
 	}
 }
 
-func (t threeLevelObj) ObjectStorageKey() []byte {
+func (t *threeLevelObj) ObjectStorageKey() []byte {
 	var b bytes.Buffer
 	b.WriteByte(t.id)
 	b.WriteByte(t.id2)
@@ -106,11 +106,11 @@ func (t threeLevelObj) ObjectStorageKey() []byte {
 	return b.Bytes()
 }
 
-func (t threeLevelObj) ObjectStorageValue() []byte {
+func (t *threeLevelObj) ObjectStorageValue() []byte {
 	return []byte{t.id3}
 }
 
-func (t threeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
+func (t *threeLevelObj) UnmarshalObjectStorageValue(data []byte) (int, error) {
 	t.id3 = data[0]
 
 	return len(data), nil

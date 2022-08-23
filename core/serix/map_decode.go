@@ -128,10 +128,8 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), false))
 	case reflect.Uint64:
 		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, false))
-	case reflect.Float32:
-		return api.mapDecodeFloat(value, valueType, mapVal, 32)
-	case reflect.Float64:
-		return api.mapDecodeFloat(value, valueType, mapVal, 64)
+	case reflect.Float32, reflect.Float64:
+		return api.mapDecodeFloat(value, valueType, mapVal)
 	default:
 	}
 
@@ -193,7 +191,7 @@ func (api *API) mapDecodeNum(value reflect.Value, valueType reflect.Type, parser
 	return nil
 }
 
-func (api *API) mapDecodeFloat(value reflect.Value, valueType reflect.Type, mapVal any, bitSize int) error {
+func (api *API) mapDecodeFloat(value reflect.Value, valueType reflect.Type, mapVal any) error {
 	addrValue := value.Addr()
 	bitSize, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
 	addrValue = addrValue.Convert(addrTypeToConvert)
