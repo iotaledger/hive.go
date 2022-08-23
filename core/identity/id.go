@@ -98,10 +98,12 @@ func ParseID(s string) (ID, error) {
 	return id, nil
 }
 
-// RandomID creates a random id which can for example be used in unit tests.
-func RandomID() (id ID, err error) {
+// RandomIDInsecure creates a random id which can for example be used in unit tests.
+// The result is not cryptographically secure.
+func RandomIDInsecure() (id ID, err error) {
 	// generate a random sequence of bytes
 	idBytes := make([]byte, sha256.Size)
+	//nolint:gosec // we do not care about weak random numbers here
 	if _, err = rand.Read(idBytes); err != nil {
 		return
 	}

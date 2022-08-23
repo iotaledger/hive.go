@@ -195,7 +195,7 @@ func TestSaveConfigFile(t *testing.T) {
 	require.NoError(t, config1.Set("test.bool.ignore", true))
 
 	jsonConfFileName, _ := tempFile(t, "config*.json")
-	err := config1.StoreFile(jsonConfFileName, []string{"test.bool.ignore"})
+	err := config1.StoreFile(jsonConfFileName, 0o600, []string{"test.bool.ignore"})
 	require.NoError(t, err)
 
 	config2 := New()

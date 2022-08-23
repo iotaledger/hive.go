@@ -3,6 +3,7 @@ package profiling
 import (
 	"net/http"
 	// import pprof.
+	//nolint:gosec // ToDo: register handlers ourselves.
 	_ "net/http/pprof"
 	"runtime"
 

@@ -87,6 +87,7 @@ func (m *manager) peersToQuery() []*mpeer {
 	}
 
 	// select a random peer from the heaviest ones
+	//nolint:gosec // we do not care about weak random numbers here
 	r.Move(rand.Intn(r.Len()))
 
 	return []*mpeer{latest, r.Value.(*mpeer)}

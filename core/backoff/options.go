@@ -93,6 +93,7 @@ func Jitter(randomFactor float64) Option {
 		}
 		delta := randomFactor * float64(duration)
 
+		//nolint:gosec // we do not care about weak random numbers here
 		return time.Duration(float64(duration) - rand.Float64()*delta)
 	})
 }

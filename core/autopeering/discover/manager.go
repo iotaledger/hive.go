@@ -178,6 +178,7 @@ func (m *manager) deletePeer(id identity.ID) {
 	// add a random replacement, if available
 	if len(m.replacements) > 0 {
 		var r *mpeer
+		//nolint:gosec // we do not care about weak random numbers here
 		m.replacements, r = deletePeer(m.replacements, rand.Intn(len(m.replacements)))
 		m.active = pushPeer(m.active, r, maxManaged)
 	}

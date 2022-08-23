@@ -116,6 +116,7 @@ func CheckUDP(local, remote *net.UDPAddr, checkAddress bool, checkPort bool) err
 
 func generateNonce() []byte {
 	b := make([]byte, 8)
+	//nolint:gosec // we do not care about weak random numbers here
 	binary.BigEndian.PutUint64(b, rand.Uint64())
 
 	return b

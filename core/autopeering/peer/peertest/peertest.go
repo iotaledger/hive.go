@@ -1,4 +1,6 @@
 // Package peertest provides utilities for writing tests with the peer package.
+//
+//nolint:gosec // we don't care about these linters in test cases
 package peertest
 
 import (

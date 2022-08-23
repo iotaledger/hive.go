@@ -106,7 +106,7 @@ func (c *Configuration) LoadFile(filePath string) error {
 
 // StoreFile stores the current config to a JSON or YAML file.
 // ignoreSettingsAtStore will not be stored to the file.
-func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]string) error {
+func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSettingsAtStore ...[]string) error {
 
 	settings := c.config.Raw()
 	if len(ignoreSettingsAtStore) > 0 {
@@ -150,7 +150,8 @@ func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]st
 		return fmt.Errorf("unable to marshal config file: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0666); err != nil {
+	//nolint:gosec // access rights
+	if err := os.WriteFile(filePath, data, perm); err != nil {
 		return fmt.Errorf("unable to save config file: %w", err)
 	}
 

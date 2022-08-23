@@ -210,6 +210,7 @@ func (rmap *RandomMap) Keys() (result []interface{}) {
 
 // randomKey gets a random key from the map.
 func (rmap *RandomMap) randomKey() (result interface{}) {
+	//nolint:gosec // we do not care about weak random numbers here
 	return rmap.keys[rand.Intn(rmap.size)]
 }
 

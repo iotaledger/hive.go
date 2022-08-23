@@ -277,6 +277,7 @@ func randomSubset(peers []*Peer, m int) []*Peer {
 
 	result := make([]*Peer, 0, m)
 	for i, p := range peers {
+		//nolint:gosec // we do not care about weak random numbers here
 		if rand.Intn(len(peers)-i) < m-len(result) {
 			result = append(result, p)
 		}
