@@ -246,7 +246,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 			"Max":   "Beer",
 		},
 
-		// assign default value inside of tag (is overriden by default value of tag)
+		// assign default value inside of tag (is overridden by default value of tag)
 		Batman: []string{"a", "b", "c"},
 
 		Ottos: []Otto{

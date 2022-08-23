@@ -337,7 +337,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.
 // During the encoding process serix also performs the validation if such option was provided.
-// Use the options list opts to customize the serialization behaviour.
+// Use the options list opts to customize the serialization behavior.
 // To ensure deterministic serialization serix automatically applies lexical ordering for maps.
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
 	value := reflect.ValueOf(obj)
@@ -364,7 +364,7 @@ func (api *API) JSONEncode(ctx context.Context, obj any, opts ...Option) ([]byte
 
 // MapEncode serializes the provided object obj into an ordered map.
 // serix traverses the object recursively and serializes everything based on the type.
-// Use the options list opts to customize the serialization behaviour.
+// Use the options list opts to customize the serialization behavior.
 func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {

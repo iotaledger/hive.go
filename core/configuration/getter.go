@@ -169,7 +169,7 @@ func (c *Configuration) Unmarshal(path string, o interface{}) error {
 
 // UnmarshalWithConf is like Unmarshal but takes configuration params in UnmarshalConf.
 // See mitchellh/mapstructure's DecoderConfig for advanced customization
-// of the unmarshal behaviour.
+// of the unmarshal behavior.
 func (c *Configuration) UnmarshalWithConf(path string, o interface{}, uc koanf.UnmarshalConf) error {
 	return c.config.UnmarshalWithConf(strings.ToLower(path), o, uc)
 }
