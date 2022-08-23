@@ -188,11 +188,6 @@ func (s *mapDB) Batched() (kvstore.BatchedMutations, error) {
 	}, nil
 }
 
-type kvtuple struct {
-	key   kvstore.Key
-	value kvstore.Value
-}
-
 // batchedMutations is a wrapper to do a batched update on a mapDB.
 type batchedMutations struct {
 	sync.Mutex
@@ -200,9 +195,6 @@ type batchedMutations struct {
 	setOperations    map[string]kvstore.Value
 	deleteOperations map[string]types.Empty
 	closed           *atomic.Bool
-
-	sets    []kvtuple
-	deletes []kvtuple
 }
 
 func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
