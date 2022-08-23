@@ -132,71 +132,52 @@ func ValueFromBytes(valueBytes []byte) (value Value, consumedBytes int, err erro
 }
 
 // ValueFromMarshalUtil unmarshals a Value using a MarshalUtil (for easier unmarshaling).
-func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (value Value, err error) {
+func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (Value, error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
-		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
-
-		return
+		return nil, xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
 	}
 	marshalUtil.ReadSeek(-1)
 
+	var value Value
 	switch valueType {
 	case Int8ValueType:
 		if value, err = Int8ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int8Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Int8Value: %w", err)
 		}
 	case Int16ValueType:
 		if value, err = Int16ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int16Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Int16Value: %w", err)
 		}
 	case Int32ValueType:
 		if value, err = Int32ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int32Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Int32Value: %w", err)
 		}
 	case Int64ValueType:
 		if value, err = Int64ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int64Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Int64Value: %w", err)
 		}
 	case Uint8ValueType:
 		if value, err = Uint8ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint8Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Uint8Value: %w", err)
 		}
 	case Uint16ValueType:
 		if value, err = Uint16ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint16Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Uint16Value: %w", err)
 		}
 	case Uint32ValueType:
 		if value, err = Uint32ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint32Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Uint32Value: %w", err)
 		}
 	case Uint64ValueType:
 		if value, err = Uint64ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint64Value: %w", err)
-
-			return
+			return nil, xerrors.Errorf("failed to parse Uint64Value: %w", err)
 		}
 	default:
-		err = xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
-
-		return
+		return nil, xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
 	}
 
-	return
+	return value, nil
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

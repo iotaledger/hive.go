@@ -140,11 +140,12 @@ func (cache *LRUCache) ComputeIfAbsent(key interface{}, callback func() interfac
 // The result of the callback is written back into the cache.
 // If the callback returns nil the entry is removed from the cache.
 // Returns the updated entry.
-func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value interface{}) interface{}) (result interface{}) {
+func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value interface{}) interface{}) interface{} {
 	keyMutex := cache.krwMutex.Register(key)
 
 	keyMutex.RLock()
 	cache.mutex.RLock()
+	var result any
 	if entry, exists := cache.directory[key]; exists {
 		cache.mutex.RUnlock()
 		keyMutex.RUnlock()
@@ -182,7 +183,7 @@ func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value int
 
 	cache.krwMutex.Free(key)
 
-	return
+	return result
 }
 
 func (cache *LRUCache) Contains(key interface{}) (result bool) {

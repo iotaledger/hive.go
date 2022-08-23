@@ -58,7 +58,7 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 			panic("tried to modify a shutdown TimedQueue")
 		}
 
-		return
+		return nil
 	}
 
 	// acquire locks
@@ -87,7 +87,7 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 	// signal waiting goroutine to wake up
 	t.waitCond.Signal()
 
-	return
+	return addedElement
 }
 
 // Size returns the amount of elements that are currently enqueued in this queue.

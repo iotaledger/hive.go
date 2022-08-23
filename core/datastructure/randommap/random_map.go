@@ -79,9 +79,11 @@ func (rmap *RandomMap) Get(key interface{}) (result interface{}, exists bool) {
 }
 
 // Delete removes the mapping for the specified key in the map.
-func (rmap *RandomMap) Delete(key interface{}) (result interface{}, exists bool) {
+func (rmap *RandomMap) Delete(key interface{}) (interface{}, bool) {
 	rmap.mutex.RLock()
 
+	var result any
+	var exists bool
 	if _, entryExists := rmap.rawMap[key]; entryExists {
 		rmap.mutex.RUnlock()
 		rmap.mutex.Lock()
@@ -111,7 +113,7 @@ func (rmap *RandomMap) Delete(key interface{}) (result interface{}, exists bool)
 		rmap.mutex.RUnlock()
 	}
 
-	return
+	return result, exists
 }
 
 // Size returns the number of key-value mappings in the map.
@@ -156,14 +158,16 @@ func (rmap *RandomMap) RandomEntry() (result interface{}) {
 
 // RandomUniqueEntries returns n random and unique values from the map.
 // When count is equal or bigger than the size of the random map, the every entry in the map is returned.
-func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
+func (rmap *RandomMap) RandomUniqueEntries(count int) []interface{} {
 	rmap.mutex.RLock()
 	defer rmap.mutex.RUnlock()
 
 	// zero or negative count results in empty result
 	if count < 1 {
-		return
+		return nil
 	}
+
+	var results []any
 
 	// can only return as many as there are in the map
 	if rmap.size <= count {
@@ -172,7 +176,7 @@ func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
 			results = append(results, value)
 		})
 
-		return
+		return results
 	}
 
 	// helper to keep track of already seen keys
@@ -188,7 +192,7 @@ func (rmap *RandomMap) RandomUniqueEntries(count int) (results []interface{}) {
 		}
 	}
 
-	return
+	return results
 }
 
 // Keys returns the list of keys stored in the RandomMap.

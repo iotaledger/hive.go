@@ -62,8 +62,8 @@ func ThresholdEventFromBytes(bytes []byte, options ...ThresholdEventOption) (thr
 }
 
 // ThresholdEventFromMarshalUtil unmarshals a ThresholdEvent using a MarshalUtil (for easier unmarshaling).
-func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...ThresholdEventOption) (thresholdEvent *ThresholdEvent, err error) {
-	thresholdEvent = &ThresholdEvent{
+func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options ...ThresholdEventOption) (*ThresholdEvent, error) {
+	thresholdEvent := &ThresholdEvent{
 		currentLevels: make(map[interface{}]int),
 		thresholds:    thresholdmap.New(thresholdmap.LowerThresholdMode),
 		configuration: NewThresholdEventConfiguration(options...),
@@ -88,7 +88,7 @@ func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options
 	if err != nil {
 		err = xerrors.Errorf("failed to read level count (%v): %w", err, cerrors.ErrParseBytesFailed)
 
-		return
+		return nil, err
 	}
 
 	for i := uint64(0); i < levelCount; i++ {
@@ -96,20 +96,20 @@ func ThresholdEventFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil, options
 		if valueErr != nil {
 			err = xerrors.Errorf("failed to read level (%v): %w", valueErr, cerrors.ErrParseBytesFailed)
 
-			return
+			return nil, err
 		}
 
 		identifier, identifierErr := thresholdEvent.configuration.IdentifierParser(marshalUtil)
 		if identifierErr != nil {
 			err = xerrors.Errorf("failed to read identifier (%v): %w", identifierErr, cerrors.ErrParseBytesFailed)
 
-			return
+			return nil, err
 		}
 
 		thresholdEvent.currentLevels[identifier] = int(value)
 	}
 
-	return
+	return thresholdEvent, nil
 }
 
 // Set updates the value associated with the given identifier and triggers the Event if necessary.
