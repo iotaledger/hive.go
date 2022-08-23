@@ -169,7 +169,7 @@ func (t *ThresholdMap[K, V]) wrapNode(node *thresholdmap.Element) (element *Elem
 }
 
 // Encode returns a serialized byte slice of the object.
-func (t ThresholdMap[K, V]) Encode() ([]byte, error) {
+func (t *ThresholdMap[K, V]) Encode() ([]byte, error) {
 	t.RLock()
 	defer t.RUnlock()
 
