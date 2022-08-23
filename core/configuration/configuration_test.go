@@ -61,9 +61,9 @@ func TestFetchEnvVars(t *testing.T) {
 	testFlagSet.String("B", "322", "test")
 	require.NoError(t, testFlagSet.Set("B", "322"))
 
-	os.Setenv("TEST_B", "321")
+	t.Setenv("TEST_B", "321")
 
-	os.Setenv("TEST_C", "321")
+	t.Setenv("TEST_C", "321")
 
 	config := New()
 
@@ -135,7 +135,7 @@ func TestMergeParameters(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.Int("F", 321, "test")
 
-	os.Setenv("TEST_F", "322")
+	t.Setenv("TEST_F", "322")
 
 	jsonConfFileName, jsonConfFile := tempFile(t, "config*.json")
 
