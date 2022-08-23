@@ -92,7 +92,7 @@ func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
 		return errors.New("not enough bytes")
 	}
 
-	copy(publicKey[:], bytes[:])
+	copy(publicKey[:], bytes)
 
 	return
 }

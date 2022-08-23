@@ -670,7 +670,7 @@ func TestSetAndOverwrite(t *testing.T) {
 		// Verify that all entries are 0
 		err = store.Iterate(kvstore.EmptyPrefix, func(key kvstore.Key, value kvstore.Value) bool {
 			require.True(t, bytes.Equal([]byte{0}, value), "used db: %s", dbImplementation)
-			verifyCount = verifyCount + 1
+			verifyCount++
 
 			return true
 		})
@@ -737,11 +737,14 @@ func TestBatchedWithSetAndDelete(t *testing.T) {
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
 		err = store.Iterate(kvstore.KeyPrefix("testKey"), func(key kvstore.Key, value kvstore.Value) bool {
-			if string(key) == "testKey1" {
+			switch {
+			case string(key) == "testKey1":
 				require.True(t, bytes.Equal(value, []byte{84}), "used db: %s", dbImplementation)
-			} else if string(key) == "testKey3" {
+
+			case string(key) == "testKey3":
 				require.True(t, bytes.Equal(value, []byte{69}), "used db: %s", dbImplementation)
-			} else {
+
+			default:
 				t.Fail()
 			}
 

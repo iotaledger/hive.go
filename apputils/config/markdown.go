@@ -24,7 +24,7 @@ func groupNameUpper(g *parameter.ParameterGroup, replaceTopicNames map[string]st
 }
 
 func groupAnchorName(g *parameter.ParameterGroup) string {
-	return strings.ToLower(strings.Replace(g.BaseName, ".", "_", -1))
+	return strings.ToLower(strings.ReplaceAll(g.BaseName, ".", "_"))
 }
 
 func groupTableEntries(g *parameter.ParameterGroup, replaceTopicNames map[string]string) [][]string {

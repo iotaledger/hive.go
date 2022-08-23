@@ -162,7 +162,7 @@ func (t *AdvancedSet[T]) String() (humanReadable string) {
 
 	elementStrings := make([]string, 0)
 	_ = t.ForEach(func(element T) (err error) {
-		elementStrings = append(elementStrings, strings.TrimRight(strings.Replace(fmt.Sprintf("%+v", element), elementTypeName+"(", "", -1), ")"))
+		elementStrings = append(elementStrings, strings.TrimRight(strings.ReplaceAll(fmt.Sprintf("%+v", element), elementTypeName+"(", ""), ")"))
 
 		return nil
 	})

@@ -172,6 +172,7 @@ func (s *Serializer) WriteUint256(num *big.Int, errProducer ErrProducer) *Serial
 		numBytes[i], numBytes[j] = numBytes[j], numBytes[i]
 	}
 
+	//nolint:gocritic // false positive
 	padded := append(numBytes, make([]byte, 32-len(numBytes))...)
 
 	if _, err := s.buf.Write(padded); err != nil {

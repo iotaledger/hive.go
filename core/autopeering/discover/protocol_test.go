@@ -166,7 +166,6 @@ func TestProtDiscoveryRequest(t *testing.T) {
 	// request peers from node A
 	t.Run("A->B", func(t *testing.T) {
 		if ps, err := protA.DiscoveryRequest(peerB); assert.NoError(t, err) {
-			//assert.ElementsMatch(t, []*peer.Peer{peerA}, ps)
 			if assert.Equal(t, 1, len(ps)) {
 				assert.Equal(t, peerA.ID(), ps[0].ID())
 			}

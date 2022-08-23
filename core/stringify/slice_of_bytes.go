@@ -3,11 +3,14 @@ package stringify
 import "encoding/hex"
 
 func SliceOfBytes(value []byte) string {
-	if value == nil {
+	switch {
+	case value == nil:
 		return "<nil>"
-	} else if len(value) == 0 {
+
+	case len(value) == 0:
 		return "<empty>"
-	} else {
+
+	default:
 		return "0x" + hex.EncodeToString(value) + ""
 	}
 }

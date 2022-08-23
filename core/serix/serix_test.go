@@ -30,17 +30,17 @@ var (
 type Bool bool
 
 func (b Bool) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (b Bool) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (b Bool) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -56,17 +56,17 @@ type Bools []Bool
 var boolsLenType = serix.LengthPrefixTypeAsUint16
 
 func (bs Bools) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (bs Bools) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -87,7 +87,7 @@ func (bs Bools) ToSerializables() serializer.Serializables {
 }
 
 func (bs Bools) FromSerializables(seris serializer.Serializables) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -120,17 +120,17 @@ func NewSimpleStruct() SimpleStruct {
 var simpleStructObjectCode = uint32(0)
 
 func (ss SimpleStruct) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ss SimpleStruct) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ss SimpleStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -179,17 +179,17 @@ var interfaceImplObjectCode = uint32(1)
 func (ii *InterfaceImpl) Method() {}
 
 func (ii *InterfaceImpl) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ii *InterfaceImpl) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -207,17 +207,17 @@ type StructWithInterface struct {
 }
 
 func (si StructWithInterface) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (si StructWithInterface) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (si StructWithInterface) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -233,17 +233,17 @@ type StructWithOptionalField struct {
 }
 
 func (so StructWithOptionalField) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (so StructWithOptionalField) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (so StructWithOptionalField) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -260,17 +260,17 @@ type StructWithEmbeddedStructs struct {
 }
 
 func (se StructWithEmbeddedStructs) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (se StructWithEmbeddedStructs) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (se StructWithEmbeddedStructs) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -298,17 +298,17 @@ type Map map[uint64]uint64
 var mapLenType = serix.LengthPrefixTypeAsUint32
 
 func (m Map) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (m Map) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (m Map) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -337,17 +337,17 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 type CustomSerializable int
 
 func (cs CustomSerializable) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (cs CustomSerializable) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (cs CustomSerializable) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 

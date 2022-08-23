@@ -175,7 +175,7 @@ func (c *Configuration) LoadEnvironmentVars(prefix string) error {
 	}
 
 	return c.config.Load(env.Provider(prefix, ".", func(s string) string {
-		mapKey := strings.Replace(strings.ToLower(strings.TrimPrefix(s, prefix)), "_", ".", -1)
+		mapKey := strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(s, prefix)), "_", ".")
 		if !c.config.Exists(mapKey) {
 			// only accept values from env vars that already exist in the config
 			return ""

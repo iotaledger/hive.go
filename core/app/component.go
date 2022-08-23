@@ -61,7 +61,7 @@ func (c *Component) Daemon() daemon.Daemon {
 }
 
 func (c *Component) Identifier() string {
-	return strings.ToLower(strings.Replace(c.Name, " ", "", -1))
+	return strings.ToLower(strings.ReplaceAll(c.Name, " ", ""))
 }
 
 // LogDebug uses fmt.Sprint to construct and log a message.
