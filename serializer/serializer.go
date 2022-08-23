@@ -229,49 +229,47 @@ func (s *Serializer) WriteBytes(data []byte, errProducer ErrProducer) *Serialize
 }
 
 // writes the given length to the Serializer as the defined SeriLengthPrefixType.
-func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errProducer ErrProducer) *Serializer {
+func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errProducer ErrProducer) {
 	if s.err != nil {
-		return s
+		return
 	}
 	switch lenType {
 	case SeriLengthPrefixTypeAsByte:
 		if l > math.MaxUint8 {
 			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint8))
 
-			return s
+			return
 		}
 		if err := s.buf.WriteByte(byte(l)); err != nil {
 			s.err = errProducer(err)
 
-			return s
+			return
 		}
 	case SeriLengthPrefixTypeAsUint16:
 		if l > math.MaxUint16 {
 			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint16))
 
-			return s
+			return
 		}
 		if err := binary.Write(&s.buf, binary.LittleEndian, uint16(l)); err != nil {
 			s.err = errProducer(err)
 
-			return s
+			return
 		}
 	case SeriLengthPrefixTypeAsUint32:
 		if l > math.MaxUint32 {
 			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint32))
 
-			return s
+			return
 		}
 		if err := binary.Write(&s.buf, binary.LittleEndian, uint32(l)); err != nil {
 			s.err = errProducer(err)
 
-			return s
+			return
 		}
 	default:
 		panic(fmt.Sprintf("unknown slice length type %v", lenType))
 	}
-
-	return s
 }
 
 // WriteVariableByteSlice writes the given slice with its length to the Serializer.
@@ -280,7 +278,7 @@ func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefi
 		return s
 	}
 
-	_ = s.writeSliceLength(len(data), lenType, errProducer)
+	s.writeSliceLength(len(data), lenType, errProducer)
 	if s.err != nil {
 		return s
 	}
@@ -367,7 +365,7 @@ func (s *Serializer) WriteSliceOfByteSlices(data [][]byte, deSeriMode DeSerializ
 		eleValFunc = sliceRules.ElementValidationFunc()
 	}
 
-	_ = s.writeSliceLength(len(data), lenType, errProducer)
+	s.writeSliceLength(len(data), lenType, errProducer)
 	if s.err != nil {
 		return s
 	}
@@ -531,7 +529,7 @@ func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errPr
 		return s
 	}
 
-	_ = s.writeSliceLength(strLen, lenType, errProducer)
+	s.writeSliceLength(strLen, lenType, errProducer)
 	if s.err != nil {
 		return s
 	}

@@ -73,14 +73,14 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Slice:
 		return api.mapEncodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Map:
-		return api.mapEncodeMap(ctx, value, valueType, ts, opts)
+		return api.mapEncodeMap(ctx, value, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
 
 		return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
-		return api.mapEncodeInterface(ctx, value, valueType, ts, opts)
+		return api.mapEncodeInterface(ctx, value, valueType, opts)
 	case reflect.String:
 		str := value.String()
 		if !utf8.ValidString(str) {
@@ -107,8 +107,7 @@ func (api *API) mapEncodeBasedOnType(
 }
 
 func (api *API) mapEncodeInterface(
-	ctx context.Context, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
-) (any, error) {
+	ctx context.Context, value reflect.Value, valueType reflect.Type, opts *options) (any, error) {
 	elemValue := value.Elem()
 	if !elemValue.IsValid() {
 		return nil, errors.Errorf("can't serialize interface %s it must have underlying value", valueType)
@@ -239,8 +238,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	return data, nil
 }
 
-func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
-	ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
+func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, opts *options) (*orderedmap.OrderedMap, error) {
 	m := orderedmap.New()
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {

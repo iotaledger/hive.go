@@ -269,6 +269,8 @@ func (m *manager) addDiscoveredPeer(p *peer.Peer) bool {
 
 // addVerifiedPeer adds a new peer that has just been successfully pinged.
 // It returns true, if the given peer was new and added, false otherwise.
+//
+//nolint:unparam // lets keep this for now
 func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	// never add the local peer
 	if p.ID() == m.self() {

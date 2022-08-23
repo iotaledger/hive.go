@@ -841,7 +841,7 @@ func TestEvictionBug(t *testing.T) {
 	wait.Add(testCount * int(count))
 	for i := 0; i < testCount; i++ {
 		for j := 0; j < int(count); j++ {
-			go func(i, j int) {
+			go func(i int) {
 				cachedObject1 := objects.Load([]byte(fmt.Sprintf("%v", i)))
 				cachedTestObject1 := cachedObject1.Get().(*testObject)
 				cachedTestObject1.Lock()
@@ -860,7 +860,7 @@ func TestEvictionBug(t *testing.T) {
 				cachedTestObject2.SetModified(true)
 				cachedObject2.Release()
 				wait.Done()
-			}(i, j)
+			}(i)
 		}
 	}
 	wait.Wait()

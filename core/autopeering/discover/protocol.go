@@ -504,7 +504,7 @@ func (p *Protocol) handlePong(fromAddr *net.UDPAddr, from *identity.Identity, m 
 	fromPeer := peer.NewPeer(from, fromAddr.IP, services)
 
 	// a valid pong verifies the peer
-	p.mgr.addVerifiedPeer(fromPeer)
+	_ = p.mgr.addVerifiedPeer(fromPeer)
 
 	// update peer database
 	db := p.loc.Database()

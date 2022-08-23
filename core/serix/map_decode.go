@@ -77,15 +77,15 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				return nil
 			}
 
-			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
+			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
 		}
 
 	case reflect.Struct:
 		return api.mapDecodeStruct(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Slice:
-		return api.mapDecodeSlice(ctx, mapVal, value, valueType, ts, opts)
+		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
 	case reflect.Map:
-		return api.mapDecodeMap(ctx, mapVal, value, valueType, ts, opts)
+		return api.mapDecodeMap(ctx, mapVal, value, valueType, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
@@ -100,7 +100,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			return nil
 		}
 
-		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
+		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
 	case reflect.Interface:
 		return api.mapDecodeInterface(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.String:
@@ -335,7 +335,7 @@ func (api *API) mapDecodeStructFields(
 }
 
 func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, ts TypeSettings, opts *options) error {
+	valueType reflect.Type, opts *options) error {
 	if valueType.AssignableTo(bytesType) {
 		fieldValStr := mapVal.(string)
 		byteSlice, err := DecodeHex(fieldValStr)
@@ -362,7 +362,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 }
 
 func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, ts TypeSettings, opts *options) error {
+	valueType reflect.Type, opts *options) error {
 	m, ok := mapVal.(map[string]any)
 	if !ok {
 		return errors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)

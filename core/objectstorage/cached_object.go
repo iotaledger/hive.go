@@ -236,6 +236,7 @@ func (cachedObject *CachedObjectImpl) storeOnCreation() {
 	}
 }
 
+//nolint:unparam // lets keep this for now
 func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
 	if !cachedObject.published.Swap(true) {
 		// was not published before

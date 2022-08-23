@@ -214,7 +214,7 @@ func TestMultiMutexMassiveParallel(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(N)
 	for i := 0; i < N; i++ {
-		go func(i int) {
+		go func() {
 			// Access L random locks.
 			L := 100
 			ids := make([]interface{}, 0, L)
@@ -228,7 +228,7 @@ func TestMultiMutexMassiveParallel(t *testing.T) {
 			mutex.Unlock(ids...)
 
 			wg.Done()
-		}(i)
+		}()
 	}
 
 	wg.Wait()
