@@ -1,3 +1,4 @@
+//nolint:tagliatelle // we don't care about these linters in test cases
 package model
 
 import (

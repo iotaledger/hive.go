@@ -13,6 +13,8 @@ import (
 )
 
 // AdvancedSet is a set that offers advanced features.
+//
+//nolint:tagliatelle // the linter can't handle generics
 type AdvancedSet[T comparable] struct {
 	orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
