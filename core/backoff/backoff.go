@@ -63,11 +63,14 @@ func (b *BackOff) With(opts ...Option) *BackOff {
 // The function is guaranteed to be run at least once.
 // If the functions returns a permanent error, the operation is not retried, and the wrapped error is returned.
 // Retry sleeps the goroutine for the duration returned by BackOff after a failed operation returns.
-func Retry(p Policy, f func() error) (err error) {
+func Retry(p Policy, f func() error) error {
 	p = p.New()
+
+	var err error
 	for {
-		if err = f(); err == nil {
-			return
+		err = f()
+		if err == nil {
+			return nil
 		}
 
 		var permanent *permanentError
