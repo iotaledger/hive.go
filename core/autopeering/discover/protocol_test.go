@@ -1,3 +1,4 @@
+//nolint:prealloc // we don't care about these linters in test cases
 package discover
 
 import (
