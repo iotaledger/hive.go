@@ -57,6 +57,7 @@ func GetPublicIP(preferIPv6 bool) (net.IP, error) {
 
 // IsTemporaryError checks whether the given error should be considered temporary.
 func IsTemporaryError(err error) bool {
+	//nolint:errorlint // false positive
 	tempErr, ok := err.(interface {
 		Temporary() bool
 	})

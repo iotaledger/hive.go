@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"encoding/binary"
+	"errors"
 	"sync"
 )
 
@@ -71,7 +72,7 @@ func (seq *Sequence) Release() error {
 func (seq *Sequence) update() error {
 	value, err := seq.store.Get(seq.key)
 	switch {
-	case err == ErrKeyNotFound:
+	case errors.Is(err, ErrKeyNotFound):
 		seq.next = 0
 	case err != nil:
 		return err

@@ -181,7 +181,7 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 
 		return err
 	})
-	if err == badger.ErrKeyNotFound {
+	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, kvstore.ErrKeyNotFound
 	}
 
@@ -209,7 +209,7 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 		return err
 	})
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if errors.Is(err, badger.ErrKeyNotFound) {
 			return false, nil
 		}
 
@@ -227,7 +227,7 @@ func (s *badgerStore) Delete(key kvstore.Key) error {
 	err := s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
 	})
-	if err != nil && err == badger.ErrKeyNotFound {
+	if err != nil && errors.Is(err, badger.ErrKeyNotFound) {
 		return kvstore.ErrKeyNotFound
 	}
 

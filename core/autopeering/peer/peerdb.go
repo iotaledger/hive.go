@@ -3,6 +3,7 @@ package peer
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math/rand"
 	"net"
 	"time"
@@ -194,7 +195,7 @@ func (db *DB) expireNodes() error {
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
 func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	value, err := db.store.Get(localFieldKey(dbLocalKey))
-	if err == kvstore.ErrKeyNotFound {
+	if errors.Is(err, kvstore.ErrKeyNotFound) {
 		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)

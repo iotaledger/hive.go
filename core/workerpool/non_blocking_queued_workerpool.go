@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -67,7 +68,7 @@ func (wp *NonBlockingQueuedWorkerPool) workerFuncWrapper(t interface{}) {
 }
 
 func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
-	if antsErr := wp.pool.Invoke(t); antsErr != nil && antsErr != ants.ErrPoolOverload {
+	if antsErr := wp.pool.Invoke(t); antsErr != nil && !errors.Is(antsErr, ants.ErrPoolOverload) {
 		panic(antsErr)
 	} else {
 		if antsErr == nil {

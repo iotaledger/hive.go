@@ -67,7 +67,7 @@ func ParseHeader(buf []byte, r *message.Registry) (*Header, error) {
 	// extract length of message
 	advMsgBytesLength := binary.LittleEndian.Uint16(buf[1:3])
 	if (advMsgBytesLength > def.MaxBytesLength) || (!def.VariableLength && (advMsgBytesLength < def.MaxBytesLength)) {
-		return nil, fmt.Errorf("%s: advertised length: %d bytes; max length: %d bytes", ErrInvalidMessageLength.Error(), advMsgBytesLength, def.MaxBytesLength)
+		return nil, fmt.Errorf("%w: advertised length: %d bytes; max length: %d bytes", ErrInvalidMessageLength, advMsgBytesLength, def.MaxBytesLength)
 	}
 
 	return &Header{Definition: def, MessageBytesLength: advMsgBytesLength}, nil

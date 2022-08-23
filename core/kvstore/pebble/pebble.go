@@ -1,6 +1,7 @@
 package pebble
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/cockroachdb/pebble"
@@ -142,7 +143,7 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 
 	if err != nil {
-		if err == pebble.ErrNotFound {
+		if errors.Is(err, pebble.ErrNotFound) {
 			return nil, kvstore.ErrKeyNotFound
 		}
 
@@ -172,7 +173,7 @@ func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 	}
 
 	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
-	if err == pebble.ErrNotFound {
+	if errors.Is(err, pebble.ErrNotFound) {
 		return false, nil
 	}
 

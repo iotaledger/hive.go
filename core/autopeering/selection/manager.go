@@ -173,13 +173,13 @@ func (m *manager) blockNeighbor(id identity.ID, ttl ...time.Duration) {
 }
 
 func (m *manager) unblockNeighbor(id identity.ID) {
-	if err := m.blocklist.Remove(id.EncodeBase58()); err != nil && err != ttlcache.ErrNotFound {
+	if err := m.blocklist.Remove(id.EncodeBase58()); err != nil && !errors.Is(err, ttlcache.ErrNotFound) {
 		m.log.Warnw("Failed to remove neighbor from blocklist cache", "err", err)
 	}
 
 	// we need to remove the neighbor from the skiplist as well,
 	// because they are added to the skiplist at first connection attempt if they were blocked.
-	if err := m.skiplist.Remove(id.EncodeBase58()); err != nil && err != ttlcache.ErrNotFound {
+	if err := m.skiplist.Remove(id.EncodeBase58()); err != nil && !errors.Is(err, ttlcache.ErrNotFound) {
 		m.log.Warnw("Failed to remove neighbor from skiplist cache", "err", err)
 	}
 }
