@@ -27,7 +27,7 @@ const (
 	defaultNeighborSkipTimeout   = 5 * time.Minute
 )
 
-//  policy for retrying failed network calls
+// policy for retrying failed network calls.
 var retryPolicy = backoff.ExponentialBackOff(500*time.Millisecond, 1.5).With(
 	backoff.Jitter(0.5), backoff.MaxRetries(maxRetries))
 
@@ -205,6 +205,7 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 			return false
 		}
 		status = res.GetStatus()
+
 		return true
 	}
 
@@ -214,8 +215,10 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
+
 		return err
 	})
+
 	return status, err
 }
 
@@ -245,6 +248,7 @@ func marshal(msg pb.Message) []byte {
 	if err != nil {
 		panic("invalid message")
 	}
+
 	return append([]byte{byte(mType)}, data...)
 }
 
@@ -279,6 +283,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 			"type", m.Name(),
 			"timestamp", time.Unix(m.GetTimestamp(), 0),
 		)
+
 		return false
 	}
 	// check whether the sender is verified
@@ -287,6 +292,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 			"type", m.Name(),
 			"unverified", fromAddr,
 		)
+
 		return false
 	}
 	// check Salt
@@ -296,6 +302,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 			"type", m.Name(),
 			"salt", err,
 		)
+
 		return false
 	}
 	// check salt expiration
@@ -304,6 +311,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 			"type", m.Name(),
 			"salt.expiration", s.GetExpiration(),
 		)
+
 		return false
 	}
 
@@ -311,6 +319,7 @@ func (p *Protocol) validatePeeringRequest(fromAddr *net.UDPAddr, fromID identity
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 
@@ -319,6 +328,7 @@ func (p *Protocol) handlePeeringRequest(s *server.Server, fromID identity.ID, ra
 	if err != nil {
 		// this should not happen as it is checked in validation
 		p.log.Warnw("invalid salt", "err", err)
+
 		return
 	}
 
@@ -337,6 +347,7 @@ func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAd
 			"type", m.Name(),
 			"unexpected", fromAddr,
 		)
+
 		return false
 	}
 
@@ -344,6 +355,7 @@ func (p *Protocol) validatePeeringResponse(s *server.Server, fromAddr *net.UDPAd
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 
@@ -354,6 +366,7 @@ func (p *Protocol) validatePeeringDrop(fromAddr *net.UDPAddr, m *pb.PeeringDrop)
 			"type", m.Name(),
 			"timestamp", time.Unix(m.GetTimestamp(), 0),
 		)
+
 		return false
 	}
 
@@ -361,6 +374,7 @@ func (p *Protocol) validatePeeringDrop(fromAddr *net.UDPAddr, m *pb.PeeringDrop)
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 

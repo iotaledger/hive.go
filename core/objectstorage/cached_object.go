@@ -236,11 +236,13 @@ func (cachedObject *CachedObjectImpl) storeOnCreation() {
 	}
 }
 
+//nolint:unparam // lets keep this for now
 func (cachedObject *CachedObjectImpl) publishResult(result StorableObject) bool {
 	if !cachedObject.published.Swap(true) {
 		// was not published before
 		cachedObject.value = result
 		cachedObject.wg.Done()
+
 		return true
 	}
 
@@ -251,6 +253,7 @@ func (cachedObject *CachedObjectImpl) updateEmptyResult(update interface{}) (upd
 	cachedObject.valueMutex.RLock()
 	if !typeutils.IsInterfaceNil(cachedObject.value) && !cachedObject.value.IsDeleted() {
 		cachedObject.valueMutex.RUnlock()
+
 		return
 	}
 
@@ -296,6 +299,7 @@ func (cachedObject *CachedObjectImpl) evict() {
 			storableObject.SetModified(false)
 		}
 		cachedObject.BatchWriteDone()
+
 		return
 	}
 

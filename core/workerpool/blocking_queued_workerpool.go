@@ -32,7 +32,7 @@ type BlockingQueuedWorkerPool struct {
 
 // NewBlockingQueuedWorkerPool returns a new stopped WorkerPool.
 func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQueuedWorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	result = &BlockingQueuedWorkerPool{
@@ -58,7 +58,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 }
 
 // CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
-func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) (new *BlockingQueueWorkerPoolTask) {
+func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *BlockingQueueWorkerPoolTask {
 	b.IncreasePendingTasksCounter()
 
 	var stackTrace string
@@ -74,6 +74,7 @@ func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...st
 func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask) {
 	if !b.IsRunning() {
 		task.markDone()
+
 		return
 	}
 	b.tasks <- task
@@ -85,6 +86,7 @@ func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask)
 func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *BlockingQueueWorkerPoolTask) (added bool) {
 	if !b.IsRunning() {
 		task.markDone()
+
 		return false
 	}
 
@@ -93,6 +95,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *BlockingQueueWorkerPoolTa
 		return true
 	default:
 		task.markDone()
+
 		return false
 	}
 }
@@ -224,6 +227,7 @@ func (b *BlockingQueuedWorkerPool) DecreasePendingTasksCounter() {
 	b.pendingTasksCounter--
 	if b.pendingTasksCounter != 0 {
 		b.pendingTasksMutex.Unlock()
+
 		return
 	}
 	b.pendingTasksMutex.Unlock()

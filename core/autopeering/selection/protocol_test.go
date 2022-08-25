@@ -185,6 +185,7 @@ func newTestProtocol(name string, conn *net.UDPConn) (*Protocol, func()) {
 		srv.Close()
 		prot.Close()
 	}
+
 	return prot, teardown
 }
 
@@ -213,6 +214,7 @@ func newFullTestProtocol(name string, conn *net.UDPConn, masterPeers ...*peer.Pe
 		selection.Close()
 		discovery.Close()
 	}
+
 	return selection, teardown
 }
 

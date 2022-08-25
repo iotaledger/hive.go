@@ -48,6 +48,7 @@ func (util *MarshalUtil) ReadBytes(length int, optionalReadOffset ...int) ([]byt
 
 	// advance read offset and return read bytes
 	defer util.ReadSeek(readEndOffset)
+
 	return util.bytes[util.readOffset:readEndOffset], nil
 }
 

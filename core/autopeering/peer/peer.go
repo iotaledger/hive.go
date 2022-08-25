@@ -83,7 +83,7 @@ func NewPeer(id *identity.Identity, ip net.IP, services service.Service) *Peer {
 	}
 }
 
-// ToProto encodes a given peer into a proto buffer Peer message
+// ToProto encodes a given peer into a proto buffer Peer message.
 func (p *Peer) ToProto() *pb.Peer {
 	return &pb.Peer{
 		PublicKey: p.PublicKey().Bytes(),
@@ -109,6 +109,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if services.Get(service.PeeringKey) == nil {
 		return nil, ErrNeedsPeeringService
 	}
@@ -127,6 +128,7 @@ func Unmarshal(data []byte) (*Peer, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }
 
@@ -151,6 +153,7 @@ func (p *Peer) UnmarshalJSON(b []byte) error {
 		return xerrors.Errorf("invalid services json: %w", ErrNeedsPeeringService)
 	}
 	*p = *NewPeer(id, pj.IP, pj.Services)
+
 	return nil
 }
 
@@ -161,5 +164,6 @@ func (p *Peer) MarshalJSON() ([]byte, error) {
 		IP:        p.ip,
 		Services:  p.services,
 	}
+
 	return json.Marshal(pj)
 }

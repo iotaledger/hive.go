@@ -19,11 +19,12 @@ func groupNameUpper(g *parameter.ParameterGroup, replaceTopicNames map[string]st
 	if topicNameReplaced, exists := replaceTopicNames[g.Name]; exists {
 		return topicNameReplaced
 	}
+
 	return strings.ToUpper(g.Name[:1]) + g.Name[1:]
 }
 
 func groupAnchorName(g *parameter.ParameterGroup) string {
-	return strings.ToLower(strings.Replace(g.BaseName, ".", "_", -1))
+	return strings.ToLower(strings.ReplaceAll(g.BaseName, ".", "_"))
 }
 
 func groupTableEntries(g *parameter.ParameterGroup, replaceTopicNames map[string]string) [][]string {
@@ -101,6 +102,7 @@ func createMarkdownTables(groups []*parameter.ParameterGroup, replaceTopicNames 
 			result += "\n"
 		}
 	}
+
 	return result
 }
 

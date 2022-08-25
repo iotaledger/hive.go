@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -18,7 +17,7 @@ import (
 )
 
 func tempFile(t *testing.T, pattern string) (string, *os.File) {
-	tmpfile, err := ioutil.TempFile("", pattern)
+	tmpfile, err := os.CreateTemp("", pattern)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -31,7 +30,7 @@ func tempFile(t *testing.T, pattern string) (string, *os.File) {
 
 func TestFetchGlobalFlags(t *testing.T) {
 	flag.String("A", "321", "test")
-	flag.Set("A", "321")
+	require.NoError(t, flag.Set("A", "321"))
 
 	config := New()
 
@@ -45,7 +44,7 @@ func TestFetchGlobalFlags(t *testing.T) {
 func TestFetchFlagset(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.String("A", "321", "test")
-	testFlagSet.Set("A", "321")
+	require.NoError(t, testFlagSet.Set("A", "321"))
 
 	flag.Parse()
 	config := New()
@@ -60,11 +59,11 @@ func TestFetchFlagset(t *testing.T) {
 func TestFetchEnvVars(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.String("B", "322", "test")
-	testFlagSet.Set("B", "322")
+	require.NoError(t, testFlagSet.Set("B", "322"))
 
-	os.Setenv("TEST_B", "321")
+	t.Setenv("TEST_B", "321")
 
-	os.Setenv("TEST_C", "321")
+	t.Setenv("TEST_C", "321")
 
 	config := New()
 
@@ -136,7 +135,7 @@ func TestMergeParameters(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("", flag.ContinueOnError)
 	testFlagSet.Int("F", 321, "test")
 
-	os.Setenv("TEST_F", "322")
+	t.Setenv("TEST_F", "322")
 
 	jsonConfFileName, jsonConfFile := tempFile(t, "config*.json")
 
@@ -191,12 +190,12 @@ func TestMergeParameters(t *testing.T) {
 
 func TestSaveConfigFile(t *testing.T) {
 	config1 := New()
-	config1.Set("test.integer", 321)
-	config1.Set("test.slice", []string{"string1", "string2", "string3"})
-	config1.Set("test.bool.ignore", true)
+	require.NoError(t, config1.Set("test.integer", 321))
+	require.NoError(t, config1.Set("test.slice", []string{"string1", "string2", "string3"}))
+	require.NoError(t, config1.Set("test.bool.ignore", true))
 
 	jsonConfFileName, _ := tempFile(t, "config*.json")
-	err := config1.StoreFile(jsonConfFileName, []string{"test.bool.ignore"})
+	err := config1.StoreFile(jsonConfFileName, 0o600, []string{"test.bool.ignore"})
 	require.NoError(t, err)
 
 	config2 := New()
@@ -247,7 +246,7 @@ func TestBindAndUpdateParameters(t *testing.T) {
 			"Max":   "Beer",
 		},
 
-		// assign default value inside of tag (is overriden by default value of tag)
+		// assign default value inside of tag (is overridden by default value of tag)
 		Batman: []string{"a", "b", "c"},
 
 		Ottos: []Otto{

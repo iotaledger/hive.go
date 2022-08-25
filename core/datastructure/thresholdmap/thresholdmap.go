@@ -50,6 +50,7 @@ func (t *ThresholdMap) Init(mode Mode, optionalComparator ...genericcomparator.T
 func (t *ThresholdMap) Mode() Mode {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.mode
 }
 
@@ -130,6 +131,7 @@ func (t *ThresholdMap) lookup(key interface{}) *redblacktree.Node {
 			node = node.Right
 		}
 	}
+
 	return nil
 }
 
@@ -137,6 +139,7 @@ func (t *ThresholdMap) lookup(key interface{}) *redblacktree.Node {
 func (t *ThresholdMap) Keys() []interface{} {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.tree.Keys()
 }
 
@@ -144,6 +147,7 @@ func (t *ThresholdMap) Keys() []interface{} {
 func (t *ThresholdMap) Values() []interface{} {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.tree.Values()
 }
 
@@ -155,9 +159,11 @@ func (t *ThresholdMap) GetElement(key interface{}) *Element {
 	switch t.mode {
 	case UpperThresholdMode:
 		ceiling, _ := t.tree.Ceiling(key)
+
 		return t.wrapNode(ceiling)
 	default:
 		floor, _ := t.tree.Floor(key)
+
 		return t.wrapNode(floor)
 	}
 }
@@ -166,6 +172,7 @@ func (t *ThresholdMap) GetElement(key interface{}) *Element {
 func (t *ThresholdMap) MinElement() *Element {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.wrapNode(t.tree.Left())
 }
 
@@ -173,6 +180,7 @@ func (t *ThresholdMap) MinElement() *Element {
 func (t *ThresholdMap) MaxElement() *Element {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.wrapNode(t.tree.Right())
 }
 
@@ -214,6 +222,7 @@ func (t *ThresholdMap) Iterator(optionalStartingNode ...*Element) *Iterator {
 func (t *ThresholdMap) Size() int {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.tree.Size()
 }
 
@@ -221,6 +230,7 @@ func (t *ThresholdMap) Size() int {
 func (t *ThresholdMap) Empty() bool {
 	t.RLock()
 	defer t.RUnlock()
+
 	return t.tree.Empty()
 }
 

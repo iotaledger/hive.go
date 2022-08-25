@@ -14,7 +14,7 @@ type Closure[T any] struct {
 	Function func(event T)
 }
 
-// NewClosure creates a new Closure
+// NewClosure creates a new Closure.
 func NewClosure[T any](function func(event T)) *Closure[T] {
 	closure := &Closure[T]{
 		ID:       idCounter.Inc(),

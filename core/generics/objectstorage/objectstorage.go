@@ -109,6 +109,7 @@ func (o *ObjectStorage[T]) StoreIfAbsent(object T) (result *CachedObject[T], sto
 	if stored {
 		return newCachedObject[T](untypedObject), stored
 	}
+
 	return nil, stored
 }
 
@@ -126,7 +127,7 @@ func (o *ObjectStorage[T]) ForEachKeyOnly(consumer func(key []byte) bool, option
 	}, options...)
 }
 
-// Prune removes all values from the ObjectStorage
+// Prune removes all values from the ObjectStorage.
 func (o *ObjectStorage[T]) Prune() error {
 	return o.ObjectStorage.Prune()
 }

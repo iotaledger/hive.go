@@ -15,4 +15,4 @@ jobs:
       with:
           go-version: 1.18.1
     - name: Run tests core
-      run: ./runTests.sh
+      run: ./run_tests.sh

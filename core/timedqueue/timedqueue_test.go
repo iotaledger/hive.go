@@ -144,6 +144,7 @@ func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 
 			if tq.Size() == 0 {
 				wg.Done()
+
 				break
 			}
 		}
@@ -195,6 +196,7 @@ func TestTimedQueueCancel(t *testing.T) {
 
 			if tq.Size() == 0 {
 				wg.Done()
+
 				break
 			}
 		}

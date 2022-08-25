@@ -21,7 +21,7 @@ type Salt struct {
 	mutex          sync.RWMutex
 }
 
-// NewSalt generates a new salt given a lifetime duration
+// NewSalt generates a new salt given a lifetime duration.
 func NewSalt(lifetime time.Duration) (salt *Salt, err error) {
 	salt = &Salt{
 		bytes:          make([]byte, SaltByteSize),
@@ -38,21 +38,23 @@ func NewSalt(lifetime time.Duration) (salt *Salt, err error) {
 func (s *Salt) GetBytes() []byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+
 	return append([]byte{}, s.bytes...)
 }
 
 func (s *Salt) GetExpiration() time.Time {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+
 	return s.expirationTime
 }
 
-// Expired returns true if the given salt expired
+// Expired returns true if the given salt expired.
 func (s *Salt) Expired() bool {
 	return time.Now().After(s.GetExpiration())
 }
 
-// ToProto encodes the Salt into a proto buffer Salt message
+// ToProto encodes the Salt into a proto buffer Salt message.
 func (s *Salt) ToProto() *pb.Salt {
 	return &pb.Salt{
 		Bytes:   s.bytes,
@@ -69,10 +71,11 @@ func FromProto(in *pb.Salt) (*Salt, error) {
 		bytes:          in.GetBytes(),
 		expirationTime: time.Unix(int64(in.GetExpTime()), 0),
 	}
+
 	return out, nil
 }
 
-// Marshal serializes a given salt (s) into a slice of bytes (data)
+// Marshal serializes a given salt (s) into a slice of bytes (data).
 func (s *Salt) Marshal() ([]byte, error) {
 	return proto.Marshal(s.ToProto())
 }
@@ -83,5 +86,6 @@ func Unmarshal(data []byte) (*Salt, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }

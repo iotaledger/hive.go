@@ -33,45 +33,51 @@ func (list *DoublyLinkedList) AddEntry(entry *DoublyLinkedListEntry) {
 func (list *DoublyLinkedList) AddLast(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddLastEntry(newEntry)
+
 	return newEntry
 }
 
 func (list *DoublyLinkedList) AddFirst(value interface{}) *DoublyLinkedListEntry {
 	newEntry := &DoublyLinkedListEntry{Value: value}
 	list.AddFirstEntry(newEntry)
+
 	return newEntry
 }
 
 func (list *DoublyLinkedList) GetFirst() (interface{}, error) {
-	if firstEntry, err := list.GetFirstEntry(); err != nil {
+	firstEntry, err := list.GetFirstEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return firstEntry.GetValue(), nil
 	}
+
+	return firstEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) GetLast() (interface{}, error) {
-	if lastEntry, err := list.GetLastEntry(); err != nil {
+	lastEntry, err := list.GetLastEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return lastEntry.GetValue(), nil
 	}
+
+	return lastEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) RemoveFirst() (interface{}, error) {
-	if firstEntry, err := list.RemoveFirstEntry(); err != nil {
+	firstEntry, err := list.RemoveFirstEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return firstEntry.GetValue(), nil
 	}
+
+	return firstEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) RemoveLast() (interface{}, error) {
-	if lastEntry, err := list.RemoveLastEntry(); err != nil {
+	lastEntry, err := list.RemoveLastEntry()
+	if err != nil {
 		return nil, err
-	} else {
-		return lastEntry.GetValue(), nil
 	}
+
+	return lastEntry.GetValue(), nil
 }
 
 func (list *DoublyLinkedList) AddLastEntry(entry *DoublyLinkedListEntry) {
@@ -102,6 +108,7 @@ func (list *DoublyLinkedList) GetFirstEntry() (*DoublyLinkedListEntry, error) {
 	if list.head == nil {
 		return nil, ErrNoSuchElement
 	}
+
 	return list.head, nil
 }
 
@@ -109,6 +116,7 @@ func (list *DoublyLinkedList) GetLastEntry() (*DoublyLinkedListEntry, error) {
 	if list.tail == nil {
 		return nil, ErrNoSuchElement
 	}
+
 	return list.tail, nil
 }
 
@@ -117,6 +125,7 @@ func (list *DoublyLinkedList) RemoveFirstEntry() (*DoublyLinkedListEntry, error)
 	if err := list.RemoveEntry(entryToRemove); err != nil {
 		return nil, err
 	}
+
 	return entryToRemove, nil
 }
 
@@ -125,6 +134,7 @@ func (list *DoublyLinkedList) RemoveLastEntry() (*DoublyLinkedListEntry, error) 
 	if err := list.RemoveEntry(entryToRemove); err != nil {
 		return nil, err
 	}
+
 	return entryToRemove, nil
 }
 

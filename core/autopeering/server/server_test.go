@@ -98,12 +98,14 @@ func unmarshal(data []byte) (testMessage, error) {
 	case MPong:
 		return new(Pong), nil
 	}
+
 	return nil, ErrInvalidMessage
 }
 
 func newTestDB(t require.TestingT) *peer.DB {
 	db, err := peer.NewDB(mapdb.NewMapDB())
 	require.NoError(t, err)
+
 	return db
 }
 
@@ -147,10 +149,12 @@ func sendPing(s *Server, p *peer.Peer) error {
 	ping := new(Ping)
 	isPong := func(msg Message) bool {
 		_, ok := msg.(*Pong)
+
 		return ok
 	}
 
 	errc := s.SendExpectingReply(p.Address(), p.ID(), ping.Marshal(), MPong, isPong)
+
 	return <-errc
 }
 

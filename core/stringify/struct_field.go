@@ -1,17 +1,17 @@
 package stringify
 
-type structField struct {
+type StructField struct {
 	name  string
 	value interface{}
 }
 
-func StructField(name string, value interface{}) *structField {
-	return &structField{
+func NewStructField(name string, value interface{}) *StructField {
+	return &StructField{
 		name:  name,
 		value: value,
 	}
 }
 
-func (structField *structField) String() (result string) {
+func (structField *StructField) String() (result string) {
 	return structField.name + ": " + Interface(structField.value)
 }

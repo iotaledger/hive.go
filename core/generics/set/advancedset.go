@@ -13,18 +13,20 @@ import (
 )
 
 // AdvancedSet is a set that offers advanced features.
+//
+//nolint:tagliatelle // the linter can't handle generics
 type AdvancedSet[T comparable] struct {
 	orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
 
 // NewAdvancedSet creates a new AdvancedSet with given elements.
-func NewAdvancedSet[T comparable](elements ...T) (new *AdvancedSet[T]) {
-	new = &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
+func NewAdvancedSet[T comparable](elements ...T) *AdvancedSet[T] {
+	a := &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
-		new.Set(element, types.Void)
+		a.Set(element, types.Void)
 	}
 
-	return new
+	return a
 }
 
 // IsEmpty returns true if the set is empty.
@@ -41,6 +43,7 @@ func (t *AdvancedSet[T]) Add(element T) (added bool) {
 func (t *AdvancedSet[T]) AddAll(elements *AdvancedSet[T]) (added bool) {
 	_ = elements.ForEach(func(element T) (err error) {
 		added = t.Set(element, types.Void) || added
+
 		return nil
 	})
 
@@ -54,6 +57,7 @@ func (t *AdvancedSet[T]) DeleteAll(other *AdvancedSet[T]) (removedElements *Adva
 		if t.Delete(element) {
 			removedElements.Add(element)
 		}
+
 		return nil
 	})
 
@@ -71,6 +75,7 @@ func (t *AdvancedSet[T]) HasAll(other *AdvancedSet[T]) (hasAll bool) {
 		if !t.Has(element) {
 			return errors.New("element not found")
 		}
+
 		return nil
 	}) == nil
 }
@@ -140,6 +145,7 @@ func (t *AdvancedSet[T]) Slice() (slice []T) {
 	slice = make([]T, 0)
 	_ = t.ForEach(func(element T) error {
 		slice = append(slice, element)
+
 		return nil
 	})
 
@@ -158,7 +164,7 @@ func (t *AdvancedSet[T]) String() (humanReadable string) {
 
 	elementStrings := make([]string, 0)
 	_ = t.ForEach(func(element T) (err error) {
-		elementStrings = append(elementStrings, strings.TrimRight(strings.Replace(fmt.Sprintf("%+v", element), elementTypeName+"(", "", -1), ")"))
+		elementStrings = append(elementStrings, strings.TrimRight(strings.ReplaceAll(fmt.Sprintf("%+v", element), elementTypeName+"(", ""), ")"))
 
 		return nil
 	})

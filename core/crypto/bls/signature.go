@@ -18,6 +18,7 @@ func SignatureFromBytes(bytes []byte) (signature Signature, consumedBytes int, e
 	marshalUtil := marshalutil.New(bytes)
 	if signature, err = SignatureFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Signature from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -30,11 +31,13 @@ func SignatureFromBase58EncodedString(base58EncodedString string) (signature Sig
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
 		err = xerrors.Errorf("error while decoding base58 encoded Signature (%v): %w", err, ErrBase58DecodeFailed)
+
 		return
 	}
 
 	if signature, _, err = SignatureFromBytes(bytes); err != nil {
 		err = xerrors.Errorf("failed to parse Signature from bytes: %w", err)
+
 		return
 	}
 
@@ -46,6 +49,7 @@ func SignatureFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signature S
 	signatureBytes, err := marshalUtil.ReadBytes(SignatureSize)
 	if err != nil {
 		err = xerrors.Errorf("failed to read signature bytes (%v): %w", err, ErrParseBytesFailed)
+
 		return
 	}
 	copy(signature[:], signatureBytes)
@@ -92,6 +96,7 @@ func SignatureWithPublicKeyFromBytes(bytes []byte) (signatureWithPublicKey Signa
 	marshalUtil := marshalutil.New(bytes)
 	if signatureWithPublicKey, err = SignatureWithPublicKeyFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -104,11 +109,13 @@ func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
 		err = xerrors.Errorf("error while decoding base58 encoded SignatureWithPublicKey (%v): %w", err, ErrBase58DecodeFailed)
+
 		return
 	}
 
 	if signatureWithPublicKey, _, err = SignatureWithPublicKeyFromBytes(bytes); err != nil {
 		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from bytes: %w", err)
+
 		return
 	}
 
@@ -119,11 +126,13 @@ func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (
 func SignatureWithPublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	if signatureWithPublicKey.PublicKey, err = PublicKeyFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse PublicKey from MarshalUtil: %w", err)
+
 		return
 	}
 
 	if signatureWithPublicKey.Signature, err = SignatureFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Signature from MarshalUtil: %w", err)
+
 		return
 	}
 

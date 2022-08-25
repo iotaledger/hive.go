@@ -3,7 +3,7 @@ package test
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -27,7 +27,6 @@ import (
 
 const (
 	dbBadger = iota
-	dbBolt
 	dbMapDB
 	dbPebble
 )
@@ -39,20 +38,22 @@ const (
 func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbBadger:
-		dir, err := ioutil.TempDir("", "database.badger")
+		dir, err := os.MkdirTemp("", "database.badger")
 		require.NoError(t, err)
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
+
 		return badger.New(db).WithRealm(realm)
 
 	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
 
 	case dbPebble:
-		dir, err := ioutil.TempDir("", "database.pebble")
+		dir, err := os.MkdirTemp("", "database.pebble")
 		require.NoError(t, err)
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err)
+
 		return pebble.New(db).WithRealm(realm)
 	}
 
@@ -428,6 +429,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	})
 
@@ -441,6 +443,7 @@ func TestPrefixIteration(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	})
 
@@ -455,6 +458,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("")))
 
@@ -469,6 +473,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -482,6 +487,7 @@ func TestPrefixIteration(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("12")))
 
@@ -835,7 +841,7 @@ func TestEvictionBug(t *testing.T) {
 	wait.Add(testCount * int(count))
 	for i := 0; i < testCount; i++ {
 		for j := 0; j < int(count); j++ {
-			go func(i, j int) {
+			go func(i int) {
 				cachedObject1 := objects.Load([]byte(fmt.Sprintf("%v", i)))
 				cachedTestObject1 := cachedObject1.Get().(*testObject)
 				cachedTestObject1.Lock()
@@ -854,13 +860,12 @@ func TestEvictionBug(t *testing.T) {
 				cachedTestObject2.SetModified(true)
 				cachedObject2.Release()
 				wait.Done()
-			}(i, j)
+			}(i)
 		}
 	}
 	wait.Wait()
 
 	for i := testCount - 1; i >= 0; i-- {
-		//time.Sleep(time.Duration(10) * time.Microsecond)
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
 		if cachedObject.Get().(*testObject).value != count*2 {
 			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count*2))
@@ -898,6 +903,7 @@ func TestDeleteAndCreate(t *testing.T) {
 		newlyAdded := false
 		cachedObject = objects.ComputeIfAbsent([]byte("Hans"), func(key []byte) objectstorage.StorableObject {
 			newlyAdded = true
+
 			return newTestObject("Hans", 33)
 		})
 		cachedObject.Release()
@@ -948,6 +954,7 @@ func TestForEachWithPrefix(t *testing.T) {
 
 		delete(expectedKeys, string(key))
 		cachedObject.Release()
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -992,6 +999,7 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")))
 
@@ -1036,6 +1044,7 @@ func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
 		}
 
 		delete(expectedKeys, string(key))
+
 		return true
 	}, objectstorage.WithIteratorPrefix([]byte("1")), objectstorage.WithIteratorSkipCache(true))
 

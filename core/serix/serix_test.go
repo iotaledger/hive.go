@@ -1,3 +1,4 @@
+//nolint:scopelint // we don't care about these linters in test cases
 package serix_test
 
 import (
@@ -30,23 +31,24 @@ var (
 type Bool bool
 
 func (b Bool) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (b Bool) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (b Bool) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	ser := serializer.NewSerializer()
 	ser.WriteBool(bool(b), defaultErrProducer)
+
 	return ser.Serialize()
 }
 
@@ -55,23 +57,24 @@ type Bools []Bool
 var boolsLenType = serix.LengthPrefixTypeAsUint16
 
 func (bs Bools) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (bs Bools) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (bs Bools) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -80,11 +83,12 @@ func (bs Bools) ToSerializables() serializer.Serializables {
 	for i, b := range bs {
 		serializables[i] = b
 	}
+
 	return serializables
 }
 
 func (bs Bools) FromSerializables(seris serializer.Serializables) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -117,17 +121,17 @@ func NewSimpleStruct() SimpleStruct {
 var simpleStructObjectCode = uint32(0)
 
 func (ss SimpleStruct) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ss SimpleStruct) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ss SimpleStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -143,6 +147,7 @@ func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSe
 	s.WriteTime(ss.Time, defaultErrProducer)
 	s.WriteNum(ss.Int, defaultErrProducer)
 	s.WriteNum(ss.Float, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -175,17 +180,17 @@ var interfaceImplObjectCode = uint32(1)
 func (ii *InterfaceImpl) Method() {}
 
 func (ii *InterfaceImpl) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ii *InterfaceImpl) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -194,6 +199,7 @@ func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, de
 	ser.WriteNum(interfaceImplObjectCode, defaultErrProducer)
 	ser.WriteNum(ii.A, defaultErrProducer)
 	ser.WriteNum(ii.B, defaultErrProducer)
+
 	return ser.Serialize()
 }
 
@@ -202,23 +208,24 @@ type StructWithInterface struct {
 }
 
 func (si StructWithInterface) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (si StructWithInterface) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (si StructWithInterface) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (si StructWithInterface) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WriteObject(si.Interface.(serializer.Serializable), defaultSeriMode, deSeriCtx, defaultWriteGuard, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -227,23 +234,24 @@ type StructWithOptionalField struct {
 }
 
 func (so StructWithOptionalField) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (so StructWithOptionalField) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (so StructWithOptionalField) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
 	s := serializer.NewSerializer()
 	s.WritePayloadLength(0, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -253,17 +261,17 @@ type StructWithEmbeddedStructs struct {
 }
 
 func (se StructWithEmbeddedStructs) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (se StructWithEmbeddedStructs) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (se StructWithEmbeddedStructs) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -272,6 +280,7 @@ func (se StructWithEmbeddedStructs) Serialize(deSeriMode serializer.DeSerializat
 	s.WriteNum(se.unexportedStruct.Foo, defaultErrProducer)
 	s.WriteNum(exportedStructObjectCode, defaultErrProducer)
 	s.WriteNum(se.ExportedStruct.Bar, defaultErrProducer)
+
 	return s.Serialize()
 }
 
@@ -290,17 +299,17 @@ type Map map[uint64]uint64
 var mapLenType = serix.LengthPrefixTypeAsUint32
 
 func (m Map) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (m Map) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (m Map) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -322,23 +331,24 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 	mode := defaultSeriMode | serializer.DeSeriModePerformLexicalOrdering
 	arrayRules := &serializer.ArrayRules{ValidationMode: serializer.ArrayValidationModeLexicalOrdering}
 	s.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
+
 	return s.Serialize()
 }
 
 type CustomSerializable int
 
 func (cs CustomSerializable) MarshalJSON() ([]byte, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (cs CustomSerializable) UnmarshalJSON(bytes []byte) error {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
 func (cs CustomSerializable) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	//TODO implement me
+	// ToDo: implement me
 	panic("implement me")
 }
 
@@ -348,6 +358,7 @@ func (cs CustomSerializable) Serialize(deSeriMode serializer.DeSerializationMode
 
 func (cs CustomSerializable) Encode() ([]byte, error) {
 	b := []byte(fmt.Sprintf("int: %d", cs))
+
 	return b, nil
 }
 
@@ -356,6 +367,7 @@ func (cs *CustomSerializable) Decode(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return len(b), nil
 }
 
@@ -404,6 +416,7 @@ func TestMain(m *testing.M) {
 		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
 			log.Panic(err)
 		}
+
 		return m.Run()
 	}()
 	os.Exit(exitCode)
@@ -431,6 +444,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Str: "abcde"},
@@ -448,6 +462,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Str: "abc"},
@@ -465,6 +480,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Slice: []byte{1, 2, 3, 4, 5}},
@@ -482,6 +498,7 @@ func TestMinMax(t *testing.T) {
 
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(0))))
+
 				return paras{
 					api:         api,
 					encodeInput: &example{Slice: []byte{1, 2, 3, 4}},
@@ -497,6 +514,7 @@ func TestMinMax(t *testing.T) {
 				_, err := test.paras.api.Encode(context.Background(), test.paras.encodeInput, serix.WithValidation())
 				if test.error {
 					require.Error(t, err)
+
 					return
 				}
 				require.NoError(t, err)
@@ -506,6 +524,7 @@ func TestMinMax(t *testing.T) {
 				_, err := test.paras.api.Decode(context.Background(), test.paras.decodeInput, dest, serix.WithValidation())
 				if test.error {
 					require.Error(t, err)
+
 					return
 				}
 				require.NoError(t, err)

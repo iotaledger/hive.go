@@ -8,7 +8,7 @@ import (
 )
 
 func TestID_Base58EncodeAndDecode(t *testing.T) {
-	id, err := RandomID()
+	id, err := RandomIDInsecure()
 	require.NoError(t, err)
 	encoded := id.EncodeBase58()
 	decoded, err := DecodeIDBase58(encoded)

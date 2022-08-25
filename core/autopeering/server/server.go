@@ -72,7 +72,7 @@ type replyMatcher struct {
 	errc chan error
 }
 
-// reply is a reply packet from a certain peer
+// reply is a reply packet from a certain peer.
 type reply struct {
 	fromIP         net.IP
 	fromID         identity.ID
@@ -126,7 +126,7 @@ func (s *Server) LocalAddr() *net.UDPAddr {
 	return s.conn.LocalAddr().(*net.UDPAddr)
 }
 
-// Send sends a message to the given address
+// Send sends a message to the given address.
 func (s *Server) Send(toAddr *net.UDPAddr, data []byte) {
 	pkt := s.encode(data)
 	s.write(pkt, toAddr)
@@ -152,6 +152,7 @@ func (s *Server) expectReply(fromIP net.IP, fromID identity.ID, mtype MType, cal
 	case <-s.closing:
 		ch <- ErrClosed
 	}
+
 	return ch
 }
 
@@ -231,6 +232,7 @@ func (s *Server) replyLoop() {
 			for e := matcherList.Front(); e != nil; e = e.Next() {
 				e.Value.(*replyMatcher).errc <- ErrClosed
 			}
+
 			return
 
 		}
@@ -241,10 +243,12 @@ func (s *Server) write(pkt *pb.Packet, toAddr *net.UDPAddr) {
 	b, err := proto.Marshal(pkt)
 	if err != nil {
 		s.log.Error("marshal error", "err", err)
+
 		return
 	}
 	if l := len(b); l > MaxPacketSize {
 		s.log.Error("packet too large", "size", l, "max", MaxPacketSize)
+
 		return
 	}
 
@@ -276,6 +280,7 @@ func (s *Server) readLoop() {
 		if netutil.IsTemporaryError(err) {
 			// ignore temporary read errors.
 			s.log.Debugw("temporary read error", "err", err)
+
 			continue
 		}
 		// return from the loop on all other errors
@@ -286,12 +291,14 @@ func (s *Server) readLoop() {
 				s.log.Warnw("read error", "err", err)
 			}
 			s.log.Debug("reading stopped")
+
 			return
 		}
 
 		pkt := new(pb.Packet)
 		if err := proto.Unmarshal(buffer[:n], pkt); err != nil {
 			s.log.Debugw("bad packet", "from", fromAddr, "err", err)
+
 			continue
 		}
 		if err := s.handlePacket(pkt, fromAddr); err != nil {
@@ -312,6 +319,7 @@ func (s *Server) handlePacket(pkt *pb.Packet, fromAddr *net.UDPAddr) error {
 			return err
 		}
 	}
+
 	return ErrInvalidMessage
 }
 
@@ -324,5 +332,6 @@ func decode(pkt *pb.Packet) ([]byte, *identity.Identity, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return pkt.GetData(), identity.New(key), nil
 }

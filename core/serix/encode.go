@@ -78,6 +78,7 @@ func (api *API) encodeBasedOnType(
 	case reflect.Ptr:
 		if valueBigInt, ok := valueI.(*big.Int); ok {
 			seri := serializer.NewSerializer()
+
 			return seri.WriteUint256(valueBigInt, func(err error) error {
 				return errors.Wrap(err, "failed to write math big int to serializer")
 			}).Serialize()
@@ -101,10 +102,12 @@ func (api *API) encodeBasedOnType(
 		sliceValueType := sliceValue.Type()
 		if sliceValueType.AssignableTo(bytesType) {
 			seri := serializer.NewSerializer()
+
 			return seri.WriteBytes(sliceValue.Bytes(), func(err error) error {
 				return errors.Wrap(err, "failed to write array of bytes to serializer")
 			}).Serialize()
 		}
+
 		return api.encodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, valueType, ts, opts)
@@ -114,6 +117,7 @@ func (api *API) encodeBasedOnType(
 			return nil, errors.Errorf("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
 		seri := serializer.NewSerializer()
+
 		return seri.WriteString(
 			value.String(),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
@@ -123,6 +127,7 @@ func (api *API) encodeBasedOnType(
 
 	case reflect.Bool:
 		seri := serializer.NewSerializer()
+
 		return seri.WriteBool(value.Bool(), func(err error) error {
 			return errors.Wrap(err, "failed to write bool value to serializer")
 		}).Serialize()
@@ -134,11 +139,13 @@ func (api *API) encodeBasedOnType(
 		value = value.Convert(typeToConvert)
 		valueI = value.Interface()
 		seri := serializer.NewSerializer()
+
 		return seri.WriteNum(valueI, func(err error) error {
 			return errors.Wrap(err, "failed to write number value to serializer")
 		}).Serialize()
 	default:
 	}
+
 	return nil, errors.Errorf("can't encode: unsupported type %T", valueI)
 }
 
@@ -159,6 +166,7 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 			return errors.Errorf("can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
 		}
 	}
+
 	return nil
 }
 
@@ -173,6 +181,7 @@ func hasLength(v reflect.Value) bool {
 	default:
 		return false
 	}
+
 	return true
 }
 
@@ -196,6 +205,7 @@ func (api *API) encodeInterface(
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode interface element %s", elemType)
 	}
+
 	return encodedBytes, nil
 }
 
@@ -204,6 +214,7 @@ func (api *API) encodeStruct(
 ) ([]byte, error) {
 	if valueTime, ok := valueI.(time.Time); ok {
 		seri := serializer.NewSerializer()
+
 		return seri.WriteTime(valueTime, func(err error) error {
 			return errors.Wrap(err, "failed to write time to serializer")
 		}).Serialize()
@@ -217,6 +228,7 @@ func (api *API) encodeStruct(
 	if err := api.encodeStructFields(ctx, s, value, valueType, opts); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	return s.Serialize()
 }
 
@@ -245,6 +257,7 @@ func (api *API) encodeStructFields(
 			if err := api.encodeStructFields(ctx, s, fieldValue, fieldType, opts); err != nil {
 				return errors.Wrapf(err, "can't serialize embedded struct %s", sField.name)
 			}
+
 			continue
 		}
 		var fieldBytes []byte
@@ -253,9 +266,11 @@ func (api *API) encodeStructFields(
 				s.WritePayloadLength(0, func(err error) error {
 					return errors.Wrapf(err,
 						"failed to write zero length for an optional struct field %s to serializer",
+						//nolint:scopelint // false positive
 						sField.name,
 					)
 				})
+
 				continue
 			}
 			fieldBytes, err = api.encode(ctx, fieldValue, sField.settings.ts, opts)
@@ -265,6 +280,7 @@ func (api *API) encodeStructFields(
 			s.WritePayloadLength(len(fieldBytes), func(err error) error {
 				return errors.Wrapf(err,
 					"failed to write length for an optional struct field %s to serializer",
+					//nolint:scopelint // false positive
 					sField.name,
 				)
 			})
@@ -278,10 +294,12 @@ func (api *API) encodeStructFields(
 		s.WriteBytes(fieldBytes, func(err error) error {
 			return errors.Wrapf(err,
 				"failed to write serialized struct field bytes to serializer, field=%s",
+				//nolint:scopelint // false positive
 				sField.name,
 			)
 		})
 	}
+
 	return nil
 }
 
@@ -299,6 +317,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 			func(err error) error {
 				return errors.Wrap(err, "failed to write bytes to serializer")
 			})
+
 		return seri.Serialize()
 	}
 	sliceLen := value.Len()
@@ -311,6 +330,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 		}
 		data[i] = elemBytes
 	}
+
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }
 
@@ -344,6 +364,7 @@ func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opt
 	}
 	buf := bytes.NewBuffer(keyBytes)
 	buf.Write(elemBytes)
+
 	return buf.Bytes(), nil
 }
 
@@ -369,5 +390,6 @@ func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, 
 				"serializer failed to write %s  as slice of bytes", valueType,
 			)
 		})
+
 	return seri.Serialize()
 }

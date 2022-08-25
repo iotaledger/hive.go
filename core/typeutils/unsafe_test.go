@@ -50,6 +50,7 @@ func createTestBytes() [][]byte {
 	for i, str := range testStrings {
 		result[i] = []byte(str)
 	}
+
 	return result
 }
 

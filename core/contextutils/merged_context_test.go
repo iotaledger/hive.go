@@ -1,3 +1,4 @@
+//nolint:staticcheck,golint,revive // we don't care about these linters in test cases
 package contextutils
 
 import (

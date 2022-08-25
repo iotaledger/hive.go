@@ -34,7 +34,7 @@ var (
 	ErrDeserializationLengthInvalid = errors.New("length denotation invalid")
 	// ErrDeserializationNotAllConsumed gets returned if not all bytes were consumed during deserialization of a given type.
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
-	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit
+	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit.
 	ErrUint256NumNegative = errors.New("uint256 is negative")
 	// ErrStringTooLong gets returned if a string exceeds a max length.
 	ErrStringTooLong = errors.New("string is too long")
@@ -53,6 +53,7 @@ func CheckType(data []byte, shouldType uint32) error {
 	if actualType != shouldType {
 		return fmt.Errorf("%w: type denotation must be %d but is %d", ErrDeserializationTypeMismatch, shouldType, actualType)
 	}
+
 	return nil
 }
 
@@ -64,6 +65,7 @@ func CheckTypeByte(data []byte, shouldType byte) error {
 	if data[0] != shouldType {
 		return fmt.Errorf("%w: type denotation must be %d but is %d", ErrDeserializationTypeMismatch, shouldType, data[0])
 	}
+
 	return nil
 }
 
@@ -72,6 +74,7 @@ func CheckExactByteLength(exact int, length int) error {
 	if length != exact {
 		return fmt.Errorf("%w: data must be at exact %d bytes long but is %d", ErrInvalidBytes, exact, length)
 	}
+
 	return nil
 }
 
@@ -80,5 +83,6 @@ func CheckMinByteLength(min int, length int) error {
 	if length < min {
 		return fmt.Errorf("%w: data must be at least %d bytes long but is %d", ErrDeserializationNotEnoughData, min, length)
 	}
+
 	return nil
 }

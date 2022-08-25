@@ -15,6 +15,7 @@ var (
 	ErrUnknownEntryType = errors.New("unknown entry type")
 )
 
+//nolint:revive // better be explicit here
 type ParameterGroup struct {
 	Parameters []*Parameter
 	SubGroups  []*ParameterGroup
@@ -91,9 +92,10 @@ func analyzeBoundParameter(groupsMap map[string]*ParameterGroup, groups []*Param
 					valueField := elem.Field(i)
 					typeField := elem.Type().Field(i)
 
-					name, usage, defaultVal := getParameterValues(groupBaseName, valueField, typeField)
+					name, usage, defaultVal := getParameterValues(valueField, typeField)
 					addParameter(groupsMap, defaultVal, usage, groupBaseName, name)
 				}
+
 				return groups
 			}
 		}

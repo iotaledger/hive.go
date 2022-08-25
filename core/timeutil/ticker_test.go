@@ -20,6 +20,7 @@ func TestTicker_ExternalContext(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 			if counter.Load() > 2 {
 				ctxCancel()
+
 				return
 			}
 		}
@@ -62,6 +63,7 @@ func TestTicker_ManualShutdown(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 			if counter.Load() > 2 {
 				ticker.Shutdown()
+
 				return
 			}
 		}

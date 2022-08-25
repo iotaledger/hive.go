@@ -40,7 +40,7 @@ func createParameter(defaultVal any, usage string, name string) *Parameter {
 		defaultValueStr = fmt.Sprintf("\"%s\"", v)
 		typeName = "string"
 	case time.Duration:
-		defaultValue = fmt.Sprintf("%s", durationShortened(v))
+		defaultValue = durationShortened(v)
 		defaultValueStr = fmt.Sprintf("\"%s\"", durationShortened(v))
 		typeName = "string"
 	case []string:
@@ -100,7 +100,7 @@ func addParameter(groupsMap map[string]*ParameterGroup, defaultVal any, usage st
 	group.Entries = append(group.Entries, newParameter)
 }
 
-func getParameterValues(namespace string, valueField reflect.Value, typeField reflect.StructField) (string, string, any) {
+func getParameterValues(valueField reflect.Value, typeField reflect.StructField) (string, string, any) {
 
 	var name string
 	if tagName, exists := typeField.Tag.Lookup("name"); exists {

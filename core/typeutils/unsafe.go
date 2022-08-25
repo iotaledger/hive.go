@@ -18,6 +18,8 @@ func BytesToString(b []byte) string {
 // NOTE: This is an unsafe operation and may lead to problems if the bytes are changed.
 func StringToBytes(s string) []byte {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
+
+	//nolint:govet // we want some magic here
 	b := *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
 		Data: sh.Data,
 		Len:  sh.Len,

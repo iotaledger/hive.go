@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -27,7 +28,7 @@ type NonBlockingQueuedWorkerPool struct {
 
 // NewNonBlockingQueuedWorkerPool creates and starts a new worker pool for the supplied function, with the supplied options.
 func NewNonBlockingQueuedWorkerPool(workerFunc func(Task), optionalOptions ...Option) (result *NonBlockingQueuedWorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 
 	result = &NonBlockingQueuedWorkerPool{
 		workerFunc: workerFunc,
@@ -67,7 +68,7 @@ func (wp *NonBlockingQueuedWorkerPool) workerFuncWrapper(t interface{}) {
 }
 
 func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
-	if antsErr := wp.pool.Invoke(t); antsErr != nil && antsErr != ants.ErrPoolOverload {
+	if antsErr := wp.pool.Invoke(t); antsErr != nil && !errors.Is(antsErr, ants.ErrPoolOverload) {
 		panic(antsErr)
 	} else {
 		if antsErr == nil {
@@ -83,7 +84,7 @@ func (wp *NonBlockingQueuedWorkerPool) doSubmit(t Task) bool {
 	}
 }
 
-// Submit is an alias for TrySubmit
+// Submit is an alias for TrySubmit.
 func (wp *NonBlockingQueuedWorkerPool) Submit(params ...interface{}) (chan interface{}, bool) {
 	return wp.TrySubmit(params...)
 }
@@ -108,6 +109,7 @@ func (wp *NonBlockingQueuedWorkerPool) TrySubmit(params ...interface{}) (result 
 	if !wp.doSubmit(t) {
 		wp.tasksWg.Done()
 		close(result)
+
 		return nil, false
 	}
 

@@ -8,6 +8,7 @@ import (
 func NewUnsortedFlagSet(name string, errorHandling flag.ErrorHandling) *flag.FlagSet {
 	flagset := flag.NewFlagSet(name, errorHandling)
 	flagset.SortFlags = false
+
 	return flagset
 }
 
@@ -19,6 +20,7 @@ func HasFlag(flagSet *flag.FlagSet, name string) bool {
 			has = true
 		}
 	})
+
 	return has
 }
 

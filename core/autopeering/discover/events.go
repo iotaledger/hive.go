@@ -13,7 +13,7 @@ type Events struct {
 	PeerDeleted *event.Event[*PeerDeletedEvent]
 }
 
-func newEvents() (new *Events) {
+func newEvents() *Events {
 	return &Events{
 		PeerDiscovered: event.New[*PeerDiscoveredEvent](),
 		PeerDeleted:    event.New[*PeerDeletedEvent](),

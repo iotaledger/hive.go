@@ -25,7 +25,7 @@ func sliceReflect(value reflect.Value) (result string) {
 
 				newLineVersion = true
 			}
-			result += text.Indent(Interface(item)+",\n", strings.Repeat(" ", INDENTATION_SIZE))
+			result += text.Indent(Interface(item)+",\n", strings.Repeat(" ", IndentationSize))
 		} else {
 			result += Interface(item) + ", "
 		}

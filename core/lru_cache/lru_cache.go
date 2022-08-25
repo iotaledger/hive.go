@@ -1,4 +1,4 @@
-package lru_cache
+package lrucache
 
 import (
 	"github.com/iotaledger/hive.go/core/list"
@@ -16,15 +16,15 @@ type LRUCache struct {
 	doublyLinkedList *list.DoublyLinkedList
 	capacity         int
 	size             int
-	options          *LRUCacheOptions
+	options          *Options
 	mutex            syncutils.RWMutex
 	krwMutex         *syncutils.KRWMutex
 }
 
-func NewLRUCache(capacity int, options ...*LRUCacheOptions) *LRUCache {
-	var currentOptions *LRUCacheOptions
+func NewLRUCache(capacity int, options ...*Options) *LRUCache {
+	var currentOptions *Options
 	if len(options) < 1 || options[0] == nil {
-		currentOptions = DEFAULT_OPTIONS
+		currentOptions = defaultOptions
 	} else {
 		currentOptions = options[0]
 	}
@@ -64,6 +64,7 @@ func (cache *LRUCache) set(key interface{}, value interface{}) {
 	if element, exists := directory[key]; exists {
 		element.Value.(*lruCacheElement).value = value
 		cache.promoteElement(element)
+
 		return
 	}
 
@@ -139,11 +140,12 @@ func (cache *LRUCache) ComputeIfAbsent(key interface{}, callback func() interfac
 // The result of the callback is written back into the cache.
 // If the callback returns nil the entry is removed from the cache.
 // Returns the updated entry.
-func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value interface{}) interface{}) (result interface{}) {
+func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value interface{}) interface{}) interface{} {
 	keyMutex := cache.krwMutex.Register(key)
 
 	keyMutex.RLock()
 	cache.mutex.RLock()
+	var result any
 	if entry, exists := cache.directory[key]; exists {
 		cache.mutex.RUnlock()
 		keyMutex.RUnlock()
@@ -181,7 +183,7 @@ func (cache *LRUCache) ComputeIfPresent(key interface{}, callback func(value int
 
 	cache.krwMutex.Free(key)
 
-	return
+	return result
 }
 
 func (cache *LRUCache) Contains(key interface{}) (result bool) {

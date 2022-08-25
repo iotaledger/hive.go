@@ -13,11 +13,12 @@ func fixVersion(version string) string {
 
 	for _, prerelease := range []string{"rc", "alpha", "beta"} {
 		prerelease = "-" + prerelease
-		prerelease_dot := prerelease + "."
-		if !strings.Contains(ver, prerelease_dot) {
-			ver = strings.Replace(ver, prerelease, prerelease_dot, 1)
+		prereleaseDot := prerelease + "."
+		if !strings.Contains(ver, prereleaseDot) {
+			ver = strings.Replace(ver, prerelease, prereleaseDot, 1)
 		}
 	}
+
 	return ver
 }
 
@@ -30,7 +31,7 @@ func versionIsPreRelease(version *goversion.Version) bool {
 // versionFilterFunc filters possible versions for updates based on the current AppVersion.
 // If the AppVersion is self-compiled, we don't search for updates.
 // We only check for any versions in the same MAJOR version. (e.g. 1.1.3 => 1.2.0)
-// If the AppVersion is a pre-release, we also check for any pre-releases in the same MAJOR version. (e.g. 1.1.4-rc1 => 1.2.0-alpha1 / 1.1.5)
+// If the AppVersion is a pre-release, we also check for any pre-releases in the same MAJOR version. (e.g. 1.1.4-rc1 => 1.2.0-alpha1 / 1.1.5).
 func versionFilterFunc(fixedAppVersion string) latest.TagFilterFunc {
 
 	appVersion, err := goversion.NewSemver(fixedAppVersion)
@@ -67,6 +68,8 @@ func versionFilterFunc(fixedAppVersion string) latest.TagFilterFunc {
 }
 
 // VersionChecker can be used to check for updates on GitHub.
+//
+//nolint:revive // better be explicit here
 type VersionChecker struct {
 	fixedAppVersion string
 	versionSource   latest.Source

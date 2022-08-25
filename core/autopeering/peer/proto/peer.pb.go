@@ -26,7 +26,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// Minimal encoding of a peer
+// Minimal encoding of a peer.
 type Peer struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -62,8 +62,10 @@ func (x *Peer) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -76,6 +78,7 @@ func (x *Peer) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
 	}
+
 	return nil
 }
 
@@ -83,6 +86,7 @@ func (x *Peer) GetIp() string {
 	if x != nil {
 		return x.Ip
 	}
+
 	return ""
 }
 
@@ -90,6 +94,7 @@ func (x *Peer) GetServices() *proto1.ServiceMap {
 	if x != nil {
 		return x.Services
 	}
+
 	return nil
 }
 
@@ -123,6 +128,7 @@ func file_autopeering_peer_proto_peer_proto_rawDescGZIP() []byte {
 	file_autopeering_peer_proto_peer_proto_rawDescOnce.Do(func() {
 		file_autopeering_peer_proto_peer_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_peer_proto_peer_proto_rawDescData)
 	})
+
 	return file_autopeering_peer_proto_peer_proto_rawDescData
 }
 

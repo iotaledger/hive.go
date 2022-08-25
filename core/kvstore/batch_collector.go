@@ -53,6 +53,7 @@ func (br *BatchCollector) Commit() error {
 	if br.writtenValuesCounter == 0 {
 		// nothing to commit
 		br.batchedMuts.Cancel()
+
 		return nil
 	}
 

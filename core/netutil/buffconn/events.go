@@ -10,7 +10,7 @@ type BufferedConnectionEvents struct {
 	Close          *event.Event[*CloseEvent]
 }
 
-func newBufferedConnectionEvents() (new *BufferedConnectionEvents) {
+func newBufferedConnectionEvents() *BufferedConnectionEvents {
 	return &BufferedConnectionEvents{
 		ReceiveMessage: event.New[*ReceiveMessageEvent](),
 		Close:          event.New[*CloseEvent](),

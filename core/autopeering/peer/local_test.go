@@ -71,5 +71,6 @@ func newTestLocal(t require.TestingT, db *DB) *Local {
 	}
 	services := service.New()
 	services.Update(service.PeeringKey, testNetwork, testPort)
+
 	return newLocal(priv, testIP, services, db)
 }

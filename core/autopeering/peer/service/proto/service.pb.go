@@ -26,7 +26,7 @@ const (
 const _ = proto.ProtoPackageIsVersion4
 
 // Mapping between a service ID and its tuple network_address
-// e.g., map[autopeering:&{tcp, 198.51.100.1:80}]
+// e.g., map[autopeering:&{tcp, 198.51.100.1:80}].
 type ServiceMap struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -57,8 +57,10 @@ func (x *ServiceMap) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -71,10 +73,11 @@ func (x *ServiceMap) GetMap() map[string]*NetworkAddress {
 	if x != nil {
 		return x.Map
 	}
+
 	return nil
 }
 
-// The service type (e.g., tcp, upd) and the address (e.g., 198.51.100.1:80)
+// The service type (e.g., tcp, upd) and the address (e.g., 198.51.100.1:80).
 type NetworkAddress struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -106,8 +109,10 @@ func (x *NetworkAddress) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -120,6 +125,7 @@ func (x *NetworkAddress) GetNetwork() string {
 	if x != nil {
 		return x.Network
 	}
+
 	return ""
 }
 
@@ -127,6 +133,7 @@ func (x *NetworkAddress) GetPort() uint32 {
 	if x != nil {
 		return x.Port
 	}
+
 	return 0
 }
 
@@ -165,6 +172,7 @@ func file_autopeering_peer_service_proto_service_proto_rawDescGZIP() []byte {
 	file_autopeering_peer_service_proto_service_proto_rawDescOnce.Do(func() {
 		file_autopeering_peer_service_proto_service_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_peer_service_proto_service_proto_rawDescData)
 	})
+
 	return file_autopeering_peer_service_proto_service_proto_rawDescData
 }
 

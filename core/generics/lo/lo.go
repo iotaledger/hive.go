@@ -136,6 +136,7 @@ func Max[T constraints.Ordered](collection ...T) T {
 		if Comparator(value, max) > 0 {
 			return value
 		}
+
 		return max
 	}, maxElem)
 }
@@ -148,11 +149,12 @@ func Min[T constraints.Ordered](collection ...T) T {
 		if Comparator(value, min) < 0 {
 			return value
 		}
+
 		return min
 	}, minElem)
 }
 
-// Sum returns the sum of the collection
+// Sum returns the sum of the collection.
 func Sum[T constraints.Numeric](collection ...T) T {
 	var sumElem T
 
@@ -176,5 +178,6 @@ func MergeMaps[K comparable, V any](base, update map[K]V) map[K]V {
 	for k, v := range update {
 		base[k] = v
 	}
+
 	return base
 }

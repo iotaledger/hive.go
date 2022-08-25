@@ -67,6 +67,7 @@ func TestBlocklistNeighbor(t *testing.T) {
 					return false
 				}
 			}
+
 			return true
 		}, time.Second, 10*time.Millisecond)
 	})
@@ -135,6 +136,7 @@ func getValues(m map[identity.ID]*peer.Peer) []*peer.Peer {
 	for _, p := range m {
 		result = append(result, p)
 	}
+
 	return result
 }
 
@@ -177,7 +179,7 @@ type neighbors struct {
 	out, in map[identity.ID]*peer.Peer
 }
 
-// eventNetwork reconstructs the neighbors for the triggered events
+// eventNetwork reconstructs the neighbors for the triggered events.
 type eventNetwork struct {
 	sync.Mutex
 	t *testing.T
@@ -262,6 +264,7 @@ func (n *networkMock) GetKnownPeers() []*peer.Peer {
 	for _, m := range n.mgr {
 		peers = append(peers, m.net.local().Peer)
 	}
+
 	return peers
 }
 
@@ -271,5 +274,6 @@ func newTestManager(name string, mgrMap map[identity.ID]*manager) *manager {
 	nm := &networkMock{loc: local, mgr: mgrMap}
 	m := newManager(nm, nm.GetKnownPeers, log.Named(name), &options{})
 	mgrMap[m.getID()] = m
+
 	return m
 }

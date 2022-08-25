@@ -24,8 +24,8 @@ const (
 	DefaultFlagSetName = "appConfig"
 )
 
-// AppInfo provides informations about the app.
-type AppInfo struct {
+// Info provides informations about the app.
+type Info struct {
 	Name                string
 	Version             string
 	LatestGitHubVersion string
@@ -36,7 +36,7 @@ type ParametersApp struct {
 }
 
 type App struct {
-	appInfo                 *AppInfo
+	appInfo                 *Info
 	enabledPlugins          map[string]struct{}
 	disabledPlugins         map[string]struct{}
 	forceDisabledComponents map[string]struct{}
@@ -51,16 +51,16 @@ type App struct {
 	appParams               *ParametersApp
 	configs                 ConfigurationSets
 	maskedKeys              []string
-	options                 *AppOptions
+	options                 *Options
 }
 
-func New(name string, version string, optionalOptions ...AppOption) *App {
-	appOpts := &AppOptions{}
-	appOpts.apply(defaultAppOptions...)
+func New(name string, version string, optionalOptions ...Option) *App {
+	appOpts := &Options{}
+	appOpts.apply(defaultOptions...)
 	appOpts.apply(optionalOptions...)
 
 	a := &App{
-		appInfo: &AppInfo{
+		appInfo: &Info{
 			Name:                name,
 			Version:             version,
 			LatestGitHubVersion: "",
@@ -89,7 +89,7 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	}
 
 	// provide the app info in the container
-	if err := a.container.Provide(func() *AppInfo {
+	if err := a.container.Provide(func() *Info {
 		return a.appInfo
 	}); err != nil {
 		panic(err)
@@ -101,7 +101,7 @@ func New(name string, version string, optionalOptions ...AppOption) *App {
 	return a
 }
 
-// init stage collects all parameters and loads the config files
+// init stage collects all parameters and loads the config files.
 func (a *App) init() {
 	version := flag.BoolP("version", "v", false, "prints the app version")
 	help := flag.BoolP("help", "h", false, "prints the app help (--full for all parameters)")
@@ -195,11 +195,13 @@ func (a *App) init() {
 
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		collectParameters(coreComponent.Component)
+
 		return true
 	})
 
 	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
 		collectParameters(plugin.Component)
+
 		return true
 	})
 
@@ -263,7 +265,7 @@ Command line flags:
 	a.log = logger.NewLogger("App")
 }
 
-// printAppInfo prints app name and version info
+// printAppInfo prints app name and version info.
 func (a *App) printAppInfo() {
 	versionString := a.Info().Version
 	if _, err := goversion.NewSemver(a.Info().Version); err == nil {
@@ -293,6 +295,7 @@ func (a *App) printConfig() {
 
 	getList := func(a []string) string {
 		sort.Strings(a)
+
 		return "\n   - " + strings.Join(a, "\n   - ")
 	}
 
@@ -307,7 +310,7 @@ func (a *App) printConfig() {
 	}
 }
 
-// initConfig stage
+// initConfig stage.
 func (a *App) initConfig() {
 	if a.options.initComponent.InitConfigPars != nil {
 		if err := a.options.initComponent.InitConfigPars(a.container); err != nil {
@@ -321,6 +324,7 @@ func (a *App) initConfig() {
 				a.LogPanicf("failed to initialize core component (%s) config parameters: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -330,11 +334,12 @@ func (a *App) initConfig() {
 				a.LogPanicf("failed to initialize plugin (%s) config parameters: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
 
-// preProvide stage
+// preProvide stage.
 func (a *App) preProvide() {
 	initCfg := &InitConfig{}
 
@@ -350,6 +355,7 @@ func (a *App) preProvide() {
 				a.LogPanicf("pre-provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -380,7 +386,7 @@ func (a *App) preProvide() {
 	}
 }
 
-// addComponents stage
+// addComponents stage.
 func (a *App) addComponents() {
 	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
 		if a.isComponentForceDisabled(coreComponent.Identifier()) {
@@ -388,6 +394,7 @@ func (a *App) addComponents() {
 		}
 
 		a.addCoreComponent(coreComponent)
+
 		return true
 	})
 
@@ -397,11 +404,12 @@ func (a *App) addComponents() {
 		}
 
 		a.addPlugin(plugin)
+
 		return true
 	})
 }
 
-// provide stage
+// provide stage.
 func (a *App) provide() {
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
@@ -415,6 +423,7 @@ func (a *App) provide() {
 				a.LogPanicf("provide core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -424,11 +433,12 @@ func (a *App) provide() {
 				a.LogPanicf("provide plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
 
-// invoke stage
+// invoke stage.
 func (a *App) invoke() {
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
@@ -442,6 +452,7 @@ func (a *App) invoke() {
 				a.LogPanicf("invoke core component (%s) failed: %s", coreComponent.Name, err)
 			}
 		}
+
 		return true
 	})
 
@@ -451,11 +462,12 @@ func (a *App) invoke() {
 				a.LogPanicf("invoke plugin (%s) failed: %s", plugin.Name, err)
 			}
 		}
+
 		return true
 	})
 }
 
-// configure stage
+// configure stage.
 func (a *App) configure() {
 	a.LogInfo("Loading core components ...")
 
@@ -472,6 +484,7 @@ func (a *App) configure() {
 			}
 		}
 		a.LogInfof("Loading core components: %s ... done", coreComponent.Name)
+
 		return true
 	})
 
@@ -484,11 +497,12 @@ func (a *App) configure() {
 			}
 		}
 		a.LogInfof("Loading plugin: %s ... done", plugin.Name)
+
 		return true
 	})
 }
 
-// initializeVersionCheck stage
+// initializeVersionCheck stage.
 func (a *App) initializeVersionCheck() {
 	// do not check for updates if it was disabled
 	if !a.options.versionCheckEnabled {
@@ -506,6 +520,7 @@ func (a *App) initializeVersionCheck() {
 		res, err := checker.CheckForUpdates()
 		if err != nil {
 			a.LogWarnf("Update check failed: %s", err)
+
 			return
 		}
 
@@ -528,7 +543,7 @@ func (a *App) initializeVersionCheck() {
 	}
 }
 
-// run stage
+// run stage.
 func (a *App) run() {
 	a.LogInfo("Executing core components ...")
 
@@ -545,6 +560,7 @@ func (a *App) run() {
 			}
 		}
 		a.LogInfof("Starting core component: %s ... done", coreComponent.Name)
+
 		return true
 	})
 
@@ -557,6 +573,7 @@ func (a *App) run() {
 			}
 		}
 		a.LogInfof("Starting plugin: %s ... done", plugin.Name)
+
 		return true
 	})
 }
@@ -594,7 +611,7 @@ func (a *App) Shutdown() {
 	a.Daemon().ShutdownAndWait()
 }
 
-func (a *App) Info() *AppInfo {
+func (a *App) Info() *Info {
 	return a.appInfo
 }
 
@@ -646,16 +663,19 @@ func (a *App) addPlugin(plugin *Plugin) {
 
 func (a *App) isPluginEnabled(identifier string) bool {
 	_, exists := a.enabledPlugins[identifier]
+
 	return exists
 }
 
 func (a *App) isPluginDisabled(identifier string) bool {
 	_, exists := a.disabledPlugins[identifier]
+
 	return exists
 }
 
 func (a *App) isComponentForceDisabled(identifier string) bool {
 	_, exists := a.forceDisabledComponents[identifier]
+
 	return exists
 }
 
@@ -701,8 +721,8 @@ func forEachPlugin(plugins []*Plugin, f PluginForEachFunc) {
 }
 
 // ForEachPlugin calls the given PluginForEachFunc on each loaded plugin.
-func (n *App) ForEachPlugin(f PluginForEachFunc) {
-	forEachPlugin(n.plugins, f)
+func (a *App) ForEachPlugin(f PluginForEachFunc) {
+	forEachPlugin(a.plugins, f)
 }
 
 //

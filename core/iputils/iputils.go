@@ -40,6 +40,7 @@ func (ips *IPAddresses) Union(other *IPAddresses) *IPAddresses {
 			union.Add(*ip)
 		}
 	}
+
 	return union
 }
 
@@ -61,6 +62,7 @@ func (ips *IPAddresses) GetPreferredAddress(preferIPv6 bool) net.IP {
 	for ip := range ips.IPs {
 		return *ip
 	}
+
 	return nil
 }
 
@@ -76,7 +78,7 @@ func (ips *IPAddresses) Len() int {
 	return len(ips.IPs)
 }
 
-// OriginAddress represents a tuple of a IP or hostname, port, alias and IPv6 preference
+// OriginAddress represents a tuple of a IP or hostname, port, alias and IPv6 preference.
 type OriginAddress struct {
 	Addr       string
 	Port       uint16
@@ -103,6 +105,7 @@ func ParseOriginAddress(s string) (*OriginAddress, error) {
 		return nil, ErrOriginAddrInvalidPort
 	}
 	port := uint16(portInt)
+
 	return &OriginAddress{Addr: addr, Port: port}, nil
 }
 
@@ -110,7 +113,7 @@ var ErrInvalidIPAddressOrHost = errors.New("invalid IP address or hostname")
 var ErrNoIPAddressesFound = errors.New("could not resolve any IP address")
 
 // GetIPAddressesFromHost returns all resolvable IP addresses (*IPAddresses) from a host.
-// If it is an IP address this IP address will be returned as *IPAddresses
+// If it is an IP address this IP address will be returned as *IPAddresses.
 func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	ipAddresses := NewIPAddresses()
 
@@ -124,6 +127,7 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 		}
 
 		ipAddresses.Add(ip)
+
 		return ipAddresses, nil
 
 	}
@@ -131,6 +135,7 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	// Check if it's an IPv4 address
 	if ip := net.ParseIP(hostname); ip != nil {
 		ipAddresses.Add(ip)
+
 		return ipAddresses, nil
 	}
 

@@ -1,5 +1,5 @@
 package stringify
 
 const (
-	INDENTATION_SIZE = 4
+	IndentationSize = 4
 )

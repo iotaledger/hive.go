@@ -28,7 +28,7 @@ const (
 	logSends        = true
 )
 
-//  policy for retrying failed network calls
+// policy for retrying failed network calls.
 var retryPolicy = backoff.ExponentialBackOff(backoffInterval, 1.5).With(
 	backoff.Jitter(0.5), backoff.MaxRetries(maxRetries))
 
@@ -106,6 +106,7 @@ func (p *Protocol) EnsureVerified(peer *peer.Peer) error {
 		// Wait for them to Ping back and process our pong
 		time.Sleep(server.ResponseTimeout)
 	}
+
 	return nil
 }
 
@@ -129,10 +130,12 @@ func (p *Protocol) GetVerifiedPeer(id identity.ID) *peer.Peer {
 			"id", id,
 			"err", err,
 		)
+
 		return nil
 	}
 	// send ping to restored peer to ensure that it will be verified
 	p.sendPing(from.Address(), from.ID())
+
 	return from
 }
 
@@ -216,6 +219,7 @@ func (p *Protocol) Ping(to *peer.Peer) error {
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
+
 		return err
 	})
 }
@@ -248,6 +252,7 @@ func (p *Protocol) sendPing(toAddr *net.UDPAddr, toID identity.ID) <-chan error 
 	}
 
 	p.logSend(toAddr, ping)
+
 	return p.Protocol.SendExpectingReply(toAddr, toID, data, pb.MPong, callback)
 }
 
@@ -277,6 +282,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 				peers = append(peers, p)
 			}
 		}
+
 		return true
 	}
 
@@ -286,8 +292,10 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 		if err != nil && !errors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
+
 		return err
 	})
+
 	return peers, err
 }
 
@@ -314,6 +322,7 @@ func marshal(msg pb.Message) []byte {
 	if err != nil {
 		panic("invalid message")
 	}
+
 	return append([]byte{byte(mType)}, data...)
 }
 
@@ -357,6 +366,7 @@ func newDiscoveryResponse(reqData []byte, list []*peer.Peer) *pb.DiscoveryRespon
 	for _, p := range list {
 		peers = append(peers, p.ToProto())
 	}
+
 	return &pb.DiscoveryResponse{
 		ReqHash: server.PacketHash(reqData),
 		Peers:   peers,
@@ -373,6 +383,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 			"version", m.GetVersion(),
 			"want", p.version,
 		)
+
 		return false
 	}
 	// check network identifier
@@ -382,6 +393,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 			"network_id", m.GetNetworkId(),
 			"want", p.netID,
 		)
+
 		return false
 	}
 	// check timestamp
@@ -390,6 +402,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 			"type", m.Name(),
 			"timestamp", time.Unix(m.GetTimestamp(), 0),
 		)
+
 		return false
 	}
 	// check that the src_addr is valid
@@ -399,6 +412,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 			"type", m.Name(),
 			"src_addr", m.GetSrcAddr(),
 		)
+
 		return false
 	}
 	// check that src_port is a valid port number
@@ -407,6 +421,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 			"type", m.Name(),
 			"src_port", m.GetSrcPort(),
 		)
+
 		return false
 	}
 	// ignore dst_addr and dst_port for now
@@ -415,6 +430,7 @@ func (p *Protocol) validatePing(fromAddr *net.UDPAddr, m *pb.Ping) bool {
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 
@@ -447,6 +463,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 			"type", m.Name(),
 			"unexpected", fromAddr,
 		)
+
 		return false
 	}
 	// there must a valid number of services
@@ -455,6 +472,7 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 			"type", m.Name(),
 			"#peers", numServices,
 		)
+
 		return false
 	}
 	// ignore dst_addr and dst_port for now
@@ -463,14 +481,22 @@ func (p *Protocol) validatePong(s *server.Server, fromAddr *net.UDPAddr, fromID 
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 
 func (p *Protocol) handlePong(fromAddr *net.UDPAddr, from *identity.Identity, m *pb.Pong) {
-	services, _ := service.FromProto(m.GetServices())
+	services, err := service.FromProto(m.GetServices())
+	if err != nil {
+		p.log.Warnf("failed to get services from protocol: %v", err)
+
+		return
+	}
+
 	peering := services.Get(service.PeeringKey)
 	if peering == nil {
 		p.log.Warn("invalid services")
+
 		return
 	}
 
@@ -478,7 +504,7 @@ func (p *Protocol) handlePong(fromAddr *net.UDPAddr, from *identity.Identity, m 
 	fromPeer := peer.NewPeer(from, fromAddr.IP, services)
 
 	// a valid pong verifies the peer
-	p.mgr.addVerifiedPeer(fromPeer)
+	_ = p.mgr.addVerifiedPeer(fromPeer)
 
 	// update peer database
 	db := p.loc.Database()
@@ -493,6 +519,7 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID identi
 			"type", m.Name(),
 			"timestamp", time.Unix(m.GetTimestamp(), 0),
 		)
+
 		return false
 	}
 	// check whether the sender is verified
@@ -501,6 +528,7 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID identi
 			"type", m.Name(),
 			"unverified", fromAddr,
 		)
+
 		return false
 	}
 
@@ -508,6 +536,7 @@ func (p *Protocol) validateDiscoveryRequest(fromAddr *net.UDPAddr, fromID identi
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }
 
@@ -529,6 +558,7 @@ func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDP
 			"type", m.Name(),
 			"unexpected", fromAddr,
 		)
+
 		return false
 	}
 	// there must not be too many peers
@@ -537,6 +567,7 @@ func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDP
 			"type", m.Name(),
 			"#peers", len(m.GetPeers()),
 		)
+
 		return false
 	}
 
@@ -544,5 +575,6 @@ func (p *Protocol) validateDiscoveryResponse(s *server.Server, fromAddr *net.UDP
 		"type", m.Name(),
 		"addr", fromAddr,
 	)
+
 	return true
 }

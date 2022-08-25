@@ -1,6 +1,7 @@
 package pebble
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/cockroachdb/pebble"
@@ -60,7 +61,7 @@ func (s *pebbleStore) getIterBounds(prefix []byte) ([]byte, []byte) {
 }
 
 // getIterFuncs returns the function pointers for the iteration based on the given settings.
-func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore.IterDirection) (start func() bool, valid func() bool, move func() bool, err error) {
+func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore.IterDirection) (start func() bool, valid func() bool, move func() bool) {
 
 	startFunc := it.First
 	validFunc := it.Valid
@@ -71,7 +72,7 @@ func (s *pebbleStore) getIterFuncs(it *pebble.Iterator, iterDirection ...kvstore
 		moveFunc = it.Prev
 	}
 
-	return startFunc, validFunc, moveFunc, nil
+	return startFunc, validFunc, moveFunc
 }
 
 // Iterate iterates over all keys and values with the provided prefix. You can pass kvstore.EmptyPrefix to iterate over all keys and values.
@@ -86,10 +87,7 @@ func (s *pebbleStore) Iterate(prefix kvstore.KeyPrefix, consumerFunc kvstore.Ite
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer it.Close()
 
-	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
-	if err != nil {
-		return err
-	}
+	startFunc, validFunc, moveFunc := s.getIterFuncs(it, iterDirection...)
 
 	for startFunc(); validFunc(); moveFunc() {
 		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):], utils.CopyBytes(it.Value())) {
@@ -112,10 +110,7 @@ func (s *pebbleStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore
 	it := s.instance.NewIter(&pebble.IterOptions{LowerBound: start, UpperBound: end})
 	defer it.Close()
 
-	startFunc, validFunc, moveFunc, err := s.getIterFuncs(it, iterDirection...)
-	if err != nil {
-		return err
-	}
+	startFunc, validFunc, moveFunc := s.getIterFuncs(it, iterDirection...)
 
 	for startFunc(); validFunc(); moveFunc() {
 		if !consumerFunc(utils.CopyBytes(it.Key())[len(s.dbPrefix):]) {
@@ -142,9 +137,10 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 
 	if err != nil {
-		if err == pebble.ErrNotFound {
+		if errors.Is(err, pebble.ErrNotFound) {
 			return nil, kvstore.ErrKeyNotFound
 		}
+
 		return nil, err
 	}
 
@@ -171,7 +167,7 @@ func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 	}
 
 	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
-	if err == pebble.ErrNotFound {
+	if errors.Is(err, pebble.ErrNotFound) {
 		return false, nil
 	}
 
@@ -210,6 +206,7 @@ func (s *pebbleStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 		for it.First(); it.Valid(); it.Next() {
 			if err := b.Delete(it.Key(), nil); err != nil {
 				b.Close()
+
 				return err
 			}
 		}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -56,6 +55,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 			for lvl, parameterName := range ignoredSettingSplitted {
 				if lvl == len(ignoredSettingSplitted)-1 {
 					delete(parameter, parameterName)
+
 					continue
 				}
 
@@ -106,7 +106,7 @@ func (c *Configuration) LoadFile(filePath string) error {
 
 // StoreFile stores the current config to a JSON or YAML file.
 // ignoreSettingsAtStore will not be stored to the file.
-func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]string) error {
+func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSettingsAtStore ...[]string) error {
 
 	settings := c.config.Raw()
 	if len(ignoreSettingsAtStore) > 0 {
@@ -116,6 +116,7 @@ func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]st
 			for lvl, parameterName := range ignoredSettingSplitted {
 				if lvl == len(ignoredSettingSplitted)-1 {
 					delete(parameter, parameterName)
+
 					continue
 				}
 
@@ -149,7 +150,8 @@ func (c *Configuration) StoreFile(filePath string, ignoreSettingsAtStore ...[]st
 		return fmt.Errorf("unable to marshal config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(filePath, data, 0666); err != nil {
+	//nolint:gosec // access rights
+	if err := os.WriteFile(filePath, data, perm); err != nil {
 		return fmt.Errorf("unable to save config file: %w", err)
 	}
 
@@ -174,11 +176,12 @@ func (c *Configuration) LoadEnvironmentVars(prefix string) error {
 	}
 
 	return c.config.Load(env.Provider(prefix, ".", func(s string) string {
-		mapKey := strings.Replace(strings.ToLower(strings.TrimPrefix(s, prefix)), "_", ".", -1)
+		mapKey := strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(s, prefix)), "_", ".")
 		if !c.config.Exists(mapKey) {
 			// only accept values from env vars that already exist in the config
 			return ""
 		}
+
 		return mapKey
 	}), nil)
 }
@@ -254,6 +257,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 				panic(fmt.Sprintf("could not set default value of %s, error: %s", name, err))
 			}
 			addParameter(name, shortHand, usage, valueField.Interface(), valueField)
+
 			continue
 		}
 
@@ -427,6 +431,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 			// recursively walk the value, but do no add it as a parameter
 			c.BindParameters(flagset, name, valueField.Addr().Interface())
+
 			continue
 		}
 		addParameter(name, shortHand, usage, valueField.Interface(), valueField)

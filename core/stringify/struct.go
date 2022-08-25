@@ -7,36 +7,36 @@ import (
 )
 
 // Struct creates a string representation of the given struct details.
-func Struct(name string, fields ...*structField) string {
-	return (&structBuilder{
+func Struct(name string, fields ...*StructField) string {
+	return (&StructBuilder{
 		name:   name,
 		fields: fields,
 	}).String()
 }
 
-// StructBuilder returns a builder for the struct that can dynamically be modified.
-func StructBuilder(name string, fields ...*structField) *structBuilder {
-	return &structBuilder{
+// NewStructBuilder returns a builder for the struct that can dynamically be modified.
+func NewStructBuilder(name string, fields ...*StructField) *StructBuilder {
+	return &StructBuilder{
 		name:   name,
 		fields: fields,
 	}
 }
 
-type structBuilder struct {
+type StructBuilder struct {
 	name   string
-	fields []*structField
+	fields []*StructField
 }
 
 // AddField dynamically adds a new field to the struct.
-func (stringifyStruct *structBuilder) AddField(field *structField) {
+func (stringifyStruct *StructBuilder) AddField(field *StructField) {
 	stringifyStruct.fields = append(stringifyStruct.fields, field)
 }
 
-func (stringifyStruct *structBuilder) String() (result string) {
+func (stringifyStruct *StructBuilder) String() (result string) {
 	result = stringifyStruct.name + " {\n"
 
 	for _, field := range stringifyStruct.fields {
-		result += text.Indent(field.String()+"\n", strings.Repeat(" ", INDENTATION_SIZE))
+		result += text.Indent(field.String()+"\n", strings.Repeat(" ", IndentationSize))
 	}
 
 	result += "}"

@@ -135,6 +135,7 @@ func (objectStorage *ObjectStorage) Contains(key []byte, options ...ReadOption) 
 	if !opts.skipCache {
 		if cachedObject, cacheHit := objectStorage.accessCache(key, false); cacheHit {
 			defer cachedObject.Release()
+
 			return cachedObject.waitForInitialResult().Exists()
 		}
 	}
@@ -307,10 +308,10 @@ func (objectStorage *ObjectStorage) Delete(key []byte) {
 
 // Stores an object only if it was not stored before. In contrast to "ComputeIfAbsent", this method does not access the
 // value log. If the object was not stored, then the returned CachedObject is nil and does not need to be Released.
-func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result CachedObject, stored bool) {
+func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (CachedObject, bool) {
 	// abort if the object to store is nil
 	if typeutils.IsInterfaceNil(object) {
-		return
+		return nil, false
 	}
 
 	// prevent usage of shutdown storage
@@ -337,7 +338,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	// abort if the object already exists in our database
 	objectExists := objectStorage.ObjectExistsInStore(key)
 	if objectExists {
-		return
+		return nil, false
 	}
 
 	// retrieve object from the cache (with registering a cached object)
@@ -364,7 +365,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 		existingCachedObject.publishResult(loadedObject)
 		existingCachedObject.Release()
 
-		return
+		return nil, false
 	}
 
 	// put object into the prepared cached object
@@ -373,11 +374,7 @@ func (objectStorage *ObjectStorage) StoreIfAbsent(object StorableObject) (result
 	existingCachedObject.publishResult(object)
 	existingCachedObject.storeOnCreation()
 
-	// construct result
-	stored = true
-	result = wrapCachedObject(existingCachedObject, 0)
-
-	return
+	return wrapCachedObject(existingCachedObject, 0), true
 }
 
 // ForEach calls the consumer function on every object residing within the cache and the underlying persistence layer.
@@ -404,8 +401,10 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
 					// stop if maximum amount of iterations reached
 					cachedObject.Release(true)
+
 					return false
 				}
+
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -418,8 +417,10 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 				if (opts.maxIterations != 0) && (iterations > opts.maxIterations) {
 					// stop if maximum amount of iterations reached
 					cachedObject.Release(true)
+
 					return false
 				}
+
 				return consumer(key, wrapCachedObject(cachedObject, 0))
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -479,6 +480,7 @@ func (objectStorage *ObjectStorage) ForEach(consumer func(key []byte, cachedObje
 		_ = objectStorage.options.store.IterateKeys(opts.optionalPrefix, func(key kvstore.Key) bool {
 			return consumeFunc(key, []byte{})
 		})
+
 		return
 	}
 
@@ -511,6 +513,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 					// stop if maximum amount of iterations reached
 					return false
 				}
+
 				return consumer(key)
 			}); seenElements == nil {
 				// Iteration was aborted
@@ -525,6 +528,7 @@ func (objectStorage *ObjectStorage) ForEachKeyOnly(consumer func(key []byte) boo
 					// stop if maximum amount of iterations reached
 					return false
 				}
+
 				return consumer(key)
 			}, opts.optionalPrefix); seenElements == nil {
 				// Iteration was aborted
@@ -577,6 +581,7 @@ func (objectStorage *ObjectStorage) Prune() error {
 	if err := objectStorage.options.store.Clear(); err != nil {
 		objectStorage.cacheMutex.Unlock()
 		objectStorage.flushMutex.Unlock()
+
 		return err
 	}
 
@@ -643,6 +648,7 @@ func (objectStorage *ObjectStorage) FreeMemory() {
 				// recursively call for every partition
 				partitions[key] = deepIterateCacheAndFreeMemory(partition)
 			}
+
 			return partitions
 		}
 
@@ -681,6 +687,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
 		objectStorage.cacheMutex.RUnlock()
+
 		return
 	}
 	objectStorage.cacheMutex.RUnlock()
@@ -697,6 +704,7 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 		alreadyCachedObject.(*CachedObjectImpl).retain()
 		cacheHit = true
 		cachedObject = alreadyCachedObject.(*CachedObjectImpl)
+
 		return
 	}
 
@@ -710,10 +718,11 @@ func (objectStorage *ObjectStorage) accessNonPartitionedCache(key []byte, create
 
 	currentMap[objectKey] = newlyCachedObject
 	objectStorage.size++
+
 	return newlyCachedObject, false
 }
 
-func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
+func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMissingCachedObject bool) (*CachedObjectImpl, bool) {
 	// acquire read lock so nobody can write to the cache
 	objectStorage.cacheMutex.RLock()
 
@@ -752,7 +761,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 		// abort if we are not supposed to create new entries
 		if !createMissingCachedObject {
-			return
+			return nil, false
 		}
 
 		// switch to write locks and check for existence again
@@ -786,15 +795,12 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 
 	// return if object exists
 	if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
-		cacheHit = true
-		cachedObject = alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl)
-
-		return
+		return alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl), true
 	}
 
 	// abort if we are not supposed to create new entries
 	if !createMissingCachedObject {
-		return
+		return nil, false
 	}
 
 	// switch to write locks and check for existence again
@@ -807,10 +813,7 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 		writeLocked = true
 
 		if alreadyCachedObject, cachedObjectExists := currentPartition[partitionKey]; cachedObjectExists {
-			cacheHit = true
-			cachedObject = alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl)
-
-			return
+			return alreadyCachedObject.(*CachedObjectImpl).retain().(*CachedObjectImpl), true
 		}
 	}
 
@@ -820,14 +823,14 @@ func (objectStorage *ObjectStorage) accessPartitionedCache(key []byte, createMis
 	}
 
 	// create a new cached object ...
-	cachedObject = newCachedObject(objectStorage, key)
+	cachedObject := newCachedObject(objectStorage, key)
 	cachedObject.retain()
 
 	// ... and store it
 	currentPartition[partitionKey] = cachedObject
 	objectStorage.size++
 
-	return
+	return cachedObject, false
 }
 
 // updateEmptyCachedObject updates the value of the given CachedObject with the given object if and only if the
@@ -864,13 +867,13 @@ func (objectStorage *ObjectStorage) deleteElementFromCache(key []byte) bool {
 }
 
 func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []byte) bool {
-	_cachedObject, cachedObjectExists := objectStorage.cachedObjects[string(key)]
+	cachedObject, cachedObjectExists := objectStorage.cachedObjects[string(key)]
 	if cachedObjectExists {
 		delete(objectStorage.cachedObjects, string(key))
 
 		objectStorage.size--
 
-		cachedObject := _cachedObject.(*CachedObjectImpl)
+		cachedObject := cachedObject.(*CachedObjectImpl)
 		storableObject := cachedObject.Get()
 		if !typeutils.IsInterfaceNil(storableObject) && !storableObject.IsDeleted() {
 			objectStorage.Events.ObjectEvicted.Trigger(key, cachedObject.Get())
@@ -880,15 +883,16 @@ func (objectStorage *ObjectStorage) deleteElementFromUnpartitionedCache(key []by
 	return cachedObjectExists
 }
 
-func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) (elementExists bool) {
+func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte) bool {
 	keyPartitionCount := len(objectStorage.options.keyPartitions)
 	keyOffset := 0
 	mapStack := make([]map[string]interface{}, 1)
 	mapStack[0] = objectStorage.cachedObjects
 	traversedPartitions := make([]string, 0)
 
+	var elementExists bool
 	// iterate through partitions towards the value
-	for keyPartitionId, keyPartitionLength := range objectStorage.options.keyPartitions {
+	for keyPartitionID, keyPartitionLength := range objectStorage.options.keyPartitions {
 		// retrieve current partition
 		currentMap := mapStack[len(mapStack)-1]
 
@@ -897,16 +901,17 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		keyOffset += keyPartitionLength
 
 		// if we didn't arrive at the values, yet
-		if keyPartitionId != keyPartitionCount-1 {
+		if keyPartitionID != keyPartitionCount-1 {
 			// retrieve next partition
 			subMap, subMapExists := currentMap[stringKey]
 
 			// abort if the partition does not exist
 			if !subMapExists {
-				return
+				return elementExists
 			}
 
 			// advance to the next "level" of partitions
+			//nolint:makezero // false positive
 			mapStack = append(mapStack, subMap.(map[string]interface{}))
 			traversedPartitions = append(traversedPartitions, stringKey)
 
@@ -920,16 +925,16 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 			objectStorage.size--
 
 			// clean up empty parent partitions (recursively)
-			parentKeyPartitionId := keyPartitionId
+			parentKeyPartitionID := keyPartitionID
 			keyOffset -= keyPartitionLength
-			for parentKeyPartitionId >= 1 && len(mapStack[parentKeyPartitionId]) == 0 {
-				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionId]) {
-					return
+			for parentKeyPartitionID >= 1 && len(mapStack[parentKeyPartitionID]) == 0 {
+				if objectStorage.partitionsManager.IsRetained(traversedPartitions[:parentKeyPartitionID]) {
+					return elementExists
 				}
 
-				parentKeyPartitionId--
-				parentMap := mapStack[parentKeyPartitionId]
-				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionId]
+				parentKeyPartitionID--
+				parentMap := mapStack[parentKeyPartitionID]
+				parentKeyLength := objectStorage.options.keyPartitions[parentKeyPartitionID]
 
 				delete(parentMap, string(key[keyOffset-parentKeyLength:keyOffset]))
 				keyOffset -= parentKeyLength
@@ -937,7 +942,7 @@ func (objectStorage *ObjectStorage) deleteElementFromPartitionedCache(key []byte
 		}
 	}
 
-	return
+	return elementExists
 }
 
 func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) CachedObject {
@@ -958,6 +963,7 @@ func (objectStorage *ObjectStorage) putObjectInCache(object StorableObject) Cach
 	// publish the result to the cached object and return
 	cachedObject.publishResult(object)
 	cachedObject.storeOnCreation()
+
 	return wrapCachedObject(cachedObject, 0)
 }
 
@@ -1029,6 +1035,7 @@ func (objectStorage *ObjectStorage) DeleteEntriesFromStore(keys [][]byte) error 
 	for i := 0; i < len(keys); i++ {
 		if err := batchedMuts.Delete(keys[i]); err != nil {
 			batchedMuts.Cancel()
+
 			return err
 		}
 	}
@@ -1051,6 +1058,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 			panic(err)
 		}
 	}
+
 	return has
 }
 
@@ -1208,6 +1216,7 @@ func (objectStorage *ObjectStorage) forEachCachedElementWithPrefix(consumer Cons
 				return seenElements
 			}
 			currentPartition = subPartition.(map[string]interface{})
+
 			continue
 		}
 

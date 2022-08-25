@@ -28,6 +28,7 @@ func (s *genericStack[T]) Pop() (value T, exists bool) {
 		value = elem.(T)
 		exists = true
 	}
+
 	return
 }
 
@@ -38,8 +39,9 @@ func (s *genericStack[T]) Peek() (value T, exists bool) {
 		value = elem.(T)
 		exists = true
 	}
+
 	return
 }
 
-// code contract - make sure the type implements the interface
+// code contract - make sure the type implements the interface.
 var _ Stack[int] = &genericStack[int]{}

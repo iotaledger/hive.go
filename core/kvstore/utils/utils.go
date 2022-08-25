@@ -15,6 +15,7 @@ func CopyBytes(source []byte, size ...int) []byte {
 	}
 	cpy := make([]byte, targetSize)
 	copy(cpy, source)
+
 	return cpy
 }
 
@@ -24,11 +25,12 @@ func KeyPrefixUpperBound(start []byte) []byte {
 	end := make([]byte, len(start))
 	copy(end, start)
 	for i := len(end) - 1; i >= 0; i-- {
-		end[i] = end[i] + 1
+		end[i]++
 		if end[i] != 0 {
 			return end[:i+1]
 		}
 	}
+
 	return nil // no upper-bound
 }
 

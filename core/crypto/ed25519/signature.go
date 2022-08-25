@@ -15,6 +15,7 @@ type Signature [SignatureSize]byte
 func SignatureFromBytes(bytes []byte) (result Signature, consumedBytes int, err error) {
 	if len(bytes) < SignatureSize {
 		err = fmt.Errorf("bytes too short")
+
 		return
 	}
 
@@ -25,11 +26,12 @@ func SignatureFromBytes(bytes []byte) (result Signature, consumedBytes int, err 
 }
 
 func ParseSignature(marshalUtil *marshalutil.MarshalUtil) (Signature, error) {
-	if id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return SignatureFromBytes(data) }); err != nil {
+	id, err := marshalUtil.Parse(func(data []byte) (interface{}, int, error) { return SignatureFromBytes(data) })
+	if err != nil {
 		return Signature{}, err
-	} else {
-		return id.(Signature), nil
 	}
+
+	return id.(Signature), nil
 }
 
 // Bytes returns the signature in bytes.
@@ -48,6 +50,7 @@ func (signature *Signature) UnmarshalBinary(bytes []byte) (err error) {
 	}
 
 	copy(signature[:], bytes)
+
 	return
 }
 

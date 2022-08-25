@@ -4,7 +4,7 @@ import (
 	"runtime"
 )
 
-var DEFAULT_OPTIONS = &Options{
+var defaultOptions = &Options{
 	Alias:                "",
 	WorkerCount:          2 * runtime.NumCPU(),
 	QueueSize:            4 * runtime.NumCPU(),

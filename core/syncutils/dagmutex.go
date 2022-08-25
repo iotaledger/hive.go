@@ -24,11 +24,12 @@ import (
 //
 // Let's assume the following 3 goroutines are competing for access. Time is advancing with every row.
 // Goroutine 1        Goroutine 2        Goroutine 3
-//     Lock(A)           		-         RLock(A,B) <- blocking, not able to acquire locks
-//        work            Lock(B)   	        wait
-//   Unlock(A)               work   	        wait
-//           -          Unlock(B)   	        wait <- (internally) now RLock(A) is successful, but still waiting for B
-//           -                  -   	 RLock(A, B) <- successful acquired, holding the locks now
+//
+//	  Lock(A)           		-         RLock(A,B) <- blocking, not able to acquire locks
+//	     work            Lock(B)   	        wait
+//	Unlock(A)               work   	        wait
+//	        -          Unlock(B)   	        wait <- (internally) now RLock(A) is successful, but still waiting for B
+//	        -                  -   	 RLock(A, B) <- successful acquired, holding the locks now
 type DAGMutex[T comparable] struct {
 	consumerCounter map[T]int
 	mutexes         map[T]*StarvingMutex
@@ -81,6 +82,7 @@ func (d *DAGMutex[T]) Unlock(id T) {
 	mutex := d.unregisterMutex(id)
 	if mutex == nil {
 		d.Mutex.Unlock()
+
 		return
 	}
 	d.Mutex.Unlock()
@@ -130,6 +132,7 @@ func (d *DAGMutex[T]) unregisterMutex(id T) (mutex *StarvingMutex) {
 	if d.consumerCounter[id] == 1 {
 		delete(d.consumerCounter, id)
 		delete(d.mutexes, id)
+
 		return nil
 	}
 

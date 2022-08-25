@@ -8,15 +8,17 @@ import (
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
+//nolint:revive // better be explicit here
 type TCPServer struct {
 	socket      net.Listener
 	socketMutex syncutils.RWMutex
-	Events      *tcpServerEvents
+	Events      *serverEvents
 }
 
 func (srv *TCPServer) GetSocket() net.Listener {
 	srv.socketMutex.RLock()
 	defer srv.socketMutex.RUnlock()
+
 	return srv.socket
 }
 
@@ -38,11 +40,11 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 		srv.Events.Error.Trigger(err)
 
 		return srv
-	} else {
-		srv.socketMutex.Lock()
-		srv.socket = socket
-		srv.socketMutex.Unlock()
 	}
+
+	srv.socketMutex.Lock()
+	srv.socket = socket
+	srv.socketMutex.Unlock()
 
 	srv.Events.Start.Trigger(&StartEvent{})
 	defer srv.Events.Shutdown.Trigger(&ShutdownEvent{})
@@ -65,6 +67,6 @@ func (srv *TCPServer) Listen(bindAddress string, port int) *TCPServer {
 
 func NewServer() *TCPServer {
 	return &TCPServer{
-		Events: newTcpServerEvents(),
+		Events: newServerEvents(),
 	}
 }

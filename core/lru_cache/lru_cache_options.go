@@ -1,16 +1,16 @@
-package lru_cache
+package lrucache
 
 import (
 	"time"
 )
 
-type LRUCacheOptions struct {
+type Options struct {
 	EvictionCallback  func(keyOrBatchedKeys interface{}, valueOrBatchedValues interface{})
 	EvictionBatchSize uint64
 	IdleTimeout       time.Duration
 }
 
-var DEFAULT_OPTIONS = &LRUCacheOptions{
+var defaultOptions = &Options{
 	EvictionCallback:  nil,
 	EvictionBatchSize: 1,
 	IdleTimeout:       30 * time.Second,

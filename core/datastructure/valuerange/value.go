@@ -58,6 +58,7 @@ func ValueTypeFromBytes(valueTypeBytes []byte) (valueType ValueType, consumedByt
 	marshalUtil := marshalutil.New(valueTypeBytes)
 	if valueType, err = ValueTypeFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -70,11 +71,13 @@ func ValueTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueType V
 	valueTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	if valueType = ValueType(valueTypeByte); valueType > Uint64ValueType {
 		err = xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
@@ -120,6 +123,7 @@ func ValueFromBytes(valueBytes []byte) (value Value, consumedBytes int, err erro
 	marshalUtil := marshalutil.New(valueBytes)
 	if value, err = ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -128,61 +132,52 @@ func ValueFromBytes(valueBytes []byte) (value Value, consumedBytes int, err erro
 }
 
 // ValueFromMarshalUtil unmarshals a Value using a MarshalUtil (for easier unmarshaling).
-func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (value Value, err error) {
+func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (Value, error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
-		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
-		return
+		return nil, xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
 	}
 	marshalUtil.ReadSeek(-1)
 
+	var value Value
 	switch valueType {
 	case Int8ValueType:
 		if value, err = Int8ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int8Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Int8Value: %w", err)
 		}
 	case Int16ValueType:
 		if value, err = Int16ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int16Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Int16Value: %w", err)
 		}
 	case Int32ValueType:
 		if value, err = Int32ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int32Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Int32Value: %w", err)
 		}
 	case Int64ValueType:
 		if value, err = Int64ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Int64Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Int64Value: %w", err)
 		}
 	case Uint8ValueType:
 		if value, err = Uint8ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint8Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Uint8Value: %w", err)
 		}
 	case Uint16ValueType:
 		if value, err = Uint16ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint16Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Uint16Value: %w", err)
 		}
 	case Uint32ValueType:
 		if value, err = Uint32ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint32Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Uint32Value: %w", err)
 		}
 	case Uint64ValueType:
 		if value, err = Uint64ValueFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse Uint64Value: %w", err)
-			return
+			return nil, xerrors.Errorf("failed to parse Uint64Value: %w", err)
 		}
 	default:
-		err = xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
-		return
+		return nil, xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
 	}
 
-	return
+	return value, nil
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +193,7 @@ func Int8ValueFromBytes(bytes []byte) (int8Value Int8Value, consumedBytes int, e
 	marshalUtil := marshalutil.New(bytes)
 	if int8Value, err = Int8ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Int8Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -210,16 +206,19 @@ func Int8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int8Value I
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Int8ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadInt8()
 	if err != nil {
 		err = xerrors.Errorf("failed to read int8 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	int8Value = Int8Value(value)
@@ -263,7 +262,7 @@ func (i Int8Value) String() string {
 	return "Int8Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int8Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +278,7 @@ func Int16ValueFromBytes(bytes []byte) (int16Value Int16Value, consumedBytes int
 	marshalUtil := marshalutil.New(bytes)
 	if int16Value, err = Int16ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Int16Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -291,16 +291,19 @@ func Int16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int16Value
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Int16ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadInt16()
 	if err != nil {
 		err = xerrors.Errorf("failed to read int16 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	int16Value = Int16Value(value)
@@ -344,7 +347,7 @@ func (i Int16Value) String() string {
 	return "Int16Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int16Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -360,6 +363,7 @@ func Int32ValueFromBytes(bytes []byte) (int32Value Int32Value, consumedBytes int
 	marshalUtil := marshalutil.New(bytes)
 	if int32Value, err = Int32ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Int32Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -372,16 +376,19 @@ func Int32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int32Value
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Int32ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadInt32()
 	if err != nil {
 		err = xerrors.Errorf("failed to read int32 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	int32Value = Int32Value(value)
@@ -425,7 +432,7 @@ func (i Int32Value) String() string {
 	return "Int32Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int32Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -441,6 +448,7 @@ func Int64ValueFromBytes(bytes []byte) (int64Value Int64Value, consumedBytes int
 	marshalUtil := marshalutil.New(bytes)
 	if int64Value, err = Int64ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Int64Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -453,16 +461,19 @@ func Int64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int64Value
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Int64ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadInt64()
 	if err != nil {
 		err = xerrors.Errorf("failed to read int64 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	int64Value = Int64Value(value)
@@ -506,7 +517,7 @@ func (i Int64Value) String() string {
 	return "Int64Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Int64Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -522,6 +533,7 @@ func Uint8ValueFromBytes(bytes []byte) (uint8Value Uint8Value, consumedBytes int
 	marshalUtil := marshalutil.New(bytes)
 	if uint8Value, err = Uint8ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Uint8Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -534,16 +546,19 @@ func Uint8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint8Value
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Uint8ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadUint8()
 	if err != nil {
 		err = xerrors.Errorf("failed to read uint8 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	uint8Value = Uint8Value(value)
@@ -587,7 +602,7 @@ func (i Uint8Value) String() string {
 	return "Uint8Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint8Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -603,6 +618,7 @@ func Uint16ValueFromBytes(bytes []byte) (uint16Value Uint16Value, consumedBytes 
 	marshalUtil := marshalutil.New(bytes)
 	if uint16Value, err = Uint16ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Uint16Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -615,16 +631,19 @@ func Uint16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint16Val
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Uint16ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadUint16()
 	if err != nil {
 		err = xerrors.Errorf("failed to read uint16 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	uint16Value = Uint16Value(value)
@@ -668,7 +687,7 @@ func (i Uint16Value) String() string {
 	return "Uint16Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint16Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -684,6 +703,7 @@ func Uint32ValueFromBytes(bytes []byte) (uint32Value Uint32Value, consumedBytes 
 	marshalUtil := marshalutil.New(bytes)
 	if uint32Value, err = Uint32ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Uint32Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -696,16 +716,19 @@ func Uint32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint32Val
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Uint32ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadUint32()
 	if err != nil {
 		err = xerrors.Errorf("failed to read uint32 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	uint32Value = Uint32Value(value)
@@ -749,7 +772,7 @@ func (i Uint32Value) String() string {
 	return "Uint32Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint32Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -765,6 +788,7 @@ func Uint64ValueFromBytes(bytes []byte) (uint64Value Uint64Value, consumedBytes 
 	marshalUtil := marshalutil.New(bytes)
 	if uint64Value, err = Uint64ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Uint64Value from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -777,16 +801,19 @@ func Uint64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint64Val
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ValueType from MarshalUtil: %w", err)
+
 		return
 	}
 	if valueType != Uint64ValueType {
 		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	value, err := marshalUtil.ReadUint64()
 	if err != nil {
 		err = xerrors.Errorf("failed to read uint64 (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 	uint64Value = Uint64Value(value)
@@ -830,7 +857,7 @@ func (i Uint64Value) String() string {
 	return "Uint64Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
 
-// code contract (make sure the type implements all required methods)
+// code contract (make sure the type implements all required methods).
 var _ Value = Uint64Value(0)
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

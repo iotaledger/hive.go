@@ -60,8 +60,10 @@ func (x *PeeringRequest) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -74,6 +76,7 @@ func (x *PeeringRequest) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
+
 	return 0
 }
 
@@ -81,6 +84,7 @@ func (x *PeeringRequest) GetSalt() *proto1.Salt {
 	if x != nil {
 		return x.Salt
 	}
+
 	return nil
 }
 
@@ -117,8 +121,10 @@ func (x *PeeringResponse) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -131,6 +137,7 @@ func (x *PeeringResponse) GetReqHash() []byte {
 	if x != nil {
 		return x.ReqHash
 	}
+
 	return nil
 }
 
@@ -138,6 +145,7 @@ func (x *PeeringResponse) GetStatus() bool {
 	if x != nil {
 		return x.Status
 	}
+
 	return false
 }
 
@@ -172,8 +180,10 @@ func (x *PeeringDrop) ProtoReflect() protoreflect.Message {
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
 		}
+
 		return ms
 	}
+
 	return mi.MessageOf(x)
 }
 
@@ -186,6 +196,7 @@ func (x *PeeringDrop) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
 	}
+
 	return 0
 }
 
@@ -225,6 +236,7 @@ func file_autopeering_selection_proto_message_proto_rawDescGZIP() []byte {
 	file_autopeering_selection_proto_message_proto_rawDescOnce.Do(func() {
 		file_autopeering_selection_proto_message_proto_rawDescData = protoimpl.X.CompressGZIP(file_autopeering_selection_proto_message_proto_rawDescData)
 	})
+
 	return file_autopeering_selection_proto_message_proto_rawDescData
 }
 

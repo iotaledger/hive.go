@@ -20,7 +20,7 @@ type LeakDetectionWrapper interface {
 	CachedObject
 
 	Base() *CachedObjectImpl
-	GetInternalId() int64
+	GetInternalID() int64
 	SetRetainCallStack(callStack *reflect.CallStack)
 	GetRetainCallStack() *reflect.CallStack
 	GetRetainTime() time.Time
@@ -36,7 +36,7 @@ type LeakDetectionWrapper interface {
 type LeakDetectionWrapperImpl struct {
 	*CachedObjectImpl
 
-	internalId       int64
+	internalID       int64
 	released         *atomic.Bool
 	retainTime       time.Time
 	retainCallStack  *reflect.CallStack
@@ -78,19 +78,19 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) RTransaction(callback func(
 }
 
 var (
-	internalIdCounter = atomic.NewInt64(0)
+	internalIDCounter = atomic.NewInt64(0)
 )
 
 func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
 	return &LeakDetectionWrapperImpl{
 		CachedObjectImpl: cachedObject,
-		internalId:       internalIdCounter.Inc(),
+		internalID:       internalIDCounter.Inc(),
 		released:         atomic.NewBool(false),
 	}
 }
 
-func (wrappedCachedObject *LeakDetectionWrapperImpl) GetInternalId() int64 {
-	return wrappedCachedObject.internalId
+func (wrappedCachedObject *LeakDetectionWrapperImpl) GetInternalID() int64 {
+	return wrappedCachedObject.internalID
 }
 
 func (wrappedCachedObject *LeakDetectionWrapperImpl) Base() *CachedObjectImpl {
@@ -268,10 +268,10 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 
 		instanceRegister[stringKey] = instancesByKey
 	}
-	instancesByKey[wrappedCachedObject.GetInternalId()] = wrappedCachedObject
+	instancesByKey[wrappedCachedObject.GetInternalID()] = wrappedCachedObject
 
 	if len(instancesByKey) > options.MaxConsumersPerObject {
-		var oldestEntry LeakDetectionWrapper = nil
+		var oldestEntry LeakDetectionWrapper
 		var oldestTime = time.Now()
 		for _, wrappedCachedObject := range instancesByKey {
 			if typeutils.IsInterfaceNil(oldestEntry) || wrappedCachedObject.GetRetainTime().Before(oldestTime) {
@@ -300,7 +300,7 @@ func registerCachedObjectReleased(wrappedCachedObject LeakDetectionWrapper, opti
 
 	instancesByKey, instancesByKeyExists := instanceRegister[stringKey]
 	if instancesByKeyExists {
-		delete(instancesByKey, wrappedCachedObject.GetInternalId())
+		delete(instancesByKey, wrappedCachedObject.GetInternalID())
 
 		if len(instancesByKey) == 0 {
 			delete(instanceRegister, stringKey)

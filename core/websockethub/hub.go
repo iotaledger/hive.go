@@ -88,6 +88,7 @@ func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
 		case <-h.ctx.Done():
 		case h.broadcast <- msg:
 		}
+
 		return
 	}
 
@@ -123,7 +124,7 @@ drainLoop:
 	// So the gracefulness of closing a channel here is not to close the channel.
 }
 
-// Returns the number of websocket clients
+// Returns the number of websocket clients.
 func (h *Hub) Clients() int {
 	return len(h.clients)
 }
@@ -140,6 +141,7 @@ func (h *Hub) Run(ctx context.Context) {
 			for client := range h.clients {
 				h.removeClient(client)
 			}
+
 			return
 
 		case client := <-h.register:
@@ -185,6 +187,7 @@ func (h *Hub) Run(ctx context.Context) {
 					case client.sendChan <- message.data:
 					}
 				}
+
 				continue
 			}
 			for client := range h.clients {
@@ -225,6 +228,7 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.logger.Warnf("upgrade websocket error: %v", err)
+
 		return
 	}
 	conn.EnableWriteCompression(true)

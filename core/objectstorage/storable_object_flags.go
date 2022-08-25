@@ -18,9 +18,11 @@ func (of *StorableObjectFlags) IsModified() bool {
 	return of.modified.Load()
 }
 
+//nolint:predeclared // lets keep this for now
 func (of *StorableObjectFlags) Delete(delete ...bool) (wasSet bool) {
 	wasSet = of.delete.Swap(len(delete) == 0 || delete[0])
 	of.modified.Store(true)
+
 	return wasSet
 }
 
@@ -35,6 +37,7 @@ func (of *StorableObjectFlags) Persist(persist ...bool) (wasSet bool) {
 	} else {
 		wasSet = of.persist.Swap(false)
 	}
+
 	return wasSet
 }
 

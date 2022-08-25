@@ -16,6 +16,7 @@ func (c ConfigurationSets) FlagSetsMap() map[string]*flag.FlagSet {
 	for _, config := range c {
 		flagsets[config.flagSetName] = config.flagSet
 	}
+
 	return flagsets
 }
 
@@ -24,6 +25,7 @@ func (c ConfigurationSets) FlagSets() []*flag.FlagSet {
 	for i, config := range c {
 		flagsets[i] = config.flagSet
 	}
+
 	return flagsets
 }
 
@@ -32,6 +34,7 @@ func (c ConfigurationSets) ConfigsMap() map[string]*configuration.Configuration 
 	for _, config := range c {
 		configs[config.flagSetName] = config.config
 	}
+
 	return configs
 }
 

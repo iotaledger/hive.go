@@ -34,6 +34,7 @@ func (ic *InitConfig) ForceDisableComponent(identifier string) {
 	for _, entry := range ic.forceDisabledComponents {
 		if entry == identifier {
 			exists = true
+
 			break
 		}
 	}

@@ -30,6 +30,7 @@ func (w *Walker[T]) Next() (nextElement T) {
 // Push adds a new element to the walk, which can consequently be retrieved by calling the Next method.
 func (w *Walker[T]) Push(nextElement T) (walker *Walker[T]) {
 	w.Walker.Push(nextElement)
+
 	return w
 }
 

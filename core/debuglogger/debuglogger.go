@@ -78,6 +78,7 @@ func (d *DebugLogger) MethodEnd() {
 
 	if d.methodStartedBefore {
 		d.methodStartedBefore = false
+
 		return
 	}
 

@@ -10,10 +10,10 @@ import (
 
 func mapToLowerKeys(m map[string]interface{}) {
 	for key, val := range m {
-		switch val.(type) {
+		switch v := val.(type) {
 		case map[string]interface{}:
 			// nested map: call recursively
-			mapToLowerKeys(val.(map[string]interface{}))
+			mapToLowerKeys(v)
 		case map[interface{}]interface{}:
 			// nested map: cast and call recursively
 			val = cast.ToStringMap(val)

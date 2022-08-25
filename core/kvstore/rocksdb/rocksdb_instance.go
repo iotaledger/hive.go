@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/ioutils"
 )
 
-// RocksDB holds the underlying grocksdb.DB instance and options
+// RocksDB holds the underlying grocksdb.DB instance and options.
 type RocksDB struct {
 	db *grocksdb.DB
 	ro *grocksdb.ReadOptions

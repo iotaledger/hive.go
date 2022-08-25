@@ -13,14 +13,14 @@ import (
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
-// Errors for the daemon package
+// Errors for the daemon package.
 var (
 	ErrDaemonAlreadyStopped                 = errors.New("daemon was already stopped")
 	ErrDuplicateBackgroundWorker            = errors.New("duplicate background worker")
 	ErrExistingBackgroundWorkerStillRunning = errors.New("existing background worker is still running")
 )
 
-// functions kept for backwards compatibility
+// functions kept for backwards compatibility.
 var defaultDaemon = New()
 
 // GetRunningBackgroundWorkers gets the running background workers of the default daemon instance.
@@ -300,6 +300,7 @@ func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 		waitGroups[i] = waitGroup
 		i++
 	}
+
 	return waitGroups
 }
 
@@ -319,7 +320,7 @@ func (d *OrderedDaemon) shutdown() {
 	d.clear()
 }
 
-// stopWorkers stops all the workers of the daemon
+// stopWorkers stops all the workers of the daemon.
 func (d *OrderedDaemon) stopWorkers() {
 	workers, shutdownOrderWorker := d.getWorkersAndShutdownOrder()
 
@@ -331,6 +332,7 @@ func (d *OrderedDaemon) stopWorkers() {
 			worker := workers[name]
 			if !worker.running.IsSet() {
 				worker.ctxCancel()
+
 				continue
 			}
 			// if the current worker has a lower priority...
@@ -386,7 +388,7 @@ func (d *OrderedDaemon) removeWorkerFromShutdownOrder(name string) {
 	}
 }
 
-// clear clears the daemon
+// clear clears the daemon.
 func (d *OrderedDaemon) clear() {
 	d.lock.Lock()
 	defer d.lock.Unlock()

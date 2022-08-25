@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"encoding/binary"
+	"errors"
 	"sync"
 )
 
@@ -31,6 +32,7 @@ func NewSequence(store KVStore, key []byte, interval uint64) (*Sequence, error) 
 		reserved: 0,
 		interval: interval,
 	}
+
 	return seq, nil
 }
 
@@ -47,6 +49,7 @@ func (seq *Sequence) Next() (uint64, error) {
 
 	val := seq.next
 	seq.next++
+
 	return val, nil
 }
 
@@ -62,13 +65,14 @@ func (seq *Sequence) Release() error {
 	}
 
 	seq.reserved = seq.next
+
 	return nil
 }
 
 func (seq *Sequence) update() error {
 	value, err := seq.store.Get(seq.key)
 	switch {
-	case err == ErrKeyNotFound:
+	case errors.Is(err, ErrKeyNotFound):
 		seq.next = 0
 	case err != nil:
 		return err
@@ -86,5 +90,6 @@ func (seq *Sequence) update() error {
 		return err
 	}
 	seq.reserved = reserved
+
 	return nil
 }

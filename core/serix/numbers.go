@@ -1,6 +1,7 @@
 package serix
 
 import (
+	"errors"
 	"math/big"
 	"strconv"
 
@@ -12,6 +13,7 @@ func EncodeHex(b []byte) string {
 	if len(b) == 0 {
 		return ""
 	}
+
 	return hexutil.Encode(b)
 }
 
@@ -19,11 +21,13 @@ func EncodeHex(b []byte) string {
 func DecodeHex(s string) ([]byte, error) {
 	b, err := hexutil.Decode(s)
 	if err != nil {
-		if err == hexutil.ErrEmptyString {
+		if errors.Is(err, hexutil.ErrEmptyString) {
 			return []byte{}, nil
 		}
+
 		return nil, err
 	}
+
 	return b, nil
 }
 

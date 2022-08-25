@@ -1,10 +1,10 @@
 package marshalutil
 
 // WriteByte writes a marshaled byte value to the internal buffer.
-func (util *MarshalUtil) WriteByte(byte byte) *MarshalUtil {
+func (util *MarshalUtil) WriteByte(b byte) *MarshalUtil {
 	writeEndOffset := util.expandWriteCapacity(1)
 
-	util.bytes[util.writeOffset] = byte
+	util.bytes[util.writeOffset] = b
 
 	util.WriteSeek(writeEndOffset)
 

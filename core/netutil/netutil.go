@@ -3,10 +3,11 @@ package netutil
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -28,20 +29,28 @@ func IsValidPort(port int) bool {
 }
 
 // GetPublicIP queries the ipify API for the public IP address.
-func GetPublicIP(preferIPv6 bool) (net.IP, error) {
+func GetPublicIP(ctx context.Context, preferIPv6 bool) (net.IP, error) {
 	var url string
 	if preferIPv6 {
 		url = "https://api6.ipify.org"
 	} else {
 		url = "https://api.ipify.org"
 	}
-	resp, err := http.Get(url)
+
+	// construct request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build http request: %w", err)
+	}
+
+	// make the request
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read failed: %w", err)
 	}
@@ -51,14 +60,17 @@ func GetPublicIP(preferIPv6 bool) (net.IP, error) {
 	if ip == nil {
 		return nil, fmt.Errorf("not an IP: %s", body)
 	}
+
 	return ip, nil
 }
 
 // IsTemporaryError checks whether the given error should be considered temporary.
 func IsTemporaryError(err error) bool {
+	//nolint:errorlint // false positive
 	tempErr, ok := err.(interface {
 		Temporary() bool
 	})
+
 	return ok && tempErr.Temporary()
 }
 
@@ -104,6 +116,8 @@ func CheckUDP(local, remote *net.UDPAddr, checkAddress bool, checkPort bool) err
 
 func generateNonce() []byte {
 	b := make([]byte, 8)
+	//nolint:gosec // we do not care about weak random numbers here
 	binary.BigEndian.PutUint64(b, rand.Uint64())
+
 	return b
 }

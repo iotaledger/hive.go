@@ -21,5 +21,6 @@ func (i TypeDenotationType) String() string {
 	if i >= TypeDenotationType(len(_TypeDenotationType_index)-1) {
 		return "TypeDenotationType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+
 	return _TypeDenotationType_name[_TypeDenotationType_index[i]:_TypeDenotationType_index[i+1]]
 }

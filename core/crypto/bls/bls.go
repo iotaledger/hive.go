@@ -29,15 +29,13 @@ var blsSuite = bn256.NewSuite()
 var randomness = random.New(crypto.Randomness)
 
 // AggregateSignatures aggregates multiple SignatureWithPublicKey objects into a single SignatureWithPublicKey.
-func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (aggregatedSignature SignatureWithPublicKey, err error) {
+func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (SignatureWithPublicKey, error) {
 	if len(signaturesWithPublicKey) == 0 {
-		err = xerrors.Errorf("not enough signatures to aggregate: %w", ErrInvalidArgument)
-		return
+		return SignatureWithPublicKey{}, xerrors.Errorf("not enough signatures to aggregate: %w", ErrInvalidArgument)
 	}
 
 	if len(signaturesWithPublicKey) == 1 {
-		aggregatedSignature = signaturesWithPublicKey[0]
-		return
+		return signaturesWithPublicKey[0], nil
 	}
 
 	publicKeyPoints := make([]kyber.Point, len(signaturesWithPublicKey))
@@ -49,8 +47,7 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 
 	mask, err := sign.NewMask(blsSuite, publicKeyPoints, nil)
 	if err != nil {
-		err = xerrors.Errorf("failed to create mask (%v): %w", err, ErrBLSFailed)
-		return
+		return SignatureWithPublicKey{}, xerrors.Errorf("failed to create mask (%v): %w", err, ErrBLSFailed)
 	}
 	for i := range publicKeyPoints {
 		_ = mask.SetBit(i, true)
@@ -58,21 +55,20 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (agg
 
 	rawAggregatedSignature, err := bdn.AggregateSignatures(blsSuite, signaturesBytes, mask)
 	if err != nil {
-		err = xerrors.Errorf("failed to aggregate Signatures (%v): %w", err, ErrBLSFailed)
-		return
+		return SignatureWithPublicKey{}, xerrors.Errorf("failed to aggregate Signatures (%v): %w", err, ErrBLSFailed)
 	}
 	signatureBytes, err := rawAggregatedSignature.MarshalBinary()
 	if err != nil {
-		err = xerrors.Errorf("failed to marshal aggregated Signature (%v): %w", err, ErrBLSFailed)
-		return
+		return SignatureWithPublicKey{}, xerrors.Errorf("failed to marshal aggregated Signature (%v): %w", err, ErrBLSFailed)
 	}
+
+	aggregatedSignature := SignatureWithPublicKey{}
 	copy(aggregatedSignature.Signature[:], signatureBytes)
 
 	aggregatedSignature.PublicKey.Point, err = bdn.AggregatePublicKeys(blsSuite, mask)
 	if err != nil {
-		err = xerrors.Errorf("failed to aggregate PublicKeys (%v): %w", err, ErrBLSFailed)
-		return
+		return SignatureWithPublicKey{}, xerrors.Errorf("failed to aggregate PublicKeys (%v): %w", err, ErrBLSFailed)
 	}
 
-	return
+	return aggregatedSignature, nil
 }

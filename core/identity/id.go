@@ -5,17 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/cockroachdb/errors"
-	"github.com/iotaledger/hive.go/core/serix"
 	"math/rand"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
 	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/core/serix"
 )
 
 // IDLength defines the length of an ID.
@@ -34,14 +34,16 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 	idBytes, err := marshalUtil.ReadBytes(IDLength)
 	if err != nil {
 		err = xerrors.Errorf("failed to parse ID (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	copy(id[:], idBytes)
+
 	return
 }
 
-// Bytes returns the byte slice representation of the ID
+// Bytes returns the byte slice representation of the ID.
 func (id ID) Bytes() []byte {
 	return id[:]
 }
@@ -51,12 +53,13 @@ func (id *ID) FromBytes(bytes []byte) error {
 	if _, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
 		return errors.Wrap(err, "failed to decode node identity from bytes")
 	}
+
 	return nil
 }
 
 // String returns a shortened version of the ID as a base58 encoded string.
 func (id ID) String() string {
-	if idAlias, exists := _idAlias[id]; exists {
+	if idAlias, exists := idAliases[id]; exists {
 		return "ID(" + idAlias + ")"
 	}
 
@@ -76,6 +79,7 @@ func DecodeIDBase58(s string) (ID, error) {
 	}
 	var id ID
 	copy(id[:], b)
+
 	return id, nil
 }
 
@@ -90,13 +94,16 @@ func ParseID(s string) (ID, error) {
 		return id, fmt.Errorf("invalid length: need %d hex chars", hex.EncodedLen(len(ID{})))
 	}
 	copy(id[:], b)
+
 	return id, nil
 }
 
-// RandomID creates a random id which can for example be used in unit tests.
-func RandomID() (id ID, err error) {
+// RandomIDInsecure creates a random id which can for example be used in unit tests.
+// The result is not cryptographically secure.
+func RandomIDInsecure() (id ID, err error) {
 	// generate a random sequence of bytes
 	idBytes := make([]byte, sha256.Size)
+	//nolint:gosec // we do not care about weak random numbers here
 	if _, err = rand.Read(idBytes); err != nil {
 		return
 	}
@@ -107,16 +114,16 @@ func RandomID() (id ID, err error) {
 	return
 }
 
-// _idAliases contains a list of aliases registered for a set of IDs.
-var _idAlias = make(map[ID]string)
+// idAliases contains a list of aliases registered for a set of IDs.
+var idAliases = make(map[ID]string)
 
 // RegisterIDAlias registers an alias that will modify the String() output of the ID to show a human
 // readable string instead of the base58 encoded version of itself.
 func RegisterIDAlias(id ID, alias string) {
-	_idAlias[id] = alias
+	idAliases[id] = alias
 }
 
 // UnregisterIDAliases removes all aliases registered through the RegisterIDAlias function.
 func UnregisterIDAliases() {
-	_idAlias = make(map[ID]string)
+	idAliases = make(map[ID]string)
 }

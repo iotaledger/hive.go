@@ -11,9 +11,10 @@ import (
 type PrivateKey [PrivateKeySize]byte
 
 // PrivateKeyFromBytes creates a PrivateKey from the given bytes.
-func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, err error, consumedBytes int) {
+func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, consumedBytes int, err error) {
 	if len(bytes) < PrivateKeySize {
 		err = fmt.Errorf("bytes too short")
+
 		return
 	}
 
@@ -26,12 +27,14 @@ func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, err error, consumedBy
 // PrivateKeyFromSeed calculates a private key from a seed.
 func PrivateKeyFromSeed(seed []byte) (result PrivateKey) {
 	copy(result[:], ed25519.NewKeyFromSeed(seed))
+
 	return
 }
 
 // Sign signs the message with privateKey and returns a signature.
 func (privateKey PrivateKey) Sign(data []byte) (result Signature) {
 	copy(result[:], ed25519.Sign(privateKey[:], data))
+
 	return
 }
 
@@ -39,6 +42,7 @@ func (privateKey PrivateKey) Sign(data []byte) (result Signature) {
 func (privateKey PrivateKey) Public() (result PublicKey) {
 	publicKey := ed25519.PrivateKey(privateKey[:]).Public()
 	copy(result[:], publicKey.(ed25519.PublicKey))
+
 	return
 }
 
@@ -58,5 +62,6 @@ func (privateKey PrivateKey) String() string {
 func (privateKey PrivateKey) Seed() *Seed {
 	bytes := ed25519.PrivateKey(privateKey[:]).Seed()
 	seed := NewSeed(bytes)
+
 	return seed
 }

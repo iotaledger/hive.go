@@ -27,4 +27,6 @@ func (s RandomnessSource) Uint64() (v uint64) {
 }
 
 // Randomness contains an Rand instance of the previously defined RandomnessSource.
+//
+//nolint:gosec // false positive
 var Randomness = rand.New(RandomnessSource{})

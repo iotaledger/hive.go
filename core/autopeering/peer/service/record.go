@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"golang.org/x/xerrors"
@@ -11,12 +12,12 @@ import (
 )
 
 // Record defines the mapping between a service ID and its tuple TypePort
-// e.g., map[autopeering:&{TCP, 8000}]
+// e.g., map[autopeering:&{TCP, 8000}].
 type Record struct {
 	m map[string]endpoint
 }
 
-// endpoint implements net.Addr
+// endpoint implements net.Addr.
 type endpoint struct {
 	network string
 	port    int
@@ -37,7 +38,7 @@ func (a endpoint) String() string {
 	return fmt.Sprintf("%d/%s", a.port, a.network)
 }
 
-// New initializes and returns an empty new Record
+// New initializes and returns an empty new Record.
 func New() *Record {
 	return &Record{
 		m: make(map[string]endpoint),
@@ -50,6 +51,7 @@ func (s *Record) Get(key Key) Endpoint {
 	if !ok {
 		return nil
 	}
+
 	return val
 }
 
@@ -59,6 +61,7 @@ func (s *Record) CreateRecord() *Record {
 	for k, v := range s.m {
 		result.m[k] = v
 	}
+
 	return result
 }
 
@@ -79,7 +82,7 @@ func (s *Record) String() string {
 func FromProto(in *pb.ServiceMap) (*Record, error) {
 	m := in.GetMap()
 	if m == nil {
-		return nil, nil
+		return nil, errors.New("service map is nil")
 	}
 
 	services := New()
@@ -89,6 +92,7 @@ func FromProto(in *pb.ServiceMap) (*Record, error) {
 			port:    int(addr.GetPort()),
 		}
 	}
+
 	return services, nil
 }
 
@@ -127,6 +131,7 @@ func (s *Record) UnmarshalJSON(b []byte) error {
 		services.m[service] = endpoint{network: addr.Network, port: addr.Port}
 	}
 	*s = *services
+
 	return nil
 }
 
@@ -139,6 +144,7 @@ func (s *Record) MarshalJSON() ([]byte, error) {
 			Port:    addr.port,
 		}
 	}
+
 	return json.Marshal(m)
 }
 
@@ -153,5 +159,6 @@ func Unmarshal(data []byte) (*Record, error) {
 	if err := proto.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+
 	return FromProto(s)
 }

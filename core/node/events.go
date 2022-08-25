@@ -8,11 +8,12 @@ import (
 
 var Events *NodeEvents
 
+//nolint:revive // will be replaces by app package anyway
 type NodeEvents struct {
 	AddPlugin *event.Event[*AddEvent]
 }
 
-func newNodeEvents() (new *NodeEvents) {
+func newNodeEvents() *NodeEvents {
 	return &NodeEvents{
 		AddPlugin: event.New[*AddEvent](),
 	}
@@ -33,7 +34,7 @@ type PluginEvents struct {
 	Run       *event.Event[*RunEvent]
 }
 
-func newPluginEvents() (new *PluginEvents) {
+func newPluginEvents() *PluginEvents {
 	return &PluginEvents{
 		Init:      event.New[*InitEvent](),
 		Configure: event.New[*ConfigureEvent](),

@@ -8,5 +8,6 @@ func NewStoreWithRealm(store kvstore.KVStore, packagePrefix byte, storagePrefix 
 	if err != nil {
 		panic(err)
 	}
+
 	return storeWithRealm
 }

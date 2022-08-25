@@ -81,6 +81,7 @@ func NewAPI() *API {
 		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
 		validatorsRegistry:   map[reflect.Type]validators{},
 	}
+
 	return api
 }
 
@@ -121,6 +122,7 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	if o.validation {
 		mode |= serializer.DeSeriModePerformValidation
 	}
+
 	return mode
 }
 
@@ -162,6 +164,7 @@ type TypeSettings struct {
 // WithLengthPrefixType specifies LengthPrefixType.
 func (ts TypeSettings) WithLengthPrefixType(lpt LengthPrefixType) TypeSettings {
 	ts.lengthPrefixType = &lpt
+
 	return ts
 }
 
@@ -170,12 +173,14 @@ func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
 	if ts.lengthPrefixType == nil {
 		return 0, false
 	}
+
 	return *ts.lengthPrefixType, true
 }
 
 // WithMapKey specifies the name for the map key.
 func (ts TypeSettings) WithMapKey(name string) TypeSettings {
 	ts.mapKey = &name
+
 	return ts
 }
 
@@ -184,6 +189,7 @@ func (ts TypeSettings) MapKey() (string, bool) {
 	if ts.mapKey == nil {
 		return "", false
 	}
+
 	return *ts.mapKey, true
 }
 
@@ -192,12 +198,14 @@ func (ts TypeSettings) MustMapKey() string {
 	if ts.mapKey == nil {
 		panic("no map key set")
 	}
+
 	return *ts.mapKey
 }
 
 // WithMinLen specifies the min length for the object.
 func (ts TypeSettings) WithMinLen(l uint64) TypeSettings {
 	ts.minLen = &l
+
 	return ts
 }
 
@@ -206,12 +214,14 @@ func (ts TypeSettings) MinLen() (uint64, bool) {
 	if ts.minLen == nil {
 		return 0, false
 	}
+
 	return *ts.minLen, true
 }
 
 // WithMaxLen specifies the max length for the object.
 func (ts TypeSettings) WithMaxLen(l uint64) TypeSettings {
 	ts.maxLen = &l
+
 	return ts
 }
 
@@ -220,6 +230,7 @@ func (ts TypeSettings) MaxLen() (uint64, bool) {
 	if ts.maxLen == nil {
 		return 0, false
 	}
+
 	return *ts.maxLen, true
 }
 
@@ -233,6 +244,7 @@ func (ts TypeSettings) MinMaxLen() (int, int) {
 	if ts.maxLen != nil {
 		max = int(*ts.maxLen)
 	}
+
 	return min, max
 }
 
@@ -242,6 +254,7 @@ func (ts TypeSettings) MinMaxLen() (int, int) {
 // and to know its serializer.TypeDenotationType to be able to decode it.
 func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
 	ts.objectType = t
+
 	return ts
 }
 
@@ -253,6 +266,7 @@ func (ts TypeSettings) ObjectType() interface{} {
 // WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
 func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
 	ts.lexicalOrdering = &val
+
 	return ts
 }
 
@@ -261,12 +275,14 @@ func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 	if ts.lexicalOrdering == nil {
 		return false, false
 	}
+
 	return *ts.lexicalOrdering, true
 }
 
 // WithArrayRules specifies serializer.ArrayRules.
 func (ts TypeSettings) WithArrayRules(rules *ArrayRules) TypeSettings {
 	ts.arrayRules = rules
+
 	return ts
 }
 
@@ -283,6 +299,7 @@ func (ts TypeSettings) ensureOrdering() TypeSettings {
 		*newArrayRules = *arrayRules
 	}
 	newArrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
+
 	return newTS.WithArrayRules(newArrayRules)
 }
 
@@ -302,6 +319,7 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.mapKey == nil {
 		ts.mapKey = other.mapKey
 	}
+
 	return ts
 }
 
@@ -311,6 +329,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 	if set && lexicalOrdering {
 		mode |= serializer.DeSeriModePerformLexicalOrdering
 	}
+
 	return mode
 }
 
@@ -318,7 +337,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.
 // During the encoding process serix also performs the validation if such option was provided.
-// Use the options list opts to customize the serialization behaviour.
+// Use the options list opts to customize the serialization behavior.
 // To ensure deterministic serialization serix automatically applies lexical ordering for maps.
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
 	value := reflect.ValueOf(obj)
@@ -329,6 +348,7 @@ func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]
 	for _, o := range opts {
 		o(opt)
 	}
+
 	return api.encode(ctx, value, opt.ts, opt)
 }
 
@@ -338,12 +358,13 @@ func (api *API) JSONEncode(ctx context.Context, obj any, opts ...Option) ([]byte
 	if err != nil {
 		return nil, err
 	}
+
 	return json.Marshal(orderedMap)
 }
 
 // MapEncode serializes the provided object obj into an ordered map.
 // serix traverses the object recursively and serializes everything based on the type.
-// Use the options list opts to customize the serialization behaviour.
+// Use the options list opts to customize the serialization behavior.
 func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
@@ -357,6 +378,7 @@ func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) 
 	if err != nil {
 		return nil, err
 	}
+
 	return m.(*orderedmap.OrderedMap), nil
 }
 
@@ -384,6 +406,7 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 	for _, o := range opts {
 		o(opt)
 	}
+
 	return api.decode(ctx, b, value, opt.ts, opt)
 }
 
@@ -393,6 +416,7 @@ func (api *API) JSONDecode(ctx context.Context, data []byte, obj interface{}, op
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
+
 	return api.MapDecode(ctx, m, obj, opts...)
 }
 
@@ -409,6 +433,7 @@ func (api *API) MapDecode(ctx context.Context, m map[string]any, obj interface{}
 	for _, o := range opts {
 		o(opt)
 	}
+
 	return api.mapDecode(ctx, m, value, opt.ts, opt)
 }
 
@@ -424,6 +449,7 @@ func checkDecodeDestination(obj any, value reflect.Value) error {
 	if value.IsNil() {
 		return errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
 	}
+
 	return nil
 }
 
@@ -483,6 +509,7 @@ func (api *API) RegisterValidators(obj any, bytesValidatorFn func(context.Contex
 	api.validatorsRegistryMutex.Lock()
 	defer api.validatorsRegistryMutex.Unlock()
 	api.validatorsRegistry[objType] = vldtrs
+
 	return nil
 }
 
@@ -514,6 +541,7 @@ func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 	if returnType != errorType {
 		return reflect.Value{}, errors.Errorf("validator func must have 'error' return type, got %s", returnType)
 	}
+
 	return funcValue, nil
 }
 
@@ -523,6 +551,7 @@ func checkBytesValidatorSignature(funcValue reflect.Value) error {
 	if argumentType != bytesType {
 		return errors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
 	}
+
 	return nil
 }
 
@@ -536,6 +565,7 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 			objectType, argumentType,
 		)
 	}
+
 	return nil
 }
 
@@ -556,6 +586,7 @@ func (api *API) callBytesValidator(ctx context.Context, valueType reflect.Type, 
 			return errors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
 		}
 	}
+
 	return nil
 }
 
@@ -577,6 +608,7 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 			return errors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
 		}
 	}
+
 	return nil
 }
 
@@ -595,6 +627,7 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
 	api.typeSettingsRegistry[objType] = ts
+
 	return nil
 }
 
@@ -608,8 +641,10 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 		ts, ok = api.typeSettingsRegistry[objType]
+
 		return ts, ok
 	}
+
 	return TypeSettings{}, false
 }
 
@@ -656,6 +691,7 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 			iRegistry.typeDenotation = objTypeDenotation
 		} else if iRegistry.typeDenotation != objTypeDenotation {
 			firstObj := objs[0]
+
 			return errors.Errorf(
 				"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
 				firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
@@ -667,6 +703,7 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 	api.interfacesRegistryMutex.Lock()
 	defer api.interfacesRegistryMutex.Unlock()
 	api.interfacesRegistry[iTypeReflect] = iRegistry
+
 	return nil
 }
 
@@ -690,6 +727,7 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 	if err != nil {
 		return 0, 0, errors.WithStack(err)
 	}
+
 	return objTypeDenotation, objectCode, nil
 }
 
@@ -718,6 +756,7 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
 	api.interfacesRegistryMutex.RLock()
 	defer api.interfacesRegistryMutex.RUnlock()
+
 	return api.interfacesRegistry[iType]
 }
 
@@ -792,6 +831,7 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 	sort.Slice(structFields, func(i, j int) bool {
 		return structFields[i].settings.position < structFields[j].settings.position
 	})
+
 	return structFields, nil
 }
 
@@ -859,6 +899,7 @@ func parseStructTag(tag string) (tagSettings, error) {
 		}
 		seenParts[partName] = struct{}{}
 	}
+
 	return settings, nil
 }
 
@@ -880,6 +921,7 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 	sliceType := reflect.SliceOf(arrType.Elem())
 	sliceValue := reflect.MakeSlice(sliceType, arrType.Len(), arrType.Len())
 	reflect.Copy(sliceValue, arrValue)
+
 	return sliceValue
 }
 
@@ -891,6 +933,7 @@ func fillArrayFromSlice(arrayValue, sliceValue reflect.Value) {
 
 func isUnderlyingStruct(t reflect.Type) bool {
 	t = deRefPointer(t)
+
 	return t.Kind() == reflect.Struct
 }
 
@@ -898,6 +941,7 @@ func deRefPointer(t reflect.Type) reflect.Type {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
 	return t
 }
 
@@ -938,6 +982,7 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	default:
 		return -1, nil, nil
 	}
+
 	return bitSize, numberType, reflect.PointerTo(numberType)
 }
 

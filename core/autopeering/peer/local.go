@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
-// Local defines the struct of a local peer
+// Local defines the struct of a local peer.
 type Local struct {
 	*Peer
 	identity *identity.LocalIdentity
@@ -77,28 +77,30 @@ func (l *Local) UpdateService(key service.Key, network string, port int) error {
 	return nil
 }
 
-// GetPublicSalt returns the public salt
+// GetPublicSalt returns the public salt.
 func (l *Local) GetPublicSalt() *salt.Salt {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+
 	return l.publicSalt
 }
 
-// SetPublicSalt sets the public salt
+// SetPublicSalt sets the public salt.
 func (l *Local) SetPublicSalt(salt *salt.Salt) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.publicSalt = salt
 }
 
-// GetPrivateSalt returns the private salt
+// GetPrivateSalt returns the private salt.
 func (l *Local) GetPrivateSalt() *salt.Salt {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+
 	return l.privateSalt
 }
 
-// SetPrivateSalt sets the private salt
+// SetPrivateSalt sets the private salt.
 func (l *Local) SetPrivateSalt(salt *salt.Salt) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -110,7 +112,7 @@ func (l *Local) Sign(message []byte) ed25519.Signature {
 	return l.identity.Sign(message)
 }
 
-// LocalIdentity returns the local identity
+// LocalIdentity returns the local identity.
 func (l *Local) LocalIdentity() *identity.LocalIdentity {
 	return l.identity
 }

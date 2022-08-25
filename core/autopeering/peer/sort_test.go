@@ -1,3 +1,4 @@
+//nolint:gosec // we don't care about these linters in test cases
 package peer
 
 import (
@@ -10,9 +11,10 @@ import (
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
-func newTestPeerWithID(ID byte) *Peer {
+func newTestPeerWithID(id byte) *Peer {
 	var key ed25519.PublicKey
-	key[0] = ID
+	key[0] = id
+
 	return NewPeer(identity.New(key), net.IPv4zero, newTestServiceRecord())
 }
 

@@ -1,3 +1,4 @@
+//nolint:prealloc // we don't care about these linters in test cases
 package discover
 
 import (
@@ -166,7 +167,6 @@ func TestProtDiscoveryRequest(t *testing.T) {
 	// request peers from node A
 	t.Run("A->B", func(t *testing.T) {
 		if ps, err := protA.DiscoveryRequest(peerB); assert.NoError(t, err) {
-			//assert.ElementsMatch(t, []*peer.Peer{peerA}, ps)
 			if assert.Equal(t, 1, len(ps)) {
 				assert.Equal(t, peerA.ID(), ps[0].ID())
 			}
@@ -312,6 +312,7 @@ func (e *eventNetwork) peers() []*peer.Peer {
 	for _, p := range e.m {
 		result = append(result, p)
 	}
+
 	return result
 }
 
@@ -396,6 +397,7 @@ func newTestProtocol(name string, conn *net.UDPConn, logger *logger.Logger, mast
 		srv.Close()
 		prot.Close()
 	}
+
 	return prot, teardown
 }
 

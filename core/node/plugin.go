@@ -55,7 +55,7 @@ func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback)
 }
 
 func GetPluginIdentifier(name string) string {
-	return strings.ToLower(strings.Replace(name, " ", "", -1))
+	return strings.ToLower(strings.ReplaceAll(name, " ", ""))
 }
 
 // LogDebug uses fmt.Sprint to construct and log a message.

@@ -1,6 +1,8 @@
+//nolint:unparam // we don't care about these linters in test cases
 package backoff
 
 import (
+	"context"
 	"errors"
 	"math"
 	"sync"
@@ -47,6 +49,7 @@ func TestZeroBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -72,6 +75,7 @@ func TestConstantBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -101,6 +105,7 @@ func TestExponentialBackOff(t *testing.T) {
 			return nil
 		}
 		count++
+
 		return errTest
 	})
 	assert.NoError(t, err)
@@ -134,6 +139,7 @@ func TestExponentialBackOffParallel(t *testing.T) {
 				return nil
 			}
 			count++
+
 			return errTest
 		})
 		assert.NoError(t, err)
@@ -152,7 +158,7 @@ func BenchmarkBackOff(b *testing.B) {
 		MaxRetries(b.N),
 		MaxInterval(time.Microsecond),
 		Timeout(time.Now().Add(time.Minute)),
-		Cancel(nil),
+		Cancel(context.Background()),
 		Jitter(0.5),
 	)
 

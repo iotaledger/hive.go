@@ -107,6 +107,7 @@ func (s *debugStore) Iterate(prefix kvstore.KeyPrefix, kvConsumerFunc kvstore.It
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(IterateCommand) {
 		s.accessCallback(IterateCommand, prefix)
 	}
+
 	return s.underlying.Iterate(prefix, kvConsumerFunc, iterDirection...)
 }
 
@@ -116,6 +117,7 @@ func (s *debugStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstore.
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(IterateKeysCommand) {
 		s.accessCallback(IterateKeysCommand, prefix)
 	}
+
 	return s.underlying.IterateKeys(prefix, consumerFunc, iterDirection...)
 }
 
@@ -123,6 +125,7 @@ func (s *debugStore) Clear() error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(ClearCommand) {
 		s.accessCallback(ClearCommand)
 	}
+
 	return s.underlying.Clear()
 }
 
@@ -130,6 +133,7 @@ func (s *debugStore) Get(key kvstore.Key) (value kvstore.Value, err error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(GetCommand) {
 		s.accessCallback(GetCommand, key)
 	}
+
 	return s.underlying.Get(key)
 }
 
@@ -137,6 +141,7 @@ func (s *debugStore) Set(key kvstore.Key, value kvstore.Value) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(SetCommand) {
 		s.accessCallback(SetCommand, key, value)
 	}
+
 	return s.underlying.Set(key, value)
 }
 
@@ -144,6 +149,7 @@ func (s *debugStore) Has(key kvstore.Key) (bool, error) {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(HasCommand) {
 		s.accessCallback(HasCommand, key)
 	}
+
 	return s.underlying.Has(key)
 }
 
@@ -151,6 +157,7 @@ func (s *debugStore) Delete(key kvstore.Key) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(DeleteCommand) {
 		s.accessCallback(DeleteCommand, key)
 	}
+
 	return s.underlying.Delete(key)
 }
 
@@ -158,6 +165,7 @@ func (s *debugStore) DeletePrefix(prefix kvstore.KeyPrefix) error {
 	if s.accessCallback != nil && s.accessCallbackCommandsFilter.HasBits(DeletePrefixCommand) {
 		s.accessCallback(DeletePrefixCommand, prefix)
 	}
+
 	return s.underlying.DeletePrefix(prefix)
 }
 
@@ -192,6 +200,7 @@ func (b *batchedMutations) Set(key kvstore.Key, value kvstore.Value) error {
 	if b.accessCallback != nil && b.accessCallbackCommandsFilter.HasBits(SetCommand) {
 		b.accessCallback(SetCommand, key, value)
 	}
+
 	return b.underlying.Set(key, value)
 }
 
@@ -199,6 +208,7 @@ func (b *batchedMutations) Delete(key kvstore.Key) error {
 	if b.accessCallback != nil && b.accessCallbackCommandsFilter.HasBits(DeleteCommand) {
 		b.accessCallback(DeleteCommand, key)
 	}
+
 	return b.underlying.Delete(key)
 }
 

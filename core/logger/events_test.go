@@ -92,5 +92,6 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 		Events.PanicMsg.Detach(panicC)
 		Events.AnyMsg.Detach(anyC)
 	}
+
 	return m, teardown
 }

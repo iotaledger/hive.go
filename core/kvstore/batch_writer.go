@@ -187,12 +187,14 @@ func (bw *BatchedWriter) runBatchWriter() {
 					if err := batchCollector.Commit(); err != nil {
 						panic(err)
 					}
+
 					break CollectValues
 				}
 
 			// flush was triggered
 			case <-bw.flushChan:
 				shouldFlush = true
+
 				break CollectValues
 
 			// batch timeout was reached
@@ -201,6 +203,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 				if err := batchCollector.Commit(); err != nil {
 					panic(err)
 				}
+
 				break CollectValues
 			}
 		}
@@ -234,6 +237,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 					if err := batchCollector.Commit(); err != nil {
 						panic(err)
 					}
+
 					break FlushValues
 				}
 			}

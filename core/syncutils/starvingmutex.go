@@ -37,6 +37,7 @@ func NewStarvingMutex() *StarvingMutex {
 	fm := &StarvingMutex{}
 	fm.readerCond.L = &fm.mutex
 	fm.writerCond.L = &fm.mutex
+
 	return fm
 }
 
@@ -86,6 +87,7 @@ func (f *StarvingMutex) RUnlock() {
 	if f.readersActive == 0 && f.pendingWriters > 0 {
 		f.mutex.Unlock()
 		f.writerCond.Signal()
+
 		return
 	}
 	f.mutex.Unlock()
@@ -135,6 +137,7 @@ func (f *StarvingMutex) Unlock() {
 	if f.pendingWriters == 0 {
 		f.mutex.Unlock()
 		f.readerCond.Broadcast()
+
 		return
 	}
 
@@ -145,9 +148,9 @@ func (f *StarvingMutex) Unlock() {
 // String returns a string representation of the StarvingMutex.
 func (f *StarvingMutex) String() (humanReadable string) {
 	return stringify.Struct("StarvingMutex",
-		stringify.StructField("WriterActive", f.writerActive),
-		stringify.StructField("ReadersActive", f.readersActive),
-		stringify.StructField("PendingWriters", f.pendingWriters),
+		stringify.NewStructField("WriterActive", f.writerActive),
+		stringify.NewStructField("ReadersActive", f.readersActive),
+		stringify.NewStructField("PendingWriters", f.pendingWriters),
 	)
 }
 

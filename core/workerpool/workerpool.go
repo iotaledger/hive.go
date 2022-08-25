@@ -23,12 +23,8 @@ type WorkerPool struct {
 	wait  sync.WaitGroup
 }
 
-func voidCaller(handler interface{}, params ...interface{}) {
-	handler.(func())()
-}
-
 func New(workerFnc func(Task), optionalOptions ...Option) (result *WorkerPool) {
-	options := DEFAULT_OPTIONS.Override(optionalOptions...)
+	options := defaultOptions.Override(optionalOptions...)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
@@ -55,6 +51,7 @@ func (wp *WorkerPool) Submit(params ...interface{}) (result chan interface{}, ad
 			params:     params,
 			resultChan: result,
 		}
+
 		return result, true
 	}
 
@@ -78,6 +75,7 @@ func (wp *WorkerPool) TrySubmit(params ...interface{}) (result chan interface{},
 		default:
 			// Queue full => drop the BlockingQueueWorkerPoolTask
 			close(result)
+
 			return nil, false
 		}
 	}

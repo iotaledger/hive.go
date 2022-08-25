@@ -61,5 +61,5 @@ func (set *simpleSet) Size() int {
 	return len(set.elements)
 }
 
-// code contract - make sure the type implements the interface
+// code contract - make sure the type implements the interface.
 var _ Set = &simpleSet{}

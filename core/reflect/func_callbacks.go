@@ -5,7 +5,7 @@ import (
 )
 
 // copyFuncSignature returns an interface of a new function with the same function signature as 'fnc'.
-func copyFuncSignature(fnc interface{}, new func(args []reflect.Value) (results []reflect.Value)) interface{} {
+func copyFuncSignature(fnc interface{}, newFnc func(args []reflect.Value) (results []reflect.Value)) interface{} {
 
 	x := reflect.TypeOf(fnc)
 	if x.Kind() != reflect.Func {
@@ -22,7 +22,7 @@ func copyFuncSignature(fnc interface{}, new func(args []reflect.Value) (results 
 		out[o] = x.Out(o)
 	}
 
-	return reflect.MakeFunc(reflect.FuncOf(in, out, x.IsVariadic()), new).Interface()
+	return reflect.MakeFunc(reflect.FuncOf(in, out, x.IsVariadic()), newFnc).Interface()
 }
 
 // FuncPreCallback returns an interface to a function that calls 'callback' before calling 'fnc'.
@@ -30,6 +30,7 @@ func FuncPreCallback(fnc interface{}, callback func()) interface{} {
 	return copyFuncSignature(fnc, func(args []reflect.Value) (results []reflect.Value) {
 		callback()
 		results = reflect.ValueOf(fnc).Call(args)
+
 		return results
 	})
 }
@@ -39,6 +40,7 @@ func FuncPostCallback(fnc interface{}, callback func()) interface{} {
 	return copyFuncSignature(fnc, func(args []reflect.Value) (results []reflect.Value) {
 		results = reflect.ValueOf(fnc).Call(args)
 		callback()
+
 		return results
 	})
 }

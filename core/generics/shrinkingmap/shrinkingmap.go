@@ -45,7 +45,7 @@ type Option func(opts *Options)
 // that shrinks if certain conditions are met (AND condition).
 // Default values are:
 // - ShrinkingThresholdRatio: 10.0	(set to 0.0 to disable)
-// - ShrinkingThresholdCount: 100	(set to 0 to disable)
+// - ShrinkingThresholdCount: 100	(set to 0 to disable).
 type ShrinkingMap[K comparable, V any] struct {
 	m           map[K]V
 	deletedKeys int
@@ -80,12 +80,14 @@ func (s *ShrinkingMap[K, V]) Set(key K, value V) (updated bool) {
 // Get returns the value mapped to the given key, and the boolean flag that indicated if the key exists.
 func (s *ShrinkingMap[K, V]) Get(key K) (value V, exists bool) {
 	value, exists = s.m[key]
+
 	return
 }
 
 // Has returns if an entry with the given key exists.
 func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 	_, has = s.m[key]
+
 	return
 }
 

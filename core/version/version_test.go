@@ -1,10 +1,10 @@
+//nolint:golint,revive,stylecheck,nosnakecase // we don't care about these linters in test cases
 package version
 
 import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	goversion "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/require"
 	"github.com/tcnksm/go-latest"
 )
@@ -21,7 +21,7 @@ func (ver *versionCheckerMock) Validate() error {
 
 func (ver *versionCheckerMock) Fetch() (*latest.FetchResponse, error) {
 
-	var versions []*goversion.Version
+	var versions []*version.Version
 	var malformeds []string
 	fr := &latest.FetchResponse{
 		Versions:   versions,
@@ -32,11 +32,13 @@ func (ver *versionCheckerMock) Fetch() (*latest.FetchResponse, error) {
 	for _, name := range ver.tags {
 		if !ver.tagFilterFunc(name) {
 			fr.Malformeds = append(fr.Malformeds, name)
+
 			continue
 		}
 		v, err := version.NewVersion(ver.fixVersionStrFunc(name))
 		if err != nil {
 			fr.Malformeds = append(fr.Malformeds, ver.fixVersionStrFunc(name))
+
 			continue
 		}
 		fr.Versions = append(fr.Versions, v)

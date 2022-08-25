@@ -39,6 +39,7 @@ list:
 		}
 		filtered = append(filtered, p)
 	}
+
 	return
 }
 

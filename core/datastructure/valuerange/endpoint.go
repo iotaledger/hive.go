@@ -26,6 +26,7 @@ func EndPointFromBytes(endPointBytes []byte) (endPoint *EndPoint, consumedBytes 
 	marshalUtil := marshalutil.New(endPointBytes)
 	if endPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse EndPoint from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -38,10 +39,12 @@ func EndPointFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (endPoint *En
 	endPoint = &EndPoint{}
 	if endPoint.value, err = ValueFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse Value from MarshalUtil: %w", err)
+
 		return
 	}
 	if endPoint.boundType, err = BoundTypeFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse BoundType from MarshalUtil: %w", err)
+
 		return
 	}
 
@@ -69,7 +72,7 @@ func (e *EndPoint) Bytes() []byte {
 // String returns a human readable version of the EndPoint.
 func (e *EndPoint) String() string {
 	return stringify.Struct("EndPoint",
-		stringify.StructField("value", e.value),
-		stringify.StructField("boundType", e.boundType),
+		stringify.NewStructField("value", e.value),
+		stringify.NewStructField("boundType", e.boundType),
 	)
 }

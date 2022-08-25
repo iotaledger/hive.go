@@ -33,6 +33,7 @@ func BoundTypeFromBytes(boundTypeBytes []byte) (boundType BoundType, consumedByt
 	marshalUtil := marshalutil.New(boundTypeBytes)
 	if boundType, err = BoundTypeFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse BoundType from MarshalUtil: %w", err)
+
 		return
 	}
 	consumedBytes = marshalUtil.ReadOffset()
@@ -45,11 +46,13 @@ func BoundTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (boundType B
 	boundTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
 		err = xerrors.Errorf("failed to read BoundType (%v): %w", err, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 
 	if boundType = BoundType(boundTypeByte); boundType > BoundTypeClosed {
 		err = xerrors.Errorf("unsupported BoundType (%X): %w", boundType, cerrors.ErrParseBytesFailed)
+
 		return
 	}
 

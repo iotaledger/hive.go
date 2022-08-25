@@ -42,6 +42,7 @@ func newTestPacket() ([]byte, error) {
 	if err := binary.Write(buf, binary.BigEndian, testMessage); err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
 

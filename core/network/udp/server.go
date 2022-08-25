@@ -8,6 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
+//nolint:revive // better be explicit here
 type UDPServer struct {
 	socket            net.PacketConn
 	socketMutex       syncutils.RWMutex
@@ -18,6 +19,7 @@ type UDPServer struct {
 func (srv *UDPServer) GetSocket() net.PacketConn {
 	srv.socketMutex.RLock()
 	defer srv.socketMutex.RUnlock()
+
 	return srv.socket
 }
 
@@ -33,15 +35,16 @@ func (srv *UDPServer) Shutdown() {
 }
 
 func (srv *UDPServer) Listen(address string, port int) {
-	if socket, err := net.ListenPacket("udp", address+":"+strconv.Itoa(port)); err != nil {
+	socket, err := net.ListenPacket("udp", address+":"+strconv.Itoa(port))
+	if err != nil {
 		srv.Events.Error.Trigger(err)
 
 		return
-	} else {
-		srv.socketMutex.Lock()
-		srv.socket = socket
-		srv.socketMutex.Unlock()
 	}
+
+	srv.socketMutex.Lock()
+	srv.socket = socket
+	srv.socketMutex.Unlock()
 
 	srv.Events.Start.Trigger()
 	defer srv.Events.Shutdown.Trigger()

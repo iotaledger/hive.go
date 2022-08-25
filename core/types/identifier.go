@@ -21,13 +21,14 @@ func init() {
 type Identifier [IdentifierLength]byte
 
 // NewIdentifier returns a new Identifier for the given data.
-func NewIdentifier(data []byte) (new Identifier) {
+func NewIdentifier(data []byte) Identifier {
 	return blake2b.Sum256(data)
 }
 
 // FromRandomness generates a random Identifier.
 func (t *Identifier) FromRandomness() (err error) {
 	_, err = rand.Read((*t)[:])
+
 	return
 }
 
@@ -48,18 +49,18 @@ func (t *Identifier) FromBase58(base58String string) (err error) {
 // RegisterAlias allows to register a human-readable alias for the Identifier which will be used as a replacement for
 // the String method.
 func (t Identifier) RegisterAlias(alias string) {
-	_identifierAliasesMutex.Lock()
-	defer _identifierAliasesMutex.Unlock()
+	identifierAliasesMutex.Lock()
+	defer identifierAliasesMutex.Unlock()
 
-	_identifierAliases[t] = alias
+	identifierAliases[t] = alias
 }
 
 // Alias returns the human-readable alias of the Identifier (or the base58 encoded bytes of no alias was set).
 func (t Identifier) Alias() (alias string) {
-	_identifierAliasesMutex.RLock()
-	defer _identifierAliasesMutex.RUnlock()
+	identifierAliasesMutex.RLock()
+	defer identifierAliasesMutex.RUnlock()
 
-	if existingAlias, exists := _identifierAliases[t]; exists {
+	if existingAlias, exists := identifierAliases[t]; exists {
 		return existingAlias
 	}
 
@@ -68,10 +69,10 @@ func (t Identifier) Alias() (alias string) {
 
 // UnregisterAlias allows to unregister a previously registered alias.
 func (t Identifier) UnregisterAlias() {
-	_identifierAliasesMutex.Lock()
-	defer _identifierAliasesMutex.Unlock()
+	identifierAliasesMutex.Lock()
+	defer identifierAliasesMutex.Unlock()
 
-	delete(_identifierAliases, t)
+	delete(identifierAliases, t)
 }
 
 // Decode decodes the Identifier from a sequence of bytes.
@@ -80,6 +81,7 @@ func (t *Identifier) Decode(data []byte) (consumed int, err error) {
 		return 0, errors.New("not enough data to decode Identifier")
 	}
 	copy(t[:], data[:IdentifierLength])
+
 	return IdentifierLength, nil
 }
 
@@ -107,11 +109,11 @@ func (t Identifier) String() (humanReadable string) {
 const IdentifierLength = 32
 
 var (
-	// _identifierAliases contains a dictionary of identifiers associated to their human-readable alias.
-	_identifierAliases = make(map[Identifier]string)
+	// identifierAliases contains a dictionary of identifiers associated to their human-readable alias.
+	identifierAliases = make(map[Identifier]string)
 
-	// _identifierAliasesMutex is the mutex that is used to synchronize access to the previous map.
-	_identifierAliasesMutex = sync.RWMutex{}
+	// identifierAliasesMutex is the mutex that is used to synchronize access to the previous map.
+	identifierAliasesMutex = sync.RWMutex{}
 )
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -86,5 +86,6 @@ func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) 
 
 	// error is ignored because it returns false in case it can't be derived
 	valid, _ := VerifyPassword([]byte(password), b.passwordSalt, b.passwordHash)
+
 	return valid
 }

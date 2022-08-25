@@ -61,7 +61,7 @@ func CallerStackTrace() (stackTrace string) {
 	return strings.TrimSuffix("\tcalled by "+strings.ReplaceAll(StackTrace(false, 1), "\n", "\n\t\t"), "\t\t")
 }
 
-// ClosureStackTrace returns a formatted stack trace for the given function pointer
+// ClosureStackTrace returns a formatted stack trace for the given function pointer.
 func ClosureStackTrace(functionPointer interface{}) (stackTrace string) {
 	return strings.TrimSuffix("\tclosure:\n\t\t"+FunctionName(functionPointer)+"\n\n\tcalled by "+strings.ReplaceAll(StackTrace(false, 1), "\n", "\n\t\t"), "\t\t")
 }

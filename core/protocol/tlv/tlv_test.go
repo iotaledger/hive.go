@@ -13,7 +13,7 @@ import (
 const (
 	MessageTypeTest message.Type = 1
 
-	// length of a test message in bytes
+	// length of a test message in bytes.
 	TestMaxBytesLength = 5
 )
 

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	// plugins
+	// plugins.
 	plugins         = make(map[string]*Plugin)
 	DisabledPlugins = make(map[string]bool)
 	EnabledPlugins  = make(map[string]bool)
@@ -72,11 +72,13 @@ func IsSkipped(plugin *Plugin) bool {
 
 func isDisabled(plugin *Plugin) bool {
 	_, exists := DisabledPlugins[GetPluginIdentifier(plugin.Name)]
+
 	return exists
 }
 
 func isEnabled(plugin *Plugin) bool {
 	_, exists := EnabledPlugins[GetPluginIdentifier(plugin.Name)]
+
 	return exists
 }
 
@@ -93,6 +95,7 @@ func (node *Node) configure(plugins ...*Plugin) {
 	for _, plugin := range plugins {
 		if IsSkipped(plugin) {
 			node.Logger.Infof("Skipping Plugin: %s", plugin.Name)
+
 			continue
 		}
 
@@ -121,6 +124,7 @@ func (node *Node) populatePluginDependencies(plugin *Plugin) {
 	invokeFnType := reflect.FuncOf([]reflect.Type{depStructType}, []reflect.Type{}, false)
 	invokeFn := reflect.MakeFunc(invokeFnType, func(args []reflect.Value) (results []reflect.Value) {
 		reflect.ValueOf(plugin.deps).Elem().Set(args[0])
+
 		return results
 	})
 

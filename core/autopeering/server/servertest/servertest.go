@@ -12,5 +12,6 @@ func NewConn() *net.UDPConn {
 	if err != nil {
 		panic(err)
 	}
+
 	return conn
 }

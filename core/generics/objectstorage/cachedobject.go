@@ -57,6 +57,7 @@ func (c *CachedObject[T]) Unwrap() (result T, exists bool) {
 	r := c.Get()
 	result = r
 	exists = true
+
 	return
 }
 
@@ -152,7 +153,7 @@ type CachedObjects[T StorableObject] []*CachedObject[T]
 // that do not exist or are deleted, sets default type value for missing elements.
 func (c CachedObjects[T]) Unwrap(skip ...bool) (unwrappedChildBranches []T) {
 	skipMissing := false
-	if len(skip) > 0 && skip[0] == true {
+	if len(skip) > 0 && skip[0] {
 		skipMissing = true
 	}
 	unwrappedChildBranches = make([]T, 0, len(c))
@@ -183,6 +184,7 @@ func (c CachedObjects[T]) Consume(consumer func(T), forceRelease ...bool) (consu
 	for _, cachedObject := range c {
 		consumed = cachedObject.Consume(consumer, forceRelease...) || consumed
 	}
+
 	return
 }
 
@@ -195,9 +197,9 @@ func (c CachedObjects[T]) Release(force ...bool) {
 
 // String returns a human readable version of the CachedObjects.
 func (c CachedObjects[T]) String() string {
-	structBuilder := stringify.StructBuilder("CachedObjects")
+	structBuilder := stringify.NewStructBuilder("CachedObjects")
 	for i, cachedObject := range c {
-		structBuilder.AddField(stringify.StructField(strconv.Itoa(i), cachedObject))
+		structBuilder.AddField(stringify.NewStructField(strconv.Itoa(i), cachedObject))
 	}
 
 	return structBuilder.String()

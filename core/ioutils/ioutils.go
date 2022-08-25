@@ -1,3 +1,4 @@
+//nolint:nosnakecase // os package uses underlines in constants
 package ioutils
 
 import (
@@ -5,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -21,6 +21,7 @@ func PathExists(path string) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	}
+
 	return false, err
 }
 
@@ -35,6 +36,7 @@ func CreateDirectory(dir string, perm os.FileMode) error {
 	if !exists {
 		return os.Mkdir(dir, perm)
 	}
+
 	return nil
 }
 
@@ -68,6 +70,7 @@ func ReadFromFile(filename string, data interface{}) error {
 		return err
 	}
 	defer func() { _ = f.Close() }()
+
 	return binary.Read(f, binary.LittleEndian, data)
 }
 
@@ -86,6 +89,7 @@ func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error
 			err = closeErr
 		}
 	}()
+
 	return binary.Write(f, binary.LittleEndian, data)
 }
 
@@ -93,10 +97,11 @@ func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error
 // ReadJSONFromFile uses json.Unmarshal to decode data. Data must be a pointer to a fixed-size value or a slice
 // of fixed-size values.
 func ReadJSONFromFile(filename string, data interface{}) error {
-	jsonData, err := ioutil.ReadFile(filename)
+	jsonData, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("unable to read JSON file %s: %w", filename, err)
 	}
+
 	return json.Unmarshal(jsonData, data)
 }
 
@@ -137,10 +142,11 @@ func WriteJSONToFile(filename string, data interface{}, perm os.FileMode) (err e
 // ReadTOMLFromFile uses toml.Unmarshal to decode data. Data must be a pointer to a fixed-size value or a slice
 // of fixed-size values.
 func ReadTOMLFromFile(filename string, data interface{}) error {
-	tomlData, err := ioutil.ReadFile(filename)
+	tomlData, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("unable to read TOML file %s: %w", filename, err)
 	}
+
 	return toml.Unmarshal(tomlData, data)
 }
 
@@ -194,6 +200,7 @@ func CreateTempFile(filePath string) (*os.File, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to create temp file: %w", err)
 	}
+
 	return fileDescriptor, filePathTmp, nil
 }
 
@@ -205,6 +212,7 @@ func CloseFileAndRename(fileDescriptor *os.File, sourceFilePath string, targetFi
 	if err := os.Rename(sourceFilePath, targetFilePath); err != nil {
 		return fmt.Errorf("unable to rename file: %w", err)
 	}
+
 	return nil
 }
 

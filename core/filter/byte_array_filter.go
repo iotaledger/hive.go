@@ -46,7 +46,7 @@ func (filter *ByteArrayFilter) Add(byteArray []byte) bool {
 		filter.byteArraysByKey[key] = true
 
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }

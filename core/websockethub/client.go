@@ -93,7 +93,7 @@ type Client struct {
 // checkPong checks if the client is still available and answers to the ping messages
 // that are sent periodically in the writePump function.
 //
-// at most one reader per websocket connection is allowed
+// at most one reader per websocket connection is allowed.
 func (c *Client) checkPong() {
 
 	defer func() {
@@ -125,15 +125,25 @@ func (c *Client) checkPong() {
 	c.startWaitGroup.Done()
 
 	c.conn.SetReadLimit(c.readLimit)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
+	}
+
+	c.conn.SetPongHandler(func(string) error {
+		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
+		}
+
+		return nil
+	})
 
 	for {
 		msgType, data, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				c.hub.logger.Warnf("Websocket error: %v", err)
+				c.hub.logger.Warnf("Websocket ReadMessage error: %v", err)
 			}
+
 			return
 		}
 
@@ -156,7 +166,7 @@ func (c *Client) checkPong() {
 
 // writePump pumps messages from the node to the websocket connection.
 //
-// at most one writer per websocket connection is allowed
+// at most one writer per websocket connection is allowed.
 func (c *Client) writePump() {
 
 	pingTicker := time.NewTicker(pingPeriod)
@@ -196,24 +206,37 @@ func (c *Client) writePump() {
 
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+				c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+			}
+
 			return
 
 		case msg, ok := <-c.sendChan:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
+			}
+
 			if !ok {
 				// the Hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+				}
+
 				return
 			}
 
 			if err := c.conn.WriteJSON(msg); err != nil {
 				c.hub.logger.Warnf("Websocket error: %v", err)
+
 				return
 			}
 
 		case <-pingTicker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
+			}
+
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -221,7 +244,7 @@ func (c *Client) writePump() {
 	}
 }
 
-// Send sends a message to the client
+// Send sends a message to the client.
 func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	if c.hub.shutdownFlag.Load() {
 		// hub was already shut down
@@ -240,6 +263,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 		case <-c.sendChanClosed:
 		case c.sendChan <- msg:
 		}
+
 		return
 	}
 

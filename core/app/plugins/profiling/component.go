@@ -2,6 +2,10 @@ package profiling
 
 import (
 	"net/http"
+	"time"
+
+	// import pprof.
+	//nolint:gosec // ToDo: register handlers ourselves.
 	_ "net/http/pprof"
 	"runtime"
 
@@ -37,7 +41,12 @@ func run() error {
 		Plugin.LogInfof("You can now access the profiling server using: http://%s/debug/pprof/", bindAddr)
 
 		// pprof Server for Debugging
-		if err := http.ListenAndServe(bindAddr, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		server := &http.Server{
+			Addr:              bindAddr,
+			ReadHeaderTimeout: 3 * time.Second,
+		}
+
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Plugin.LogWarnf("Stopped profiling server due to an error (%s)", err)
 		}
 	}()

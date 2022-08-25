@@ -1,3 +1,4 @@
+//nolint:staticcheck // we don't care about these linters in test cases
 package syncutils
 
 import (
@@ -18,8 +19,8 @@ func Benchmark(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 20; j++ {
 			wg.Add(1)
-			go func(goRoutineId int) {
-				if i%2 == 0 {
+			go func(goRoutineID int) {
+				if goRoutineID%2 == 0 {
 					mutex.Lock()
 					mutex.Unlock()
 				} else {
