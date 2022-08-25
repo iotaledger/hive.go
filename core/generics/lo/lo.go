@@ -5,6 +5,15 @@ import (
 	"github.com/iotaledger/hive.go/core/generics/set"
 )
 
+// Cond is a conditional statement that returns the trueValue if the condition is true and the falseValue otherwise.
+func Cond[T any](condition bool, trueValue, falseValue T) T {
+	if condition {
+		return trueValue
+	}
+
+	return falseValue
+}
+
 // Map iterates over elements of collection, applies the mapper function to each element
 // and returns an array of modified TargetType elements.
 func Map[SourceType any, TargetType any](source []SourceType, mapper func(SourceType) TargetType) (target []TargetType) {
