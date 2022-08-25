@@ -72,7 +72,7 @@ func (e *EndPoint) Bytes() []byte {
 // String returns a human readable version of the EndPoint.
 func (e *EndPoint) String() string {
 	return stringify.Struct("EndPoint",
-		stringify.StructField("value", e.value),
-		stringify.StructField("boundType", e.boundType),
+		stringify.NewStructField("value", e.value),
+		stringify.NewStructField("boundType", e.boundType),
 	)
 }

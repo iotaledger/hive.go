@@ -271,7 +271,7 @@ func registerCachedObjectRetained(wrappedCachedObject LeakDetectionWrapper, opti
 	instancesByKey[wrappedCachedObject.GetInternalID()] = wrappedCachedObject
 
 	if len(instancesByKey) > options.MaxConsumersPerObject {
-		var oldestEntry LeakDetectionWrapper = nil
+		var oldestEntry LeakDetectionWrapper
 		var oldestTime = time.Now()
 		for _, wrappedCachedObject := range instancesByKey {
 			if typeutils.IsInterfaceNil(oldestEntry) || wrappedCachedObject.GetRetainTime().Before(oldestTime) {

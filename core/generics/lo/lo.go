@@ -178,5 +178,6 @@ func MergeMaps[K comparable, V any](base, update map[K]V) map[K]V {
 	for k, v := range update {
 		base[k] = v
 	}
+
 	return base
 }

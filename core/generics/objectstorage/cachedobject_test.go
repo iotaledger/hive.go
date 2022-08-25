@@ -1,3 +1,4 @@
+//nolint:revive // we don't care about these linters in test cases
 package objectstorage
 
 import (

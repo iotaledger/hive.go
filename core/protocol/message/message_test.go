@@ -10,8 +10,8 @@ import (
 
 // message definition for testing.
 var (
-	DummyMessageType       message.Type = 0
-	DummyMessageDefinition              = &message.Definition{
+	DummyMessageType       message.Type
+	DummyMessageDefinition = &message.Definition{
 		ID:             DummyMessageType,
 		MaxBytesLength: 10,
 		VariableLength: false,

@@ -197,9 +197,9 @@ func (c CachedObjects[T]) Release(force ...bool) {
 
 // String returns a human readable version of the CachedObjects.
 func (c CachedObjects[T]) String() string {
-	structBuilder := stringify.StructBuilder("CachedObjects")
+	structBuilder := stringify.NewStructBuilder("CachedObjects")
 	for i, cachedObject := range c {
-		structBuilder.AddField(stringify.StructField(strconv.Itoa(i), cachedObject))
+		structBuilder.AddField(stringify.NewStructField(strconv.Itoa(i), cachedObject))
 	}
 
 	return structBuilder.String()
