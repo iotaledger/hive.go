@@ -26,26 +26,23 @@ func NewTypedStore[K, V DeAndSerializable](kv kvstore.KVStore) *TypedStore[K, V]
 }
 
 // Get gets the given key or an error if an error occurred.
-func (t *TypedStore[K, V]) Get(key K) (value V, exists bool, err error) {
+func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 	keyBytes, err := key.Encode()
 	if err != nil {
-		return nil, false, errors.Wrap(err, "failed to encode key")
+		return nil, errors.Wrap(err, "failed to encode key")
 	}
 
 	valueBytes, err := t.kv.Get(keyBytes)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "failed to retrieve from KV store")
-	}
-	if valueBytes == nil {
-		return nil, false, nil
+		return nil, errors.Wrap(err, "failed to retrieve from KV store")
 	}
 
 	_, err = value.Decode(valueBytes)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "failed to decode value")
+		return nil, errors.Wrap(err, "failed to decode value")
 	}
 
-	return value, true, nil
+	return value, nil
 }
 
 // Set sets the given key and value.
