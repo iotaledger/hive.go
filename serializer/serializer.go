@@ -203,6 +203,8 @@ func (s *Serializer) WriteBool(v bool, errProducer ErrProducer) *Serializer {
 }
 
 // WriteByte writes the given byte to the Serializer.
+//
+//nolint:stdmethods // false positive
 func (s *Serializer) WriteByte(data byte, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
@@ -273,8 +275,21 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 }
 
 // WriteVariableByteSlice writes the given slice with its length to the Serializer.
-func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefixType, errProducer ErrProducer) *Serializer {
+func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Serializer {
 	if s.err != nil {
+		return s
+	}
+
+	sliceLen := len(data)
+	switch {
+	case maxLen > 0 && sliceLen > maxLen:
+		s.err = errProducer(fmt.Errorf("%w: slice (len %d) exceeds max length of %d ", ErrSliceLengthTooLong, sliceLen, maxLen))
+
+		return s
+
+	case minLen > 0 && sliceLen < minLen:
+		s.err = errProducer(fmt.Errorf("%w: slice (len %d) is less than min length of %d ", ErrSliceLengthTooShort, sliceLen, maxLen))
+
 		return s
 	}
 
@@ -517,14 +532,20 @@ func (s *Serializer) writePayloadLength(length int) error {
 }
 
 // WriteString writes the given string to the Serializer.
-func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errProducer ErrProducer, maxLen ...int) *Serializer {
+func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errProducer ErrProducer, minLen int, maxLen int) *Serializer {
 	if s.err != nil {
 		return s
 	}
 
 	strLen := len(str)
-	if len(maxLen) > 0 && strLen > maxLen[0] {
-		s.err = errProducer(fmt.Errorf("%w: string (len %d) exceeds max length of %d ", ErrStringTooLong, strLen, maxLen[0]))
+	switch {
+	case maxLen > 0 && strLen > maxLen:
+		s.err = errProducer(fmt.Errorf("%w: string (len %d) exceeds max length of %d ", ErrStringTooLong, strLen, maxLen))
+
+		return s
+
+	case minLen > 0 && strLen < minLen:
+		s.err = errProducer(fmt.Errorf("%w: string (len %d) is less than min length of %d", ErrStringTooShort, strLen, minLen))
 
 		return s
 	}
@@ -601,6 +622,8 @@ func (d *Deserializer) ReadBool(dest *bool, errProducer ErrProducer) *Deserializ
 }
 
 // ReadByte reads a byte into dest.
+//
+//nolint:stdmethods // false positive
 func (d *Deserializer) ReadByte(dest *byte, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
