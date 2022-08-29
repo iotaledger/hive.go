@@ -116,6 +116,7 @@ func (api *API) encodeBasedOnType(
 		if !set {
 			return nil, errors.Errorf("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
+		minLen, maxLen := ts.MinMaxLen()
 		seri := serializer.NewSerializer()
 
 		return seri.WriteString(
@@ -123,7 +124,7 @@ func (api *API) encodeBasedOnType(
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return errors.Wrap(err, "failed to write string value to serializer")
-			}).Serialize()
+			}, minLen, maxLen).Serialize()
 
 	case reflect.Bool:
 		seri := serializer.NewSerializer()
@@ -311,12 +312,14 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 		if !set {
 			return nil, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
 		}
+		minLen, maxLen := ts.MinMaxLen()
+
 		seri := serializer.NewSerializer()
 		seri.WriteVariableByteSlice(value.Bytes(),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return errors.Wrap(err, "failed to write bytes to serializer")
-			})
+			}, minLen, maxLen)
 
 		return seri.Serialize()
 	}
