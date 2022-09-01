@@ -149,6 +149,9 @@ drainLoop:
 		}
 	}
 
+	if client.onDisconnect != nil {
+		client.onDisconnect(client)
+	}
 	h.events.ClientDisconnected.Trigger(&ClientConnectionEvent{ID: client.id})
 
 	// We do not call "close(client.sendChan)" because we have multiple senders.
@@ -249,7 +252,12 @@ func (h *Hub) Run(ctx context.Context) {
 // ServeWebsocket handles websocket requests from the peer.
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
-func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
+func (h *Hub) ServeWebsocket(w http.ResponseWriter,
+	r *http.Request,
+	onCreate func(client *Client),
+	onConnect func(client *Client),
+	onDisconnect func(client *Client)) {
+
 	if h.shutdownFlag.Load() {
 		// hub was already shut down
 		return
@@ -279,6 +287,7 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 		sendChan:       make(chan interface{}, h.clientSendChannelSize),
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
+		onDisconnect:   onDisconnect,
 		shutdownFlag:   atomic.NewBool(false),
 		readLimit:      h.clientReadLimit,
 	}
