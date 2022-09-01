@@ -50,8 +50,15 @@ type WebsocketMsg struct {
 	Data []byte
 }
 
+// ClientID is the ID of a client.
+type ClientID uint32
+
 // Client is a middleman between the node and the websocket connection.
 type Client struct {
+	// the id of the client.
+	id ClientID
+
+	// the websocket hub the client is connected to.
 	hub *Hub
 
 	// the websocket connection.
@@ -74,6 +81,9 @@ type Client struct {
 	// onConnect gets called when the client was registered
 	onConnect func(*Client)
 
+	// onDisconnect gets called when the client was disconnected
+	onDisconnect func(*Client)
+
 	// FilterCallback is used to filter messages to clients on BroadcastMsg
 	FilterCallback func(c *Client, data interface{}) bool
 
@@ -88,6 +98,11 @@ type Client struct {
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	readLimit int64
+}
+
+// ID returns the id of the client.
+func (c *Client) ID() ClientID {
+	return c.id
 }
 
 // checkPong checks if the client is still available and answers to the ping messages
