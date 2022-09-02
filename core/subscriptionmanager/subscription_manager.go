@@ -18,7 +18,7 @@ var (
 )
 
 type ClientID interface {
-	constraints.Integer | ~string
+	comparable
 }
 
 type Topic interface {
