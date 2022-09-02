@@ -119,7 +119,7 @@ func WithCleanupThresholdRatio[C ClientID, T Topic](cleanupThresholdRatio float3
 func New[C ClientID, T Topic](opts ...options.Option[SubscriptionManager[C, T]]) *SubscriptionManager[C, T] {
 
 	manager := options.Apply(&SubscriptionManager[C, T]{
-		maxTopicSubscriptionsPerClient: 1000,
+		maxTopicSubscriptionsPerClient: 0,
 		cleanupThresholdCount:          10000,
 		cleanupThresholdRatio:          1.0,
 		events:                         newEvents[C, T](),
