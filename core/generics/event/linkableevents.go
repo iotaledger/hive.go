@@ -16,7 +16,7 @@ type LinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]] st
 
 // NewLinkableCollectionEvent creates a new LinkableCollectionEvent.
 func NewLinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]](collection C, updateCollectionCallback func(target C)) (newEvent *LinkableCollectionEvent[A, B, C]) {
-	collection.onLinkUpdated(updateCollectionCallback)
+	collection.OnLinkUpdated(updateCollectionCallback)
 
 	return &LinkableCollectionEvent[A, B, C]{
 		Event: New[A](),
@@ -54,8 +54,8 @@ func (l *LinkableCollection[A, B]) LinkTo(optLinkTargets ...B) {
 	l.linkUpdatedEvent().Trigger(optLinkTargets[0])
 }
 
-// onLinkUpdated registers a callback to be called when the link to the referenced LinkableCollection is set or updated.
-func (l *LinkableCollection[A, B]) onLinkUpdated(callback func(linkTarget B)) {
+// OnLinkUpdated registers a callback to be called when the link to the referenced LinkableCollection is set or updated.
+func (l *LinkableCollection[A, B]) OnLinkUpdated(callback func(linkTarget B)) {
 	l.linkUpdatedEvent().Hook(NewClosure(callback))
 }
 
@@ -102,7 +102,7 @@ type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
 // linkableCollectionType is the interface for a LinkableCollection.
 type linkableCollectionType[B any] interface {
 	LinkTo(optionalLinkTargets ...B)
-	onLinkUpdated(callback func(B))
+	OnLinkUpdated(callback func(B))
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
