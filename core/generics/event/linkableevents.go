@@ -39,13 +39,13 @@ func (e *LinkableCollectionEvent[A, B, C]) LinkTo(link *LinkableCollectionEvent[
 
 // region LinkableCollection ///////////////////////////////////////////////////////////////////////////////////////////
 
-// LinkableCollection represents a collection of LinkableCollectionEvents that can be linked to each other.
+// LinkableCollection can be embedded into collections of linkable Events to make the entire collection linkable.
 type LinkableCollection[A any, B ptrLinkableCollectionType[A, B]] struct {
 	linkUpdated *Event[B]
 	sync.Once
 }
 
-// LinkTo links the LinkableCollectionEvents of the given collections to each other.
+// LinkTo offers a way to link the collection to another collection of the same type.
 func (l *LinkableCollection[A, B]) LinkTo(optLinkTargets ...B) {
 	if len(optLinkTargets) == 0 {
 		return
@@ -72,7 +72,7 @@ func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B
 
 // region LinkableCollectionConstructor ////////////////////////////////////////////////////////////////////////////////
 
-// LinkableCollectionConstructor contains a constructor factory for a LinkableCollection.
+// LinkableCollectionConstructor contains a constructor-factory for collections that are linkable.
 func LinkableCollectionConstructor[A any, B ptrLinkableCollectionType[A, B]](init func(B)) (constructor func(...B) B) {
 	return func(optLinkTargets ...B) (events B) {
 		events = new(A)
