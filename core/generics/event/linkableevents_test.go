@@ -11,22 +11,29 @@ import (
 
 // region LinkableEvents /////////////////////////////////////////////////////////////////////////////////////////////
 
+// LinkableEvents is an example of a set of events that can be linked to other LinkableEvents, that is used for tests.
 type LinkableEvents struct {
-	BlockMissing  *event.LinkableCollectionEvent[int, LinkableEvents, *LinkableEvents]
+	// BlockMissing is triggered when a block is missing.
+	BlockMissing *event.LinkableCollectionEvent[int, LinkableEvents, *LinkableEvents]
+
+	// BlockReceived is triggered when a block is received.
 	BlockReceived *event.LinkableCollectionEvent[bool, LinkableEvents, *LinkableEvents]
 
+	// LinkableCollection imports the functionality to support link-ability between collections of the same type.
 	event.LinkableCollection[LinkableEvents, *LinkableEvents]
 }
 
+// NewLinkableEvents is the constructor of the LinkableEvents object (it is generically generated).
 var NewLinkableEvents = event.LinkableCollectionConstructor[LinkableEvents](func(e *LinkableEvents) {
-	e.BlockMissing = event.NewLinkableCollectionEvent[int](e, func(target *LinkableEvents) { e.BlockMissing.Link(target.BlockMissing) })
-	e.BlockReceived = event.NewLinkableCollectionEvent[bool](e, func(target *LinkableEvents) { e.BlockReceived.Link(target.BlockReceived) })
+	e.BlockMissing = event.NewLinkableCollectionEvent[int](e, func(target *LinkableEvents) { e.BlockMissing.LinkTo(target.BlockMissing) })
+	e.BlockReceived = event.NewLinkableCollectionEvent[bool](e, func(target *LinkableEvents) { e.BlockReceived.LinkTo(target.BlockReceived) })
 })
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region Tests ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TestLinkableEvents tests if switching between linked sources correctly works.
 func TestLinkableEvents(t *testing.T) {
 	// create source events
 	sourceEvents1 := NewLinkableEvents()

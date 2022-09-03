@@ -6,6 +6,7 @@ import (
 
 // region LinkableCollectionEvent //////////////////////////////////////////////////////////////////////////////////////
 
+// LinkableCollectionEvent represents a special kind of Event that is part of a LinkableCollection of events.
 type LinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]] struct {
 	linkedEvent *LinkableCollectionEvent[A, B, C]
 	linkClosure *Closure[A]
@@ -13,6 +14,7 @@ type LinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]] st
 	*Event[A]
 }
 
+// NewLinkableCollectionEvent creates a new LinkableCollectionEvent.
 func NewLinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]](collection C, updateCollectionCallback func(target C)) (newEvent *LinkableCollectionEvent[A, B, C]) {
 	collection.onLinkUpdated(updateCollectionCallback)
 
@@ -21,7 +23,8 @@ func NewLinkableCollectionEvent[A any, B any, C ptrLinkableCollectionType[B, C]]
 	}
 }
 
-func (e *LinkableCollectionEvent[A, B, C]) Link(link *LinkableCollectionEvent[A, B, C]) {
+// LinkTo links the LinkableCollectionEvent to the given LinkableCollectionEvent.
+func (e *LinkableCollectionEvent[A, B, C]) LinkTo(link *LinkableCollectionEvent[A, B, C]) {
 	if e.linkClosure != nil {
 		e.linkedEvent.Detach(e.linkClosure)
 	} else {
@@ -36,15 +39,13 @@ func (e *LinkableCollectionEvent[A, B, C]) Link(link *LinkableCollectionEvent[A,
 
 // region LinkableCollection ///////////////////////////////////////////////////////////////////////////////////////////
 
+// LinkableCollection represents a collection of LinkableCollectionEvents that can be linked to each other.
 type LinkableCollection[A any, B ptrLinkableCollectionType[A, B]] struct {
 	linkUpdated *Event[B]
 	sync.Once
 }
 
-func (l *LinkableCollection[A, B]) onLinkUpdated(callback func(linkTarget B)) {
-	l.linkUpdatedEvent().Hook(NewClosure(callback))
-}
-
+// LinkTo links the LinkableCollectionEvents of the given collections to each other.
 func (l *LinkableCollection[A, B]) LinkTo(optLinkTargets ...B) {
 	if len(optLinkTargets) == 0 {
 		return
@@ -53,6 +54,12 @@ func (l *LinkableCollection[A, B]) LinkTo(optLinkTargets ...B) {
 	l.linkUpdatedEvent().Trigger(optLinkTargets[0])
 }
 
+// onLinkUpdated registers a callback to be called when the link to the referenced LinkableCollection is set or updated.
+func (l *LinkableCollection[A, B]) onLinkUpdated(callback func(linkTarget B)) {
+	l.linkUpdatedEvent().Hook(NewClosure(callback))
+}
+
+// linkUpdatedEvent returns the linkUpdated Event.
 func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B]) {
 	l.Do(func() {
 		l.linkUpdated = New[B]()
@@ -65,6 +72,7 @@ func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B
 
 // region LinkableCollectionConstructor ////////////////////////////////////////////////////////////////////////////////
 
+// LinkableCollectionConstructor contains a constructor factory for a LinkableCollection.
 func LinkableCollectionConstructor[A any, B ptrLinkableCollectionType[A, B]](init func(B)) (constructor func(...B) B) {
 	return func(optLinkTargets ...B) (events B) {
 		events = new(A)
@@ -79,16 +87,19 @@ func LinkableCollectionConstructor[A any, B ptrLinkableCollectionType[A, B]](ini
 
 // region types and interfaces /////////////////////////////////////////////////////////////////////////////////////////
 
+// ptrType is a helper type to create a pointer type.
 type ptrType[A any] interface {
 	*A
 }
 
+// ptsLinkableCollectionType is a helper type to create a pointer to a linkableCollectionType.
 type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
 	*A
 
 	linkableCollectionType[B]
 }
 
+// linkableCollectionType is the interface for a LinkableCollection.
 type linkableCollectionType[B any] interface {
 	LinkTo(optionalLinkTargets ...B)
 	onLinkUpdated(callback func(B))
