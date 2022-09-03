@@ -181,3 +181,11 @@ func MergeMaps[K comparable, V any](base, update map[K]V) map[K]V {
 
 	return base
 }
+
+// CopySlice copies the base slice into copied and returns the copy.
+func CopySlice[T any](base []T) (copied []T) {
+	copied = make([]T, len(base))
+	copy(copied, base)
+
+	return copied
+}
