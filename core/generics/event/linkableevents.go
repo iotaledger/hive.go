@@ -72,10 +72,10 @@ func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region NewLinkableCollection ////////////////////////////////////////////////////////////////////////////////////////
+// region NewLinkableEvents ////////////////////////////////////////////////////////////////////////////////////////////
 
-// NewLinkableCollection is a generic constructor factory for LinkableCollection objects.
-func NewLinkableCollection[A any, B ptrLinkableCollectionType[A, B]](init func(B) func(B)) (constructor func(...B) B) {
+// NewLinkableEvents is a generic constructor factory for linkable Events.
+func NewLinkableEvents[A any, B ptrLinkableCollectionType[A, B]](init func(B) func(B)) (constructor func(...B) B) {
 	return func(optLinkTargets ...B) (events B) {
 		events = new(A)
 		events.onLinkUpdated(init(events))
