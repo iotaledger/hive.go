@@ -1,6 +1,7 @@
 package event
 
 import (
+	"reflect"
 	"sync"
 )
 
@@ -23,17 +24,23 @@ func NewLinkable[A any, B any, C ptrLinkableCollectionType[B, C]]() (newEvent *L
 
 // LinkTo links the Linkable to the given Linkable.
 func (e *Linkable[A, B, C]) LinkTo(optLinkTargets ...*Linkable[A, B, C]) {
-	if len(optLinkTargets) == 0 {
+	if len(optLinkTargets) == 0 || e.linkedEvent == optLinkTargets[0] || e == optLinkTargets[0] {
 		return
 	}
 
 	if e.linkClosure != nil {
 		e.linkedEvent.Detach(e.linkClosure)
-	} else {
+	}
+
+	if e.linkedEvent = optLinkTargets[0]; e.linkedEvent == nil {
+		e.linkClosure = nil
+		return
+	}
+
+	if e.linkClosure == nil {
 		e.linkClosure = NewClosure(e.Trigger)
 	}
 
-	e.linkedEvent = optLinkTargets[0]
 	e.linkedEvent.Hook(e.linkClosure)
 }
 
@@ -72,16 +79,32 @@ func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region NewLinkableEvents ////////////////////////////////////////////////////////////////////////////////////////////
+// region LinkableConstructor ////////////////////////////////////////////////////////////////////////////////////////////
 
-// NewLinkableEvents is a generic constructor factory for linkable Events.
-func NewLinkableEvents[A any, B ptrLinkableCollectionType[A, B]](init func(B) func(B)) (constructor func(...B) B) {
-	return func(optLinkTargets ...B) (events B) {
-		events = new(A)
-		events.onLinkUpdated(init(events))
-		events.LinkTo(optLinkTargets...)
+// LinkableConstructor returns the linkable constructor for the given type.
+func LinkableConstructor[A any, B ptrLinkableCollectionType[A, B]](newFunc func() B) (constructor func(...B) B) {
+	return func(optLinkTargets ...B) (self B) {
+		self = newFunc()
 
-		return events
+		selfValue := reflect.ValueOf(self).Elem()
+		self.onLinkUpdated(func(linkTarget B) {
+			if linkTarget == nil {
+				linkTarget = new(A)
+			}
+
+			linkTargetValue := reflect.ValueOf(linkTarget).Elem()
+
+			for i := 0; i < selfValue.NumField(); i++ {
+				if sourceField := selfValue.Field(i); sourceField.Kind() == reflect.Ptr {
+					if linkTo := sourceField.MethodByName("LinkTo"); linkTo.IsValid() {
+						linkTo.Call([]reflect.Value{linkTargetValue.Field(i)})
+					}
+				}
+			}
+		})
+		self.LinkTo(optLinkTargets...)
+
+		return self
 	}
 }
 
