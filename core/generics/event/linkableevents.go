@@ -56,8 +56,8 @@ func (l *LinkableCollection[A, B]) LinkTo(optLinkTargets ...B) {
 	l.linkUpdatedEvent().Trigger(optLinkTargets[0])
 }
 
-// OnLinkUpdated registers a callback to be called when the link to the referenced LinkableCollection is set or updated.
-func (l *LinkableCollection[A, B]) OnLinkUpdated(callback func(linkTarget B)) {
+// onLinkUpdated registers a callback to be called when the link to the referenced LinkableCollection is set or updated.
+func (l *LinkableCollection[A, B]) onLinkUpdated(callback func(linkTarget B)) {
 	l.linkUpdatedEvent().Hook(NewClosure(callback))
 }
 
@@ -72,13 +72,13 @@ func (l *LinkableCollection[A, B]) linkUpdatedEvent() (linkUpdatedEvent *Event[B
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region LinkableCollectionConstructor ////////////////////////////////////////////////////////////////////////////////
+// region NewLinkableCollection ////////////////////////////////////////////////////////////////////////////////////////
 
-// LinkableCollectionConstructor returns a constructor for collections that are linkable.
-func LinkableCollectionConstructor[A any, B ptrLinkableCollectionType[A, B]](init func(B)) (constructor func(...B) B) {
+// NewLinkableCollection is a generic constructor factory for LinkableCollection objects.
+func NewLinkableCollection[A any, B ptrLinkableCollectionType[A, B]](init func(B) func(B)) (constructor func(...B) B) {
 	return func(optLinkTargets ...B) (events B) {
 		events = new(A)
-		init(events)
+		events.onLinkUpdated(init(events))
 		events.LinkTo(optLinkTargets...)
 
 		return events
@@ -87,20 +87,19 @@ func LinkableCollectionConstructor[A any, B ptrLinkableCollectionType[A, B]](ini
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region Link /////////////////////////////////////////////////////////////////////////////////////////////////////////
+// region types and interfaces /////////////////////////////////////////////////////////////////////////////////////////
 
-// Link returns a property that re-links itself once the link of its containing LinkableCollection is updated.
-func Link[A any, B ptrLinkableCollectionType[A, B], C linkableType[C]](element C, collection B, linkTargetRetriever func(target B)) (self C) {
-	collection.OnLinkUpdated(func(linkTarget B) {
-		linkTargetRetriever(linkTarget)
-	})
-
-	return element
+// linkableType is the interface for linkable elements.
+type linkableType[B any] interface {
+	LinkTo(optLinkTargets ...B)
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// linkableCollectionType is the interface for a LinkableCollection.
+type linkableCollectionType[B any] interface {
+	onLinkUpdated(callback func(B))
 
-// region types and interfaces /////////////////////////////////////////////////////////////////////////////////////////
+	linkableType[B]
+}
 
 // ptrType is a helper type to create a pointer type.
 type ptrType[A any] interface {
@@ -112,18 +111,6 @@ type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
 	*A
 
 	linkableCollectionType[B]
-}
-
-// linkableType is the interface for linkable elements.
-type linkableType[B any] interface {
-	LinkTo(optLinkTargets ...B)
-}
-
-// linkableCollectionType is the interface for a LinkableCollection.
-type linkableCollectionType[B any] interface {
-	OnLinkUpdated(callback func(B))
-
-	linkableType[B]
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
