@@ -378,7 +378,7 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (boo
 		// global topics map
 		topicsCount, has := s.topics.Get(topic)
 		if has {
-			if topicsCount-count <= 1 {
+			if topicsCount-count <= 0 {
 				// delete the topic
 				s.topics.Delete(topic)
 				removedTopics = append(removedTopics, topic)
