@@ -129,7 +129,7 @@ type ptrType[A any] interface {
 	*A
 }
 
-// ptsLinkableCollectionType is a helper type to create a pointer to a linkableCollectionType.
+// ptrLinkableCollectionType is a helper type to create a pointer to a linkableCollectionType.
 type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
 	*A
 
