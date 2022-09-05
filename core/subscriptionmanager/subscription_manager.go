@@ -168,7 +168,6 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 		for _, topic := range unsubscribedTopics {
 			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
 		}
-		// send disconnect notification then delete the subscriber
 		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 	}
 
@@ -185,7 +184,6 @@ func (s *SubscriptionManager[C, T]) Disconnect(clientID C) {
 		for _, topic := range unsubscribedTopics {
 			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
 		}
-		// send disconnect notification then delete the subscriber
 		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 	}
 }
@@ -246,7 +244,7 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 		}
 		// notify the caller to drop the client
 		s.events.DropClient.Trigger(&DropClientEvent[C]{ClientID: clientID, Reason: ErrMaxTopicSubscriptionsPerClientReached})
-		// send disconnect notification then delete the subscriber
+
 		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 
 		// do not fire the subscribed events
