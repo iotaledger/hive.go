@@ -143,6 +143,7 @@ func (s *SubscriptionManager[C, T]) Events() *Events[C, T] {
 
 func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 
+	wasConnected := false
 	var removedTopics, unsubscribedTopics []T
 
 	// inline function used to release the lock before firing the event
@@ -151,7 +152,7 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 		defer s.Unlock()
 
 		// in case the client already exists, we cleanup old subscriptions.
-		removedTopics, unsubscribedTopics = s.cleanupClientWithoutLocking(clientID)
+		wasConnected, removedTopics, unsubscribedTopics = s.cleanupClientWithoutLocking(clientID)
 
 		// create a new map for the client
 		s.subscribers.Set(clientID, shrinkingmap.New[T, int](
@@ -160,11 +161,15 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 		))
 	}()
 
-	for _, topic := range removedTopics {
-		s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
-	}
-	for _, topic := range unsubscribedTopics {
-		s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+	if wasConnected {
+		for _, topic := range removedTopics {
+			s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
+		}
+		for _, topic := range unsubscribedTopics {
+			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+		}
+		// send disconnect notification then delete the subscriber
+		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 	}
 
 	s.events.ClientConnected.Trigger(&ClientEvent[C]{ClientID: clientID})
@@ -172,34 +177,24 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 
 func (s *SubscriptionManager[C, T]) Disconnect(clientID C) {
 
-	var removedTopics, unsubscribedTopics []T
-
-	// inline function used to release the lock before firing the event
-	func() {
-		s.Lock()
-		defer s.Unlock()
-
-		// cleanup the client
-		removedTopics, unsubscribedTopics = s.cleanupClientWithoutLocking(clientID)
-	}()
-
-	for _, topic := range removedTopics {
-		s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
+	// cleanup the client
+	if wasConnected, removedTopics, unsubscribedTopics := s.cleanupClient(clientID); wasConnected {
+		for _, topic := range removedTopics {
+			s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
+		}
+		for _, topic := range unsubscribedTopics {
+			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+		}
+		// send disconnect notification then delete the subscriber
+		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 	}
-	for _, topic := range unsubscribedTopics {
-		s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
-	}
-
-	// send disconnect notification then delete the subscriber
-	s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 }
 
 func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 
 	clientDropped := false
-	topicAdded := false
-
 	var removedTopics, unsubscribedTopics []T
+	topicAdded := false
 
 	// inline function used to release the lock before firing the event
 	func() {
@@ -222,9 +217,11 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 			// check if the client has reached the max number of subscriptions
 			if s.maxTopicSubscriptionsPerClient != 0 && subscribedTopics.Size() >= s.maxTopicSubscriptionsPerClient {
 				// cleanup the client
-				removedTopics, unsubscribedTopics = s.cleanupClientWithoutLocking(clientID)
+				_, removedTopics, unsubscribedTopics = s.cleanupClientWithoutLocking(clientID)
 				clientDropped = true
 
+				// the client gets dropped
+				// do not modify the global map
 				return
 			}
 		}
@@ -240,16 +237,17 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 		}
 	}()
 
-	for _, topic := range removedTopics {
-		s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
-	}
-	for _, topic := range unsubscribedTopics {
-		s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
-	}
-
 	if clientDropped {
-		// drop the client
+		for _, topic := range removedTopics {
+			s.events.TopicRemoved.Trigger(&TopicEvent[T]{Topic: topic})
+		}
+		for _, topic := range unsubscribedTopics {
+			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+		}
+		// notify the caller to drop the client
 		s.events.DropClient.Trigger(&DropClientEvent[C]{ClientID: clientID, Reason: ErrMaxTopicSubscriptionsPerClientReached})
+		// send disconnect notification then delete the subscriber
+		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 
 		// do not fire the subscribed events
 		return
@@ -278,28 +276,33 @@ func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) {
 			return
 		}
 
-		topicUnsubscribed = true
-
+		// check if the client was subscribed to the topic
 		count, has := subscribedTopics.Get(topic)
-		if has {
-			if count <= 1 {
-				// delete the topic
-				subscribedTopics.Delete(topic)
-			} else {
-				subscribedTopics.Set(topic, count-1)
-			}
+		if !has {
+			return
 		}
 
-		// global topics map
+		if count <= 1 {
+			// delete the topic
+			subscribedTopics.Delete(topic)
+		} else {
+			subscribedTopics.Set(topic, count-1)
+		}
+
+		topicUnsubscribed = true
+
+		// check global topics map
 		count, has = s.topics.Get(topic)
-		if has {
-			if count <= 1 {
-				// delete the topic
-				s.topics.Delete(topic)
-				topicRemoved = true
-			} else {
-				s.topics.Set(topic, count-1)
-			}
+		if !has {
+			return
+		}
+
+		if count <= 1 {
+			// delete the topic
+			s.topics.Delete(topic)
+			topicRemoved = true
+		} else {
+			s.topics.Set(topic, count-1)
 		}
 	}()
 
@@ -358,7 +361,7 @@ func (s *SubscriptionManager[C, T]) TopicsSizeAll() int {
 }
 
 // cleanupClientWithoutLocking removes all subscriptions and the client itself.
-func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) ([]T, []T) {
+func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (bool, []T, []T) {
 
 	removedTopics := make([]T, 0)
 	unsubscribedTopics := make([]T, 0)
@@ -366,7 +369,7 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) ([]T
 	// check if the client exists
 	subscribedTopics, has := s.subscribers.Get(clientID)
 	if !has {
-		return removedTopics, unsubscribedTopics
+		return false, removedTopics, unsubscribedTopics
 	}
 
 	// loop over all topics and delete them
@@ -398,5 +401,13 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) ([]T
 	// delete the client
 	s.subscribers.Delete(clientID)
 
-	return removedTopics, unsubscribedTopics
+	return true, removedTopics, unsubscribedTopics
+}
+
+// cleanupClient removes all subscriptions and the client itself.
+func (s *SubscriptionManager[C, T]) cleanupClient(clientID C) (bool, []T, []T) {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.cleanupClientWithoutLocking(clientID)
 }
