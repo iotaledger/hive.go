@@ -79,14 +79,14 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 }
 
 // FromBytes deserializes a storable reference model from a byte slice.
-func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) FromBytes(bytes []byte) (err error) {
+func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	outerInstance := new(OuterModelType)
-	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation())
-	if err != nil {
-		return errors.Errorf("could not deserialize reference: %w", err)
+
+	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation()); err != nil {
+		return consumedBytes, errors.Errorf("could not deserialize reference: %w", err)
 	}
 	if len(bytes) != consumedBytes {
-		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
 	}
 
 	s.Init()
@@ -94,7 +94,7 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 	s.targetID = (OuterModelPtrType)(outerInstance).TargetID()
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
-	return nil
+	return consumedBytes, nil
 }
 
 // Bytes serializes a storable reference model to a byte slice.
