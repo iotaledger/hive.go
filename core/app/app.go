@@ -173,14 +173,51 @@ func (a *App) init() {
 		}
 
 		if component.Params.Params != nil {
-			for namespace, pointerToStruct := range component.Params.Params {
+			// sort namespaces first
+			sortedNamespaces := make([]string, 0, len(component.Params.Params))
+			for namespace := range component.Params.Params {
+				sortedNamespaces = append(sortedNamespaces, namespace)
+			}
+
+			sort.Slice(sortedNamespaces, func(i, j int) bool {
+				return sortedNamespaces[i] < sortedNamespaces[j]
+			})
+
+			// bind parameters in sorted order
+			for _, namespace := range sortedNamespaces {
+				pointerToStruct := component.Params.Params[namespace]
 				a.appConfig.BindParameters(a.appFlagSet, namespace, pointerToStruct)
 			}
 		}
 
 		if component.Params.AdditionalParams != nil {
-			for cfgName, params := range component.Params.AdditionalParams {
-				for namespace, pointerToStruct := range params {
+			// sort config names first
+			sortedCfgNames := make([]string, 0, len(component.Params.AdditionalParams))
+			for cfgName := range component.Params.AdditionalParams {
+				sortedCfgNames = append(sortedCfgNames, cfgName)
+			}
+
+			sort.Slice(sortedCfgNames, func(i, j int) bool {
+				return sortedCfgNames[i] < sortedCfgNames[j]
+			})
+
+			// iterate through config names in sorted order
+			for _, cfgName := range sortedCfgNames {
+				params := component.Params.AdditionalParams[cfgName]
+
+				// sort namespaces first
+				sortedNamespaces := make([]string, 0, len(params))
+				for namespace := range params {
+					sortedNamespaces = append(sortedNamespaces, namespace)
+				}
+
+				sort.Slice(sortedNamespaces, func(i, j int) bool {
+					return sortedNamespaces[i] < sortedNamespaces[j]
+				})
+
+				// bind parameters in sorted order
+				for _, namespace := range sortedNamespaces {
+					pointerToStruct := params[namespace]
 					a.configs.ConfigsMap()[cfgName].BindParameters(a.configs.FlagSetsMap()[cfgName], namespace, pointerToStruct)
 				}
 			}

@@ -7,8 +7,28 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
 
+	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
 )
+
+type ClientConnectionEvent struct {
+	ID ClientID
+}
+
+// Events contains all the events that are triggered by the websocket hub.
+type Events struct {
+	// A ClientConnected event is triggered, when a new client has connected to the websocket hub.
+	ClientConnected *event.Event[*ClientConnectionEvent]
+	// A ClientDisconnected event is triggered, when a client has disconnected from the websocket hub.
+	ClientDisconnected *event.Event[*ClientConnectionEvent]
+}
+
+func newEvents() *Events {
+	return &Events{
+		ClientConnected:    event.New[*ClientConnectionEvent](),
+		ClientDisconnected: event.New[*ClientConnectionEvent](),
+	}
+}
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
@@ -43,6 +63,12 @@ type Hub struct {
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	clientReadLimit int64
+
+	// lastClientID holds the ClientID of the last connected client
+	lastClientID *atomic.Uint32
+
+	// events of the websocket hub
+	events *Events
 }
 
 // message is a message that is sent to the broadcast channel.
@@ -66,7 +92,14 @@ func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueS
 		ctxCancel:             ctxCancel,
 		shutdownFlag:          atomic.NewBool(false),
 		clientReadLimit:       clientReadLimit,
+		lastClientID:          atomic.NewUint32(0),
+		events:                newEvents(),
 	}
+}
+
+// Events returns all the events that are triggered by the websocket hub.
+func (h *Hub) Events() *Events {
+	return h.events
 }
 
 // BroadcastMsg sends a message to all clients.
@@ -116,6 +149,11 @@ drainLoop:
 		}
 	}
 
+	if client.onDisconnect != nil {
+		client.onDisconnect(client)
+	}
+	h.events.ClientDisconnected.Trigger(&ClientConnectionEvent{ID: client.id})
+
 	// We do not call "close(client.sendChan)" because we have multiple senders.
 	//
 	// As written at https://go101.org/article/channel-closing.html
@@ -163,6 +201,7 @@ func (h *Hub) Run(ctx context.Context) {
 			if client.onConnect != nil {
 				client.onConnect(client)
 			}
+			h.events.ClientConnected.Trigger(&ClientConnectionEvent{ID: client.id})
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
@@ -213,7 +252,12 @@ func (h *Hub) Run(ctx context.Context) {
 // ServeWebsocket handles websocket requests from the peer.
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
-func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate func(client *Client), onConnect func(client *Client)) {
+func (h *Hub) ServeWebsocket(w http.ResponseWriter,
+	r *http.Request,
+	onCreate func(client *Client),
+	onConnect func(client *Client),
+	onDisconnect func(client *Client)) {
+
 	if h.shutdownFlag.Load() {
 		// hub was already shut down
 		return
@@ -233,13 +277,17 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter, r *http.Request, onCreate fu
 	}
 	conn.EnableWriteCompression(true)
 
+	clientID := ClientID(h.lastClientID.Inc())
+
 	client := &Client{
+		id:             clientID,
 		hub:            h,
 		conn:           conn,
 		ExitSignal:     make(chan struct{}),
 		sendChan:       make(chan interface{}, h.clientSendChannelSize),
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
+		onDisconnect:   onDisconnect,
 		shutdownFlag:   atomic.NewBool(false),
 		readLimit:      h.clientReadLimit,
 	}

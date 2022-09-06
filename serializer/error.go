@@ -36,6 +36,12 @@ var (
 	ErrDeserializationNotAllConsumed = errors.New("not all data has been consumed but should have been")
 	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit.
 	ErrUint256NumNegative = errors.New("uint256 is negative")
+	// ErrSliceLengthTooShort gets returned if a slice is less than a min length.
+	ErrSliceLengthTooShort = errors.New("slice length is too short")
+	// ErrSliceLengthTooLong gets returned if a slice exceeds a max length.
+	ErrSliceLengthTooLong = errors.New("slice length is too long")
+	// ErrStringTooShort gets returned if a string is less than a min length.
+	ErrStringTooShort = errors.New("string is too short")
 	// ErrStringTooLong gets returned if a string exceeds a max length.
 	ErrStringTooLong = errors.New("string is too long")
 	// ErrUint256TooBig gets returned when a supposed uint256 big.Int value is more than 32 bytes in size.
