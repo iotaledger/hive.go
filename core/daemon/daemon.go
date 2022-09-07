@@ -34,9 +34,9 @@ func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 	return defaultDaemon.BackgroundWorker(name, handler, priority...)
 }
 
-// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
-func DebugEnabled(enabled bool) {
-	defaultDaemon.DebugEnabled(enabled)
+// DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
+func DebugLogger(logger *logger.Logger) {
+	defaultDaemon.DebugLogger(logger)
 }
 
 // Start starts the default daemon instance.
@@ -244,13 +244,9 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	return nil
 }
 
-// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
-func (d *OrderedDaemon) DebugEnabled(enabled bool) {
-	if enabled {
-		defaultDaemon.logger = logger.NewLogger("Daemon")
-	} else {
-		defaultDaemon.logger = nil
-	}
+// DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
+func (d *OrderedDaemon) DebugLogger(logger *logger.Logger) {
+	defaultDaemon.logger = logger
 }
 
 // Start starts the daemon.
