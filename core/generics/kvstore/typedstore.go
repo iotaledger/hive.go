@@ -7,19 +7,19 @@ import (
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
-type TypedStore[K serializable, V deserializable] struct {
+type TypedStore[K KeyType, V any, VPtr ValuePtrType[V]] struct {
 	kv kvstore.KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K serializable, V deserializable](kv kvstore.KVStore) *TypedStore[K, V] {
-	return &TypedStore[K, V]{
+func NewTypedStore[K KeyType, V any, VPtr ValuePtrType[V]](kv kvstore.KVStore) *TypedStore[K, V, VPtr] {
+	return &TypedStore[K, V, VPtr]{
 		kv: kv,
 	}
 }
 
 // Get gets the given key or an error if an error occurred.
-func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
+func (t *TypedStore[K, V, VPtr]) Get(key K) (value VPtr, err error) {
 	keyBytes, err := key.Bytes()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode key")
@@ -30,8 +30,8 @@ func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 		return nil, errors.Wrap(err, "failed to retrieve from KV store")
 	}
 
-	_, err = value.FromBytes(valueBytes)
-	if err != nil {
+	value = new(V)
+	if _, err = value.FromBytes(valueBytes); err != nil {
 		return nil, errors.Wrap(err, "failed to decode value")
 	}
 
@@ -39,7 +39,7 @@ func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 }
 
 // Set sets the given key and value.
-func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
+func (t *TypedStore[K, V, VPtr]) Set(key K, value VPtr) (err error) {
 	keyBytes, err := key.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to encode key")
@@ -58,14 +58,15 @@ func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
 	return nil
 }
 
-// deserializable is an interface that for a type that is serializable and deserializable.
-type deserializable interface {
-	FromBytes(b []byte) (consumedBytes int, err error)
-
-	serializable
+// KeyType is a type constraints for the keys of the TypedStore.
+type KeyType interface {
+	Bytes() ([]byte, error)
 }
 
-// serializable is an interface for a type that is serializable.
-type serializable interface {
+// ValuePtrType is a type constraints for values of the TypedStore.
+type ValuePtrType[V any] interface {
+	*V
+
+	FromBytes([]byte) (consumedBytes int, err error)
 	Bytes() ([]byte, error)
 }
