@@ -43,17 +43,17 @@ type Component struct {
 	Run Callback
 
 	// The logger instance used in this component.
-	log     *logger.Logger
-	logOnce sync.Once
+	logger     *logger.Logger
+	loggerOnce sync.Once
 }
 
 // Logger instantiates and returns a logger with the name of the component.
 func (c *Component) Logger() *logger.Logger {
-	c.logOnce.Do(func() {
-		c.log = logger.NewLogger(c.Name)
+	c.loggerOnce.Do(func() {
+		c.logger = c.App.NewLogger(c.Name)
 	})
 
-	return c.log
+	return c.logger
 }
 
 func (c *Component) Daemon() daemon.Daemon {
