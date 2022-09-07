@@ -6,31 +6,13 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
 
-// DeAndSerializable is an interface for a type that is Serializable and Deserializable.
-type DeAndSerializable[A any] interface {
-	DeSerializable[A]
-	Serializable
-}
-
-// DeSerializable is an interface for a type that is Serializable and Deserializable.
-type DeSerializable[A any] interface {
-	*A
-
-	FromBytes(b []byte) error
-}
-
-// Serializable is an interface for a type that is Serializable and Deserializable.
-type Serializable interface {
-	Bytes() ([]byte, error)
-}
-
-// TypedStore is a generically typed wrapper around a kvstore.KVStore that abstracts serialization away.
-type TypedStore[K Serializable, V DeAndSerializable[V]] struct {
+// TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
+type TypedStore[K serializable, V deserializable] struct {
 	kv kvstore.KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K Serializable, V DeAndSerializable[V]](kv kvstore.KVStore) *TypedStore[K, V] {
+func NewTypedStore[K serializable, V deserializable](kv kvstore.KVStore) *TypedStore[K, V] {
 	return &TypedStore[K, V]{
 		kv: kv,
 	}
@@ -74,4 +56,16 @@ func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
 	}
 
 	return nil
+}
+
+// deserializable is an interface that for a type that is serializable and deserializable.
+type deserializable interface {
+	FromBytes(b []byte) (consumedBytes int, err error)
+
+	serializable
+}
+
+// serializable is an interface for a type that is serializable.
+type serializable interface {
+	Bytes() ([]byte, error)
 }
