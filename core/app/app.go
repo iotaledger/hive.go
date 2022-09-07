@@ -171,7 +171,7 @@ func (a *App) init() {
 	//
 
 	collectParameters := func(component *Component) {
-		component.App = a
+		component.app = a
 
 		if component.Params == nil {
 			return
@@ -299,14 +299,14 @@ Command line flags:
 	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
 	// initialize the root logger
-	log, err := logger.NewRootLogger(*loggerParams)
+	loggerRoot, err := logger.NewRootLogger(*loggerParams)
 	if err != nil {
 		panic(err)
 	}
-	a.loggerRoot = log
+	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.logger = log.Named("App")
+	a.logger = loggerRoot.Named("App")
 }
 
 // printAppInfo prints app name and version info.
