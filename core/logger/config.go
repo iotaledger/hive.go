@@ -16,24 +16,24 @@ const (
 type Config struct {
 	// Level is the minimum enabled logging level.
 	// The default is "info".
-	Level string `json:"level"`
+	Level string `default:"info" usage:"the minimum enabled logging level" json:"level"`
 	// DisableCaller stops annotating logs with the calling function's file name and line number.
 	// By default, logs are not annotated.
-	DisableCaller bool `json:"disableCaller"`
+	DisableCaller bool `default:"true" usage:"stops annotating logs with the calling function's file name and line number" json:"disableCaller"`
 	// DisableStacktrace disables automatic stacktrace capturing.
-	DisableStacktrace bool `json:"disableStacktrace"`
+	DisableStacktrace bool `default:"false" usage:"disables automatic stacktrace capturing" json:"disableStacktrace"`
 	// StacktraceLevel is the level stacktraces are captured and above.
 	// The default is "panic".
-	StacktraceLevel string `json:"stacktraceLevel"`
+	StacktraceLevel string `default:"panic" usage:"the level stacktraces are captured and above" json:"stacktraceLevel"`
 	// Encoding sets the logger's encoding. Valid values are "json" and "console".
 	// The default is "console".
-	Encoding string `json:"encoding"`
+	Encoding string `default:"console" usage:"the logger's encoding (options: \"json\", \"console\")" json:"encoding"`
 	// OutputPaths is a list of URLs, file paths or stdout/stderr to write logging output to.
 	// The default is ["stdout"].
-	OutputPaths []string `json:"outputPaths"`
+	OutputPaths []string `default:"stdout" usage:"a list of URLs, file paths or stdout/stderr to write logging output to" json:"outputPaths"`
 	// DisableEvents prevents log messages from being raced as events.
 	// By default, the corresponding events are not triggered.
-	DisableEvents bool `json:"disableEvents"`
+	DisableEvents bool `default:"true" usage:"prevents log messages from being raced as events" json:"disableEvents"`
 }
 
 var defaultCfg = Config{
