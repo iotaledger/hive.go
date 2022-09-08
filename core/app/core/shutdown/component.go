@@ -36,6 +36,8 @@ func provide(c *dig.Container) error {
 			CoreComponent.Logger(),
 			CoreComponent.Daemon(),
 			shutdown.WithStopGracePeriod(ParamsShutdown.StopGracePeriod),
+			shutdown.WithSelfShutdownLogsEnabled(ParamsShutdown.ShutdownLog.Enabled),
+			shutdown.WithSelfShutdownLogsFilePath(ParamsShutdown.ShutdownLog.FilePath),
 		)
 	}); err != nil {
 		CoreComponent.LogPanic(err)
@@ -45,7 +47,5 @@ func provide(c *dig.Container) error {
 }
 
 func configure() error {
-	deps.ShutdownHandler.Run()
-
-	return nil
+	return deps.ShutdownHandler.Run()
 }

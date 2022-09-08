@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -40,8 +41,11 @@ type ShutdownHandler struct {
 	// the logger used to log events.
 	*logger.WrappedLogger
 
-	daemon          daemon.Daemon
-	stopGracePeriod time.Duration
+	daemon daemon.Daemon
+
+	stopGracePeriod          time.Duration
+	selfShutdownLogsEnabled  bool
+	selfShutdownLogsFilePath string
 
 	gracefulStop    chan os.Signal
 	appSelfShutdown chan selfShutdownRequest
@@ -55,6 +59,20 @@ type ShutdownHandler struct {
 func WithStopGracePeriod(stopGracePeriod time.Duration) options.Option[ShutdownHandler] {
 	return func(s *ShutdownHandler) {
 		s.stopGracePeriod = stopGracePeriod
+	}
+}
+
+// WithSelfShutdownLogsEnabled defines whether to store self-shutdown events to a log file.
+func WithSelfShutdownLogsEnabled(selfShutdownLogsEnabled bool) options.Option[ShutdownHandler] {
+	return func(s *ShutdownHandler) {
+		s.selfShutdownLogsEnabled = selfShutdownLogsEnabled
+	}
+}
+
+// WithSelfShutdownLogsFilePath defines the file path to the self-shutdown log.
+func WithSelfShutdownLogsFilePath(selfShutdownLogsFilePath string) options.Option[ShutdownHandler] {
+	return func(s *ShutdownHandler) {
+		s.selfShutdownLogsFilePath = selfShutdownLogsFilePath
 	}
 }
 
@@ -79,6 +97,54 @@ func NewShutdownHandler(log *logger.Logger, daemon daemon.Daemon, opts ...option
 	return gs
 }
 
+func (gs *ShutdownHandler) checkSelfShutdownLogsDirectory() error {
+	shutdownLogsDirectory := path.Dir(gs.selfShutdownLogsFilePath)
+	if shutdownLogsDirectory == "." {
+		// no directory given
+		return nil
+	}
+
+	fileInfo, err := os.Stat(shutdownLogsDirectory)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("self-shutdown logs directory (%s) can't be checked, error: %w", shutdownLogsDirectory, err)
+		}
+
+		// directory does not exist => create it
+		if err := os.MkdirAll(shutdownLogsDirectory, 0o700); err != nil {
+			return fmt.Errorf("self-shutdown logs directory (%s) can't be created, error: %w", shutdownLogsDirectory, err)
+		}
+
+	} else if !fileInfo.IsDir() {
+		return fmt.Errorf("self-shutdown logs directory (%s) is not a directory", shutdownLogsDirectory)
+	}
+
+	return nil
+}
+
+func (gs *ShutdownHandler) writeSelfShutdownLogFile(msg string, critical bool) {
+	if gs.selfShutdownLogsEnabled {
+
+		//nolint:nosnakecase // false positive
+		f, err := os.OpenFile(gs.selfShutdownLogsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			gs.LogWarnf("self-shutdown log can't be opened, error: %w", err)
+
+			return
+		}
+		defer f.Close()
+
+		message := msg
+		if critical {
+			message += " (CRITICAL)"
+		}
+
+		if _, err := f.WriteString(fmt.Sprintf("%s: %s\n", time.Now().Format(time.RFC3339), message)); err != nil {
+			gs.LogWarnf("self-shutdown log can't be written, error: %w", err)
+		}
+	}
+}
+
 // SelfShutdown can be called in order to instruct the app to shutdown cleanly without receiving any interrupt signals.
 func (gs *ShutdownHandler) SelfShutdown(msg string, critical bool) {
 	select {
@@ -88,7 +154,13 @@ func (gs *ShutdownHandler) SelfShutdown(msg string, critical bool) {
 }
 
 // Run starts the ShutdownHandler go routine.
-func (gs *ShutdownHandler) Run() {
+func (gs *ShutdownHandler) Run() error {
+
+	if gs.selfShutdownLogsEnabled {
+		if err := gs.checkSelfShutdownLogsDirectory(); err != nil {
+			return err
+		}
+	}
 
 	go func() {
 		select {
@@ -102,6 +174,7 @@ func (gs *ShutdownHandler) Run() {
 				shutdownMsg = fmt.Sprintf("Critical %s", shutdownMsg)
 			}
 			gs.LogWarn(shutdownMsg)
+			gs.writeSelfShutdownLogFile(selfShutdownReq.message, selfShutdownReq.critical)
 			gs.Events.AppSelfShutdown.Trigger(selfShutdownReq.message, selfShutdownReq.critical)
 		}
 
@@ -126,4 +199,6 @@ func (gs *ShutdownHandler) Run() {
 
 		gs.daemon.ShutdownAndWait()
 	}()
+
+	return nil
 }
