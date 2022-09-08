@@ -22,7 +22,7 @@ type ComponentParams struct {
 // Component is something which extends the App's capabilities.
 type Component struct {
 	// A reference to the App instance.
-	App *App
+	app *App
 	// The name of the component.
 	Name string
 	// The config parameters for this component.
@@ -43,21 +43,25 @@ type Component struct {
 	Run Callback
 
 	// The logger instance used in this component.
-	log     *logger.Logger
-	logOnce sync.Once
+	logger     *logger.Logger
+	loggerOnce sync.Once
+}
+
+func (c *Component) App() *App {
+	return c.app
 }
 
 // Logger instantiates and returns a logger with the name of the component.
 func (c *Component) Logger() *logger.Logger {
-	c.logOnce.Do(func() {
-		c.log = logger.NewLogger(c.Name)
+	c.loggerOnce.Do(func() {
+		c.logger = c.App().NewLogger(c.Name)
 	})
 
-	return c.log
+	return c.logger
 }
 
 func (c *Component) Daemon() daemon.Daemon {
-	return c.App.Daemon()
+	return c.App().Daemon()
 }
 
 func (c *Component) Identifier() string {
