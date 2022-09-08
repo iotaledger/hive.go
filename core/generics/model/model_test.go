@@ -22,7 +22,8 @@ func TestModel(t *testing.T) {
 	_, err := serix.DefaultAPI.Decode(context.Background(), lo.PanicOnErr(source.Bytes()), &sth, serix.WithValidation())
 	assert.NoError(t, err)
 
-	assert.NoError(t, restored.FromBytes(lo.PanicOnErr(source.Bytes())))
+	_, err = restored.FromBytes(lo.PanicOnErr(source.Bytes()))
+	assert.NoError(t, err)
 
 	assert.Equal(t, source.Address(), restored.Address())
 	assert.Equal(t, source.Balance(), restored.Balance())
@@ -47,7 +48,8 @@ func TestStorable(t *testing.T) {
 	assert.Equal(t, lo.PanicOnErr(source.Bytes()), lo.PanicOnErr(restored.Bytes()))
 
 	restored = new(SigLockedSingleOutputStorable)
-	assert.NoError(t, restored.FromBytes(lo.PanicOnErr(source.Bytes())))
+	_, err := restored.FromBytes(lo.PanicOnErr(source.Bytes()))
+	assert.NoError(t, err)
 
 	assert.Equal(t, source.Address(), restored.Address())
 	assert.Equal(t, source.Balance(), restored.Balance())

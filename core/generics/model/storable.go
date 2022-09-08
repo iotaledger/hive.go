@@ -99,20 +99,19 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID
 }
 
 // FromBytes deserializes a model from a byte slice.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (err error) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	outerInstance := new(OuterModelType)
-	consumedBytes, err := serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation())
-	if err != nil {
-		return errors.Errorf("could not deserialize model: %w", err)
+	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation()); err != nil {
+		return consumedBytes, errors.Errorf("could not deserialize model: %w", err)
 	}
 	if len(bytes) != consumedBytes {
-		return errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
 	}
 
 	s.Init()
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
-	return nil
+	return consumedBytes, nil
 }
 
 // Bytes serializes a model to a byte slice.
@@ -128,7 +127,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 
 // FromObjectStorage deserializes a model from the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
-	if err = s.FromBytes(data); err != nil {
+	if _, err = s.FromBytes(data); err != nil {
 		return errors.Errorf("failed to decode Model: %w", err)
 	}
 
