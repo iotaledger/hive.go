@@ -1,3 +1,4 @@
+//nolint:golint,revive // golint throws false positives with generics here
 package event
 
 import (
@@ -34,6 +35,7 @@ func (e *Linkable[A, B, C]) LinkTo(optLinkTargets ...*Linkable[A, B, C]) {
 
 	if e.linkedEvent = optLinkTargets[0]; e.linkedEvent == nil {
 		e.linkClosure = nil
+
 		return
 	}
 

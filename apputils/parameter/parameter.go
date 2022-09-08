@@ -10,6 +10,14 @@ import (
 	"github.com/iotaledger/hive.go/core/configuration"
 )
 
+const (
+	TypeNameInt     = "int"
+	TypeNameUint    = "uint"
+	TypeNameBoolean = "boolean"
+	TypeNameString  = "string"
+	TypeNameFloat   = "float"
+)
+
 type Parameter struct {
 	Name        string
 	Description string
@@ -26,23 +34,65 @@ func createParameter(defaultVal any, usage string, name string) *Parameter {
 	switch v := defaultVal.(type) {
 	case int, int8, int16, int32, int64:
 		defaultValueStr = fmt.Sprintf("%d", v)
-		typeName = "int"
+		typeName = TypeNameInt
+	case *int:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameInt
+	case *int8:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameInt
+	case *int16:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameInt
+	case *int32:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameInt
+	case *int64:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameInt
 	case uint, uint8, uint16, uint32, uint64:
 		defaultValueStr = fmt.Sprintf("%d", v)
-		typeName = "uint"
+		typeName = TypeNameUint
+	case *uint:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameUint
+	case *uint8:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameUint
+	case *uint16:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameUint
+	case *uint32:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameUint
+	case *uint64:
+		defaultValueStr = fmt.Sprintf("%d", *v)
+		typeName = TypeNameUint
 	case float32, float64:
 		defaultValueStr = fmt.Sprintf("%0.1f", v)
-		typeName = "float"
+		typeName = TypeNameFloat
+	case *float32:
+		defaultValueStr = fmt.Sprintf("%0.1f", *v)
+		typeName = TypeNameFloat
+	case *float64:
+		defaultValueStr = fmt.Sprintf("%0.1f", *v)
+		typeName = TypeNameFloat
 	case bool:
 		defaultValueStr = fmt.Sprintf("%t", v)
-		typeName = "boolean"
+		typeName = TypeNameBoolean
+	case *bool:
+		defaultValueStr = fmt.Sprintf("%t", *v)
+		typeName = TypeNameBoolean
 	case string:
 		defaultValueStr = fmt.Sprintf("\"%s\"", v)
-		typeName = "string"
+		typeName = TypeNameString
+	case *string:
+		defaultValueStr = fmt.Sprintf("\"%s\"", *v)
+		typeName = TypeNameString
 	case time.Duration:
 		defaultValue = durationShortened(v)
 		defaultValueStr = fmt.Sprintf("\"%s\"", durationShortened(v))
-		typeName = "string"
+		typeName = TypeNameString
 	case []string:
 		defaultValueStr = ""
 		if len(v) > 0 {
@@ -116,7 +166,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 
 	defaultValue := valueField.Interface()
 	switch valueField.Interface().(type) {
-	case bool:
+	case bool, *bool:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseBool(tagDefaultValue); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -134,7 +184,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case float32:
+	case float32, *float32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseFloat(tagDefaultValue, 32); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -143,7 +193,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case float64:
+	case float64, *float64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -152,7 +202,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case int:
+	case int, *int:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -161,7 +211,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case int8:
+	case int8, *int8:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseInt(tagDefaultValue, 10, 8); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -170,7 +220,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case int16:
+	case int16, *int16:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseInt(tagDefaultValue, 10, 16); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -179,7 +229,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case int32:
+	case int32, *int32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseInt(tagDefaultValue, 10, 32); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -188,7 +238,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case int64:
+	case int64, *int64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -197,12 +247,12 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case string:
+	case string, *string:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			defaultValue = tagDefaultValue
 		}
 
-	case uint:
+	case uint, *uint:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -211,7 +261,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case uint8:
+	case uint8, *uint8:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseUint(tagDefaultValue, 10, 8); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -220,7 +270,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case uint16:
+	case uint16, *uint16:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseUint(tagDefaultValue, 10, 16); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -229,7 +279,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case uint32:
+	case uint32, *uint32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseUint(tagDefaultValue, 10, 32); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
@@ -238,7 +288,7 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 			}
 		}
 
-	case uint64:
+	case uint64, *uint64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
 			if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
