@@ -128,7 +128,7 @@ func (gs *ShutdownHandler) writeSelfShutdownLogFile(msg string, critical bool) {
 		//nolint:nosnakecase // false positive
 		f, err := os.OpenFile(gs.selfShutdownLogsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			gs.LogWarnf("self-shutdown log can't be opened, error: %w", err)
+			gs.LogWarnf("self-shutdown log can't be opened, error: %s", err.Error())
 
 			return
 		}
@@ -140,7 +140,7 @@ func (gs *ShutdownHandler) writeSelfShutdownLogFile(msg string, critical bool) {
 		}
 
 		if _, err := f.WriteString(fmt.Sprintf("%s: %s\n", time.Now().Format(time.RFC3339), message)); err != nil {
-			gs.LogWarnf("self-shutdown log can't be written, error: %w", err)
+			gs.LogWarnf("self-shutdown log can't be written, error: %s", err.Error())
 		}
 	}
 }
