@@ -4,6 +4,7 @@ import (
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/core/app"
+	"github.com/iotaledger/hive.go/core/app/pkg/shutdown"
 )
 
 func init() {
@@ -25,13 +26,17 @@ var (
 
 type dependencies struct {
 	dig.In
-	ShutdownHandler *ShutdownHandler
+	ShutdownHandler *shutdown.ShutdownHandler
 }
 
 func provide(c *dig.Container) error {
 
-	if err := c.Provide(func() *ShutdownHandler {
-		return NewShutdownHandler(CoreComponent.Logger(), CoreComponent.Daemon())
+	if err := c.Provide(func() *shutdown.ShutdownHandler {
+		return shutdown.NewShutdownHandler(
+			CoreComponent.Logger(),
+			CoreComponent.Daemon(),
+			shutdown.WithStopGracePeriod(ParamsShutdown.StopGracePeriod),
+		)
 	}); err != nil {
 		CoreComponent.LogPanic(err)
 	}
