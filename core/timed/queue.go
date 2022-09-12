@@ -1,4 +1,4 @@
-package timedqueue
+package timed
 
 import (
 	"container/heap"
@@ -7,14 +7,15 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/bitmask"
+	"github.com/iotaledger/hive.go/core/generics/options"
 )
 
 // region TimedQueue ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TimedQueue represents a queue, that holds values that will only be released at a given time. The corresponding Poll
+// Queue represents a queue, that holds values that will only be released at a given time. The corresponding Poll
 // method waits for the element to be available before it returns its value and is therefore blocking.
-type TimedQueue struct {
-	heap      timedHeap
+type Queue struct {
+	heap      Heap[*QueueElement]
 	heapMutex sync.RWMutex
 
 	waitCond *sync.Cond
@@ -28,25 +29,20 @@ type TimedQueue struct {
 	shutdownMutex sync.Mutex
 }
 
-// New is the constructor for the TimedQueue.
-func New(opts ...Option) (queue *TimedQueue) {
+// NewQueue is the constructor for the timed Queue.
+func NewQueue(opts ...options.Option[Queue]) (queue *Queue) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	queue = &TimedQueue{
+	return options.Apply(&Queue{
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
-	}
-	queue.waitCond = sync.NewCond(&queue.heapMutex)
-
-	for _, opt := range opts {
-		opt(queue)
-	}
-
-	return
+	}, opts, func(t *Queue) {
+		t.waitCond = sync.NewCond(&queue.heapMutex)
+	})
 }
 
 // Add inserts a new element into the queue that can be retrieved via Poll() at the specified time.
-func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedElement *QueueElement) {
+func (t *Queue) Add(value interface{}, scheduledTime time.Time) (addedElement *QueueElement) {
 	// sanitize parameters
 	if value == nil {
 		panic("<nil> must not be added to the queue")
@@ -65,14 +61,18 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 	t.heapMutex.Lock()
 
 	// add new element
-	addedElement = &QueueElement{
-		timedQueue:    t,
-		Value:         value,
-		ScheduledTime: scheduledTime,
-		cancel:        make(chan byte),
-		index:         0,
+
+	element := &HeapElement[*QueueElement]{
+		Time: scheduledTime,
 	}
-	heap.Push(&t.heap, addedElement)
+
+	element.Value = &QueueElement{
+		timedQueue: t,
+		Value:      value,
+		rawElem:    element,
+		cancel:     make(chan byte),
+	}
+	heap.Push(&t.heap, element)
 
 	if t.maxSize > 0 {
 		// heap is bigger than maxSize now; remove the last element (furthest in the future).
@@ -87,11 +87,11 @@ func (t *TimedQueue) Add(value interface{}, scheduledTime time.Time) (addedEleme
 	// signal waiting goroutine to wake up
 	t.waitCond.Signal()
 
-	return addedElement
+	return element.Value
 }
 
 // Size returns the amount of elements that are currently enqueued in this queue.
-func (t *TimedQueue) Size() int {
+func (t *Queue) Size() int {
 	t.heapMutex.RLock()
 	defer t.heapMutex.RUnlock()
 
@@ -100,7 +100,7 @@ func (t *TimedQueue) Size() int {
 
 // Shutdown terminates the queue. It accepts an optional list of shutdown flags that allows the caller to modify the
 // shutdown behavior.
-func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
+func (t *Queue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 	// acquire locks
 	t.shutdownMutex.Lock()
 
@@ -143,7 +143,7 @@ func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 		// ... empty it if the corresponding flag was set
 		if t.shutdownFlags.HasBits(CancelPendingElements) {
 			for i := 0; i < queuedElementsCount; i++ {
-				heap.Remove(&t.heap, 0)
+				heap.Pop(&t.heap)
 			}
 		}
 	}
@@ -151,7 +151,7 @@ func (t *TimedQueue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 }
 
 // IsShutdown returns true if this queue was shutdown.
-func (t *TimedQueue) IsShutdown() bool {
+func (t *Queue) IsShutdown() bool {
 	t.shutdownMutex.Lock()
 	defer t.shutdownMutex.Unlock()
 
@@ -162,7 +162,7 @@ func (t *TimedQueue) IsShutdown() bool {
 
 // Poll returns the first value of this queue. It waits for the scheduled time before returning and is therefore
 // blocking. It returns nil if the queue is empty.
-func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
+func (t *Queue) Poll(waitIfEmpty bool) interface{} {
 	for {
 		// acquire locks
 		t.heapMutex.Lock()
@@ -179,8 +179,7 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 		}
 
 		// retrieve first element
-		polledElement := heap.Remove(&t.heap, 0).(*QueueElement)
-
+		polledElement := heap.Pop(&t.heap).(*HeapElement[*QueueElement])
 		// release locks
 		t.heapMutex.Unlock()
 
@@ -195,40 +194,40 @@ func (t *TimedQueue) Poll(waitIfEmpty bool) interface{} {
 
 			// immediately return the value if the pending timeouts are supposed to be ignored
 			if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
-				return polledElement.Value
+				return polledElement.Value.Value
 			}
 
 			// wait for the return value to become due
 			select {
 			// abort waiting for this element and return the next one instead if it was canceled
-			case <-polledElement.cancel:
+			case <-polledElement.Value.cancel:
 				continue
 
 			// return the result after the time is reached
-			case <-time.After(time.Until(polledElement.ScheduledTime)):
-				return polledElement.Value
+			case <-time.After(time.Until(polledElement.Time)):
+				return polledElement.Value.Value
 			}
 
 		// abort waiting for this element and return the next one instead if it was canceled
-		case <-polledElement.cancel:
+		case <-polledElement.Value.cancel:
 			continue
 
 		// return the result after the time is reached
-		case <-time.After(time.Until(polledElement.ScheduledTime)):
-			return polledElement.Value
+		case <-time.After(time.Until(polledElement.Time)):
+			return polledElement.Value.Value
 		}
 	}
 }
 
 // removeElement is an internal utility function that removes the given element from the queue.
-func (t *TimedQueue) removeElement(element *QueueElement) {
+func (t *Queue) removeElement(element *QueueElement) {
 	// abort if the element was removed already
-	if element.index == -1 {
+	if element.rawElem.index == -1 {
 		return
 	}
 
 	// remove the element
-	heap.Remove(&t.heap, element.index)
+	heap.Remove(&t.heap, element.rawElem.index)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,12 +239,9 @@ type QueueElement struct {
 	// Value represents the value of the queued element.
 	Value interface{}
 
-	// ScheduledTime represents the time at which the element is due.
-	ScheduledTime time.Time
-
-	timedQueue *TimedQueue
+	timedQueue *Queue
 	cancel     chan byte
-	index      int
+	rawElem    *HeapElement[*QueueElement]
 }
 
 // Cancel removed the given element from the queue and cancels its execution.
@@ -278,62 +274,19 @@ const (
 
 	// PanicOnModificationsAfterShutdown makes the queue panic instead of ignoring consecutive writes or modifications.
 	PanicOnModificationsAfterShutdown
+
+	// DontWaitForShutdown causes the TimedExecutor to not wait for all tasks to be executed before returning from the
+	// Shutdown method.
+	DontWaitForShutdown ShutdownFlag = 1 << 7
 )
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// region timedHeap ////////////////////////////////////////////////////////////////////////////////////////////////////
+// region Options///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// timedHeap defines a heap based on times.
-type timedHeap []*QueueElement
-
-// Len is the number of elements in the collection.
-func (h timedHeap) Len() int {
-	return len(h)
-}
-
-// Less reports whether the element with index i should sort before the element with index j.
-func (h timedHeap) Less(i, j int) bool {
-	return h[i].ScheduledTime.Before(h[j].ScheduledTime)
-}
-
-// Swap swaps the elements with indexes i and j.
-func (h timedHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-	h[i].index, h[j].index = i, j
-}
-
-// Push adds x as the last element to the heap.
-func (h *timedHeap) Push(x interface{}) {
-	data := x.(*QueueElement)
-	*h = append(*h, data)
-	data.index = len(*h) - 1
-}
-
-// Pop removes and returns the last element of the heap.
-func (h *timedHeap) Pop() interface{} {
-	n := len(*h)
-	data := (*h)[n-1]
-	(*h)[n-1] = nil // avoid memory leak
-	*h = (*h)[:n-1]
-	data.index = -1
-
-	return data
-}
-
-// interface contract (allow the compiler to check if the implementation has all of the required methods).
-var _ heap.Interface = &timedHeap{}
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Option //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Option is the type for functional options of the TimedQueue.
-type Option func(queue *TimedQueue)
-
-// WithMaxSize is an Option for the TimedQueue that allows to specify a maxSize of the queue.
-func WithMaxSize(maxSize int) Option {
-	return func(queue *TimedQueue) {
+// WithMaxSize is an ExecutorOption for the TimedQueue that allows to specify a maxSize of the queue.
+func WithMaxSize(maxSize int) options.Option[Queue] {
+	return func(queue *Queue) {
 		queue.maxSize = maxSize
 	}
 }

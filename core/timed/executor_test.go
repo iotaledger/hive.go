@@ -1,8 +1,6 @@
-package timedexecutor
+package timed
 
 import (
-	"runtime"
-	"runtime/debug"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,7 +11,7 @@ import (
 func TestTimedExecutor_MemLeak(t *testing.T) {
 	const testCount = 100000
 
-	timedExecutor := New(1)
+	timedExecutor := NewExecutor(1)
 	memStatsStart := memStats()
 
 	var executionCounter uint64
@@ -31,21 +29,11 @@ func TestTimedExecutor_MemLeak(t *testing.T) {
 	assert.Less(t, float64(memStatsEnd.HeapObjects), 1.1*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 10%")
 }
 
-func memStats() *runtime.MemStats {
-	runtime.GC()
-	debug.FreeOSMemory()
-
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-
-	return &memStats
-}
-
 func TestTimedExecutor(t *testing.T) {
 	const workerCount = 4
 	const elementsCount = 10
 
-	timedExecutor := New(workerCount)
+	timedExecutor := NewExecutor(workerCount)
 	defer timedExecutor.Shutdown()
 
 	assert.Equal(t, workerCount, timedExecutor.WorkerCount())
