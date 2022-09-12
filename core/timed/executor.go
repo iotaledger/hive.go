@@ -12,10 +12,12 @@ import (
 // Executor defines a scheduler that executes tasks in the background at a given time. It does not spawn any
 // additional goroutines for each task and executes the tasks sequentially (in each worker).
 type Executor struct {
-	workerCount  int
-	maxQueueSize int
-	queue        *Queue
-	shutdownWG   sync.WaitGroup
+	workerCount int
+
+	optsMaxQueueSize int
+
+	queue      *Queue
+	shutdownWG sync.WaitGroup
 }
 
 // NewExecutor is the constructor for a timed Executor that creates a scheduler with a given number of workers that execute the
@@ -24,8 +26,8 @@ func NewExecutor(workerCount int, opts ...options.Option[Executor]) (timedExecut
 	return options.Apply(&Executor{
 		workerCount: workerCount,
 	}, opts, func(t *Executor) {
-		timedExecutor.queue = NewQueue(WithMaxSize(timedExecutor.maxQueueSize))
-		timedExecutor.startBackgroundWorkers()
+		t.queue = NewQueue(WithMaxSize(t.optsMaxQueueSize))
+		t.startBackgroundWorkers()
 	})
 }
 
@@ -93,7 +95,7 @@ type ScheduledTask = QueueElement
 // WithMaxQueueSize is an ExecutorOption for the TimedExecutor that allows to specify a maxSize of the underlying queue.
 func WithMaxQueueSize(maxSize int) options.Option[Executor] {
 	return func(t *Executor) {
-		t.maxQueueSize = maxSize
+		t.optsMaxQueueSize = maxSize
 	}
 }
 

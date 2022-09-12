@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/core/generalheap"
 )
 
 func TestQueueElement_MemLeak(t *testing.T) {
@@ -77,8 +79,8 @@ func TestQueueSize(t *testing.T) {
 
 	// verify that all elements in the queue have time t1
 	for i := 0; i < timedQueue.Size(); i++ {
-		e := heap.Remove(&timedQueue.heap, 0).(*HeapElement[*QueueElement])
-		assert.Equal(t, t1, e.Time)
+		e := heap.Remove(&timedQueue.heap, 0).(*generalheap.HeapElement[HeapKey, *QueueElement])
+		assert.EqualValues(t, t1, e.Key)
 	}
 }
 

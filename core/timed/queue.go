@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/bitmask"
+	"github.com/iotaledger/hive.go/core/generalheap"
 	"github.com/iotaledger/hive.go/core/generics/options"
 )
 
@@ -15,7 +16,7 @@ import (
 // Queue represents a queue, that holds values that will only be released at a given time. The corresponding Poll
 // method waits for the element to be available before it returns its value and is therefore blocking.
 type Queue struct {
-	heap      Heap[*QueueElement]
+	heap      generalheap.Heap[HeapKey, *QueueElement]
 	heapMutex sync.RWMutex
 
 	waitCond *sync.Cond
@@ -37,12 +38,12 @@ func NewQueue(opts ...options.Option[Queue]) (queue *Queue) {
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 	}, opts, func(t *Queue) {
-		t.waitCond = sync.NewCond(&queue.heapMutex)
+		t.waitCond = sync.NewCond(&t.heapMutex)
 	})
 }
 
 // Add inserts a new element into the queue that can be retrieved via Poll() at the specified time.
-func (t *Queue) Add(value interface{}, scheduledTime time.Time) (addedElement *QueueElement) {
+func (t *Queue) Add(value any, scheduledTime time.Time) (addedElement *QueueElement) {
 	// sanitize parameters
 	if value == nil {
 		panic("<nil> must not be added to the queue")
@@ -62,8 +63,8 @@ func (t *Queue) Add(value interface{}, scheduledTime time.Time) (addedElement *Q
 
 	// add new element
 
-	element := &HeapElement[*QueueElement]{
-		Time: scheduledTime,
+	element := &generalheap.HeapElement[HeapKey, *QueueElement]{
+		Key: HeapKey(scheduledTime),
 	}
 
 	element.Value = &QueueElement{
@@ -162,7 +163,7 @@ func (t *Queue) IsShutdown() bool {
 
 // Poll returns the first value of this queue. It waits for the scheduled time before returning and is therefore
 // blocking. It returns nil if the queue is empty.
-func (t *Queue) Poll(waitIfEmpty bool) interface{} {
+func (t *Queue) Poll(waitIfEmpty bool) any {
 	for {
 		// acquire locks
 		t.heapMutex.Lock()
@@ -179,7 +180,7 @@ func (t *Queue) Poll(waitIfEmpty bool) interface{} {
 		}
 
 		// retrieve first element
-		polledElement := heap.Pop(&t.heap).(*HeapElement[*QueueElement])
+		polledElement := heap.Pop(&t.heap).(*generalheap.HeapElement[HeapKey, *QueueElement])
 		// release locks
 		t.heapMutex.Unlock()
 
@@ -204,7 +205,7 @@ func (t *Queue) Poll(waitIfEmpty bool) interface{} {
 				continue
 
 			// return the result after the time is reached
-			case <-time.After(time.Until(polledElement.Time)):
+			case <-time.After(time.Until(time.Time(polledElement.Key))):
 				return polledElement.Value.Value
 			}
 
@@ -213,7 +214,7 @@ func (t *Queue) Poll(waitIfEmpty bool) interface{} {
 			continue
 
 		// return the result after the time is reached
-		case <-time.After(time.Until(polledElement.Time)):
+		case <-time.After(time.Until(time.Time(polledElement.Key))):
 			return polledElement.Value.Value
 		}
 	}
@@ -222,12 +223,12 @@ func (t *Queue) Poll(waitIfEmpty bool) interface{} {
 // removeElement is an internal utility function that removes the given element from the queue.
 func (t *Queue) removeElement(element *QueueElement) {
 	// abort if the element was removed already
-	if element.rawElem.index == -1 {
+	if element.rawElem.Index() == -1 {
 		return
 	}
 
 	// remove the element
-	heap.Remove(&t.heap, element.rawElem.index)
+	heap.Remove(&t.heap, element.rawElem.Index())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -237,11 +238,11 @@ func (t *Queue) removeElement(element *QueueElement) {
 // QueueElement is an element in the TimedQueue. It.
 type QueueElement struct {
 	// Value represents the value of the queued element.
-	Value interface{}
+	Value any
 
 	timedQueue *Queue
 	cancel     chan byte
-	rawElem    *HeapElement[*QueueElement]
+	rawElem    *generalheap.HeapElement[HeapKey, *QueueElement]
 }
 
 // Cancel removed the given element from the queue and cancels its execution.
@@ -284,7 +285,7 @@ const (
 
 // region Options///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// WithMaxSize is an ExecutorOption for the TimedQueue that allows to specify a maxSize of the queue.
+// WithMaxSize is an Option for the timed.Queue that allows to specify a maxSize of the queue.
 func WithMaxSize(maxSize int) options.Option[Queue] {
 	return func(queue *Queue) {
 		queue.maxSize = maxSize

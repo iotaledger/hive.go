@@ -27,25 +27,7 @@ func NewTaskExecutor[T comparable](workerCount int) *TaskExecutor[T] {
 
 // ExecuteAfter executes the given function after the given delay.
 func (t *TaskExecutor[T]) ExecuteAfter(identifier T, callback func(), delay time.Duration) *ScheduledTask {
-	t.queuedElementsMutex.Lock()
-	defer t.queuedElementsMutex.Unlock()
-
-	queuedElement, queuedElementExists := t.queuedElements.Get(identifier)
-	if queuedElementExists {
-		queuedElement.Cancel()
-	}
-
-	t.queuedElements.Set(identifier, t.Executor.ExecuteAfter(func() {
-		callback()
-
-		t.queuedElementsMutex.Lock()
-		defer t.queuedElementsMutex.Unlock()
-
-		t.queuedElements.Delete(identifier)
-	}, delay))
-
-	queuedElement, _ = t.queuedElements.Get(identifier)
-	return queuedElement
+	return t.ExecuteAt(identifier, callback, time.Now().Add(delay))
 }
 
 // ExecuteAt executes the given function at the given time.
@@ -78,7 +60,7 @@ func (t *TaskExecutor[T]) Cancel(identifier T) (canceled bool) {
 
 	queuedElement, queuedElementExists := t.queuedElements.Get(identifier)
 	if !queuedElementExists {
-		return
+		return false
 	}
 
 	queuedElement.Cancel()
