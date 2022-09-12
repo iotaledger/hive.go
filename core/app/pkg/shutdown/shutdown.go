@@ -163,6 +163,8 @@ func (gs *ShutdownHandler) Run() error {
 	}
 
 	go func() {
+		critical := false
+
 		select {
 		case <-gs.gracefulStop:
 			gs.LogWarnf("Received shutdown request - waiting (max %d seconds) to finish processing ...", int(gs.stopGracePeriod.Seconds()))
@@ -172,6 +174,7 @@ func (gs *ShutdownHandler) Run() error {
 			shutdownMsg := fmt.Sprintf("App self-shutdown: %s; waiting (max %d seconds) to finish processing ...", selfShutdownReq.message, int(gs.stopGracePeriod.Seconds()))
 			if selfShutdownReq.critical {
 				shutdownMsg = fmt.Sprintf("Critical %s", shutdownMsg)
+				critical = true
 			}
 			gs.LogWarn(shutdownMsg)
 			gs.writeSelfShutdownLogFile(selfShutdownReq.message, selfShutdownReq.critical)
@@ -198,6 +201,10 @@ func (gs *ShutdownHandler) Run() error {
 		}()
 
 		gs.daemon.ShutdownAndWait()
+
+		if critical {
+			os.Exit(1)
+		}
 	}()
 
 	return nil
