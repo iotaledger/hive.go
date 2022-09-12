@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/syncutils"
-	"github.com/iotaledger/hive.go/core/timedexecutor"
+	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/core/types"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
@@ -41,7 +41,7 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 		partitionsManager: NewPartitionsManager(),
 		options:           storageOptions,
 		shutdown:          atomic.NewBool(false),
-		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timedexecutor.New(storageOptions.releaseExecutorWorkerCount))),
+		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timed.NewExecutor(storageOptions.releaseExecutorWorkerCount))),
 
 		Events: Events{
 			ObjectEvicted: events.NewEvent(evictionEvent),
@@ -659,8 +659,8 @@ func (objectStorage *ObjectStorage) FreeMemory() {
 }
 
 // ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
-func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
-	return (*timedexecutor.TimedExecutor)(objectStorage.releaseExecutor.Load())
+func (objectStorage *ObjectStorage) ReleaseExecutor() (releaseExecutor *timed.Executor) {
+	return (*timed.Executor)(objectStorage.releaseExecutor.Load())
 }
 
 func (objectStorage *ObjectStorage) accessCache(key []byte, createMissingCachedObject bool) (cachedObject *CachedObjectImpl, cacheHit bool) {
@@ -1075,9 +1075,9 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	objectStorage.flushMutex.Lock()
 
 	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
-	objectStorage.ReleaseExecutor().Shutdown(timedexecutor.CancelPendingTasks, timedexecutor.DontWaitForShutdown)
+	objectStorage.ReleaseExecutor().Shutdown(timed.CancelPendingElements, timed.DontWaitForShutdown)
 	if !shutdown {
-		objectStorage.releaseExecutor.Store(unsafe.Pointer(timedexecutor.New(objectStorage.options.releaseExecutorWorkerCount)))
+		objectStorage.releaseExecutor.Store(unsafe.Pointer(timed.NewExecutor(objectStorage.options.releaseExecutorWorkerCount)))
 	}
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)

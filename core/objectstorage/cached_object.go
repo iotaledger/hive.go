@@ -9,7 +9,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/syncutils"
-	"github.com/iotaledger/hive.go/core/timedexecutor"
+	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
@@ -288,7 +288,7 @@ func (cachedObject *CachedObjectImpl) waitForInitialResult() *CachedObjectImpl {
 
 func (cachedObject *CachedObjectImpl) cancelScheduledRelease() {
 	if scheduledTask := cachedObject.scheduledTask.Swap(nil); scheduledTask != nil {
-		(*(*timedexecutor.ScheduledTask)(scheduledTask)).Cancel()
+		(*(*timed.ScheduledTask)(scheduledTask)).Cancel()
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/objectstorage"
-	"github.com/iotaledger/hive.go/core/timedexecutor"
+	"github.com/iotaledger/hive.go/core/timed"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
@@ -150,7 +150,7 @@ func (o *ObjectStorage[T]) FreeMemory() {
 }
 
 // ReleaseExecutor returns the executor that schedules releases of CachedObjects after the configured CacheTime.
-func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timedexecutor.TimedExecutor) {
+func (o *ObjectStorage[T]) ReleaseExecutor() (releaseExecutor *timed.Executor) {
 	return o.ObjectStorage.ReleaseExecutor()
 }
 
