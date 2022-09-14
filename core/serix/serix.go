@@ -156,8 +156,6 @@ type TypeSettings struct {
 	objectType       interface{}
 	lexicalOrdering  *bool
 	mapKey           *string
-	minLen           *uint64
-	maxLen           *uint64
 	arrayRules       *ArrayRules
 }
 
@@ -203,46 +201,52 @@ func (ts TypeSettings) MustMapKey() string {
 }
 
 // WithMinLen specifies the min length for the object.
-func (ts TypeSettings) WithMinLen(l uint64) TypeSettings {
-	ts.minLen = &l
+func (ts TypeSettings) WithMinLen(l uint) TypeSettings {
+	if ts.arrayRules == nil {
+		ts.arrayRules = new(ArrayRules)
+	}
+	ts.arrayRules.Min = l
 
 	return ts
 }
 
 // MinLen returns min length for the object.
-func (ts TypeSettings) MinLen() (uint64, bool) {
-	if ts.minLen == nil {
+func (ts TypeSettings) MinLen() (uint, bool) {
+	if ts.arrayRules == nil || ts.arrayRules.Min == 0 {
 		return 0, false
 	}
 
-	return *ts.minLen, true
+	return ts.arrayRules.Min, true
 }
 
 // WithMaxLen specifies the max length for the object.
-func (ts TypeSettings) WithMaxLen(l uint64) TypeSettings {
-	ts.maxLen = &l
+func (ts TypeSettings) WithMaxLen(l uint) TypeSettings {
+	if ts.arrayRules == nil {
+		ts.arrayRules = new(ArrayRules)
+	}
+	ts.arrayRules.Max = l
 
 	return ts
 }
 
 // MaxLen returns max length for the object.
-func (ts TypeSettings) MaxLen() (uint64, bool) {
-	if ts.maxLen == nil {
+func (ts TypeSettings) MaxLen() (uint, bool) {
+	if ts.arrayRules == nil || ts.arrayRules.Min == 0 {
 		return 0, false
 	}
 
-	return *ts.maxLen, true
+	return ts.arrayRules.Min, true
 }
 
 // MinMaxLen returns min/max lengths for the object.
 // Returns 0 for either value if they are not set.
 func (ts TypeSettings) MinMaxLen() (int, int) {
 	var min, max int
-	if ts.minLen != nil {
-		min = int(*ts.minLen)
+	if ts.arrayRules != nil {
+		min = int(ts.arrayRules.Min)
 	}
-	if ts.maxLen != nil {
-		max = int(*ts.maxLen)
+	if ts.arrayRules != nil {
+		max = int(ts.arrayRules.Max)
 	}
 
 	return min, max
@@ -875,7 +879,7 @@ func parseStructTag(tag string) (tagSettings, error) {
 			if err != nil {
 				return tagSettings{}, errors.Wrapf(err, "failed to parse minLen %s", currentPart)
 			}
-			settings.ts = settings.ts.WithMinLen(minLen)
+			settings.ts = settings.ts.WithMinLen(uint(minLen))
 		case "maxLen":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect maxLen tag format: %s", currentPart)
@@ -884,7 +888,7 @@ func parseStructTag(tag string) (tagSettings, error) {
 			if err != nil {
 				return tagSettings{}, errors.Wrapf(err, "failed to parse maxLen %s", currentPart)
 			}
-			settings.ts = settings.ts.WithMaxLen(maxLen)
+			settings.ts = settings.ts.WithMaxLen(uint(maxLen))
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
 				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
