@@ -1,4 +1,4 @@
-package timedqueue
+package timed
 
 import (
 	"container/heap"
@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/core/generalheap"
 )
 
 func TestQueueElement_MemLeak(t *testing.T) {
 	const testCount = 100000
 
-	timedQueue := New()
+	timedQueue := NewQueue()
 	memStatsStart := memStats()
 
 	go func() {
@@ -54,7 +56,7 @@ func TestQueueSize(t *testing.T) {
 	t1 := time.Now().Add(1 * time.Hour)
 	t2 := time.Now().Add(5 * time.Hour)
 
-	timedQueue := New(WithMaxSize(maxSize))
+	timedQueue := NewQueue(WithMaxSize(maxSize))
 	defer timedQueue.Shutdown()
 
 	// start worker (will simply block because times are too far in the future)
@@ -77,15 +79,15 @@ func TestQueueSize(t *testing.T) {
 
 	// verify that all elements in the queue have time t1
 	for i := 0; i < timedQueue.Size(); i++ {
-		e := heap.Remove(&timedQueue.heap, 0).(*QueueElement)
-		assert.Equal(t, t1, e.ScheduledTime)
+		e := heap.Remove(&timedQueue.heap, 0).(*generalheap.HeapElement[HeapKey, *QueueElement])
+		assert.EqualValues(t, t1, e.Key)
 	}
 }
 
 func TestTimedQueue(t *testing.T) {
 	const elementsCount = 10
 
-	tq := New()
+	tq := NewQueue()
 	defer tq.Shutdown()
 
 	// prepare a list to insert
@@ -120,7 +122,7 @@ func TestTimedQueue(t *testing.T) {
 func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 	const elementsCount = 10
 
-	tq := New()
+	tq := NewQueue()
 	defer tq.Shutdown()
 
 	consumed := 0
@@ -168,7 +170,7 @@ func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 func TestTimedQueueCancel(t *testing.T) {
 	const elementsCount = 10
 
-	tq := New()
+	tq := NewQueue()
 	defer tq.Shutdown()
 
 	consumed := 0

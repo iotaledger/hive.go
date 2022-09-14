@@ -45,7 +45,8 @@ type App struct {
 	pluginsMap              map[string]*Plugin
 	plugins                 []*Plugin
 	container               *dig.Container
-	log                     *logger.Logger
+	loggerRoot              *logger.Logger
+	logger                  *logger.Logger
 	appFlagSet              *flag.FlagSet
 	appConfig               *configuration.Configuration
 	appParams               *ParametersApp
@@ -73,7 +74,8 @@ func New(name string, version string, optionalOptions ...Option) *App {
 		pluginsMap:              make(map[string]*Plugin),
 		plugins:                 make([]*Plugin, 0),
 		container:               dig.New(dig.DeferAcyclicVerification()),
-		log:                     nil,
+		loggerRoot:              nil,
+		logger:                  nil,
 		appFlagSet:              nil,
 		appConfig:               nil,
 		configs:                 nil,
@@ -118,6 +120,9 @@ func (a *App) init() {
 
 	a.appParams = &ParametersApp{}
 	a.appConfig.BindParameters(a.appFlagSet, "app", a.appParams)
+
+	loggerParams := &logger.Config{}
+	a.appConfig.BindParameters(a.appFlagSet, "logger", loggerParams)
 
 	// provide the app params in the container
 	if err := a.container.Provide(func() *ParametersApp {
@@ -166,7 +171,7 @@ func (a *App) init() {
 	//
 
 	collectParameters := func(component *Component) {
-		component.App = a
+		component.app = a
 
 		if component.Params == nil {
 			return
@@ -293,13 +298,15 @@ Command line flags:
 	// enable version check
 	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
-	// initialize the global logger
-	if err := logger.InitGlobalLogger(a.appConfig); err != nil {
+	// initialize the root logger
+	loggerRoot, err := logger.NewRootLogger(*loggerParams)
+	if err != nil {
 		panic(err)
 	}
+	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.log = logger.NewLogger("App")
+	a.logger = loggerRoot.Named("App")
 }
 
 // printAppInfo prints app name and version info.
@@ -766,76 +773,85 @@ func (a *App) ForEachPlugin(f PluginForEachFunc) {
 // Logger
 //
 
+// NewLogger returns a new named child of the app's root logger.
+func (a *App) NewLogger(name string) *logger.Logger {
+	if a.loggerRoot == nil {
+		panic("app root logger not initialized")
+	}
+
+	return a.loggerRoot.Named(name)
+}
+
 // LogDebug uses fmt.Sprint to construct and log a message.
 func (a *App) LogDebug(args ...interface{}) {
-	a.log.Debug(args...)
+	a.logger.Debug(args...)
 }
 
 // LogDebugf uses fmt.Sprintf to log a templated message.
 func (a *App) LogDebugf(template string, args ...interface{}) {
-	a.log.Debugf(template, args...)
+	a.logger.Debugf(template, args...)
 }
 
 // LogError uses fmt.Sprint to construct and log a message.
 func (a *App) LogError(args ...interface{}) {
-	a.log.Error(args...)
+	a.logger.Error(args...)
 }
 
 // LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (a *App) LogErrorAndExit(args ...interface{}) {
-	a.log.Error(args...)
-	a.log.Error("Exiting...")
+	a.logger.Error(args...)
+	a.logger.Error("Exiting...")
 	os.Exit(1)
 }
 
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (a *App) LogErrorf(template string, args ...interface{}) {
-	a.log.Errorf(template, args...)
+	a.logger.Errorf(template, args...)
 }
 
 // LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
-	a.log.Errorf(template, args...)
-	a.log.Error("Exiting...")
+	a.logger.Errorf(template, args...)
+	a.logger.Error("Exiting...")
 	os.Exit(1)
 }
 
 // LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
 func (a *App) LogFatalAndExit(args ...interface{}) {
-	a.log.Fatal(args...)
+	a.logger.Fatal(args...)
 }
 
 // LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (a *App) LogFatalfAndExit(template string, args ...interface{}) {
-	a.log.Fatalf(template, args...)
+	a.logger.Fatalf(template, args...)
 }
 
 // LogInfo uses fmt.Sprint to construct and log a message.
 func (a *App) LogInfo(args ...interface{}) {
-	a.log.Info(args...)
+	a.logger.Info(args...)
 }
 
 // LogInfof uses fmt.Sprintf to log a templated message.
 func (a *App) LogInfof(template string, args ...interface{}) {
-	a.log.Infof(template, args...)
+	a.logger.Infof(template, args...)
 }
 
 // LogWarn uses fmt.Sprint to construct and log a message.
 func (a *App) LogWarn(args ...interface{}) {
-	a.log.Warn(args...)
+	a.logger.Warn(args...)
 }
 
 // LogWarnf uses fmt.Sprintf to log a templated message.
 func (a *App) LogWarnf(template string, args ...interface{}) {
-	a.log.Warnf(template, args...)
+	a.logger.Warnf(template, args...)
 }
 
 // LogPanic uses fmt.Sprint to construct and log a message, then panics.
 func (a *App) LogPanic(args ...interface{}) {
-	a.log.Panic(args...)
+	a.logger.Panic(args...)
 }
 
 // LogPanicf uses fmt.Sprintf to log a templated message, then panics.
 func (a *App) LogPanicf(template string, args ...interface{}) {
-	a.log.Panicf(template, args...)
+	a.logger.Panicf(template, args...)
 }

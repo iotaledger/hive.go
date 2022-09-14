@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+
+	"github.com/iotaledger/hive.go/core/logger"
 )
 
 // WorkerFunc is the function to run a worker accepting its context.
@@ -17,8 +19,8 @@ type Daemon interface {
 	// background worker is shut down (higher = earlier).
 	BackgroundWorker(name string, handler WorkerFunc, order ...int) error
 
-	// DebugEnabled allows to configure the daemon to issue log messages for debugging purposes.
-	DebugEnabled(enabled bool)
+	// DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
+	DebugLogger(logger *logger.Logger)
 
 	// Start starts the daemon.
 	Start()
