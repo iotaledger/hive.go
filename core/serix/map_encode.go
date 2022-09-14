@@ -24,7 +24,7 @@ var (
 	ErrNonUTF8String = errors.New("non UTF-8 string value")
 )
 
-func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (any, error) {
+func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (ele any, err error) {
 	valueI := value.Interface()
 	valueType := value.Type()
 	if opts.validation {
@@ -33,11 +33,17 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 		}
 	}
 
-	ele, err := api.mapEncodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if serializable, ok := valueI.(SerializableJSON); ok {
+		ele, err = serializable.EncodeJSON()
+		if err != nil {
+			return nil, errors.Wrap(err, "object failed to serialize itself")
+		}
+	} else {
+		ele, err = api.mapEncodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
-
 	return ele, nil
 }
 

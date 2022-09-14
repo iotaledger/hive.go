@@ -11,11 +11,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, ts TypeSettings, opts *options) error {
-	if err := api.mapDecodeBasedOnType(ctx, mapVal, value, value.Type(), ts, opts); err != nil {
-		return errors.WithStack(err)
+func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, ts TypeSettings, opts *options) (err error) {
+	var deserializable DeserializableJSON
+
+	if _, ok := value.Interface().(DeserializableJSON); ok {
+		if value.Kind() == reflect.Ptr && value.IsNil() {
+			value.Set(reflect.New(value.Type().Elem()))
+		}
+		deserializable = value.Interface().(DeserializableJSON)
+	} else if value.CanAddr() {
+		if addrDeserializable, ok := value.Addr().Interface().(DeserializableJSON); ok {
+			deserializable = addrDeserializable
+		}
 	}
 
+	if deserializable != nil {
+		err = deserializable.DecodeJSON(mapVal)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	} else {
+		if err = api.mapDecodeBasedOnType(ctx, mapVal, value, value.Type(), ts, opts); err != nil {
+			return errors.WithStack(err)
+		}
+	}
 	return nil
 }
 
