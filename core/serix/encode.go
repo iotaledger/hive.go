@@ -158,7 +158,7 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 	}
 
 	l := uint(v.Len())
-	if minLen, ok := ts.MaxLen(); ok {
+	if minLen, ok := ts.MinLen(); ok {
 		if l < minLen {
 			return errors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
 		}
