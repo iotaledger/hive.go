@@ -3,24 +3,25 @@ package kvstore
 import (
 	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/core/generics/constraints"
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
-type TypedStore[K KeyType, V any, VPtr ValuePtrType[V]] struct {
+type TypedStore[K, V any, KPtr constraints.Serializable[K], VPtr constraints.Serializable[V]] struct {
 	kv kvstore.KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K KeyType, V any, VPtr ValuePtrType[V]](kv kvstore.KVStore) *TypedStore[K, V, VPtr] {
-	return &TypedStore[K, V, VPtr]{
+func NewTypedStore[K, V any, KPtr constraints.Serializable[K], VPtr constraints.Serializable[V]](kv kvstore.KVStore) *TypedStore[K, V, KPtr, VPtr] {
+	return &TypedStore[K, V, KPtr, VPtr]{
 		kv: kv,
 	}
 }
 
 // Get gets the given key or an error if an error occurred.
-func (t *TypedStore[K, V, VPtr]) Get(key K) (value VPtr, err error) {
-	keyBytes, err := key.Bytes()
+func (t *TypedStore[K, V, KPtr, VPtr]) Get(key K) (value VPtr, err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode key")
 	}
@@ -39,8 +40,8 @@ func (t *TypedStore[K, V, VPtr]) Get(key K) (value VPtr, err error) {
 }
 
 // Set sets the given key and value.
-func (t *TypedStore[K, V, VPtr]) Set(key K, value VPtr) (err error) {
-	keyBytes, err := key.Bytes()
+func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value VPtr) (err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to encode key")
 	}
@@ -58,15 +59,22 @@ func (t *TypedStore[K, V, VPtr]) Set(key K, value VPtr) (err error) {
 	return nil
 }
 
-// KeyType is a type constraints for the keys of the TypedStore.
-type KeyType interface {
-	Bytes() ([]byte, error)
-}
+func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix kvstore.KeyPrefix, callback func(key K, value VPtr) (advance bool), direction ...kvstore.IterDirection) (err error) {
+	if iterationErr := t.kv.Iterate(prefix, func(key kvstore.Key, value kvstore.Value) bool {
+		var keyDecoded KPtr = new(K)
+		if _, err = keyDecoded.FromBytes(key); err != nil {
+			return false
+		}
 
-// ValuePtrType is a type constraints for values of the TypedStore.
-type ValuePtrType[V any] interface {
-	*V
+		var valueDecoded VPtr = new(V)
+		if _, err = valueDecoded.FromBytes(value); err != nil {
+			return false
+		}
 
-	FromBytes([]byte) (consumedBytes int, err error)
-	Bytes() ([]byte, error)
+		return callback(*keyDecoded, valueDecoded)
+	}, direction...); iterationErr != nil {
+		return errors.Wrap(iterationErr, "failed to iterate over KV store")
+	}
+
+	return
 }
