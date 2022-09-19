@@ -9,8 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2"
+
+	"github.com/iotaledger/hive.go/core/byteutils"
 )
 
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (b []byte, err error) {
@@ -156,15 +157,15 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 		return nil
 	}
 
-	l := uint64(v.Len())
+	l := uint(v.Len())
 	if minLen, ok := ts.MinLen(); ok {
 		if l < minLen {
-			return errors.Errorf("can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
+			return errors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
 		}
 	}
 	if maxLen, ok := ts.MaxLen(); ok {
 		if l > maxLen {
-			return errors.Errorf("can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
+			return errors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
 		}
 	}
 
@@ -390,7 +391,7 @@ func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, 
 		serializerArrayRulesPtr,
 		func(err error) error {
 			return errors.Wrapf(err,
-				"serializer failed to write %s  as slice of bytes", valueType,
+				"serializer failed to write %s as slice of bytes", valueType,
 			)
 		})
 
