@@ -4,21 +4,56 @@ package serix_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/iancoleman/orderedmap"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/core/types"
 )
 
 func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type serializableStruct struct {
+	bytes types.Identifier `serix:"0"`
+	index uint64           `serix:"1"`
+}
+
+func (s serializableStruct) EncodeJSON() (any, error) {
+	return fmt.Sprintf("%s:%d", base58.Encode(s.bytes[:]), s.index), nil
+}
+
+func (s *serializableStruct) DecodeJSON(val any) error {
+	serialized, ok := val.(string)
+	if !ok {
+		return errors.New("incorrect type")
+	}
+
+	parts := strings.Split(serialized, ":")
+	bytes, err := base58.Decode(parts[0])
+	if err != nil {
+		return err
+	}
+	idx, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return err
+	}
+	copy(s.bytes[:], bytes)
+	s.index = uint64(idx)
+	return nil
 }
 
 func TestMapEncodeDecode(t *testing.T) {
@@ -350,6 +385,36 @@ func TestMapEncodeDecode(t *testing.T) {
 			expected: `{
 				"type": 23,
  				"creationDate": "2022-08-12T12:51:18.120072+02:00"
+			}`,
+		},
+
+		{
+			name: "serializable",
+			paras: func() paras {
+				type example struct {
+					Entries map[serializableStruct]types.Empty `serix:"0"`
+				}
+
+				api := serix.NewAPI()
+				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(23))))
+
+				return paras{
+					api: api,
+					in: &example{
+						Entries: map[serializableStruct]types.Empty{
+							serializableStruct{
+								bytes: types.NewIdentifier([]byte("test")),
+								index: 1,
+							}: types.Void,
+						},
+					},
+				}
+			}(),
+			expected: `{
+				"type": 23,
+				"entries": {
+					"As3ZuwnL9LpoW3wz8HoDpHtZqJ4dhPFFnv87GYrnCYKj:1": {}
+				}
 			}`,
 		},
 	}

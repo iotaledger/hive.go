@@ -26,8 +26,10 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			value.Set(reflect.New(valueType.Elem()))
 		}
 		deserializable = value.Interface().(Deserializable)
-	} else if addrDeserializable, ok := value.Addr().Interface().(Deserializable); ok {
-		deserializable = addrDeserializable
+	} else if value.CanAddr() {
+		if addrDeserializable, ok := value.Addr().Interface().(Deserializable); ok {
+			deserializable = addrDeserializable
+		}
 	}
 	if deserializable != nil {
 		typeSettingValue := value
