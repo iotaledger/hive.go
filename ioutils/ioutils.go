@@ -33,7 +33,7 @@ func CreateDirectory(dir string, perm os.FileMode) error {
 	}
 
 	if !exists {
-		return os.Mkdir(dir, perm)
+		return os.MkdirAll(dir, perm)
 	}
 	return nil
 }
