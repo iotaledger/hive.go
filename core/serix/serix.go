@@ -245,11 +245,11 @@ func (ts TypeSettings) WithMaxLen(l uint) TypeSettings {
 
 // MaxLen returns max length for the object.
 func (ts TypeSettings) MaxLen() (uint, bool) {
-	if ts.arrayRules == nil || ts.arrayRules.Min == 0 {
+	if ts.arrayRules == nil || ts.arrayRules.Max == 0 {
 		return 0, false
 	}
 
-	return ts.arrayRules.Min, true
+	return ts.arrayRules.Max, true
 }
 
 // MinMaxLen returns min/max lengths for the object.
