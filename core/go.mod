@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.3
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/knadh/koanf v1.4.3
 	github.com/kr/text v0.2.0
