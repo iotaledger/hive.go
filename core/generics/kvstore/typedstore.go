@@ -59,7 +59,7 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value VPtr) (err error) {
 	return nil
 }
 
-// Delete deletes the given key from the store:wq.
+// Delete deletes the given key from the store.
 func (t *TypedStore[K, V, KPtr, VPtr]) Delete(key K) (err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
