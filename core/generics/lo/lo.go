@@ -189,3 +189,29 @@ func CopySlice[T any](base []T) (copied []T) {
 
 	return copied
 }
+
+
+// PassThrough1 returns the first parameter.
+func PassThrough1[A any](a A, _ ...any) A {
+	return a
+}
+
+// PassThrough2 returns the second parameter.
+func PassThrough2[A any](_ any, a A, _ ...any) A {
+	return a
+}
+
+// PassThrough3 returns the third parameter.
+func PassThrough3[A any](_, _ any, a A, _ ...any) A {
+	return a
+}
+
+// PassThrough4 returns the 4th parameter.
+func PassThrough4[A any](_, _, _ any, a A, _ ...any) A {
+	return a
+}
+
+// PassThrough5 returns the 5th parameter.
+func PassThrough5[A any](_, _, _, _ any, a A, _ ...any) A {
+	return a
+}
