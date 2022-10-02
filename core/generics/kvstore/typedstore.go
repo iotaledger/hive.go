@@ -59,6 +59,21 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value VPtr) (err error) {
 	return nil
 }
 
+// Delete deletes the given key from the store.
+func (t *TypedStore[K, V, KPtr, VPtr]) Delete(key K) (err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
+	if err != nil {
+		return errors.Wrap(err, "failed to encode key")
+	}
+
+	err = t.kv.Delete(keyBytes)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete entry from KV store")
+	}
+
+	return nil
+}
+
 func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix kvstore.KeyPrefix, callback func(key K, value VPtr) (advance bool), direction ...kvstore.IterDirection) (err error) {
 	if iterationErr := t.kv.Iterate(prefix, func(key kvstore.Key, value kvstore.Value) bool {
 		var keyDecoded KPtr = new(K)
