@@ -191,27 +191,27 @@ func CopySlice[T any](base []T) (copied []T) {
 }
 
 
-// PassThrough1 returns the first parameter.
-func PassThrough1[A any](a A, _ ...any) A {
+// Return1 returns the first parameter out of a set of variadic arguments.
+func Return1[A any](a A, _ ...any) A {
 	return a
 }
 
-// PassThrough2 returns the second parameter.
-func PassThrough2[A any](_ any, a A, _ ...any) A {
+// Return2 returns the second parameter out of a set of variadic arguments.
+func Return2[A any](_ any, a A, _ ...any) A {
 	return a
 }
 
-// PassThrough3 returns the third parameter.
-func PassThrough3[A any](_, _ any, a A, _ ...any) A {
+// Return3 returns the third parameter out of a set of variadic arguments.
+func Return3[A any](_, _ any, a A, _ ...any) A {
 	return a
 }
 
-// PassThrough4 returns the 4th parameter.
-func PassThrough4[A any](_, _, _ any, a A, _ ...any) A {
+// Return4 returns the 4th parameter out of a set of variadic arguments..
+func Return4[A any](_, _, _ any, a A, _ ...any) A {
 	return a
 }
 
-// PassThrough5 returns the 5th parameter.
-func PassThrough5[A any](_, _, _, _ any, a A, _ ...any) A {
+// Return5 returns the 5th parameter out of a set of variadic arguments..
+func Return5[A any](_, _, _, _ any, a A, _ ...any) A {
 	return a
 }
