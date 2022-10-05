@@ -14,8 +14,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/serix"
 	"github.com/iotaledger/hive.go/serializer/v2"
+
+	"github.com/iotaledger/hive.go/core/serix"
 )
 
 const defaultSeriMode = serializer.DeSeriModePerformValidation
@@ -530,5 +531,23 @@ func TestMinMax(t *testing.T) {
 				require.NoError(t, err)
 			})
 		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	simpleStruct := NewSimpleStruct()
+	for i := 0; i < b.N; i++ {
+		testAPI.Encode(context.Background(), simpleStruct)
+	}
+}
+
+func BenchmarkDecode(b *testing.B) {
+	simpleStruct := NewSimpleStruct()
+	encoded, err := testAPI.Encode(context.Background(), simpleStruct)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		testAPI.Decode(context.Background(), encoded, new(SimpleStruct))
 	}
 }
