@@ -2,6 +2,7 @@ package debug
 
 import (
 	"github.com/iotaledger/hive.go/core/bitmask"
+	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
 
@@ -95,6 +96,10 @@ func (s *debugStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 		accessCallback:               s.accessCallback,
 		accessCallbackCommandsFilter: s.accessCallbackCommandsFilter,
 	}, nil
+}
+
+func (s *debugStore) WithExtendedRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	return s.WithRealm(byteutils.ConcatBytes(s.Realm(), realm))
 }
 
 func (s *debugStore) Realm() kvstore.Realm {

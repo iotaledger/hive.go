@@ -40,6 +40,10 @@ func (s *badgerStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	}, nil
 }
 
+func (s *badgerStore) WithExtendedRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	return s.WithRealm(byteutils.ConcatBytes(s.Realm(), realm))
+}
+
 func (s *badgerStore) Realm() []byte {
 	return s.dbPrefix
 }
@@ -51,7 +55,6 @@ func (s *badgerStore) buildKeyPrefix(prefix kvstore.KeyPrefix) kvstore.KeyPrefix
 
 // getIterFuncs returns the function pointers for the iteration based on the given settings.
 func (s *badgerStore) getIterFuncs(it *badger.Iterator, keyPrefix []byte, iterDirection ...kvstore.IterDirection) (start func(), valid func() bool, move func(), err error) {
-
 	startFunc := it.Rewind
 	validFunc := it.Valid
 	moveFunc := it.Next
@@ -66,7 +69,6 @@ func (s *badgerStore) getIterFuncs(it *badger.Iterator, keyPrefix []byte, iterDi
 	}
 
 	if kvstore.GetIterDirection(iterDirection...) == kvstore.IterDirectionBackward {
-
 		if len(keyPrefix) > 0 {
 			// we need to search the first item after the prefix
 			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
@@ -360,5 +362,7 @@ func (b *batchedMutations) Commit() error {
 	return writeBatch.Flush()
 }
 
-var _ kvstore.KVStore = &badgerStore{}
-var _ kvstore.BatchedMutations = &batchedMutations{}
+var (
+	_ kvstore.KVStore          = &badgerStore{}
+	_ kvstore.BatchedMutations = &batchedMutations{}
+)
