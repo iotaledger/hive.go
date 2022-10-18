@@ -4,6 +4,8 @@ package event
 import (
 	"reflect"
 	"sync"
+
+	"github.com/iotaledger/hive.go/core/generics/constraints"
 )
 
 // region Linkable /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,22 +115,13 @@ func LinkableConstructor[A any, B ptrLinkableCollectionType[A, B]](newFunc func(
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region types and interfaces /////////////////////////////////////////////////////////////////////////////////////////
-// linkableCollectionType is the interface for a LinkableCollection.
-type linkableCollectionType[B any] interface {
-	onLinkUpdated(callback func(B))
-	LinkTo(optLinkTargets ...B)
-}
-
-// ptrType is a helper type to create a pointer type.
-type ptrType[A any] interface {
-	*A
-}
 
 // ptrLinkableCollectionType is a helper type to create a pointer to a linkableCollectionType.
-type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
+type ptrLinkableCollectionType[A any, B constraints.Ptr[A]] interface {
 	*A
 
-	linkableCollectionType[B]
+	onLinkUpdated(callback func(B))
+	LinkTo(optLinkTargets ...B)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
