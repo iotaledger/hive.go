@@ -59,6 +59,9 @@ type KVStore interface {
 	// WithRealm is a factory method for using the same underlying storage with a different realm.
 	WithRealm(realm Realm) (KVStore, error)
 
+	// WithExtended is a factory method for using the same underlying storage with an realm appended to existing one.
+	WithExtendedRealm(realm Realm) (KVStore, error)
+
 	// Realm returns the configured realm.
 	Realm() Realm
 

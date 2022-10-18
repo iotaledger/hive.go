@@ -41,6 +41,10 @@ func (s *rocksDBStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	}, nil
 }
 
+func (s *rocksDBStore) WithExtendedRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	return s.WithRealm(byteutils.ConcatBytes(s.Realm(), realm))
+}
+
 func (s *rocksDBStore) Realm() []byte {
 	return s.dbPrefix
 }
