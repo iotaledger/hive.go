@@ -189,3 +189,29 @@ func CopySlice[T any](base []T) (copied []T) {
 
 	return copied
 }
+
+
+// Return1 returns the first parameter out of a set of variadic arguments.
+func Return1[A any](a A, _ ...any) A {
+	return a
+}
+
+// Return2 returns the second parameter out of a set of variadic arguments.
+func Return2[A any](_ any, a A, _ ...any) A {
+	return a
+}
+
+// Return3 returns the third parameter out of a set of variadic arguments.
+func Return3[A any](_, _ any, a A, _ ...any) A {
+	return a
+}
+
+// Return4 returns the 4th parameter out of a set of variadic arguments..
+func Return4[A any](_, _, _ any, a A, _ ...any) A {
+	return a
+}
+
+// Return5 returns the 5th parameter out of a set of variadic arguments..
+func Return5[A any](_, _, _, _ any, a A, _ ...any) A {
+	return a
+}
