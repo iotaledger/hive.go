@@ -8,12 +8,12 @@ import (
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
-type TypedStore[K, V any, KPtr constraints.Serializable[K], VPtr constraints.Serializable[V]] struct {
+type TypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]] struct {
 	kv kvstore.KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K, V any, KPtr constraints.Serializable[K], VPtr constraints.Serializable[V]](kv kvstore.KVStore) *TypedStore[K, V, KPtr, VPtr] {
+func NewTypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]](kv kvstore.KVStore) *TypedStore[K, V, KPtr, VPtr] {
 	return &TypedStore[K, V, KPtr, VPtr]{
 		kv: kv,
 	}
