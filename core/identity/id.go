@@ -44,17 +44,17 @@ func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) 
 }
 
 // Bytes returns the byte slice representation of the ID.
-func (id ID) Bytes() []byte {
-	return id[:]
+func (id ID) Bytes() ([]byte, error) {
+	return id[:], nil
 }
 
 // FromBytes decodes ID from bytes.
-func (id *ID) FromBytes(bytes []byte) error {
-	if _, err := serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
-		return errors.Wrap(err, "failed to decode node identity from bytes")
+func (id *ID) FromBytes(bytes []byte) (consumedBytes int, err error) {
+	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
+		return consumedBytes, errors.Errorf("failed to decode node identity from bytes: %w", err)
 	}
 
-	return nil
+	return
 }
 
 // String returns a shortened version of the ID as a base58 encoded string.

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 func TestID(t *testing.T) {
@@ -19,7 +20,7 @@ func TestID(t *testing.T) {
 
 	bytes := sha256.Sum256(pub.Bytes())
 
-	assert.Equal(t, id.Bytes(), bytes[:])
+	assert.Equal(t, lo.PanicOnErr(id.Bytes()), bytes[:])
 	assert.Equal(t, id.String(), base58.Encode(bytes[:])[:8])
 }
 

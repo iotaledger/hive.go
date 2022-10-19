@@ -65,7 +65,7 @@ func (t *AdvancedSet[T]) DeleteAll(other *AdvancedSet[T]) (removedElements *Adva
 }
 
 // Delete removes the element from the Set and returns true if it did exist.
-func (t *AdvancedSet[T]) Delete(element T) (added bool) {
+func (t *AdvancedSet[T]) Delete(element T) (deleted bool) {
 	return t.OrderedMap.Delete(element)
 }
 
