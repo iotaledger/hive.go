@@ -10,6 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/mana"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
 )
@@ -351,7 +352,7 @@ func (m *manager) getOutboundPeeringCandidate() (candidate peer.PeerDistance) {
 	}
 
 	// sort verified peers by distance
-	distList := peer.SortBySalt(m.getID().Bytes(), m.getPublicSalt().GetBytes(), allowedPeers)
+	distList := peer.SortBySalt(lo.PanicOnErr(m.getID().Bytes()), m.getPublicSalt().GetBytes(), allowedPeers)
 
 	// filter out current neighbors
 	filter := m.getConnectedFilter()
@@ -394,7 +395,7 @@ func (m *manager) handleInRequest(req peeringRequest) (resp bool) {
 		return
 	}
 
-	reqDistance := peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), req.peer)
+	reqDistance := peer.NewPeerDistance(lo.PanicOnErr(m.getID().Bytes()), m.getPrivateSalt().GetBytes(), req.peer)
 	filter := m.getConnectedFilter()
 	filteredList := filter.Apply([]peer.PeerDistance{reqDistance})
 	if len(filteredList) == 0 {
@@ -434,8 +435,8 @@ func (m *manager) updateSalt() {
 	m.cleanSkiplist()
 
 	if !m.dropOnUpdate { // update distance without dropping neighbors
-		m.outbound.UpdateDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes())
-		m.inbound.UpdateDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes())
+		m.outbound.UpdateDistance(lo.PanicOnErr(m.getID().Bytes()), m.getPublicSalt().GetBytes())
+		m.inbound.UpdateDistance(lo.PanicOnErr(m.getID().Bytes()), m.getPrivateSalt().GetBytes())
 	} else { // drop all the neighbors
 		m.dropNeighborhood(m.inbound)
 		m.dropNeighborhood(m.outbound)
@@ -519,7 +520,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 		m.Events.OutgoingPeering.Trigger(&PeeringEvent{
 			Peer:     p,
 			Status:   status,
-			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPublicSalt().GetBytes(), p).Distance,
+			Distance: peer.NewPeerDistance(lo.PanicOnErr(m.getID().Bytes()), m.getPublicSalt().GetBytes(), p).Distance,
 		})
 	} else {
 		m.log.Debugw("peering requested",
@@ -532,7 +533,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 		m.Events.IncomingPeering.Trigger(&PeeringEvent{
 			Peer:     p,
 			Status:   status,
-			Distance: peer.NewPeerDistance(m.getID().Bytes(), m.getPrivateSalt().GetBytes(), p).Distance,
+			Distance: peer.NewPeerDistance(lo.PanicOnErr(m.getID().Bytes()), m.getPrivateSalt().GetBytes(), p).Distance,
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/iotaledger/hive.go/core/autopeering/distance"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 // PeerDistance defines the relative distance wrt a remote peer.
@@ -25,7 +26,7 @@ func (a byDistance) Less(i, j int) bool { return a[i].Distance < a[j].Distance }
 func NewPeerDistance(anchorID, salt []byte, remote *Peer) PeerDistance {
 	return PeerDistance{
 		Remote:   remote,
-		Distance: distance.BySalt(anchorID, remote.ID().Bytes(), salt),
+		Distance: distance.BySalt(anchorID, lo.PanicOnErr(remote.ID().Bytes()), salt),
 	}
 }
 
