@@ -8,20 +8,20 @@ import (
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
-type TypedStore[K constraints.Serializable, V constraints.Marshalable] struct {
+type TypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]] struct {
 	kv kvstore.KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K constraints.Serializable, V constraints.Marshalable](kv kvstore.KVStore) *TypedStore[K, V] {
-	return &TypedStore[K, V]{
+func NewTypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]](kv kvstore.KVStore) *TypedStore[K, V, KPtr, VPtr] {
+	return &TypedStore[K, V, KPtr, VPtr]{
 		kv: kv,
 	}
 }
 
 // Get gets the given key or an error if an error occurred.
-func (t *TypedStore[K, V]) Get(key K) (value *V, err error) {
-	keyBytes, err := key.Bytes()
+func (t *TypedStore[K, V, KPtr, VPtr]) Get(key K) (value VPtr, err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode key")
 	}
@@ -40,8 +40,8 @@ func (t *TypedStore[K, V]) Get(key K) (value *V, err error) {
 }
 
 // Set sets the given key and value.
-func (t *TypedStore[K, V]) Set(key K, value *V) (err error) {
-	keyBytes, err := key.Bytes()
+func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value VPtr) (err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to encode key")
 	}
@@ -60,8 +60,8 @@ func (t *TypedStore[K, V]) Set(key K, value *V) (err error) {
 }
 
 // Delete deletes the given key from the store.
-func (t *TypedStore[K, V]) Delete(key K) (err error) {
-	keyBytes, err := key.Bytes()
+func (t *TypedStore[K, V, KPtr, VPtr]) Delete(key K) (err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to encode key")
 	}
@@ -74,27 +74,22 @@ func (t *TypedStore[K, V]) Delete(key K) (err error) {
 	return nil
 }
 
-func (t *TypedStore[K, V]) Iterate(prefix kvstore.KeyPrefix, callback func(key K, value V) (advance bool), direction ...kvstore.IterDirection) (err error) {
+func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix kvstore.KeyPrefix, callback func(key K, value VPtr) (advance bool), direction ...kvstore.IterDirection) (err error) {
 	if iterationErr := t.kv.Iterate(prefix, func(key kvstore.Key, value kvstore.Value) bool {
-		var keyDecoded K
+		var keyDecoded KPtr = new(K)
 		if _, err = keyDecoded.FromBytes(key); err != nil {
 			return false
 		}
 
-		reflect.TypeOf(v).Kind() == reflect.Ptr
-		valueDecoded := NewPtr[V]()
+		var valueDecoded VPtr = new(V)
 		if _, err = valueDecoded.FromBytes(value); err != nil {
 			return false
 		}
 
-		return callback(keyDecoded, valueDecoded)
+		return callback(*keyDecoded, valueDecoded)
 	}, direction...); iterationErr != nil {
 		return errors.Wrap(iterationErr, "failed to iterate over KV store")
 	}
 
 	return
-}
-
-func NewPtr[VPtr Ptr[V], V any]() VPtr {
-	return new(V)
 }

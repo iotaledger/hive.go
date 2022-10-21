@@ -10,14 +10,8 @@ type Deserializable interface {
 	FromBytes([]byte) (int, error)
 }
 
-// Marshalable is a type constraint that ensures that the type can be serialized and deserialized to and from bytes.
-type Marshalable interface {
-	Serializable
-	Deserializable
-}
-
-// MarshalablePtr is a pointer type constraint to a Marshable.
 type MarshalablePtr[V any] interface {
 	*V
-	Marshalable
+	Serializable
+	Deserializable
 }
