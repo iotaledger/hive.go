@@ -4,7 +4,3 @@ package constraints
 type Ptr[A any] interface {
 	*A
 }
-
-func NewFromPtr[APtr Ptr[A], A any]() APtr {
-	return new(A)
-}
