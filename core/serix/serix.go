@@ -72,6 +72,9 @@ type API struct {
 
 	validatorsRegistryMutex sync.RWMutex
 	validatorsRegistry      map[reflect.Type]validators
+
+	typeCacheMutex sync.RWMutex
+	typeCache      map[reflect.Type][]structField
 }
 
 type validators struct {
@@ -94,6 +97,7 @@ func NewAPI() *API {
 		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
 		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
 		validatorsRegistry:   map[reflect.Type]validators{},
+		typeCache:            map[reflect.Type][]structField{},
 	}
 
 	return api
@@ -795,8 +799,15 @@ type tagSettings struct {
 	ts         TypeSettings
 }
 
-func parseStructType(structType reflect.Type) ([]structField, error) {
-	structFields := make([]structField, 0, structType.NumField())
+func (api *API) parseStructType(structType reflect.Type) ([]structField, error) {
+	api.typeCacheMutex.RLock()
+	structFields, exists := api.typeCache[structType]
+	api.typeCacheMutex.RUnlock()
+	if exists {
+		return structFields, nil
+	}
+
+	structFields = make([]structField, 0, structType.NumField())
 	seenPositions := make(map[int]struct{})
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -849,6 +860,11 @@ func parseStructType(structType reflect.Type) ([]structField, error) {
 	sort.Slice(structFields, func(i, j int) bool {
 		return structFields[i].settings.position < structFields[j].settings.position
 	})
+
+	api.typeCacheMutex.Lock()
+	defer api.typeCacheMutex.Unlock()
+
+	api.typeCache[structType] = structFields
 
 	return structFields, nil
 }

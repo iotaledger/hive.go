@@ -228,7 +228,7 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 func (api *API) decodeStructFields(
 	ctx context.Context, deseri *serializer.Deserializer, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := parseStructType(valueType)
+	structFields, err := api.parseStructType(valueType)
 	if err != nil {
 		return errors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
