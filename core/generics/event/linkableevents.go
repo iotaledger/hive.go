@@ -4,27 +4,29 @@ package event
 import (
 	"reflect"
 	"sync"
+
+	"github.com/iotaledger/hive.go/core/generics/constraints"
 )
 
 // region Linkable /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Linkable represents a special kind of Event that is part of a LinkableCollection of events.
-type Linkable[A any, B any, C ptrLinkableCollectionType[B, C]] struct {
-	linkedEvent *Linkable[A, B, C]
+type Linkable[A any] struct {
+	linkedEvent *Linkable[A]
 	linkClosure *Closure[A]
 
 	*Event[A]
 }
 
 // NewLinkable creates a new Linkable.
-func NewLinkable[A any, B any, C ptrLinkableCollectionType[B, C]]() (newEvent *Linkable[A, B, C]) {
-	return &Linkable[A, B, C]{
+func NewLinkable[A any]() (newEvent *Linkable[A]) {
+	return &Linkable[A]{
 		Event: New[A](),
 	}
 }
 
 // LinkTo links the Linkable to the given Linkable.
-func (e *Linkable[A, B, C]) LinkTo(optLinkTargets ...*Linkable[A, B, C]) {
+func (e *Linkable[A]) LinkTo(optLinkTargets ...*Linkable[A]) {
 	if len(optLinkTargets) == 0 || e.linkedEvent == optLinkTargets[0] || e == optLinkTargets[0] {
 		return
 	}
@@ -114,28 +116,12 @@ func LinkableConstructor[A any, B ptrLinkableCollectionType[A, B]](newFunc func(
 
 // region types and interfaces /////////////////////////////////////////////////////////////////////////////////////////
 
-// linkableType is the interface for linkable elements.
-type linkableType[B any] interface {
-	LinkTo(optLinkTargets ...B)
-}
-
-// linkableCollectionType is the interface for a LinkableCollection.
-type linkableCollectionType[B any] interface {
-	onLinkUpdated(callback func(B))
-
-	linkableType[B]
-}
-
-// ptrType is a helper type to create a pointer type.
-type ptrType[A any] interface {
-	*A
-}
-
 // ptrLinkableCollectionType is a helper type to create a pointer to a linkableCollectionType.
-type ptrLinkableCollectionType[A any, B ptrType[A]] interface {
+type ptrLinkableCollectionType[A any, B constraints.Ptr[A]] interface {
 	*A
 
-	linkableCollectionType[B]
+	onLinkUpdated(callback func(B))
+	LinkTo(optLinkTargets ...B)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

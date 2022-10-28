@@ -40,6 +40,10 @@ func (s *pebbleStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 	}, nil
 }
 
+func (s *pebbleStore) WithExtendedRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
+	return s.WithRealm(byteutils.ConcatBytes(s.Realm(), realm))
+}
+
 func (s *pebbleStore) Realm() []byte {
 	return s.dbPrefix
 }

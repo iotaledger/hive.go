@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/autopeering/distance"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -110,7 +111,7 @@ func (nh *Neighborhood) UpdateDistance(anchor, salt []byte) {
 	nh.mu.Lock()
 	defer nh.mu.Unlock()
 	for i, n := range nh.neighbors {
-		nh.neighbors[i].Distance = distance.BySalt(anchor, n.Remote.ID().Bytes(), salt)
+		nh.neighbors[i].Distance = distance.BySalt(anchor, lo.PanicOnErr(n.Remote.ID().Bytes()), salt)
 	}
 }
 

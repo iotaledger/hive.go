@@ -10,6 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 func TestGetFurthest(t *testing.T) {
@@ -217,7 +218,7 @@ func TestUpdateDistance(t *testing.T) {
 	d2 := make([]peer.PeerDistance, 4)
 	for i := range d2 {
 		d2[i].Remote = d[i+1].Remote
-		d2[i].Distance = distance.BySalt(d[0].Remote.ID().Bytes(), d2[i].Remote.ID().Bytes(), s.GetBytes())
+		d2[i].Distance = distance.BySalt(lo.PanicOnErr(d[0].Remote.ID().Bytes()), lo.PanicOnErr(d2[i].Remote.ID().Bytes()), s.GetBytes())
 	}
 
 	neighborhood := Neighborhood{
@@ -225,7 +226,7 @@ func TestUpdateDistance(t *testing.T) {
 		size:      4,
 	}
 
-	neighborhood.UpdateDistance(d[0].Remote.ID().Bytes(), s.GetBytes())
+	neighborhood.UpdateDistance(lo.PanicOnErr(d[0].Remote.ID().Bytes()), s.GetBytes())
 
 	assert.Equal(t, d2, neighborhood.neighbors, "UpdateDistance")
 }

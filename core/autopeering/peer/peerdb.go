@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
@@ -63,7 +64,7 @@ func (db *DB) Close() {
 
 // nodeKey returns the database key for a node record.
 func nodeKey(id identity.ID) []byte {
-	return append([]byte(dbNodePrefix), id.Bytes()...)
+	return append([]byte(dbNodePrefix), lo.PanicOnErr(id.Bytes())...)
 }
 
 // nodeFieldKey returns the database key for a node metadata field.
