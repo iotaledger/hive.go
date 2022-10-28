@@ -237,7 +237,7 @@ func (api *API) encodeStruct(
 func (api *API) encodeStructFields(
 	ctx context.Context, s *serializer.Serializer, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := parseStructType(valueType)
+	structFields, err := api.parseStructType(valueType)
 	if err != nil {
 		return errors.Wrapf(err, "can't parse struct type %s", valueType)
 	}

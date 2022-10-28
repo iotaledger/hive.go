@@ -299,7 +299,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 func (api *API) mapDecodeStructFields(
 	ctx context.Context, m map[string]any, structVal reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := parseStructType(valueType)
+	structFields, err := api.parseStructType(valueType)
 	if err != nil {
 		return errors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
