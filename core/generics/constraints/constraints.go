@@ -54,4 +54,3 @@ type Ordered interface {
 type Comparable[T any] interface {
 	Compare(other T) int
 }
-
