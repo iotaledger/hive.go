@@ -100,7 +100,7 @@ func WithMaxTopicSubscriptionsPerClient[C ClientID, T Topic](maxTopicSubscriptio
 	}
 }
 
-// WithShrinkingThresholdCount defines the count of
+// WithCleanupThresholdCount defines the count of
 // deletions that triggers shrinking of the map.
 func WithCleanupThresholdCount[C ClientID, T Topic](cleanupThresholdCount int) options.Option[SubscriptionManager[C, T]] {
 	return func(s *SubscriptionManager[C, T]) {
@@ -108,7 +108,7 @@ func WithCleanupThresholdCount[C ClientID, T Topic](cleanupThresholdCount int) o
 	}
 }
 
-// WithShrinkingThresholdRatio defines the ratio between the amount
+// WithCleanupThresholdRatio defines the ratio between the amount
 // of deleted keys and the current map's size before shrinking is triggered.
 func WithCleanupThresholdRatio[C ClientID, T Topic](cleanupThresholdRatio float32) options.Option[SubscriptionManager[C, T]] {
 	return func(s *SubscriptionManager[C, T]) {
