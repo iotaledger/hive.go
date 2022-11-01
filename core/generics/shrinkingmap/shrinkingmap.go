@@ -56,7 +56,6 @@ type ShrinkingMap[K comparable, V any] struct {
 
 // New returns a new ShrinkingMap.
 func New[K comparable, V any](opts ...Option) *ShrinkingMap[K, V] {
-
 	mapOpts := &Options{}
 	mapOpts.apply(defaultOptions...)
 	mapOpts.apply(opts...)
@@ -138,9 +137,18 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	return true
 }
 
+// AsMap returns the shrinking map as a regular map.
+func (s *ShrinkingMap[K, V]) AsMap() (asMap map[K]V) {
+	asMap = make(map[K]V)
+	s.ForEach(func(k K, v V) bool {
+		asMap[k] = v
+		return true
+	})
+	return
+}
+
 // shouldShrink checks if the conditons to shrink the map are met.
 func (s *ShrinkingMap[K, V]) shouldShrink() bool {
-
 	size := s.Size()
 
 	// check if one of the conditions was defined, otherwise never shrink
