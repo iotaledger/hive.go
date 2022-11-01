@@ -190,7 +190,6 @@ func CopySlice[T any](base []T) (copied []T) {
 	return copied
 }
 
-
 // Return1 returns the first parameter out of a set of variadic arguments.
 func Return1[A any](a A, _ ...any) A {
 	return a
@@ -211,11 +210,24 @@ func Return4[A any](_, _, _ any, a A, _ ...any) A {
 	return a
 }
 
-// Return5 returns the 5th parameter out of a set of variadic arguments..
+// Return5 returns the 5th parameter out of a set of variadic arguments.
 func Return5[A any](_, _, _, _ any, a A, _ ...any) A {
 	return a
 }
 
+// Compare returns -1, 0 or 1 if the first parameter is smaller, equal or greater than the second argument.
+func Compare[A constraints.Ordered](a, b A) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// Void returns a function that discards the return argument of the given function.
 func Void[A, B any](f func(A) B) func(A) {
 	return func(a A) { f(a) }
 }
