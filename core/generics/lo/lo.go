@@ -215,3 +215,7 @@ func Return4[A any](_, _, _ any, a A, _ ...any) A {
 func Return5[A any](_, _, _, _ any, a A, _ ...any) A {
 	return a
 }
+
+func Void[A, B any](f func(A) B) func(A) {
+	return func(a A) { f(a) }
+}
