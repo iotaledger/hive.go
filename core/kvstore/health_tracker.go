@@ -155,6 +155,10 @@ func (s *StoreHealthTracker) UpdateStoreVersion() (bool, error) {
 		return true, err
 	}
 
+	if err := s.store.Set([]byte("dbVersion"), []byte{s.storeVersion}); err != nil {
+		return true, errors.New("failed to set store health version")
+	}
+
 	return true, nil
 }
 
