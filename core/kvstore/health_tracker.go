@@ -157,3 +157,11 @@ func (s *StoreHealthTracker) UpdateStoreVersion() (bool, error) {
 
 	return true, nil
 }
+
+func (s *StoreHealthTracker) Flush() error {
+	return s.store.Flush()
+}
+
+func (s *StoreHealthTracker) Close() error {
+	return s.store.Close()
+}
