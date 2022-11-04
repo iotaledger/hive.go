@@ -48,7 +48,11 @@ func (s *flushKVStore) IterateKeys(prefix kvstore.KeyPrefix, consumerFunc kvstor
 }
 
 func (s *flushKVStore) Clear() error {
-	return s.store.Clear()
+	if err := s.store.Clear(); err != nil {
+		return err
+	}
+
+	return s.store.Flush()
 }
 
 func (s *flushKVStore) Get(key kvstore.Key) (kvstore.Value, error) {
