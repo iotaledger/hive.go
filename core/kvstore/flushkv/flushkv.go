@@ -1,6 +1,7 @@
 package flushkv
 
 import (
+	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/kvstore"
 )
 
@@ -28,7 +29,7 @@ func (s *flushKVStore) WithRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
 }
 
 func (s *flushKVStore) WithExtendedRealm(realm kvstore.Realm) (kvstore.KVStore, error) {
-	return s.store.WithExtendedRealm(realm)
+	return s.WithRealm(byteutils.ConcatBytes(s.Realm(), realm))
 }
 
 func (s *flushKVStore) Realm() kvstore.Realm {
