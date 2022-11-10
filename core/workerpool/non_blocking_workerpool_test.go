@@ -113,3 +113,13 @@ func Test_WaitForUndispatchedTasksBelowThreshold(t *testing.T) {
 
 	wp.Stop()
 }
+
+func Test_NonBlockingEmptyNonStuck(t *testing.T) {
+	const workerCount = 2
+
+	wp := NewNonBlockingWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
+
+	wp.Start()
+
+	wp.StopAndWait()
+}
