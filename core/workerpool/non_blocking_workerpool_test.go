@@ -121,5 +121,7 @@ func Test_NonBlockingEmptyNonStuck(t *testing.T) {
 
 	wp.Start()
 
+	time.Sleep(50 * time.Millisecond)
+
 	wp.StopAndWait()
 }
