@@ -3,6 +3,7 @@ package workerpool
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
@@ -19,7 +20,7 @@ type NonBlockingWorkerPool struct {
 	shutdown  bool
 
 	pendingTasksCounter        uint64
-	pendingTasksMutex          sync.Mutex
+	pendingTasksMutex          sync.RWMutex
 	waitUntilAllTasksProcessed *sync.Cond
 	mutex                      syncutils.RWMutex
 	workers                    sync.WaitGroup
@@ -43,6 +44,8 @@ func NewNonBlockingWorkerPool(optionalOptions ...Option) (result *NonBlockingWor
 
 // Submit submits a handler function to the queue and blocks if the queue is full.
 func (b *NonBlockingWorkerPool) Submit(handler func()) {
+	b.lock.RLock()
+
 	b.IncreasePendingTasksCounter()
 
 	go b.SubmitTask(b.CreateTask(handler))
@@ -78,6 +81,7 @@ func (b *NonBlockingWorkerPool) SubmitTask(task *WorkerPoolTask) {
 		return
 	}
 	b.tasks <- task
+	b.lock.RUnlock()
 }
 
 // TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to
@@ -147,19 +151,16 @@ func (b *NonBlockingWorkerPool) GetWorkerCount() int {
 }
 
 // GetPendingQueueSize returns the amount of tasks pending to the processed.
-func (b *NonBlockingWorkerPool) GetPendingQueueSize() int {
-	return len(b.tasks)
+func (b *NonBlockingWorkerPool) GetPendingTasksCount() uint64 {
+	b.pendingTasksMutex.RLock()
+	defer b.pendingTasksMutex.RUnlock()
+
+	return b.pendingTasksCounter
 }
 
 // WaitUntilAllTasksProcessed waits until all tasks are processed.
 func (b *NonBlockingWorkerPool) WaitUntilAllTasksProcessed() {
-	b.pendingTasksMutex.Lock()
-	defer b.pendingTasksMutex.Unlock()
-	if b.pendingTasksCounter == 0 {
-		return
-	}
-
-	for b.pendingTasksCounter > 0 {
+	for b.GetPendingTasksCount() > 0 {
 		b.waitUntilAllTasksProcessed.Wait()
 	}
 }
@@ -170,14 +171,6 @@ func (b *NonBlockingWorkerPool) IsRunning() (isRunning bool) {
 	defer b.mutex.RUnlock()
 
 	return !b.shutdown
-}
-
-func (b *NonBlockingWorkerPool) alias() string {
-	if b.options.Alias != "" {
-		return b.options.Alias
-	}
-
-	return "NonBlockingWorkerPool"
 }
 
 func (b *NonBlockingWorkerPool) startWorkers() {
@@ -191,19 +184,23 @@ func (b *NonBlockingWorkerPool) startWorkers() {
 					aborted = true
 
 					if b.options.FlushTasksAtShutdown {
-					terminateLoop:
-						// process all waiting tasks after shutdown signal
-						for {
-							select {
-							case currentTask := <-b.tasks:
-								currentTask.run()
-							default:
-								break terminateLoop
-							}
+						for b.GetPendingTasksCount() > 0 {
+							(<-b.tasks).run()
 						}
 					}
 				case currentTask := <-b.tasks:
+					/// <<<<
 					currentTask.run()
+				}
+			}
+
+			for b.GetPendingTasksCount() > 0 {
+				select {
+				/// <<<<
+				case currentTask := <-b.tasks:
+					currentTask.markDone()
+				default:
+					time.Sleep(1 * time.Millisecond)
 				}
 			}
 

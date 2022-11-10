@@ -81,7 +81,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool.NewNonBlockingWorkerPool(workerpool.WorkerCount(1024), workerpool.FlushTasksAtShutdown(true))
+	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
 	wp.Start()
 
 	// result counters
@@ -918,7 +918,6 @@ func TestDeleteAndCreate(t *testing.T) {
 }
 
 func TestForEachWithPrefix(t *testing.T) {
-
 	storage, err := testStorage(t, []byte("TestForEachWithPrefix"))
 	require.NoError(t, err)
 
@@ -964,7 +963,6 @@ func TestForEachWithPrefix(t *testing.T) {
 }
 
 func TestForEachKeyOnlyWithPrefix(t *testing.T) {
-
 	storage, err := testStorage(t, []byte("TestForEachKeyOnlyWithPrefix"))
 	require.NoError(t, err)
 
@@ -1009,7 +1007,6 @@ func TestForEachKeyOnlyWithPrefix(t *testing.T) {
 }
 
 func TestForEachKeyOnlySkippingCacheWithPrefix(t *testing.T) {
-
 	storage, err := testStorage(t, []byte("TestPrefixIterationWithPrefixSkippingCache"))
 	require.NoError(t, err)
 
