@@ -84,10 +84,10 @@ func LogAccess(fileName string, commandsFilter ...debug.Command) Option {
 		// open log file
 		//nolint:nosnakecase // os package uses underlines in constants
 		logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		writer := bufio.NewWriter(logFile)
 		if err != nil {
 			panic(err)
 		}
+		writer := bufio.NewWriter(logFile)
 
 		// open logger channel
 		logChannel := make(chan logEntry, logChannelBufferSize)
