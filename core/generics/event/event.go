@@ -104,10 +104,7 @@ func (e *Event[T]) triggerEventHandlers(event T) {
 		// Deadlock could happen when all workers are processing tasks which submit a new task to the queue which is full.
 		// Increasing pending task counter allows to successfully wait for all the tasks to be processed.
 		Loop.IncreasePendingTasksCounter()
-		go func() {
-			defer Loop.DecreasePendingTasksCounter()
-			Loop.SubmitTask(Loop.CreateTask(func() { callback(event) }, closureStackTrace))
-		}()
+		go Loop.SubmitTask(Loop.CreateTask(func() { callback(event) }, closureStackTrace))
 
 		return true
 	})

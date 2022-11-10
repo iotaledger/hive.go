@@ -10,7 +10,7 @@ import (
 // region BlockingQueuedWorkerPool /////////////////////////////////////////////////////////////////////////////////////
 
 // BlockingQueuedWorkerPool represents a set of workers with a blocking queue of pending tasks.
-type BlockingQueuedWorkerPool struct {
+type NonBlockingWorkerPool struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	options   *Options
@@ -25,16 +25,16 @@ type BlockingQueuedWorkerPool struct {
 	workers                    sync.WaitGroup
 }
 
-// NewBlockingQueuedWorkerPool returns a new stopped WorkerPool.
-func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQueuedWorkerPool) {
+// NewNonBlockingWorkerPool returns a new stopped WorkerPool.
+func NewNonBlockingWorkerPool(optionalOptions ...Option) (result *NonBlockingWorkerPool) {
 	options := defaultOptions.Override(optionalOptions...)
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	result = &BlockingQueuedWorkerPool{
+	result = &NonBlockingWorkerPool{
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		options:   options,
-		tasks:     make(chan *WorkerPoolTask, options.QueueSize),
+		tasks:     make(chan *WorkerPoolTask),
 	}
 	result.waitUntilAllTasksProcessed = sync.NewCond(&result.pendingTasksMutex)
 
@@ -42,20 +42,25 @@ func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQue
 }
 
 // Submit submits a handler function to the queue and blocks if the queue is full.
-func (b *BlockingQueuedWorkerPool) Submit(handler func()) {
-	b.SubmitTask(b.CreateTask(handler))
+func (b *NonBlockingWorkerPool) Submit(handler func()) {
+	b.IncreasePendingTasksCounter()
+
+	go b.SubmitTask(b.CreateTask(handler))
 }
 
 // TrySubmit tries to queue the execution of the handler function and ignores the handler if there is no capacity for it
 // to be added.
-func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
-	return b.TrySubmitTask(b.CreateTask(f))
+func (b *NonBlockingWorkerPool) TrySubmit(f func()) (added bool) {
+	b.IncreasePendingTasksCounter()
+	if added = b.TrySubmitTask(b.CreateTask(f)); !added {
+		b.DecreasePendingTasksCounter()
+	}
+
+	return
 }
 
 // CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
-func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *WorkerPoolTask {
-	b.IncreasePendingTasksCounter()
-
+func (b *NonBlockingWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *WorkerPoolTask {
 	var stackTrace string
 	if len(optionalStackTrace) > 1 {
 		stackTrace = optionalStackTrace[0]
@@ -66,7 +71,7 @@ func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...st
 
 // SubmitTask submits a task to the queue and blocks if the queue is full (it should only be used instead of Submit if
 // manually handling the task is necessary to create better debug outputs).
-func (b *BlockingQueuedWorkerPool) SubmitTask(task *WorkerPoolTask) {
+func (b *NonBlockingWorkerPool) SubmitTask(task *WorkerPoolTask) {
 	if !b.IsRunning() {
 		task.markDone()
 
@@ -78,7 +83,7 @@ func (b *BlockingQueuedWorkerPool) SubmitTask(task *WorkerPoolTask) {
 // TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to
 // be added (it should only be used instead of TrySubmit if manually handling the task is necessary to create better
 // debug outputs).
-func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *WorkerPoolTask) (added bool) {
+func (b *NonBlockingWorkerPool) TrySubmitTask(task *WorkerPoolTask) (added bool) {
 	if !b.IsRunning() {
 		task.markDone()
 
@@ -96,7 +101,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *WorkerPoolTask) (added bo
 }
 
 // Start starts the WorkerPool (non-blocking).
-func (b *BlockingQueuedWorkerPool) Start() {
+func (b *NonBlockingWorkerPool) Start() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
@@ -111,14 +116,14 @@ func (b *BlockingQueuedWorkerPool) Start() {
 }
 
 // Run starts the WorkerPool and waits for its shutdown.
-func (b *BlockingQueuedWorkerPool) Run() {
+func (b *NonBlockingWorkerPool) Run() {
 	b.Start()
 
 	b.workers.Wait()
 }
 
 // Stop stops the WorkerPool.
-func (b *BlockingQueuedWorkerPool) Stop() {
+func (b *NonBlockingWorkerPool) Stop() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
@@ -131,23 +136,23 @@ func (b *BlockingQueuedWorkerPool) Stop() {
 }
 
 // StopAndWait stops the WorkerPool and waits for its shutdown.
-func (b *BlockingQueuedWorkerPool) StopAndWait() {
+func (b *NonBlockingWorkerPool) StopAndWait() {
 	b.Stop()
 	b.workers.Wait()
 }
 
 // GetWorkerCount returns the worker count for the WorkerPool.
-func (b *BlockingQueuedWorkerPool) GetWorkerCount() int {
+func (b *NonBlockingWorkerPool) GetWorkerCount() int {
 	return b.options.WorkerCount
 }
 
 // GetPendingQueueSize returns the amount of tasks pending to the processed.
-func (b *BlockingQueuedWorkerPool) GetPendingQueueSize() int {
+func (b *NonBlockingWorkerPool) GetPendingQueueSize() int {
 	return len(b.tasks)
 }
 
 // WaitUntilAllTasksProcessed waits until all tasks are processed.
-func (b *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
+func (b *NonBlockingWorkerPool) WaitUntilAllTasksProcessed() {
 	b.pendingTasksMutex.Lock()
 	defer b.pendingTasksMutex.Unlock()
 	if b.pendingTasksCounter == 0 {
@@ -160,22 +165,22 @@ func (b *BlockingQueuedWorkerPool) WaitUntilAllTasksProcessed() {
 }
 
 // IsRunning returns true if the WorkerPool is running.
-func (b *BlockingQueuedWorkerPool) IsRunning() (isRunning bool) {
+func (b *NonBlockingWorkerPool) IsRunning() (isRunning bool) {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
 	return !b.shutdown
 }
 
-func (b *BlockingQueuedWorkerPool) alias() string {
+func (b *NonBlockingWorkerPool) alias() string {
 	if b.options.Alias != "" {
 		return b.options.Alias
 	}
 
-	return "BlockingQueuedWorkerPool"
+	return "NonBlockingWorkerPool"
 }
 
-func (b *BlockingQueuedWorkerPool) startWorkers() {
+func (b *NonBlockingWorkerPool) startWorkers() {
 	for i := 0; i < b.options.WorkerCount; i++ {
 		b.workers.Add(1)
 
@@ -208,7 +213,7 @@ func (b *BlockingQueuedWorkerPool) startWorkers() {
 }
 
 // IncreasePendingTasksCounter increases the pending task counter.
-func (b *BlockingQueuedWorkerPool) IncreasePendingTasksCounter() {
+func (b *NonBlockingWorkerPool) IncreasePendingTasksCounter() {
 	b.pendingTasksMutex.Lock()
 	defer b.pendingTasksMutex.Unlock()
 
@@ -216,7 +221,7 @@ func (b *BlockingQueuedWorkerPool) IncreasePendingTasksCounter() {
 }
 
 // DecreasePendingTasksCounter decreases the pending task counter.
-func (b *BlockingQueuedWorkerPool) DecreasePendingTasksCounter() {
+func (b *NonBlockingWorkerPool) DecreasePendingTasksCounter() {
 	b.pendingTasksMutex.Lock()
 
 	b.pendingTasksCounter--

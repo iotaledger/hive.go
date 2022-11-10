@@ -81,7 +81,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
+	wp := workerpool.NewNonBlockingWorkerPool(workerpool.WorkerCount(1024), workerpool.FlushTasksAtShutdown(true))
 	wp.Start()
 
 	// result counters
