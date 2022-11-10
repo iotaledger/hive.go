@@ -3,7 +3,6 @@ package workerpool
 import (
 	"container/list"
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/syncutils"
@@ -121,6 +120,7 @@ func (b *NonBlockingWorkerPool) Stop() {
 		b.running = false
 
 		b.ctxCancel()
+		b.undispatchedTaskAdded.Signal()
 	}
 }
 
@@ -176,7 +176,6 @@ func (b *NonBlockingWorkerPool) appendPendingTask(task *WorkerPoolTask) {
 }
 
 func (b *NonBlockingWorkerPool) dispatchTasksLoop() {
-	fmt.Println(">>starting dispatcher")
 	for b.IsRunning() || (b.options.FlushTasksAtShutdown && b.UndispatchedTaskCount() > 0) {
 		b.dispatchTask()
 	}
@@ -189,6 +188,9 @@ func (b *NonBlockingWorkerPool) dispatchTask() {
 	defer b.undispatchedTasksMutex.Unlock()
 
 	for b.undispatchedTasks.Len() == 0 {
+		if !b.IsRunning() {
+			return
+		}
 		b.undispatchedTaskAdded.Wait()
 	}
 
