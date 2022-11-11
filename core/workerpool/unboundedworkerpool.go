@@ -117,20 +117,18 @@ func (u *UnboundedWorkerPool) startWorkers() {
 func (u *UnboundedWorkerPool) worker() {
 	defer u.ShutdownComplete.Done()
 
-	u.handleShutdown(u.readLoop())
+	u.handleShutdown(u.workerReadLoop())
 }
 
-func (u *UnboundedWorkerPool) readLoop() (shutdownSignal bool) {
+func (u *UnboundedWorkerPool) workerReadLoop() (shutdownSignal bool) {
 	for {
 		select {
 		case shutdownSignal = <-u.shutdownSignal:
 			return
-
 		default:
 			select {
 			case shutdownSignal = <-u.shutdownSignal:
 				return
-
 			case element, success := <-u.dispatcherChan:
 				if !success {
 					return
