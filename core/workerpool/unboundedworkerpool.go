@@ -13,7 +13,7 @@ type UnboundedWorkerPool struct {
 
 	isRunning      bool
 	dispatcherChan chan *WorkerPoolTask
-	shutdownSignal chan struct{}
+	shutdownSignal chan bool
 	mutex          syncutils.RWMutex
 	options        *Options
 }
@@ -34,7 +34,7 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 		u.ShutdownComplete.Wait()
 
 		u.isRunning = true
-		u.shutdownSignal = make(chan struct{})
+		u.shutdownSignal = make(chan bool, u.options.WorkerCount)
 
 		u.startDispatcher()
 		u.startWorkers()
@@ -43,14 +43,17 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 	return u
 }
 
-func (u *UnboundedWorkerPool) Shutdown() (self *UnboundedWorkerPool) {
+func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *UnboundedWorkerPool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
 	if u.isRunning {
 		u.isRunning = false
 
-		close(u.shutdownSignal)
+		for i := 0; i < u.options.WorkerCount; i++ {
+			u.shutdownSignal <- len(cancelPendingTasks) >= 1 && cancelPendingTasks[0]
+		}
+
 		u.Queue.SignalShutdown()
 	}
 
@@ -112,12 +115,12 @@ func (u *UnboundedWorkerPool) worker() {
 
 readNextElement:
 	select {
-	case <-u.shutdownSignal:
-		u.flushPendingElementsOnShutdown()
+	case cancelPendingTasks := <-u.shutdownSignal:
+		u.handleShutdown(cancelPendingTasks)
 	default:
 		select {
-		case <-u.shutdownSignal:
-			u.flushPendingElementsOnShutdown()
+		case cancelPendingTasks := <-u.shutdownSignal:
+			u.handleShutdown(cancelPendingTasks)
 		case element, success := <-u.dispatcherChan:
 			if success {
 				element.run()
@@ -127,10 +130,14 @@ readNextElement:
 	}
 }
 
-func (u *UnboundedWorkerPool) flushPendingElementsOnShutdown() {
-	if u.options.FlushTasksAtShutdown {
-		for task, success := <-u.dispatcherChan; success; task, success = <-u.dispatcherChan {
-			task.run()
-		}
+func (u *UnboundedWorkerPool) handleShutdown(cancelPendingTasks bool) {
+	if cancelPendingTasks {
+		// todo implement (going to bed)
+		u.Queue.Clear()
+		return
+	}
+
+	for task, success := <-u.dispatcherChan; success; task, success = <-u.dispatcherChan {
+		task.run()
 	}
 }
