@@ -11,7 +11,7 @@ import (
 func Test_NonBlockingNoFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(workerCount)
 
 	wp.Start()
 
@@ -41,7 +41,7 @@ func Test_NonBlockingNoFlush(t *testing.T) {
 		return atomicCounter.Load() >= 2
 	}, 1*time.Second, 1*time.Millisecond)
 
-	wp.Shutdown()
+	wp.Shutdown(true)
 
 	assert.LessOrEqual(t, atomicCounter.Load(), int64(12))
 }
@@ -49,7 +49,7 @@ func Test_NonBlockingNoFlush(t *testing.T) {
 func Test_NonBlockingFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(workerCount)
 
 	wp.Start()
 
@@ -82,7 +82,7 @@ func Test_NonBlockingFlush(t *testing.T) {
 func Test_QueueWaitSizeIsBelow(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(workerCount)
 
 	wp.Start()
 
@@ -111,13 +111,13 @@ func Test_QueueWaitSizeIsBelow(t *testing.T) {
 
 	assert.LessOrEqual(t, wp.Queue.Size(), 4)
 
-	wp.Shutdown()
+	wp.Shutdown(true)
 }
 
 func Test_EmptyPoolStartupAndShutdown(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(workerCount)
 
 	wp.Start()
 

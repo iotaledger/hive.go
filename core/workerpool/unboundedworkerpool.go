@@ -11,18 +11,19 @@ type UnboundedWorkerPool struct {
 	Queue               *syncutils.Stack[*WorkerPoolTask]
 	ShutdownComplete    sync.WaitGroup
 
+	workerCount    int
 	isRunning      bool
 	dispatcherChan chan *WorkerPoolTask
 	shutdownSignal chan bool
 	mutex          syncutils.RWMutex
-	options        *Options
 }
 
-func NewUnboundedWorkerPool(optionalOptions ...Option) (newUnboundedWorkerPool *UnboundedWorkerPool) {
+func NewUnboundedWorkerPool(workerCount int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
 	return &UnboundedWorkerPool{
 		PendingTasksCounter: syncutils.NewCounter(),
 		Queue:               syncutils.NewStack[*WorkerPoolTask](),
-		options:             defaultOptions.Override(optionalOptions...),
+		workerCount:         workerCount,
+		shutdownSignal:      make(chan bool, workerCount),
 	}
 }
 
@@ -34,7 +35,6 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 		u.ShutdownComplete.Wait()
 
 		u.isRunning = true
-		u.shutdownSignal = make(chan bool, u.options.WorkerCount)
 
 		u.startDispatcher()
 		u.startWorkers()
@@ -50,7 +50,7 @@ func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *Unboun
 	if u.isRunning {
 		u.isRunning = false
 
-		for i := 0; i < u.options.WorkerCount; i++ {
+		for i := 0; i < u.workerCount; i++ {
 			u.shutdownSignal <- len(cancelPendingTasks) >= 1 && cancelPendingTasks[0]
 		}
 
@@ -80,17 +80,17 @@ func (u *UnboundedWorkerPool) IsRunning() (isRunning bool) {
 }
 
 func (u *UnboundedWorkerPool) WorkerCount() (workerCount int) {
-	return u.options.WorkerCount
+	return u.workerCount
 }
 
 func (u *UnboundedWorkerPool) startDispatcher() {
-	u.dispatcherChan = make(chan *WorkerPoolTask, u.options.WorkerCount)
+	u.dispatcherChan = make(chan *WorkerPoolTask, u.workerCount)
 
 	go u.dispatcher()
 }
 
 func (u *UnboundedWorkerPool) dispatcher() {
-	for u.IsRunning() || (u.options.FlushTasksAtShutdown && u.Queue.Size() > 0) {
+	for u.IsRunning() || u.Queue.Size() > 0 {
 		if task, success := u.Queue.PopOrWait(u.IsRunning); success {
 			u.dispatcherChan <- task
 		}
@@ -103,7 +103,7 @@ func (u *UnboundedWorkerPool) dispatcher() {
 
 func (u *UnboundedWorkerPool) startWorkers() {
 	u.ShutdownComplete = sync.WaitGroup{}
-	for i := 0; i < u.options.WorkerCount; i++ {
+	for i := 0; i < u.workerCount; i++ {
 		u.ShutdownComplete.Add(1)
 
 		go u.worker()
@@ -131,13 +131,11 @@ readNextElement:
 }
 
 func (u *UnboundedWorkerPool) handleShutdown(cancelPendingTasks bool) {
-	if cancelPendingTasks {
-		// todo implement (going to bed)
-		u.Queue.Clear()
-		return
-	}
-
 	for task, success := <-u.dispatcherChan; success; task, success = <-u.dispatcherChan {
-		task.run()
+		if cancelPendingTasks {
+			task.markDone()
+		} else {
+			task.run()
+		}
 	}
 }
