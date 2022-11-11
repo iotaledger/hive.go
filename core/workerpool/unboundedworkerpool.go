@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/syncutils"
@@ -18,12 +19,16 @@ type UnboundedWorkerPool struct {
 	mutex          syncutils.RWMutex
 }
 
-func NewUnboundedWorkerPool(workerCount int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
+func NewUnboundedWorkerPool(optsWorkerCount ...int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
+	if len(optsWorkerCount) == 0 {
+		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
+	}
+
 	return &UnboundedWorkerPool{
 		PendingTasksCounter: syncutils.NewCounter(),
 		Queue:               syncutils.NewStack[*WorkerPoolTask](),
-		workerCount:         workerCount,
-		shutdownSignal:      make(chan bool, workerCount),
+		workerCount:         optsWorkerCount[0],
+		shutdownSignal:      make(chan bool, optsWorkerCount[0]),
 	}
 }
 
@@ -43,6 +48,18 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 	return u
 }
 
+func (u *UnboundedWorkerPool) Submit(task func(), optStackTrace ...string) {
+	if !u.IsRunning() {
+		panic("worker pool is not running")
+	}
+
+	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {
+		u.Queue.Push(newWorkerPoolTask(u.PendingTasksCounter.Decrease, task, optStackTrace[0]))
+	} else {
+		u.Queue.Push(newWorkerPoolTask(u.PendingTasksCounter.Decrease, task, ""))
+	}
+}
+
 func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *UnboundedWorkerPool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
@@ -58,18 +75,6 @@ func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *Unboun
 	}
 
 	return u
-}
-
-func (u *UnboundedWorkerPool) Submit(task func(), optStackTrace ...string) {
-	if !u.IsRunning() {
-		panic("worker pool is not running")
-	}
-
-	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {
-		u.Queue.Push(newWorkerPoolTask(u.PendingTasksCounter.Decrease, task, optStackTrace[0]))
-	} else {
-		u.Queue.Push(newWorkerPoolTask(u.PendingTasksCounter.Decrease, task, ""))
-	}
 }
 
 func (u *UnboundedWorkerPool) IsRunning() (isRunning bool) {
@@ -102,7 +107,6 @@ func (u *UnboundedWorkerPool) dispatcher() {
 }
 
 func (u *UnboundedWorkerPool) startWorkers() {
-	u.ShutdownComplete = sync.WaitGroup{}
 	for i := 0; i < u.workerCount; i++ {
 		u.ShutdownComplete.Add(1)
 
@@ -113,18 +117,26 @@ func (u *UnboundedWorkerPool) startWorkers() {
 func (u *UnboundedWorkerPool) worker() {
 	defer u.ShutdownComplete.Done()
 
-readNextElement:
-	select {
-	case cancelPendingTasks := <-u.shutdownSignal:
-		u.handleShutdown(cancelPendingTasks)
-	default:
+	u.handleShutdown(u.readLoop())
+}
+
+func (u *UnboundedWorkerPool) readLoop() (shutdownSignal bool) {
+	for {
 		select {
-		case cancelPendingTasks := <-u.shutdownSignal:
-			u.handleShutdown(cancelPendingTasks)
-		case element, success := <-u.dispatcherChan:
-			if success {
+		case shutdownSignal = <-u.shutdownSignal:
+			return
+
+		default:
+			select {
+			case shutdownSignal = <-u.shutdownSignal:
+				return
+
+			case element, success := <-u.dispatcherChan:
+				if !success {
+					return
+				}
+
 				element.run()
-				goto readNextElement
 			}
 		}
 	}

@@ -9,6 +9,6 @@ const loopQueueSize = 100000
 var Loop *workerpool.UnboundedWorkerPool
 
 func init() {
-	Loop = workerpool.NewUnboundedWorkerPool(workerpool.FlushTasksAtShutdown(true))
+	Loop = workerpool.NewUnboundedWorkerPool()
 	Loop.Start()
 }
