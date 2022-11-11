@@ -47,14 +47,12 @@ func (u *UnboundedWorkerPool) Shutdown() (self *UnboundedWorkerPool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
-	if !u.isRunning {
-		return u
+	if u.isRunning {
+		u.isRunning = false
+
+		close(u.shutdownSignal)
+		u.Queue.SignalShutdown()
 	}
-
-	u.isRunning = false
-
-	close(u.shutdownSignal)
-	u.Queue.SignalShutdown()
 
 	return u
 }
@@ -84,6 +82,7 @@ func (u *UnboundedWorkerPool) WorkerCount() (workerCount int) {
 
 func (u *UnboundedWorkerPool) startDispatcher() {
 	u.dispatcherChan = make(chan *WorkerPoolTask, u.options.WorkerCount)
+
 	go u.dispatcher()
 }
 
