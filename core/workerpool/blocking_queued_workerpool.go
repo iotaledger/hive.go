@@ -2,14 +2,9 @@ package workerpool
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/iotaledger/hive.go/core/debug"
 	"github.com/iotaledger/hive.go/core/syncutils"
-	"github.com/iotaledger/hive.go/core/types"
 )
 
 // region BlockingQueuedWorkerPool /////////////////////////////////////////////////////////////////////////////////////
@@ -19,7 +14,7 @@ type BlockingQueuedWorkerPool struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	options   *Options
-	tasks     chan *BlockingQueueWorkerPoolTask
+	tasks     chan *WorkerPoolTask
 	running   bool
 	shutdown  bool
 
@@ -39,7 +34,7 @@ func NewBlockingQueuedWorkerPool(optionalOptions ...Option) (result *BlockingQue
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		options:   options,
-		tasks:     make(chan *BlockingQueueWorkerPoolTask, options.QueueSize),
+		tasks:     make(chan *WorkerPoolTask, options.QueueSize),
 	}
 	result.waitUntilAllTasksProcessed = sync.NewCond(&result.pendingTasksMutex)
 
@@ -58,7 +53,7 @@ func (b *BlockingQueuedWorkerPool) TrySubmit(f func()) (added bool) {
 }
 
 // CreateTask creates a new BlockingQueueWorkerPoolTask with the given handler and optional ClosureStackTrace.
-func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *BlockingQueueWorkerPoolTask {
+func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...string) *WorkerPoolTask {
 	b.IncreasePendingTasksCounter()
 
 	var stackTrace string
@@ -66,12 +61,12 @@ func (b *BlockingQueuedWorkerPool) CreateTask(f func(), optionalStackTrace ...st
 		stackTrace = optionalStackTrace[0]
 	}
 
-	return newBlockingQueueWorkerPoolTask(b, f, stackTrace)
+	return newWorkerPoolTask(b.DecreasePendingTasksCounter, f, stackTrace)
 }
 
 // SubmitTask submits a task to the queue and blocks if the queue is full (it should only be used instead of Submit if
 // manually handling the task is necessary to create better debug outputs).
-func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask) {
+func (b *BlockingQueuedWorkerPool) SubmitTask(task *WorkerPoolTask) {
 	if !b.IsRunning() {
 		task.markDone()
 
@@ -83,7 +78,7 @@ func (b *BlockingQueuedWorkerPool) SubmitTask(task *BlockingQueueWorkerPoolTask)
 // TrySubmitTask tries to queue the execution of the task and ignores the task if there is no capacity for it to
 // be added (it should only be used instead of TrySubmit if manually handling the task is necessary to create better
 // debug outputs).
-func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *BlockingQueueWorkerPoolTask) (added bool) {
+func (b *BlockingQueuedWorkerPool) TrySubmitTask(task *WorkerPoolTask) (added bool) {
 	if !b.IsRunning() {
 		task.markDone()
 
@@ -232,59 +227,6 @@ func (b *BlockingQueuedWorkerPool) DecreasePendingTasksCounter() {
 	}
 	b.pendingTasksMutex.Unlock()
 	b.waitUntilAllTasksProcessed.Broadcast()
-}
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region BlockingQueueWorkerPoolTask /////////////////////////////////////////////////////////////////////////////////
-
-// BlockingQueueWorkerPoolTask is a task that is executed by a BlockingQueuedWorkerPool.
-type BlockingQueueWorkerPoolTask struct {
-	workerPool *BlockingQueuedWorkerPool
-	workerFunc func()
-	doneChan   chan types.Empty
-	stackTrace string
-}
-
-// newBlockingQueueWorkerPoolTask creates a new BlockingQueueWorkerPoolTask.
-func newBlockingQueueWorkerPoolTask(workerPool *BlockingQueuedWorkerPool, workerFunc func(), stackTrace string) *BlockingQueueWorkerPoolTask {
-	if debug.GetEnabled() && stackTrace == "" {
-		stackTrace = debug.ClosureStackTrace(workerFunc)
-	}
-
-	return &BlockingQueueWorkerPoolTask{
-		workerPool: workerPool,
-		workerFunc: workerFunc,
-		doneChan:   make(chan types.Empty),
-		stackTrace: stackTrace,
-	}
-}
-
-// run executes the task.
-func (t *BlockingQueueWorkerPoolTask) run() {
-	if debug.GetEnabled() {
-		go t.detectedHangingTasks()
-	}
-
-	t.workerFunc()
-	t.markDone()
-}
-
-// markDone marks the task as done.
-func (t *BlockingQueueWorkerPoolTask) markDone() {
-	close(t.doneChan)
-	t.workerPool.DecreasePendingTasksCounter()
-}
-
-// detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
-func (t *BlockingQueueWorkerPoolTask) detectedHangingTasks() {
-	select {
-	case <-t.doneChan:
-		return
-	case <-time.After(debug.DeadlockDetectionTimeout):
-		fmt.Println("task in " + t.workerPool.alias() + " seems to hang (" + debug.DeadlockDetectionTimeout.String() + ") ...")
-		fmt.Println("\n" + strings.Replace(strings.Replace(t.stackTrace, "closure:", "task:", 1), "called by", "queued by", 1))
-	}
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
