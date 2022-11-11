@@ -11,7 +11,7 @@ import (
 func Test_NonBlockingNoFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewNonBlockingWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
 
 	wp.Start()
 
@@ -41,7 +41,7 @@ func Test_NonBlockingNoFlush(t *testing.T) {
 		return atomicCounter.Load() >= 2
 	}, 1*time.Second, 1*time.Millisecond)
 
-	wp.StopAndWait()
+	wp.Shutdown()
 
 	assert.LessOrEqual(t, atomicCounter.Load(), int64(12))
 }
@@ -49,7 +49,7 @@ func Test_NonBlockingNoFlush(t *testing.T) {
 func Test_NonBlockingFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewNonBlockingWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
 
 	wp.Start()
 
@@ -72,17 +72,17 @@ func Test_NonBlockingFlush(t *testing.T) {
 
 	assert.Eventually(t, func() bool {
 		return atomicCounter.Load() >= 2
-	}, 1*time.Second, 1*time.Millisecond)
+	}, 10*time.Second, 1*time.Millisecond)
 
-	wp.StopAndWait()
+	wp.Shutdown().ShutdownComplete.Wait()
 
 	assert.EqualValues(t, atomicCounter.Load(), 8)
 }
 
-func Test_WaitForUndispatchedTasksBelowThreshold(t *testing.T) {
+func Test_QueueWaitSizeIsBelow(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewNonBlockingWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(false), WorkerCount(workerCount))
 
 	wp.Start()
 
@@ -107,21 +107,21 @@ func Test_WaitForUndispatchedTasksBelowThreshold(t *testing.T) {
 	wp.Submit(slowFunc)
 	wp.Submit(slowFunc)
 
-	wp.WaitForUndispatchedTasksBelowThreshold(4)
+	wp.Queue.WaitSizeIsBelow(4)
 
-	assert.LessOrEqual(t, wp.UndispatchedTaskCount(), 4)
+	assert.LessOrEqual(t, wp.Queue.Size(), 4)
 
-	wp.Stop()
+	wp.Shutdown()
 }
 
-func Test_NonBlockingEmptyNonStuck(t *testing.T) {
+func Test_EmptyPoolStartupAndShutdown(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewNonBlockingWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
+	wp := NewUnboundedWorkerPool(FlushTasksAtShutdown(true), WorkerCount(workerCount))
 
 	wp.Start()
 
 	time.Sleep(50 * time.Millisecond)
 
-	wp.StopAndWait()
+	wp.Shutdown()
 }
