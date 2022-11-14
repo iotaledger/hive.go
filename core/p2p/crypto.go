@@ -36,7 +36,7 @@ func ParseLibp2pEd25519PrivateKeyFromString(identityPrivKey string) (libp2pcrypt
 }
 
 func Ed25519PrivateKeyToLibp2pPrivateKey(privKey ed25519.PrivateKey) (libp2pcrypto.PrivKey, error) {
-	libp2pPrivKey, _, err := libp2pcrypto.KeyPairFromStdKey(privKey)
+	libp2pPrivKey, _, err := libp2pcrypto.KeyPairFromStdKey(&privKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal private key: %w", err)
 	}
