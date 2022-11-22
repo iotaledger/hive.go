@@ -3,55 +3,60 @@ package bytesfilter
 import (
 	"sync"
 
+	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 	"github.com/iotaledger/hive.go/core/types"
 )
 
 type BytesFilter struct {
-	byteArrays [][]byte
-	bytesByKey map[string]types.Empty
-	size       int
-	mutex      sync.RWMutex
+	bytesByIdentifier *shrinkingmap.ShrinkingMap[types.Identifier, types.Empty]
+	identifiers       []types.Identifier
+	size              int
+	mutex             sync.RWMutex
 }
 
 func New(size int) *BytesFilter {
 	return &BytesFilter{
-		byteArrays: make([][]byte, 0, size),
-		bytesByKey: make(map[string]types.Empty, size),
-		size:       size,
+		bytesByIdentifier: shrinkingmap.New[types.Identifier, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
+		identifiers:       make([]types.Identifier, 0, size),
+		size:              size,
 	}
 }
 
-func (bytesFilter *BytesFilter) Add(bytes []byte) bool {
-	key := string(bytes)
+func (b *BytesFilter) Add(bytes []byte) (identifier types.Identifier, added bool) {
+	identifier = types.NewIdentifier(bytes)
 
-	bytesFilter.mutex.Lock()
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 
-	if _, exists := bytesFilter.bytesByKey[key]; !exists {
-		if len(bytesFilter.byteArrays) == bytesFilter.size {
-			delete(bytesFilter.bytesByKey, string(bytesFilter.byteArrays[0]))
+	if _, exists := b.bytesByIdentifier.Get(identifier); !exists {
 
-			bytesFilter.byteArrays[0] = nil
-			bytesFilter.byteArrays = append(bytesFilter.byteArrays[1:], bytes)
+		if len(b.identifiers) == b.size {
+			b.bytesByIdentifier.Delete(b.identifiers[0])
+			b.identifiers = append(b.identifiers[1:], identifier)
 		} else {
-			bytesFilter.byteArrays = append(bytesFilter.byteArrays, bytes)
+			b.identifiers = append(b.identifiers, identifier)
 		}
 
-		bytesFilter.bytesByKey[key] = types.Void
+		b.bytesByIdentifier.Set(identifier, types.Void)
 
-		bytesFilter.mutex.Unlock()
-
-		return true
+		return identifier, true
 	}
 
-	bytesFilter.mutex.Unlock()
-
-	return false
+	return identifier, false
 }
 
-func (bytesFilter *BytesFilter) Contains(byteArray []byte) (exists bool) {
-	bytesFilter.mutex.RLock()
-	_, exists = bytesFilter.bytesByKey[string(byteArray)]
-	bytesFilter.mutex.RUnlock()
+func (b *BytesFilter) Contains(bytes []byte) (exists bool) {
+	b.mutex.RLock()
+	_, exists = b.bytesByIdentifier.Get(types.NewIdentifier(bytes))
+	b.mutex.RUnlock()
+
+	return
+}
+
+func (b *BytesFilter) ContainsIdentifier(identifier types.Identifier) (exists bool) {
+	b.mutex.RLock()
+	_, exists = b.bytesByIdentifier.Get(identifier)
+	b.mutex.RUnlock()
 
 	return
 }
