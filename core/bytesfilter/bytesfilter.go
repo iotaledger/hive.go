@@ -8,17 +8,17 @@ import (
 )
 
 type BytesFilter struct {
-	bytesByIdentifier *shrinkingmap.ShrinkingMap[types.Identifier, types.Empty]
-	identifiers       []types.Identifier
-	size              int
-	mutex             sync.RWMutex
+	knownIdentifiers *shrinkingmap.ShrinkingMap[types.Identifier, types.Empty]
+	identifiers      []types.Identifier
+	size             int
+	mutex            sync.RWMutex
 }
 
 func New(size int) *BytesFilter {
 	return &BytesFilter{
-		bytesByIdentifier: shrinkingmap.New[types.Identifier, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
-		identifiers:       make([]types.Identifier, 0, size),
-		size:              size,
+		knownIdentifiers: shrinkingmap.New[types.Identifier, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
+		identifiers:      make([]types.Identifier, 0, size),
+		size:             size,
 	}
 }
 
@@ -28,16 +28,16 @@ func (b *BytesFilter) Add(bytes []byte) (identifier types.Identifier, added bool
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if _, exists := b.bytesByIdentifier.Get(identifier); !exists {
+	if _, exists := b.knownIdentifiers.Get(identifier); !exists {
 
 		if len(b.identifiers) == b.size {
-			b.bytesByIdentifier.Delete(b.identifiers[0])
+			b.knownIdentifiers.Delete(b.identifiers[0])
 			b.identifiers = append(b.identifiers[1:], identifier)
 		} else {
 			b.identifiers = append(b.identifiers, identifier)
 		}
 
-		b.bytesByIdentifier.Set(identifier, types.Void)
+		b.knownIdentifiers.Set(identifier, types.Void)
 
 		return identifier, true
 	}
@@ -47,7 +47,7 @@ func (b *BytesFilter) Add(bytes []byte) (identifier types.Identifier, added bool
 
 func (b *BytesFilter) Contains(bytes []byte) (exists bool) {
 	b.mutex.RLock()
-	_, exists = b.bytesByIdentifier.Get(types.NewIdentifier(bytes))
+	_, exists = b.knownIdentifiers.Get(types.NewIdentifier(bytes))
 	b.mutex.RUnlock()
 
 	return
@@ -55,7 +55,7 @@ func (b *BytesFilter) Contains(bytes []byte) (exists bool) {
 
 func (b *BytesFilter) ContainsIdentifier(identifier types.Identifier) (exists bool) {
 	b.mutex.RLock()
-	_, exists = b.bytesByIdentifier.Get(identifier)
+	_, exists = b.knownIdentifiers.Get(identifier)
 	b.mutex.RUnlock()
 
 	return
