@@ -23,6 +23,8 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelTy
 	idMutex *sync.RWMutex
 	M       InnerModelType
 
+	bytes []byte
+
 	*sync.RWMutex
 	*objectstorage.StorableObjectFlags
 }
@@ -111,6 +113,9 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	s.Init()
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
+	// Store the bytes we decoded to avoid any future Encode calls.
+	s.bytes = bytes[:consumedBytes]
+
 	return consumedBytes, nil
 }
 
@@ -119,10 +124,23 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	s.RLock()
 	defer s.RUnlock()
 
+	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
+	if len(s.bytes) > 0 {
+		return s.bytes, nil
+	}
+
 	outerInstance := new(OuterModelType)
 	(OuterModelPtrType)(outerInstance).New(&s.M)
 
-	return serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
+	encodedBytes, err := serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
+	if err != nil {
+		return nil, err
+	}
+
+	// Store the encoded bytes to avoid future calls to Encode.
+	s.bytes = encodedBytes
+
+	return encodedBytes, err
 }
 
 // FromObjectStorage deserializes a model from the object storage.
