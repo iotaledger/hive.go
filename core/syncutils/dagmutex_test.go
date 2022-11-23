@@ -161,6 +161,6 @@ func TestDAGMutexParallel(t *testing.T) {
 	}
 
 	// All entities' locks should be empty
-	assert.Empty(t, mutex.consumerCounter)
-	assert.Empty(t, mutex.mutexes)
+	assert.True(t, mutex.consumerCounter.IsEmpty())
+	assert.True(t, mutex.mutexes.IsEmpty())
 }

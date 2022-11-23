@@ -97,3 +97,28 @@ func TestShrinkingMap_Both(t *testing.T) {
 	shrink.Shrink()
 	assert.Equal(t, 0, shrink.deletedKeys)
 }
+
+func TestShrinkingMap_Empty(t *testing.T) {
+
+	// check count condition reached after ratio
+	shrink := New[int, int](
+		WithShrinkingThresholdRatio(2.0),
+		WithShrinkingThresholdCount(70),
+	)
+
+	assert.True(t, shrink.IsEmpty())
+
+	for i := 0; i < 100; i++ {
+		shrink.Set(i, i)
+	}
+	assert.Equal(t, 100, shrink.Size())
+	assert.False(t, shrink.IsEmpty())
+
+	for i := 0; i < 100; i++ {
+		shrink.Delete(i)
+	}
+
+	assert.Equal(t, 0, shrink.Size())
+	assert.True(t, shrink.IsEmpty())
+	assert.True(t, shrink.deletedKeys > 0)
+}
