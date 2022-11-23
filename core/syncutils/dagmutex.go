@@ -3,6 +3,8 @@ package syncutils
 import (
 	"fmt"
 	"sync"
+
+	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 )
 
 // DAGMutex is a multi-entity reader/writer mutual exclusion lock that allows for starvation.
@@ -31,16 +33,16 @@ import (
 //	        -          Unlock(B)   	        wait <- (internally) now RLock(A) is successful, but still waiting for B
 //	        -                  -   	 RLock(A, B) <- successful acquired, holding the locks now
 type DAGMutex[T comparable] struct {
-	consumerCounter map[T]int
-	mutexes         map[T]*StarvingMutex
+	consumerCounter *shrinkingmap.ShrinkingMap[T, int]
+	mutexes         *shrinkingmap.ShrinkingMap[T, *StarvingMutex]
 	sync.Mutex
 }
 
 // NewDAGMutex creates a new DAGMutex.
 func NewDAGMutex[T comparable]() *DAGMutex[T] {
 	return &DAGMutex[T]{
-		consumerCounter: make(map[T]int),
-		mutexes:         make(map[T]*StarvingMutex),
+		consumerCounter: shrinkingmap.New[T, int](),
+		mutexes:         shrinkingmap.New[T, *StarvingMutex](),
 	}
 }
 
@@ -103,13 +105,13 @@ func (d *DAGMutex[T]) registerMutexes(ids ...T) (mutexes []*StarvingMutex) {
 }
 
 func (d *DAGMutex[T]) registerMutex(id T) (mutex *StarvingMutex) {
-	mutex, mutexExists := d.mutexes[id]
+	mutex, mutexExists := d.mutexes.Get(id)
 	if !mutexExists {
 		mutex = NewStarvingMutex()
-		d.mutexes[id] = mutex
+		d.mutexes.Set(id, mutex)
 	}
-
-	d.consumerCounter[id]++
+	count, _ := d.consumerCounter.Get(id)
+	d.consumerCounter.Set(id, count+1)
 
 	return mutex
 }
@@ -129,19 +131,19 @@ func (d *DAGMutex[T]) unregisterMutexes(ids ...T) (mutexes []*StarvingMutex) {
 }
 
 func (d *DAGMutex[T]) unregisterMutex(id T) (mutex *StarvingMutex) {
-	if d.consumerCounter[id] == 1 {
-		delete(d.consumerCounter, id)
-		delete(d.mutexes, id)
+	if count, _ := d.consumerCounter.Get(id); count == 1 {
+		d.consumerCounter.Delete(id)
+		d.mutexes.Delete(id)
 
 		return nil
 	}
 
-	mutex, mutexExists := d.mutexes[id]
+	mutex, mutexExists := d.mutexes.Get(id)
 	if !mutexExists {
 		panic(fmt.Errorf("called Unlock or RUnlock too often for entity with %v", id))
 	}
-
-	d.consumerCounter[id]--
+	count, _ := d.consumerCounter.Get(id)
+	d.consumerCounter.Set(id, count-1)
 
 	return mutex
 }
