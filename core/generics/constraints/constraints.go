@@ -1,5 +1,7 @@
 package constraints
 
+import "fmt"
+
 // Signed is a constraint that permits any signed integer type.
 // If future releases of Go add new predeclared signed integer types,
 // this constraint will be modified to include them.
@@ -55,3 +57,9 @@ type Comparable[T any] interface {
 	Compare(other T) int
 }
 
+// ComparableStringer is a constraint that returns a comparable type via Key()
+// and a string representation via String().
+type ComparableStringer[K comparable] interface {
+	Key() K
+	fmt.Stringer
+}

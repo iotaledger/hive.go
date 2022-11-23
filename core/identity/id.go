@@ -50,7 +50,7 @@ func (id ID) Bytes() ([]byte, error) {
 
 // FromBytes decodes ID from bytes.
 func (id *ID) FromBytes(bytes []byte) (consumedBytes int, err error) {
-	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, &id); err != nil {
+	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, id); err != nil {
 		return consumedBytes, errors.Errorf("failed to decode node identity from bytes: %w", err)
 	}
 

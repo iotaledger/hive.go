@@ -99,7 +99,7 @@ func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error
 func ReadJSONFromFile(filename string, data interface{}) error {
 	jsonData, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("unable to read JSON file %s: %w", filename, err)
+		return err
 	}
 
 	return json.Unmarshal(jsonData, data)
@@ -144,7 +144,7 @@ func WriteJSONToFile(filename string, data interface{}, perm os.FileMode) (err e
 func ReadTOMLFromFile(filename string, data interface{}) error {
 	tomlData, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("unable to read TOML file %s: %w", filename, err)
+		return err
 	}
 
 	return toml.Unmarshal(tomlData, data)
@@ -198,7 +198,7 @@ func CreateTempFile(filePath string) (*os.File, string, error) {
 
 	fileDescriptor, err := os.OpenFile(filePathTmp, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		return nil, "", fmt.Errorf("unable to create temp file: %w", err)
+		return nil, "", err
 	}
 
 	return fileDescriptor, filePathTmp, nil
