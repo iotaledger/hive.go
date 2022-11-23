@@ -23,25 +23,33 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelTy
 	idMutex *sync.RWMutex
 	M       InnerModelType
 
-	bytes []byte
+	bytes      []byte
+	cacheBytes bool
 
 	*sync.RWMutex
 	*objectstorage.StorableObjectFlags
 }
 
 // NewStorable creates a new storable model instance.
-func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType]](model *InnerModelType) (newInstance *OuterModelType) {
+func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType]](model *InnerModelType, cacheBytes ...bool) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
-	(OuterModelPtrType)(newInstance).New(model)
+	(OuterModelPtrType)(newInstance).New(model, cacheBytes...)
 
 	return newInstance
 }
 
 // New initializes the model with the necessary values when being manually created through a constructor.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
 	s.Init()
 
 	s.M = *innerModel
+
+	s.cacheBytes = true
+
+	if len(cacheBytes) > 0 {
+		s.cacheBytes = cacheBytes[0]
+	}
+
 	s.SetModified()
 }
 
@@ -113,8 +121,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	s.Init()
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
-	// Store the bytes we decoded to avoid any future Encode calls.
-	s.bytes = bytes[:consumedBytes]
+	if s.cacheBytes {
+		// Store the bytes we decoded to avoid any future Encode calls.
+		s.bytes = bytes[:consumedBytes]
+	}
 
 	return consumedBytes, nil
 }
@@ -125,7 +135,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	defer s.RUnlock()
 
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
-	if len(s.bytes) > 0 {
+	if s.cacheBytes && len(s.bytes) > 0 {
 		return s.bytes, nil
 	}
 
@@ -137,8 +147,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 		return nil, err
 	}
 
-	// Store the encoded bytes to avoid future calls to Encode.
-	s.bytes = encodedBytes
+	if s.cacheBytes {
+		// Store the encoded bytes to avoid future calls to Encode.
+		s.bytes = encodedBytes
+	}
 
 	return encodedBytes, err
 }

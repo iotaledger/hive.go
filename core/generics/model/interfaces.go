@@ -4,7 +4,7 @@ package model
 type PtrType[OuterModelType any, InnerModelType any] interface {
 	*OuterModelType
 
-	New(*InnerModelType)
+	New(*InnerModelType, ...bool)
 	Init()
 	InnerModel() *InnerModelType
 }
