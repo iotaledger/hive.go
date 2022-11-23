@@ -21,13 +21,13 @@ type Immutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, Inn
 // NewImmutable creates a new immutable model instance.
 func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any](model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
-	(OuterModelPtrType)(newInstance).New(model)
+	(OuterModelPtrType)(newInstance).New(model, true)
 
 	return newInstance
 }
 
 // New initializes the model with the necessary values when being manually created through a constructor.
-func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType) {
+func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
 	i.M = *innerModel
 }
 
