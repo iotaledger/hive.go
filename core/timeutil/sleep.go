@@ -5,12 +5,17 @@ import (
 	"time"
 )
 
-func Sleep(ctx context.Context, interval time.Duration) bool {
+// Sleep pauses the current goroutine for the duration d or until the context ctx is cancelled.
+// It returns whether Sleep paused for the entire duration or was cancelled before that.
+func Sleep(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+
 	select {
 	case <-ctx.Done():
 		return false
 
-	case <-time.After(interval):
+	case <-t.C:
 		return true
 	}
 }
