@@ -159,10 +159,13 @@ func (f *StarvingMutex) canWrite() bool {
 }
 
 func (f *StarvingMutex) detectDeadlock(lockType string, trace string, done chan types.Empty) {
+	timer := time.NewTimer(debug.DeadlockDetectionTimeout)
+	defer timer.Stop()
+
 	select {
 	case <-done:
 		return
-	case <-time.After(debug.DeadlockDetectionTimeout):
+	case <-timer.C:
 		fmt.Println("possible deadlock while trying to acquire " + lockType + " (" + debug.DeadlockDetectionTimeout.String() + ") ...")
 		fmt.Println("\n" + trace)
 	}
