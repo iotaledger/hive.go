@@ -3,8 +3,10 @@ package identity
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand"
 	"strings"
 
@@ -55,6 +57,31 @@ func (id *ID) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	}
 
 	return
+}
+
+// Import reads the ID from the given reader (for stream deserialization).
+func (id *ID) Import(reader io.ReadSeeker) (err error) {
+	idBytes := make([]byte, IDLength)
+	if err = binary.Read(reader, binary.LittleEndian, &idBytes); err != nil {
+		return errors.Errorf("failed to read id bytes: %w", err)
+	} else if readBytesLength, parseErr := id.FromBytes(idBytes); parseErr != nil {
+		return errors.Errorf("failed to parse id bytes: %w", parseErr)
+	} else if readBytesLength != IDLength {
+		return errors.Errorf("failed to parse id bytes: consumedBytes != IDLength")
+	}
+
+	return nil
+}
+
+// Export writes the ID to the given writer (for stream serialization).
+func (id ID) Export(writer io.WriteSeeker) (err error) {
+	if idBytes, idBytesErr := id.Bytes(); idBytesErr != nil {
+		return errors.Errorf("failed to serialize id: %w", idBytesErr)
+	} else if err = binary.Write(writer, binary.LittleEndian, idBytes); err != nil {
+		return errors.Errorf("failed to write id: %w", err)
+	}
+
+	return nil
 }
 
 // String returns a shortened version of the ID as a base58 encoded string.
