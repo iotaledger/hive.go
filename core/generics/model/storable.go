@@ -39,10 +39,10 @@ func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType P
 }
 
 // New initializes the model with the necessary values when being manually created through a constructor.
-func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModelType *InnerModelType, cacheBytes ...bool) {
 	s.Init()
 
-	s.M = *innerModel
+	s.M = *innerModelType
 
 	s.cacheBytes = true
 

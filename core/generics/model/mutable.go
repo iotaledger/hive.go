@@ -33,10 +33,10 @@ func NewMutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, In
 }
 
 // New initializes the model with the necessary values when being manually created through a constructor.
-func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
+func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModelType *InnerModelType, cacheBytes ...bool) {
 	m.Init()
 
-	m.M = *innerModel
+	m.M = *innerModelType
 
 	m.cacheBytes = false
 	if len(cacheBytes) > 0 {
