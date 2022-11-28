@@ -7,6 +7,11 @@ import "time"
 // channel or other calls to the Timer's Stop method.
 func CleanupTimer(t *time.Timer) {
 	if !t.Stop() {
-		<-t.C
+		select {
+		case <-t.C:
+			// drain the channel
+		default:
+			// do not block if channel is already empty
+		}
 	}
 }
