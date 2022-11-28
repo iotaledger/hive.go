@@ -7,6 +7,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 // BatchWriteObject is an object that can be persisted to the KVStore in batches using the BatchedWriter.
@@ -173,40 +174,45 @@ func (bw *BatchedWriter) runBatchWriter() {
 			panic(err)
 		}
 		batchCollector := newBatchCollector(batchedMutation, bw.scheduledCount, bw.opts.batchSize)
-		batchWriterTimeoutChan := time.After(bw.opts.batchTimeout)
 		shouldFlush := false
 
-	CollectValues:
-		for {
-			select {
+		collectValues := func() {
+			batchWriterTimeoutTimer := time.NewTimer(bw.opts.batchTimeout)
+			defer timeutil.CleanupTimer(batchWriterTimeoutTimer)
 
-			// an element was added to the queue
-			case objectToPersist := <-bw.batchQueue:
-				if batchCollector.Add(objectToPersist) {
-					// batch size was reached => apply the mutations
+			for {
+				select {
+
+				// an element was added to the queue
+				case objectToPersist := <-bw.batchQueue:
+					if batchCollector.Add(objectToPersist) {
+						// batch size was reached => apply the mutations
+						if err := batchCollector.Commit(); err != nil {
+							panic(err)
+						}
+
+						return
+					}
+
+				// flush was triggered
+				case <-bw.flushChan:
+					shouldFlush = true
+
+					return
+
+				// batch timeout was reached
+				case <-batchWriterTimeoutTimer.C:
+					// apply the collected mutations
 					if err := batchCollector.Commit(); err != nil {
 						panic(err)
 					}
 
-					break CollectValues
+					return
 				}
-
-			// flush was triggered
-			case <-bw.flushChan:
-				shouldFlush = true
-
-				break CollectValues
-
-			// batch timeout was reached
-			case <-batchWriterTimeoutChan:
-				// apply the collected mutations
-				if err := batchCollector.Commit(); err != nil {
-					panic(err)
-				}
-
-				break CollectValues
 			}
 		}
+
+		collectValues()
 
 		if shouldFlush {
 			// flush was triggered, collect all remaining elements from the queue and commit them.
