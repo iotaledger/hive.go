@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/core
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cockroachdb/errors v1.9.0
