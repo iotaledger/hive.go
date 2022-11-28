@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20220428002600-b9e970a83ddd
@@ -8,7 +8,7 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
-	github.com/iotaledger/grocksdb v1.7.5-0.20220808142449-1dc0b8ac4d7d
+	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
 	github.com/knadh/koanf v1.4.1
 	github.com/kr/text v0.2.0
 	github.com/mr-tron/base58 v1.2.0
