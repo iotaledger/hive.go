@@ -9,7 +9,7 @@ import (
 // It returns whether Sleep paused for the entire duration or was cancelled before that.
 func Sleep(ctx context.Context, d time.Duration) bool {
 	t := time.NewTimer(d)
-	defer t.Stop()
+	defer CleanupTimer(t)
 
 	select {
 	case <-ctx.Done():
