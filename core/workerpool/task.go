@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/core/debug"
+	"github.com/iotaledger/hive.go/core/timeutil"
 	"github.com/iotaledger/hive.go/core/types"
 )
 
@@ -70,7 +71,7 @@ func (t *WorkerPoolTask) markDone() {
 // detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
 func (t *WorkerPoolTask) detectedHangingTasks() {
 	timer := time.NewTimer(debug.DeadlockDetectionTimeout)
-	defer timer.Stop()
+	defer timeutil.CleanupTimer(timer)
 
 	select {
 	case <-t.doneChan:

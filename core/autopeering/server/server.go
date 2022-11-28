@@ -14,6 +14,7 @@ import (
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/netutil"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 const (
@@ -176,7 +177,7 @@ func (s *Server) replyLoop() {
 		matcherList = list.New()
 		timeout     = time.NewTimer(0)
 	)
-	defer timeout.Stop()
+	defer timeutil.CleanupTimer(timeout)
 
 	<-timeout.C // ignore first timeout
 

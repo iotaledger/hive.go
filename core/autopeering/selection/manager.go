@@ -13,6 +13,7 @@ import (
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 const (
@@ -194,7 +195,7 @@ func (m *manager) loop() {
 
 	var updateOutResultChan chan peer.PeerDistance
 	updateTimer := time.NewTimer(0) // setting this to 0 will cause a trigger right away
-	defer updateTimer.Stop()
+	defer timeutil.CleanupTimer(updateTimer)
 
 Loop:
 	for {

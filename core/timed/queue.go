@@ -9,6 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/bitmask"
 	"github.com/iotaledger/hive.go/core/generalheap"
 	"github.com/iotaledger/hive.go/core/generics/options"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 // region TimedQueue ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,13 +193,13 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 		case <-t.ctx.Done():
 			// abort if the pending elements are supposed to be canceled
 			if t.shutdownFlags.HasBits(CancelPendingElements) {
-				timer.Stop()
+				timeutil.CleanupTimer(timer)
 				return nil
 			}
 
 			// immediately return the value if the pending timeouts are supposed to be ignored
 			if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
-				timer.Stop()
+				timeutil.CleanupTimer(timer)
 				return polledElement.Value.Value
 			}
 
@@ -206,7 +207,7 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 			select {
 			// abort waiting for this element and return the next one instead if it was canceled
 			case <-polledElement.Value.cancel:
-				timer.Stop()
+				timeutil.CleanupTimer(timer)
 				continue
 
 			// return the result after the time is reached
@@ -216,7 +217,7 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 
 		// abort waiting for this element and return the next one instead if it was canceled
 		case <-polledElement.Value.cancel:
-			timer.Stop()
+			timeutil.CleanupTimer(timer)
 			continue
 
 		// return the result after the time is reached

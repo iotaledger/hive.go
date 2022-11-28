@@ -9,6 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/server"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 const (
@@ -80,8 +81,8 @@ func (m *manager) loop() {
 		query     = time.NewTimer(server.ResponseTimeout) // trigger the first query after the reverify
 		queryNext chan time.Duration
 	)
-	defer reverify.Stop()
-	defer query.Stop()
+	defer timeutil.CleanupTimer(reverify)
+	defer timeutil.CleanupTimer(query)
 
 Loop:
 	for {

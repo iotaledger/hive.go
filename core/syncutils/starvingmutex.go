@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/debug"
 	"github.com/iotaledger/hive.go/core/stringify"
+	"github.com/iotaledger/hive.go/core/timeutil"
 	"github.com/iotaledger/hive.go/core/types"
 )
 
@@ -160,7 +161,7 @@ func (f *StarvingMutex) canWrite() bool {
 
 func (f *StarvingMutex) detectDeadlock(lockType string, trace string, done chan types.Empty) {
 	timer := time.NewTimer(debug.DeadlockDetectionTimeout)
-	defer timer.Stop()
+	defer timeutil.CleanupTimer(timer)
 
 	select {
 	case <-done:
