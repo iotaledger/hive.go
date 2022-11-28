@@ -16,12 +16,15 @@ import (
 // It provides serialization primitives.
 type Immutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	M InnerModelType
+
+	bytes      []byte
+	cacheBytes bool
 }
 
 // NewImmutable creates a new immutable model instance.
-func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any](model *InnerModelType) (newInstance *OuterModelType) {
+func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any](model *InnerModelType, cacheBytes ...bool) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
-	(OuterModelPtrType)(newInstance).New(model, true)
+	(OuterModelPtrType)(newInstance).New(model, cacheBytes...)
 
 	return newInstance
 }
@@ -29,6 +32,11 @@ func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
 	i.M = *innerModel
+
+	i.cacheBytes = true
+	if len(cacheBytes) > 0 {
+		i.cacheBytes = cacheBytes[0]
+	}
 }
 
 // Init initializes the model after it has been restored from it's serialized version.
@@ -65,15 +73,35 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 
 	i.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
+	if i.cacheBytes {
+		// Store the bytes we decoded to avoid any future Encode calls.
+		i.bytes = bytes[:consumedBytes]
+	}
+
 	return consumedBytes, nil
 }
 
 // Bytes serializes a model to a byte slice.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
+	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
+	if i.cacheBytes && len(i.bytes) > 0 {
+		return i.bytes, nil
+	}
+
 	outerInstance := new(OuterModelType)
 	(OuterModelPtrType)(outerInstance).New(&i.M)
 
-	return serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
+	encodedBytes, err := serix.DefaultAPI.Encode(context.Background(), outerInstance, serix.WithValidation())
+	if err != nil {
+		return nil, err
+	}
+
+	if i.cacheBytes {
+		// Store the encoded bytes to avoid future calls to Encode.
+		i.bytes = encodedBytes
+	}
+
+	return encodedBytes, err
 }
 
 // Encode serializes the "content of the model" to a byte slice.
