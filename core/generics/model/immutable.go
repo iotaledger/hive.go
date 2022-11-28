@@ -30,8 +30,8 @@ func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, 
 }
 
 // New initializes the model with the necessary values when being manually created through a constructor.
-func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModel *InnerModelType, cacheBytes ...bool) {
-	i.M = *innerModel
+func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModelType *InnerModelType, cacheBytes ...bool) {
+	i.M = *innerModelType
 
 	i.cacheBytes = true
 	if len(cacheBytes) > 0 {
