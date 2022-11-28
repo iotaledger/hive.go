@@ -40,7 +40,9 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(inner
 }
 
 // Init initializes the model after it has been restored from it's serialized version.
-func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {}
+func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
+	i.cacheBytes = true
+}
 
 // InnerModel returns the inner Model that holds the data.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) InnerModel() *InnerModelType {
