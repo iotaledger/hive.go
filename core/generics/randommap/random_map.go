@@ -4,43 +4,39 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
-	"github.com/iotaledger/hive.go/core/types"
 )
 
-type randomMapEntry[K comparable, V comparable] struct {
+type randomMapEntry[K comparable, V any] struct {
 	key      K
 	value    V
 	keyIndex int
 }
 
 // RandomMap defines a map with extended ability to return a random entry.
-type RandomMap[K comparable, V comparable] struct {
+type RandomMap[K comparable, V any] struct {
 	rawMap *shrinkingmap.ShrinkingMap[K, *randomMapEntry[K, V]]
 	keys   []K
 	mutex  sync.RWMutex
 }
 
 // New creates a new random map.
-func New[K comparable, V comparable]() *RandomMap[K, V] {
+func New[K comparable, V any](opts ...shrinkingmap.Option) *RandomMap[K, V] {
 	return &RandomMap[K, V]{
-		rawMap: shrinkingmap.New[K, *randomMapEntry[K, V]](),
+		rawMap: shrinkingmap.New[K, *randomMapEntry[K, V]](opts...),
 		keys:   make([]K, 0),
 	}
 }
 
 // Set associates the specified value with the specified key.
 // If the association already exists, it updates the value.
-func (rmap *RandomMap[K, V]) Set(key K, value V) (updated bool) {
+func (rmap *RandomMap[K, V]) Set(key K, value V) {
 	rmap.mutex.Lock()
 	defer rmap.mutex.Unlock()
 
 	if entry, exists := rmap.rawMap.Get(key); exists {
-		if entry.value != value {
-			entry.value = value
-
-			updated = true
-		}
+		entry.value = value
 	} else {
 		rmap.rawMap.Set(key, &randomMapEntry[K, V]{
 			key:      key,
@@ -48,12 +44,8 @@ func (rmap *RandomMap[K, V]) Set(key K, value V) (updated bool) {
 			keyIndex: rmap.rawMap.Size(),
 		})
 
-		updated = true
-
 		rmap.keys = append(rmap.keys, key)
 	}
-
-	return
 }
 
 // Get returns the value to which the specified key is mapped.
@@ -76,6 +68,7 @@ func (rmap *RandomMap[K, V]) Delete(key K) (value V, deleted bool) {
 
 	if entry, exists := rmap.rawMap.Get(key); exists {
 		if entry.keyIndex != len(rmap.keys) {
+			// move the last key to the position of the deleted key to shrink the slice
 			oldKeyIndex := entry.keyIndex
 			movedKeyIndex := len(rmap.keys) - 1
 
@@ -107,7 +100,7 @@ func (rmap *RandomMap[K, V]) Size() int {
 }
 
 // ForEach iterates through the elements in the map and calls the consumer function for each element.
-func (rmap *RandomMap[K, V]) ForEach(consumer func(key K, value V)) {
+func (rmap *RandomMap[K, V]) ForEach(consumer func(key K, value V) bool) {
 	rmap.mutex.RLock()
 	defer rmap.mutex.RUnlock()
 
@@ -123,7 +116,7 @@ func (rmap *RandomMap[K, V]) RandomKey() (defaultValue K, exists bool) {
 		return defaultValue, false
 	}
 
-	return rmap.randomKey(), true
+	return lo.Return1(rmap.randomKey()), true
 }
 
 // RandomEntry returns a random value from the map.
@@ -135,7 +128,7 @@ func (rmap *RandomMap[K, V]) RandomEntry() (defaultValue V, exists bool) {
 		return defaultValue, false
 	}
 
-	if entry, exists := rmap.rawMap.Get(rmap.randomKey()); exists {
+	if entry, exists := rmap.rawMap.Get(lo.Return1(rmap.randomKey())); exists {
 		return entry.value, true
 	}
 
@@ -156,26 +149,23 @@ func (rmap *RandomMap[K, V]) RandomUniqueEntries(count int) (results []V) {
 	// can only return as many as there are in the map
 	if rmap.rawMap.Size() <= count {
 		results = make([]V, 0, rmap.rawMap.Size())
-		rmap.forEach(func(key K, value V) {
+		rmap.forEach(func(key K, value V) bool {
 			results = append(results, value)
+			return true
 		})
 
 		return results
 	}
 
 	// helper to keep track of already seen keys
-	seenKeys := make(map[K]types.Empty)
 	results = make([]V, 0, count)
+	randomOrder := rand.Perm(len(rmap.keys))
 
 	// there has to be at least (count + 1) key value pairs in the map
-	for len(seenKeys) != count {
-		randomKey := rmap.randomKey()
-		if _, seenAlready := seenKeys[randomKey]; !seenAlready {
-			seenKeys[randomKey] = types.Void
-
-			if randomEntry, exists := rmap.rawMap.Get(randomKey); exists {
-				results = append(results, randomEntry.value)
-			}
+	for idx := 0; idx < len(randomOrder) && len(results) < count; idx++ {
+		randomKey := rmap.keys[randomOrder[idx]]
+		if randomEntry, exists := rmap.rawMap.Get(randomKey); exists {
+			results = append(results, randomEntry.value)
 		}
 	}
 
@@ -200,9 +190,8 @@ func (rmap *RandomMap[K, V]) randomKey() (result K) {
 }
 
 // forEach executes a function for all key-value pairs in the map.
-func (rmap *RandomMap[K, V]) forEach(consumer func(key K, value V)) {
+func (rmap *RandomMap[K, V]) forEach(consumer func(key K, value V) bool) {
 	rmap.rawMap.ForEach(func(key K, entry *randomMapEntry[K, V]) bool {
-		consumer(key, entry.value)
-		return true
+		return consumer(key, entry.value)
 	})
 }
