@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 )
 
@@ -116,7 +115,7 @@ func (rmap *RandomMap[K, V]) RandomKey() (defaultValue K, exists bool) {
 		return defaultValue, false
 	}
 
-	return lo.Return1(rmap.randomKey()), true
+	return rmap.randomKey(), true
 }
 
 // RandomEntry returns a random value from the map.
@@ -128,7 +127,7 @@ func (rmap *RandomMap[K, V]) RandomEntry() (defaultValue V, exists bool) {
 		return defaultValue, false
 	}
 
-	if entry, exists := rmap.rawMap.Get(lo.Return1(rmap.randomKey())); exists {
+	if entry, exists := rmap.rawMap.Get(rmap.randomKey()); exists {
 		return entry.value, true
 	}
 
