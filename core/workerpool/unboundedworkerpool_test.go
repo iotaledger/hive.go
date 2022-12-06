@@ -1,11 +1,11 @@
 package workerpool
 
 import (
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/atomic"
 )
 
 func Test_NonBlockingNoFlush(t *testing.T) {
