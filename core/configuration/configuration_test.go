@@ -329,9 +329,9 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	assertFlag(t, flagset, config, &parameters.Batman,
 		"configuration.batman",
 		"robin",
-		"[a,b]",
+		"[a,b,c]",
 		"",
-		[]string{"a", "b"},
+		[]string{"a", "b", "c"},
 	)
 
 	dur, err := time.ParseDuration("60s")

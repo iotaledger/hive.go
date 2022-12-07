@@ -9,6 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/bitmask"
 	"github.com/iotaledger/hive.go/core/generalheap"
 	"github.com/iotaledger/hive.go/core/generics/options"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 // region TimedQueue ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,17 +185,21 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 		// release locks
 		t.heapMutex.Unlock()
 
+		timer := time.NewTimer(time.Until(time.Time(polledElement.Key)))
+
 		// wait for the return value to become due
 		select {
 		// react if the queue was shutdown while waiting
 		case <-t.ctx.Done():
 			// abort if the pending elements are supposed to be canceled
 			if t.shutdownFlags.HasBits(CancelPendingElements) {
+				timeutil.CleanupTimer(timer)
 				return nil
 			}
 
 			// immediately return the value if the pending timeouts are supposed to be ignored
 			if t.shutdownFlags.HasBits(IgnorePendingTimeouts) {
+				timeutil.CleanupTimer(timer)
 				return polledElement.Value.Value
 			}
 
@@ -202,19 +207,21 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 			select {
 			// abort waiting for this element and return the next one instead if it was canceled
 			case <-polledElement.Value.cancel:
+				timeutil.CleanupTimer(timer)
 				continue
 
 			// return the result after the time is reached
-			case <-time.After(time.Until(time.Time(polledElement.Key))):
+			case <-timer.C:
 				return polledElement.Value.Value
 			}
 
 		// abort waiting for this element and return the next one instead if it was canceled
 		case <-polledElement.Value.cancel:
+			timeutil.CleanupTimer(timer)
 			continue
 
 		// return the result after the time is reached
-		case <-time.After(time.Until(time.Time(polledElement.Key))):
+		case <-timer.C:
 			return polledElement.Value.Value
 		}
 	}
