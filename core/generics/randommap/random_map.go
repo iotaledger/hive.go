@@ -60,6 +60,14 @@ func (rmap *RandomMap[K, V]) Get(key K) (result V, exists bool) {
 	return
 }
 
+// Has returns a boolean value indicating whether it exists in the map.
+func (rmap *RandomMap[K, V]) Has(key K) bool {
+	rmap.mutex.RLock()
+	defer rmap.mutex.RUnlock()
+
+	return rmap.rawMap.Has(key)
+}
+
 // Delete removes the mapping for the specified key in the map.
 func (rmap *RandomMap[K, V]) Delete(key K) (value V, deleted bool) {
 	rmap.mutex.Lock()
