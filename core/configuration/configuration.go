@@ -79,12 +79,15 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
 
-	exists, err := ioutils.PathExists(filePath)
+	exists, isDir, err := ioutils.PathExists(filePath)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return os.ErrNotExist
+	}
+	if isDir {
+		return fmt.Errorf("given path is a directory instead of a file %s", filePath)
 	}
 
 	var parser koanf.Parser

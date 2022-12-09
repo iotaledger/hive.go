@@ -195,7 +195,7 @@ func LoadEngineFromFile(path string, allowedEngines ...Engine) (Engine, error) {
 func storeDatabaseInfoToFile(filePath string, engine Engine) error {
 	dirPath := filepath.Dir(filePath)
 
-	if err := os.MkdirAll(dirPath, 0700); err != nil {
+	if err := ioutils.CreateDirectory(dirPath, 0700); err != nil {
 		return fmt.Errorf("could not create database dir '%s': %w", dirPath, err)
 	}
 

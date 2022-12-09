@@ -12,6 +12,7 @@ import (
 	"github.com/iotaledger/hive.go/core/daemon"
 	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/generics/options"
+	"github.com/iotaledger/hive.go/core/ioutils"
 	"github.com/iotaledger/hive.go/core/logger"
 )
 
@@ -104,19 +105,9 @@ func (gs *ShutdownHandler) checkSelfShutdownLogsDirectory() error {
 		return nil
 	}
 
-	fileInfo, err := os.Stat(shutdownLogsDirectory)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("self-shutdown logs directory (%s) can't be checked, error: %w", shutdownLogsDirectory, err)
-		}
+	if err := ioutils.CreateDirectory(shutdownLogsDirectory, 0o700); err != nil {
+		return fmt.Errorf("creating self-shutdown logs directory (%s) failed: %w", shutdownLogsDirectory, err)
 
-		// directory does not exist => create it
-		if err := os.MkdirAll(shutdownLogsDirectory, 0o700); err != nil {
-			return fmt.Errorf("self-shutdown logs directory (%s) can't be created, error: %w", shutdownLogsDirectory, err)
-		}
-
-	} else if !fileInfo.IsDir() {
-		return fmt.Errorf("self-shutdown logs directory (%s) is not a directory", shutdownLogsDirectory)
 	}
 
 	return nil
