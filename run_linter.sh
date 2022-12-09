@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euxo pipefail
+
 FILTER="$1"
 
 function lint {

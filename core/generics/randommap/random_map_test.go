@@ -17,13 +17,13 @@ func TestRandomMap_RandomUniqueEntries(t *testing.T) {
 		testMap.Set(keyValue, keyValue)
 	}
 
-	var emptyResult = []string{}
+	var nilResult []string
 
 	result := testMap.RandomUniqueEntries(0)
-	assert.Equal(t, emptyResult, result)
+	assert.Equal(t, nilResult, result)
 
 	result = testMap.RandomUniqueEntries(-5)
-	assert.Equal(t, emptyResult, result)
+	assert.Equal(t, nilResult, result)
 
 	result = testMap.RandomUniqueEntries(2)
 	assert.Equal(t, 2, len(result))
@@ -44,9 +44,8 @@ func TestRandomMap_EmptyMap(t *testing.T) {
 	assert.False(t, exists)
 	assert.Equal(t, "", randEntry)
 
-	assert.Panics(t, func() {
-		testMap.RandomKey()
-	})
+	_, exists = testMap.RandomKey()
+	assert.False(t, exists)
 }
 func containsUniqueElements[V any](list []V) bool {
 	elementSet := set.New(false)
