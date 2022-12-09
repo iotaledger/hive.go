@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/pkg/errors"
 
@@ -41,6 +42,10 @@ func ReadEd25519PrivateKeyFromPEMFile(filepath string) (ed25519.PrivateKey, erro
 
 // WriteEd25519PrivateKeyToPEMFile stores an Ed25519 private key to a file with PEM format.
 func WriteEd25519PrivateKeyToPEMFile(filepath string, privateKey ed25519.PrivateKey) error {
+
+	if err := ioutils.CreateDirectory(path.Dir(filepath), 0o700); err != nil {
+		return fmt.Errorf("unable to store private key: %w", err)
+	}
 
 	pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
