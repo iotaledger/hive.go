@@ -68,7 +68,7 @@ func New[K comparable, V any](opts ...Option) *ShrinkingMap[K, V] {
 	return shrinkingMap
 }
 
-// Set adds a key-value pair to the map. It returns true if the key exists.
+// Set adds a key-value pair to the map. It returns true if the key was created.
 func (s *ShrinkingMap[K, V]) Set(key K, value V) (wasCreated bool) {
 	_, exists := s.m[key]
 	s.m[key] = value
