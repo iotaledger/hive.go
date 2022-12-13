@@ -5,6 +5,7 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/timed"
+	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
@@ -81,7 +82,11 @@ func (o *ObjectStorage[T]) Contains(key []byte, options ...ReadOption) (result b
 // ComputeIfAbsent computes and returns the default value if the given key is not in the ObjectStorage.
 func (o *ObjectStorage[T]) ComputeIfAbsent(key []byte, remappingFunction func(key []byte) T) *CachedObject[T] {
 	return newCachedObject[T](o.ObjectStorage.ComputeIfAbsent(key, func(key []byte) objectstorage.StorableObject {
-		return remappingFunction(key)
+		remappedObj := remappingFunction(key)
+		if !typeutils.IsInterfaceNil(remappedObj) {
+			remappedObj.SetModified(true)
+		}
+		return remappedObj
 	}))
 }
 
