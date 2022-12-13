@@ -42,17 +42,38 @@ func (i *testItem) Clone() Item[int, comparableInteger] {
 
 func TestOnChangeMap(t *testing.T) {
 	var storedItems []*testItem
+	var itemAdded *testItem
+	var itemModified *testItem
+	var itemDeleted *testItem
 
-	onChangeMap := NewOnChangeMap[int, comparableInteger](func(items []*testItem) error {
-		storedItems = items
-		return nil
-	})
+	onChangeMap := NewOnChangeMap(
+		WithChangedCallback[int, comparableInteger](func(items []*testItem) error {
+			storedItems = items
+			return nil
+		}),
+		WithItemAddedCallback[int, comparableInteger](func(item *testItem) error {
+			itemAdded = item
+			return nil
+		}),
+		WithItemModifiedCallback[int, comparableInteger](func(item *testItem) error {
+			itemModified = item
+			return nil
+		}),
+		WithItemDeletedCallback[int, comparableInteger](func(item *testItem) error {
+			itemDeleted = item
+			return nil
+		}),
+	)
 
 	require.NotNil(t, onChangeMap)
 
 	item1 := newTestItem(1, "one")
 	item2 := newTestItem(2, "two")
 	item3 := newTestItem(3, "three")
+
+	require.Nil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.Nil(t, itemDeleted)
 
 	// add and get an item
 	err := onChangeMap.Add(item1)
@@ -74,28 +95,39 @@ func TestOnChangeMap(t *testing.T) {
 
 	// check store on change
 	require.Equal(t, len(storedItems), 0)
-	err = onChangeMap.ExecuteCallback()
+	err = onChangeMap.ExecuteChangedCallback()
 	require.NoError(t, err)
 	require.Equal(t, len(storedItems), 0)
 
 	// enable store on changed
-	onChangeMap.CallbackEnabled(true)
-	err = onChangeMap.ExecuteCallback()
+	onChangeMap.CallbacksEnabled(true)
+	err = onChangeMap.ExecuteChangedCallback()
 	require.NoError(t, err)
 	require.Equal(t, len(storedItems), 1)
 
 	// add duplicate
 	err = onChangeMap.Add(item1)
 	require.Error(t, err)
+	require.Nil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.Nil(t, itemDeleted)
+	itemAdded = nil
 
 	// add second item
 	err = onChangeMap.Add(item2)
 	require.NoError(t, err)
 	require.Equal(t, len(storedItems), 2)
+	require.NotNil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.Nil(t, itemDeleted)
+	itemAdded = nil
 
 	// modify non existing item
 	_, err = onChangeMap.Modify(3, nil)
 	require.Error(t, err)
+	require.Nil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.Nil(t, itemDeleted)
 
 	// modify existing item
 	item2Copy, err := onChangeMap.Modify(2, func(item *testItem) bool {
@@ -105,6 +137,10 @@ func TestOnChangeMap(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(storedItems), 2)
 	require.Equal(t, item2Copy.value, item3.value)
+	require.Nil(t, itemAdded)
+	require.NotNil(t, itemModified)
+	require.Nil(t, itemDeleted)
+	itemModified = nil
 
 	// get modified item
 	item2Copy, err = onChangeMap.Get(2)
@@ -115,8 +151,15 @@ func TestOnChangeMap(t *testing.T) {
 	err = onChangeMap.Delete(2)
 	require.NoError(t, err)
 	require.Equal(t, len(storedItems), 1)
+	require.Nil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.NotNil(t, itemDeleted)
+	itemDeleted = nil
 
 	// delete non-existing item
 	err = onChangeMap.Delete(2)
 	require.Error(t, err)
+	require.Nil(t, itemAdded)
+	require.Nil(t, itemModified)
+	require.Nil(t, itemDeleted)
 }

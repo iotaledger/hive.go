@@ -6,6 +6,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/generics/constraints"
 	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/iotaledger/hive.go/core/generics/options"
 )
 
 // Item represents an item in the OnChangeMap.
@@ -14,53 +15,105 @@ type Item[K comparable, C constraints.ComparableStringer[K]] interface {
 	Clone() Item[K, C]
 }
 
-// OnChangeMap is a map that executes a callback if the map or an item is modified,
+// OnChangeMap is a map that executes callbacks if the map or an item is modified,
 // in case callbackEnabled is true.
 type OnChangeMap[K comparable, C constraints.ComparableStringer[K], I Item[K, C]] struct {
 	mutex sync.RWMutex
 
-	m               map[K]I
-	callback        func([]I) error
-	callbackEnabled bool
+	m                map[K]I
+	callbacksEnabled bool
+
+	changedCallback      func([]I) error
+	itemAddedCallback    func(I) error
+	itemModifiedCallback func(I) error
+	itemDeletedCallback  func(I) error
+}
+
+// WithChangedCallback is triggered when something in the OnChangeMap is changed (added/modified/deleted).
+func WithChangedCallback[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](changedCallback func([]I) error) options.Option[OnChangeMap[K, C, I]] {
+	return func(r *OnChangeMap[K, C, I]) {
+		r.changedCallback = changedCallback
+	}
+}
+
+// WithItemAddedCallback is triggered when a new item is added.
+func WithItemAddedCallback[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](itemAddedCallback func(I) error) options.Option[OnChangeMap[K, C, I]] {
+	return func(r *OnChangeMap[K, C, I]) {
+		r.itemAddedCallback = itemAddedCallback
+	}
+}
+
+// WithItemModifiedCallback is triggered when an item is modified.
+func WithItemModifiedCallback[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](itemModifiedCallback func(I) error) options.Option[OnChangeMap[K, C, I]] {
+	return func(r *OnChangeMap[K, C, I]) {
+		r.itemModifiedCallback = itemModifiedCallback
+	}
+}
+
+// WithItemDeletedCallback is triggered when an item is deleted.
+func WithItemDeletedCallback[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](itemDeletedCallback func(I) error) options.Option[OnChangeMap[K, C, I]] {
+	return func(r *OnChangeMap[K, C, I]) {
+		r.itemDeletedCallback = itemDeletedCallback
+	}
 }
 
 // NewOnChangeMap creates a new OnChangeMap.
-func NewOnChangeMap[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](callback func([]I) error) *OnChangeMap[K, C, I] {
-	return &OnChangeMap[K, C, I]{
-		m:               make(map[K]I),
-		callback:        callback,
-		callbackEnabled: false,
-	}
+func NewOnChangeMap[K comparable, C constraints.ComparableStringer[K], I Item[K, C]](opts ...options.Option[OnChangeMap[K, C, I]]) *OnChangeMap[K, C, I] {
+	return options.Apply(&OnChangeMap[K, C, I]{
+		m:                    make(map[K]I),
+		callbacksEnabled:     false,
+		changedCallback:      nil,
+		itemAddedCallback:    nil,
+		itemModifiedCallback: nil,
+		itemDeletedCallback:  nil,
+	}, opts)
 }
 
-// CallbackEnabled sets whether executing the callback on change is active or not.
-func (r *OnChangeMap[K, C, I]) CallbackEnabled(enabled bool) {
-	r.callbackEnabled = enabled
+// CallbacksEnabled sets whether executing the callbacks on change is active or not.
+func (r *OnChangeMap[K, C, I]) CallbacksEnabled(enabled bool) {
+	r.callbacksEnabled = enabled
 }
 
-// executeCallbackWithoutLocking calls the callback if callbackEnabled is true.
-func (r *OnChangeMap[K, C, I]) executeCallbackWithoutLocking() error {
-	if !r.callbackEnabled {
+// executeChangedCallback calls the changedCallback if callbackEnabled is true.
+func (r *OnChangeMap[K, C, I]) executeChangedCallback() error {
+	if !r.callbacksEnabled {
 		return nil
 	}
 
-	if r.callback == nil {
-		return nil
-	}
-
-	if err := r.callback(lo.Values(r.m)); err != nil {
-		return fmt.Errorf("failed to execute callback in OnChangeMap: %w", err)
+	if r.changedCallback != nil {
+		if err := r.changedCallback(lo.Values(r.m)); err != nil {
+			return fmt.Errorf("failed to execute callback in OnChangeMap: %w", err)
+		}
 	}
 
 	return nil
 }
 
-// ExecuteCallback calls the callback if callbackEnabled is true.
-func (r *OnChangeMap[K, C, I]) ExecuteCallback() error {
+// executeItemCallback calls the given callback if callbackEnabled is true.
+func (r *OnChangeMap[K, C, I]) executeItemCallback(callback func(I) error, item I) error {
+	if !r.callbacksEnabled {
+		return nil
+	}
+
+	if err := r.executeChangedCallback(); err != nil {
+		return err
+	}
+
+	if callback != nil {
+		if err := callback(item); err != nil {
+			return fmt.Errorf("failed to execute item callback in OnChangeMap: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ExecuteChangedCallback calls the changedCallback if callbackEnabled is true.
+func (r *OnChangeMap[K, C, I]) ExecuteChangedCallback() error {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	return r.executeCallbackWithoutLocking()
+	return r.executeChangedCallback()
 }
 
 // All returns a copy of all items.
@@ -100,7 +153,7 @@ func (r *OnChangeMap[K, C, I]) Add(item I) error {
 
 	r.m[item.ID().Key()] = item
 
-	return r.executeCallbackWithoutLocking()
+	return r.executeItemCallback(r.itemAddedCallback, item)
 }
 
 // Modify modifies an item in the map and returns a copy.
@@ -118,7 +171,7 @@ func (r *OnChangeMap[K, C, I]) Modify(id C, callback func(item I) bool) (I, erro
 		return item.Clone().(I), nil
 	}
 
-	return item.Clone().(I), r.executeCallbackWithoutLocking()
+	return item.Clone().(I), r.executeItemCallback(r.itemModifiedCallback, item)
 }
 
 // Delete removes an item from the map.
@@ -126,11 +179,12 @@ func (r *OnChangeMap[K, C, I]) Delete(id C) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if _, exists := r.m[id.Key()]; !exists {
+	item, exists := r.m[id.Key()]
+	if !exists {
 		return fmt.Errorf("unable to remove item: \"%s\" does not exist in map", id)
 	}
 
 	delete(r.m, id.Key())
 
-	return r.executeCallbackWithoutLocking()
+	return r.executeItemCallback(r.itemDeletedCallback, item)
 }

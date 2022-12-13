@@ -13,31 +13,35 @@ import (
 )
 
 // PathExists returns whether the given file or directory exists.
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
+func PathExists(path string) (exists bool, isDirectory bool, err error) {
+	fileInfo, err := os.Stat(path)
 	if err == nil {
-		return true, nil
+		return true, fileInfo.IsDir(), nil
 	}
 	if os.IsNotExist(err) {
-		return false, nil
+		return false, false, nil
 	}
 
-	return false, err
+	return false, false, err
 }
 
 // CreateDirectory checks if the directory exists,
 // otherwise it creates it with given permissions.
 func CreateDirectory(dir string, perm os.FileMode) error {
-	exists, err := PathExists(dir)
+	exists, isDir, err := PathExists(dir)
 	if err != nil {
 		return err
 	}
 
-	if !exists {
-		return os.MkdirAll(dir, perm)
+	if exists {
+		if !isDir {
+			return fmt.Errorf("given path is a file instead of a directory %s", dir)
+		}
+
+		return nil
 	}
 
-	return nil
+	return os.MkdirAll(dir, perm)
 }
 
 // FolderSize returns the size of a folder.
