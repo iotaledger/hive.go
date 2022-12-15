@@ -45,6 +45,26 @@ func (b *BytesFilter) Add(bytes []byte) (identifier types.Identifier, added bool
 	return identifier, false
 }
 
+func (b *BytesFilter) AddIdentifier(identifier types.Identifier) (added bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if _, exists := b.knownIdentifiers.Get(identifier); exists {
+		return false
+	}
+
+	if len(b.identifiers) == b.size {
+		b.knownIdentifiers.Delete(b.identifiers[0])
+		b.identifiers = append(b.identifiers[1:], identifier)
+	} else {
+		b.identifiers = append(b.identifiers, identifier)
+	}
+
+	b.knownIdentifiers.Set(identifier, types.Void)
+
+	return true
+}
+
 func (b *BytesFilter) Contains(bytes []byte) (exists bool) {
 	b.mutex.RLock()
 	_, exists = b.knownIdentifiers.Get(types.NewIdentifier(bytes))
