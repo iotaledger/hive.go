@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -643,6 +644,15 @@ func (a *App) Start() {
 }
 
 func (a *App) Run() {
+	defer func() {
+		r := recover()
+		if r != nil {
+			if err, ok := r.(error); ok {
+				a.LogPanicf("application panic, err: %s \n %s", err.Error(), string(debug.Stack()))
+			}
+			a.LogPanicf("application panic: %v \n %s", r, string(debug.Stack()))
+		}
+	}()
 	a.initializeApp()
 
 	a.LogInfo("Starting background workers ...")
