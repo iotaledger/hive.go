@@ -28,7 +28,7 @@ func PebbleDB(t *testing.T) (kvstore.KVStore, error) {
 		L0StopWritesThreshold:       1000,
 		LBaseMaxBytes:               64 << 20, // 64 MB
 		Levels:                      make([]pebbledb.LevelOptions, 7),
-		MaxConcurrentCompactions:    3,
+		MaxConcurrentCompactions:    func() int { return 3 },
 		MaxOpenFiles:                16384,
 		MemTableSize:                64 << 20,
 		MemTableStopWritesThreshold: 4,

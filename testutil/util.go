@@ -1,9 +1,10 @@
 package testutil
 
 import (
-	"github.com/iotaledger/hive.go/serializer"
 	"math/rand"
 	"sort"
+
+	"github.com/iotaledger/hive.go/serializer"
 )
 
 // RandBytes returns length amount random bytes.
