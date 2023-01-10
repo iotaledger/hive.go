@@ -3,6 +3,7 @@ package lo
 import (
 	"github.com/iotaledger/hive.go/core/generics/constraints"
 	"github.com/iotaledger/hive.go/core/generics/set"
+	"github.com/iotaledger/hive.go/core/types"
 )
 
 // Cond is a conditional statement that returns the trueValue if the condition is true and the falseValue otherwise.
@@ -55,6 +56,18 @@ func KeyBy[K comparable, V any](collection []V, iteratee func(V) K) map[K]V {
 	for _, v := range collection {
 		k := iteratee(v)
 		result[k] = v
+	}
+
+	return result
+}
+
+// KeyOnlyBy transforms a slice or an array of structs to a map containing the keys based on a pivot callback.
+func KeyOnlyBy[K comparable, V any](collection []V, iteratee func(V) K) map[K]types.Empty {
+	result := make(map[K]types.Empty, len(collection))
+
+	for _, v := range collection {
+		k := iteratee(v)
+		result[k] = types.Void
 	}
 
 	return result
