@@ -50,6 +50,16 @@ func (e *Event[T]) AttachWithNewWorkerPool(closure *Closure[T], workers int, tri
 	return wp
 }
 
+// AttachWithWorkerPool allows to register a Closure that is executed asynchronously in the specified worker pool when the Event triggers.
+// If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
+func (e *Event[T]) AttachWithWorkerPool(closure *Closure[T], wp *workerpool.UnboundedWorkerPool, triggerMaxCount ...uint64) {
+	if closure == nil {
+		return
+	}
+
+	e.asyncHandlers.Set(closure.ID, newHandler[T](e.callbackFromClosure(closure, triggerMaxCount...), wp))
+}
+
 // HookBefore allows to register a Closure that is executed before the Event triggers.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
 func (e *Event[T]) HookBefore(closure *Closure[T], triggerMaxCount ...uint64) {
