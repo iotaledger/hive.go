@@ -85,7 +85,6 @@ type BatchedWriter struct {
 
 // NewBatchedWriter creates a new BatchedWriter instance.
 func NewBatchedWriter(store KVStore, opts ...Option) *BatchedWriter {
-
 	options := &Options{}
 	options.apply(defaultOptions...)
 	options.apply(opts...)

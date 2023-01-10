@@ -168,6 +168,18 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	return nil
 }
 
+// ImportModel imports the model of the other storable.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ImportStorable(other *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) {
+	s.Lock()
+	defer s.Unlock()
+
+	other.RLock()
+	defer other.RUnlock()
+
+	s.M = other.M
+	s.bytes = other.bytes
+}
+
 // ObjectStorageKey returns the bytes, that are used as a key to store the object in the k/v store.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ObjectStorageKey() (key []byte) {
 	key, err := serix.DefaultAPI.Encode(context.Background(), s.ID(), serix.WithValidation())
