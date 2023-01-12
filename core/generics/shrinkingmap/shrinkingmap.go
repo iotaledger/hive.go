@@ -110,6 +110,17 @@ func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
 	}
 }
 
+// Pop removes the first element from the map and returns it.
+func (s *ShrinkingMap[K, V]) Pop() (key K, value V, exists bool) {
+	for k, v := range s.m {
+		delete(s.m, k)
+
+		return k, v, true
+	}
+
+	return
+}
+
 // Size returns the number of entries in the map.
 func (s *ShrinkingMap[K, V]) Size() (size int) {
 	return len(s.m)
