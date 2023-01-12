@@ -113,7 +113,7 @@ func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
 // Pop removes the first element from the map and returns it.
 func (s *ShrinkingMap[K, V]) Pop() (key K, value V, exists bool) {
 	for k, v := range s.m {
-		delete(s.m, k)
+		s.Delete(k)
 
 		return k, v, true
 	}
@@ -158,7 +158,7 @@ func (s *ShrinkingMap[K, V]) AsMap() (asMap map[K]V) {
 	return
 }
 
-// shouldShrink checks if the conditons to shrink the map are met.
+// shouldShrink checks if the conditions to shrink the map are met.
 func (s *ShrinkingMap[K, V]) shouldShrink() bool {
 	size := s.Size()
 
