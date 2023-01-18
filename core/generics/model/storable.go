@@ -155,6 +155,11 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	return encodedBytes, err
 }
 
+// InvalidateBytesCache invalidates the bytes cache.
+func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) InvalidateBytesCache() {
+	s.bytes = nil
+}
+
 // FromObjectStorage deserializes a model from the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
 	if _, err = s.FromBytes(data); err != nil {
