@@ -25,6 +25,7 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelTy
 
 	bytes      []byte
 	cacheBytes bool
+	bytesMutex *sync.RWMutex
 
 	*sync.RWMutex
 	*objectstorage.StorableObjectFlags
@@ -58,6 +59,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 	s.id = new(IDType)
 
 	s.idMutex = new(sync.RWMutex)
+	s.bytesMutex = new(sync.RWMutex)
 	s.RWMutex = new(sync.RWMutex)
 	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
 
@@ -122,6 +124,8 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 	s.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
 	if s.cacheBytes {
+		s.bytesMutex.Lock()
+		defer s.bytesMutex.Unlock()
 		// Store the bytes we decoded to avoid any future Encode calls.
 		s.bytes = bytes[:consumedBytes]
 	}
@@ -135,9 +139,13 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	defer s.RUnlock()
 
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
+	s.bytesMutex.RLock()
 	if s.cacheBytes && len(s.bytes) > 0 {
+		defer s.bytesMutex.RUnlock()
+
 		return s.bytes, nil
 	}
+	s.bytesMutex.RUnlock()
 
 	outerInstance := new(OuterModelType)
 	(OuterModelPtrType)(outerInstance).New(&s.M)
@@ -148,6 +156,9 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 	}
 
 	if s.cacheBytes {
+		s.bytesMutex.Lock()
+		defer s.bytesMutex.Unlock()
+
 		// Store the encoded bytes to avoid future calls to Encode.
 		s.bytes = encodedBytes
 	}
@@ -157,6 +168,9 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 
 // InvalidateBytesCache invalidates the bytes cache.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) InvalidateBytesCache() {
+	s.bytesMutex.Lock()
+	defer s.bytesMutex.Unlock()
+
 	s.bytes = nil
 }
 
@@ -180,6 +194,12 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Im
 
 	other.RLock()
 	defer other.RUnlock()
+
+	s.bytesMutex.Lock()
+	defer s.bytesMutex.Unlock()
+
+	other.bytesMutex.Lock()
+	defer other.bytesMutex.Unlock()
 
 	s.M = other.M
 	s.bytes = other.bytes

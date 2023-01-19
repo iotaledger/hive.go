@@ -20,6 +20,7 @@ type Mutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, Inner
 
 	bytes      []byte
 	cacheBytes bool
+	bytesMutex *sync.RWMutex
 
 	*sync.RWMutex
 }
@@ -37,6 +38,7 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerMo
 	m.Init()
 
 	m.M = *innerModelType
+	m.bytesMutex = new(sync.RWMutex)
 
 	m.cacheBytes = false
 	if len(cacheBytes) > 0 {
@@ -68,6 +70,14 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) String() st
 	)
 }
 
+// InvalidateBytesCache invalidates the bytes cache.
+func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) InvalidateBytesCache() {
+	m.bytesMutex.Lock()
+	defer m.bytesMutex.Unlock()
+
+	m.bytes = nil
+}
+
 // FromBytes deserializes a model from a byte slice.
 func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	m.Init()
@@ -84,6 +94,9 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(b
 	m.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
 	if m.cacheBytes {
+		m.bytesMutex.Lock()
+		defer m.bytesMutex.Unlock()
+
 		// Store the bytes we decoded to avoid any future Encode calls.
 		m.bytes = bytes[:consumedBytes]
 	}
@@ -97,9 +110,13 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (by
 	defer m.RUnlock()
 
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
+	m.bytesMutex.RLock()
 	if m.cacheBytes && len(m.bytes) > 0 {
+		defer m.bytesMutex.RUnlock()
+
 		return m.bytes, nil
 	}
+	m.bytesMutex.RUnlock()
 
 	outerInstance := new(OuterModelType)
 	(OuterModelPtrType)(outerInstance).New(&m.M)
@@ -110,6 +127,9 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (by
 	}
 
 	if m.cacheBytes {
+		m.bytesMutex.Lock()
+		defer m.bytesMutex.Unlock()
+
 		// Store the encoded bytes to avoid future calls to Encode.
 		m.bytes = encodedBytes
 	}

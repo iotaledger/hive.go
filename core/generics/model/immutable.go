@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/cockroachdb/errors"
 
@@ -19,6 +20,7 @@ type Immutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, Inn
 
 	bytes      []byte
 	cacheBytes bool
+	bytesMutex *sync.RWMutex
 }
 
 // NewImmutable creates a new immutable model instance.
@@ -32,6 +34,7 @@ func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModelType *InnerModelType, cacheBytes ...bool) {
 	i.M = *innerModelType
+	i.bytesMutex = new(sync.RWMutex)
 
 	i.cacheBytes = true
 	if len(cacheBytes) > 0 {
@@ -76,6 +79,8 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 	i.M = *(OuterModelPtrType)(outerInstance).InnerModel()
 
 	if i.cacheBytes {
+		i.bytesMutex.Lock()
+		defer i.bytesMutex.Unlock()
 		// Store the bytes we decoded to avoid any future Encode calls.
 		i.bytes = bytes[:consumedBytes]
 	}
@@ -86,9 +91,13 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 // Bytes serializes a model to a byte slice.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
+	i.bytesMutex.RLock()
 	if i.cacheBytes && len(i.bytes) > 0 {
+		defer i.bytesMutex.RUnlock()
+
 		return i.bytes, nil
 	}
+	i.bytesMutex.RUnlock()
 
 	outerInstance := new(OuterModelType)
 	(OuterModelPtrType)(outerInstance).New(&i.M)
@@ -99,6 +108,9 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (
 	}
 
 	if i.cacheBytes {
+		i.bytesMutex.Lock()
+		defer i.bytesMutex.Unlock()
+
 		// Store the encoded bytes to avoid future calls to Encode.
 		i.bytes = encodedBytes
 	}
