@@ -34,7 +34,6 @@ func NewImmutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, 
 // New initializes the model with the necessary values when being manually created through a constructor.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerModelType *InnerModelType, cacheBytes ...bool) {
 	i.M = *innerModelType
-	i.bytesMutex = new(sync.RWMutex)
 
 	i.cacheBytes = true
 	if len(cacheBytes) > 0 {
@@ -45,6 +44,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(inner
 // Init initializes the model after it has been restored from it's serialized version.
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
 	i.cacheBytes = true
+	i.bytesMutex = new(sync.RWMutex)
 }
 
 // InnerModel returns the inner Model that holds the data.
