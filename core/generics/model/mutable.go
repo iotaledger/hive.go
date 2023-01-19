@@ -38,7 +38,6 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerMo
 	m.Init()
 
 	m.M = *innerModelType
-	m.bytesMutex = new(sync.RWMutex)
 
 	m.cacheBytes = false
 	if len(cacheBytes) > 0 {
@@ -49,6 +48,7 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(innerMo
 // Init initializes the model after it has been restored from it's serialized version.
 func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
 	m.RWMutex = new(sync.RWMutex)
+	m.bytesMutex = new(sync.RWMutex)
 }
 
 // InnerModel returns the inner Model that holds the data.
