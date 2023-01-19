@@ -70,6 +70,14 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) String() st
 	)
 }
 
+// InvalidateBytesCache invalidates the bytes cache.
+func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) InvalidateBytesCache() {
+	m.bytesMutex.Lock()
+	defer m.bytesMutex.Unlock()
+
+	m.bytes = nil
+}
+
 // FromBytes deserializes a model from a byte slice.
 func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	m.Init()
