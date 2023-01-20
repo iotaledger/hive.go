@@ -10,6 +10,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -98,7 +99,7 @@ func TestRecoverKeyFromSignedData(t *testing.T) {
 
 	sig := priv.Sign(msg)
 
-	d := signedData{pub: pub.Bytes(), msg: msg, sig: sig.Bytes()}
+	d := signedData{pub: lo.PanicOnErr(pub.Bytes()), msg: msg, sig: lo.PanicOnErr(sig.Bytes())}
 	key, err := RecoverKeyFromSignedData(d)
 	require.NoError(t, err)
 

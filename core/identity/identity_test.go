@@ -18,7 +18,7 @@ func TestID(t *testing.T) {
 
 	id := NewID(pub)
 
-	bytes := sha256.Sum256(pub.Bytes())
+	bytes := sha256.Sum256(lo.PanicOnErr(pub.Bytes()))
 
 	assert.Equal(t, lo.PanicOnErr(id.Bytes()), bytes[:])
 	assert.Equal(t, id.String(), base58.Encode(bytes[:])[:8])

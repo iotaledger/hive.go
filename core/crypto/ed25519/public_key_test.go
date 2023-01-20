@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 func TestPublicKeyFromBytesTooShort(t *testing.T) {
 	bytes := make([]byte, 10)
 	_, _, err := PublicKeyFromBytes(bytes)
-	assert.EqualError(t, err, "bytes too short")
+	require.EqualError(t, err, ErrNotEnoughBytes.Error())
 }
 
 func TestPublicKeyFromBytes(t *testing.T) {
@@ -20,9 +21,9 @@ func TestPublicKeyFromBytes(t *testing.T) {
 
 	publicKey, consumedBytes, err := PublicKeyFromBytes(bytes)
 
-	assert.Equal(t, publicKey.Bytes(), bytes[:PublicKeySize])
-	assert.NoError(t, err)
-	assert.Equal(t, consumedBytes, PublicKeySize)
+	require.Equal(t, lo.PanicOnErr(publicKey.Bytes()), bytes[:PublicKeySize])
+	require.NoError(t, err)
+	require.Equal(t, consumedBytes, PublicKeySize)
 }
 
 func TestPublicKey_VerifySignature(t *testing.T) {
@@ -32,7 +33,7 @@ func TestPublicKey_VerifySignature(t *testing.T) {
 	data := []byte("DataToSign")
 	sig := privateKey.Sign(data)
 
-	assert.True(t, publicKey.VerifySignature(data, sig))
+	require.True(t, publicKey.VerifySignature(data, sig))
 }
 
 func TestPublicKey_MarshalJSON(t *testing.T) {
@@ -41,7 +42,7 @@ func TestPublicKey_MarshalJSON(t *testing.T) {
 	b, err := json.Marshal(pk)
 	require.NoError(t, err)
 	got := string(b)
-	assert.Equal(t, `"CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3"`, got)
+	require.Equal(t, `"CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3"`, got)
 }
 
 func TestPublicKey_UnmarshalJSON(t *testing.T) {
@@ -52,5 +53,5 @@ func TestPublicKey_UnmarshalJSON(t *testing.T) {
 
 	expected, err := PublicKeyFromString("CHfU1NUf6ZvUKDQHTG2df53GR7CvuMFtyt7YymJ6DwS3")
 	require.NoError(t, err)
-	assert.Equal(t, expected, got)
+	require.Equal(t, expected, got)
 }

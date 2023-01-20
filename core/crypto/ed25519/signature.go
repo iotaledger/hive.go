@@ -1,9 +1,6 @@
 package ed25519
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/mr-tron/base58"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
@@ -13,15 +10,7 @@ type Signature [SignatureSize]byte
 
 // SignatureFromBytes creates a Signature from the given bytes.
 func SignatureFromBytes(bytes []byte) (result Signature, consumedBytes int, err error) {
-	if len(bytes) < SignatureSize {
-		err = fmt.Errorf("bytes too short")
-
-		return
-	}
-
-	copy(result[:SignatureSize], bytes)
-	consumedBytes = SignatureSize
-
+	consumedBytes, err = (&result).FromBytes(bytes)
 	return
 }
 
@@ -34,24 +23,33 @@ func ParseSignature(marshalUtil *marshalutil.MarshalUtil) (Signature, error) {
 	return id.(Signature), nil
 }
 
-// Bytes returns the signature in bytes.
-func (signature Signature) Bytes() []byte {
-	return signature[:]
+// FromBytes initializes Signature from the given bytes.
+func (signature *Signature) FromBytes(bytes []byte) (consumedBytes int, err error) {
+	if len(bytes) < SignatureSize {
+		return 0, ErrNotEnoughBytes
+	}
+
+	copy(signature[:SignatureSize], bytes)
+
+	return SignatureSize, nil
 }
 
-// String returns a human readable version of the Signature (base58 encoded).
+// Bytes returns the signature in bytes.
+func (signature Signature) Bytes() ([]byte, error) {
+	return signature[:], nil
+}
+
+// String returns a human-readable version of the Signature (base58 encoded).
 func (signature Signature) String() string {
 	return base58.Encode(signature[:])
 }
 
-func (signature *Signature) UnmarshalBinary(bytes []byte) (err error) {
-	if len(bytes) < SignatureSize {
-		return errors.New("not enough bytes")
+func (signature *Signature) UnmarshalBinary(bytes []byte) error {
+	if _, err := signature.FromBytes(bytes); err != nil {
+		return err
 	}
 
-	copy(signature[:], bytes)
-
-	return
+	return nil
 }
 
 var EmptySignature Signature

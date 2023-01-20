@@ -2,12 +2,10 @@ package ed25519
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
-	"golang.org/x/xerrors"
+	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
 )
@@ -19,7 +17,7 @@ type PublicKey [PublicKeySize]byte
 func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 	b, err := base58.Decode(s)
 	if err != nil {
-		return publicKey, xerrors.Errorf("failed to parse public key %s from base58 string: %w", s, err)
+		return publicKey, errors.Wrapf(err, "failed to parse public key %s from base58 string", s)
 	}
 	publicKey, _, err = PublicKeyFromBytes(b)
 
@@ -28,15 +26,7 @@ func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 
 // PublicKeyFromBytes creates a PublicKey from the given bytes.
 func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
-	if len(bytes) < PublicKeySize {
-		err = fmt.Errorf("bytes too short")
-
-		return
-	}
-
-	copy(result[:], bytes)
-	consumedBytes = PublicKeySize
-
+	consumedBytes, err = (&result).FromBytes(bytes)
 	return
 }
 
@@ -44,17 +34,17 @@ func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err 
 // and verifies whether sig is a valid signature of data by pub.
 func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 	if l := len(key); l != PublicKeySize {
-		err = fmt.Errorf("invalid key length: %d, need %d", l, PublicKeySize)
+		err = errors.Errorf("invalid key length: %d, need %d", l, PublicKeySize)
 
 		return
 	}
 	if l := len(sig); l != SignatureSize {
-		err = fmt.Errorf("invalid signature length: %d, need %d", l, SignatureSize)
+		err = errors.Errorf("invalid signature length: %d, need %d", l, SignatureSize)
 
 		return
 	}
 	if !ed25519.Verify(key, data, sig) {
-		err = fmt.Errorf("invalid signature")
+		err = errors.New("invalid signature")
 
 		return
 	}
@@ -78,24 +68,33 @@ func (publicKey PublicKey) VerifySignature(data []byte, signature Signature) boo
 	return ed25519.Verify(publicKey[:], data, signature[:])
 }
 
-// Bytes returns the publicKey in bytes.
-func (publicKey PublicKey) Bytes() []byte {
-	return publicKey[:]
-}
-
-// String returns a human readable version of the PublicKey (base58 encoded).
-func (publicKey PublicKey) String() string {
-	return base58.Encode(publicKey[:])
-}
-
-func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) (err error) {
+// FromBytes initialized the PublicKey from the given bytes.
+func (publicKey *PublicKey) FromBytes(bytes []byte) (int, error) {
 	if len(bytes) < PublicKeySize {
-		return errors.New("not enough bytes")
+		return 0, ErrNotEnoughBytes
 	}
 
 	copy(publicKey[:], bytes)
 
-	return
+	return PublicKeySize, nil
+}
+
+// Bytes returns the publicKey in bytes.
+func (publicKey PublicKey) Bytes() ([]byte, error) {
+	return publicKey[:], nil
+}
+
+// String returns a human-readable version of the PublicKey (base58 encoded).
+func (publicKey PublicKey) String() string {
+	return base58.Encode(publicKey[:])
+}
+
+func (publicKey *PublicKey) UnmarshalBinary(bytes []byte) error {
+	if _, err := publicKey.FromBytes(bytes); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // MarshalJSON serializes public key to JSON as base58 encoded string.
@@ -111,7 +110,7 @@ func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 	}
 	pk, err := PublicKeyFromString(s)
 	if err != nil {
-		return fmt.Errorf("failed to parse public key from JSON: %w", err)
+		return errors.Wrap(err, "failed to parse public key from JSON")
 	}
 	*publicKey = pk
 
