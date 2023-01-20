@@ -61,6 +61,17 @@ func New(name string, version string, optionalOptions ...Option) *App {
 	appOpts.apply(defaultOptions...)
 	appOpts.apply(optionalOptions...)
 
+	if strings.HasPrefix(strings.ToLower(version), "v") {
+		if _, err := goversion.NewSemver(version[1:]); err == nil {
+			// version is a valid SemVer with a "v" prefix => remove the "v" prefix
+			version = version[1:]
+		}
+	}
+
+	if version == "" {
+		panic("unable to initialize app: no version given")
+	}
+
 	a := &App{
 		appInfo: &Info{
 			Name:                name,
@@ -111,7 +122,7 @@ func (a *App) init() {
 	helpFull := flag.Bool("full", false, "prints full app help (only in combination with -h)")
 
 	if a.options.initComponent == nil {
-		panic("you must configure the app with an InitComponent")
+		panic("unable to initialize app: no InitComponent given")
 	}
 
 	// default config
