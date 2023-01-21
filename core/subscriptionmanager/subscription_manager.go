@@ -316,13 +316,24 @@ func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) {
 	s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
 }
 
-func (s *SubscriptionManager[C, T]) HasSubscribers(topic T) bool {
+func (s *SubscriptionManager[C, T]) TopicHasSubscribers(topic T) bool {
 	s.RLock()
 	defer s.RUnlock()
 
-	_, hasSubscribers := s.topics.Get(topic)
+	return s.topics.Has(topic)
+}
 
-	return hasSubscribers
+func (s *SubscriptionManager[C, T]) ClientSubscribedToTopic(clientID C, topic T) bool {
+	s.RLock()
+	defer s.RUnlock()
+
+	// check if the client is connected
+	subscribedTopics, exists := s.subscribers.Get(clientID)
+	if !exists {
+		return false
+	}
+
+	return subscribedTopics.Has(topic)
 }
 
 // SubscribersSize returns the size of the underlying map of the SubscriptionManager.
