@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
+	"nhooyr.io/websocket"
 
 	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
@@ -32,9 +32,7 @@ func newEvents() *Events {
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
-
-	// websocket Upgrader.
-	upgrader *websocket.Upgrader
+	options *websocket.AcceptOptions
 
 	// used Logger instance.
 	logger *logger.Logger
@@ -77,12 +75,12 @@ type message struct {
 	dontDrop bool
 }
 
-func NewHub(logger *logger.Logger, upgrader *websocket.Upgrader, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
+func NewHub(logger *logger.Logger, options *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	return &Hub{
 		logger:                logger,
-		upgrader:              upgrader,
+		options:               options,
 		clientSendChannelSize: clientSendChannelSize,
 		clients:               make(map[*Client]struct{}),
 		broadcast:             make(chan *message, broadcastQueueSize),
@@ -195,7 +193,8 @@ func (h *Hub) Run(ctx context.Context) {
 
 			// wait until checkPong started, before calling onConnect
 			client.startWaitGroup.Add(1)
-			go client.checkPong()
+			go client.keepAlive()
+			go client.readPump()
 			client.startWaitGroup.Wait()
 
 			if client.onConnect != nil {
@@ -269,27 +268,28 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter,
 		}
 	}()
 
-	conn, err := h.upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.Accept(w, r, h.options)
 	if err != nil {
 		h.logger.Warnf("upgrade websocket error: %v", err)
-
 		return
 	}
-	conn.EnableWriteCompression(true)
 
 	clientID := ClientID(h.lastClientID.Inc())
+	keepAliveContext, keepAliveCancel := context.WithCancel(h.ctx)
 
 	client := &Client{
-		id:             clientID,
-		hub:            h,
-		conn:           conn,
-		ExitSignal:     make(chan struct{}),
-		sendChan:       make(chan interface{}, h.clientSendChannelSize),
-		sendChanClosed: make(chan struct{}),
-		onConnect:      onConnect,
-		onDisconnect:   onDisconnect,
-		shutdownFlag:   atomic.NewBool(false),
-		readLimit:      h.clientReadLimit,
+		id:               clientID,
+		hub:              h,
+		conn:             conn,
+		keepAliveContext: keepAliveContext,
+		keepAliveCancel:  keepAliveCancel,
+		ExitSignal:       make(chan struct{}),
+		sendChan:         make(chan interface{}, h.clientSendChannelSize),
+		sendChanClosed:   make(chan struct{}),
+		onConnect:        onConnect,
+		onDisconnect:     onDisconnect,
+		shutdownFlag:     atomic.NewBool(false),
+		readLimit:        h.clientReadLimit,
 	}
 
 	if onCreate != nil {

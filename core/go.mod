@@ -9,7 +9,6 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/golang/protobuf v1.5.2
-	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
@@ -35,6 +34,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
+	nhooyr.io/websocket v1.8.7
 )
 
 require (

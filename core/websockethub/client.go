@@ -1,13 +1,15 @@
 package websockethub
 
 import (
+	"context"
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
-
+ 
 const (
 	// time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
@@ -19,33 +21,10 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
-// The message types are defined in RFC 6455, section 11.8.
-const (
-	// TextMessage denotes a text data message. The text message payload is
-	// interpreted as UTF-8 encoded text data.
-	TextMessage = 1
-
-	// BinaryMessage denotes a binary data message.
-	BinaryMessage = 2
-
-	// CloseMessage denotes a close control message. The optional message
-	// payload contains a numeric code and text. Use the FormatCloseMessage
-	// function to format a close message payload.
-	CloseMessage = 8
-
-	// PingMessage denotes a ping control message. The optional message payload
-	// is UTF-8 encoded text.
-	PingMessage = 9
-
-	// PongMessage denotes a pong control message. The optional message payload
-	// is UTF-8 encoded text.
-	PongMessage = 10
-)
-
 // WebsocketMsg is a message received via websocket.
 type WebsocketMsg struct {
 	// MsgType is the type of the message based on RFC 6455.
-	MsgType int
+	MsgType websocket.MessageType
 	// Data is the received data of the message.
 	Data []byte
 }
@@ -63,6 +42,10 @@ type Client struct {
 
 	// the websocket connection.
 	conn *websocket.Conn
+
+	// a context which is canceled when the ping times out and the client should be dropped.
+	keepAliveContext context.Context
+	keepAliveCancel  context.CancelFunc
 
 	// a channel which is closed when the websocket client is disconnected.
 	ExitSignal chan struct{}
@@ -105,11 +88,36 @@ func (c *Client) ID() ClientID {
 	return c.id
 }
 
-// checkPong checks if the client is still available and answers to the ping messages
-// that are sent periodically in the writePump function.
+func (c *Client) keepAlive() {
+	ticker := time.NewTimer(time.Millisecond)
+
+	defer c.keepAliveCancel()
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.hub.ctx.Done():
+		case <-c.ExitSignal:
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(c.hub.ctx, pongWait)
+			err := c.conn.Ping(ctx)
+			cancel()
+
+			if err != nil {
+				return
+			}
+
+			ticker.Reset(pingPeriod)
+		}
+	}
+}
+
+// readPump reads incoming messages and stops if the client does not respond to the keep alive pings
+// that are sent periodically in the keepAlive function.
 //
 // at most one reader per websocket connection is allowed.
-func (c *Client) checkPong() {
+func (c *Client) readPump() {
 
 	defer func() {
 		select {
@@ -117,7 +125,7 @@ func (c *Client) checkPong() {
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
 		default:
-			// send a unregister message to the hub
+			// send an unregister message to the hub
 			c.hub.unregister <- c
 		}
 
@@ -131,6 +139,7 @@ func (c *Client) checkPong() {
 					break drainLoop
 				}
 			}
+
 			close(c.ReceiveChan)
 		}
 
@@ -138,24 +147,13 @@ func (c *Client) checkPong() {
 	}()
 
 	c.startWaitGroup.Done()
-
 	c.conn.SetReadLimit(c.readLimit)
-	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
-	}
-
-	c.conn.SetPongHandler(func(string) error {
-		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-			c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
-		}
-
-		return nil
-	})
 
 	for {
-		msgType, data, err := c.conn.ReadMessage()
+		msgType, data, err := c.conn.Read(c.keepAliveContext)
+
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.CloseStatus(err) == websocket.StatusGoingAway || websocket.CloseStatus(err) == websocket.StatusAbnormalClosure {
 				c.hub.logger.Warnf("Websocket ReadMessage error: %v", err)
 			}
 
@@ -183,7 +181,6 @@ func (c *Client) checkPong() {
 //
 // at most one writer per websocket connection is allowed.
 func (c *Client) writePump() {
-
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {
@@ -201,12 +198,14 @@ func (c *Client) writePump() {
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
 		default:
-			// send a unregister message to the hub
+			// send an unregister message to the hub
 			c.hub.unregister <- c
 		}
 
 		// close the websocket connection
-		c.conn.Close()
+		if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+			c.hub.logger.Warnf("Websocket closing error: %v", err)
+		}
 
 		c.shutdownWaitGroup.Done()
 	}()
@@ -221,38 +220,24 @@ func (c *Client) writePump() {
 
 		case <-c.ExitSignal:
 			// the Hub closed the channel.
-			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-				c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+			if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+				c.hub.logger.Warnf("Websocket closing error: %v", err)
 			}
 
 			return
 
 		case msg, ok := <-c.sendChan:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
-			}
-
 			if !ok {
 				// the Hub closed the channel.
-				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+				if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+					c.hub.logger.Warnf("Websocket closing error: %v", err)
 				}
 
 				return
 			}
 
-			if err := c.conn.WriteJSON(msg); err != nil {
+			if err := wsjson.Write(c.keepAliveContext, c.conn, msg); err != nil {
 				c.hub.logger.Warnf("Websocket error: %v", err)
-
-				return
-			}
-
-		case <-pingTicker.C:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
-			}
-
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -273,6 +258,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 
 	if len(dontDrop) > 0 && dontDrop[0] {
 		select {
+		case <-c.keepAliveContext.Done():
 		case <-c.hub.ctx.Done():
 		case <-c.ExitSignal:
 		case <-c.sendChanClosed:
@@ -283,6 +269,7 @@ func (c *Client) Send(msg interface{}, dontDrop ...bool) {
 	}
 
 	select {
+	case <-c.keepAliveContext.Done():
 	case <-c.hub.ctx.Done():
 	case <-c.ExitSignal:
 	case <-c.sendChanClosed:
