@@ -3,13 +3,15 @@ package ed25519
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 func TestSignatureFromBytesTooShort(t *testing.T) {
 	bytes := make([]byte, 10)
 	_, _, err := SignatureFromBytes(bytes)
-	assert.EqualError(t, err, "bytes too short")
+	require.EqualError(t, err, ErrNotEnoughBytes.Error())
 }
 
 func TestSignatureFromBytes(t *testing.T) {
@@ -18,7 +20,7 @@ func TestSignatureFromBytes(t *testing.T) {
 
 	signature, consumedBytes, err := SignatureFromBytes(bytes)
 
-	assert.Equal(t, signature.Bytes(), bytes[:SignatureSize])
-	assert.NoError(t, err)
-	assert.Equal(t, consumedBytes, SignatureSize)
+	require.Equal(t, lo.PanicOnErr(signature.Bytes()), bytes[:SignatureSize])
+	require.NoError(t, err)
+	require.Equal(t, consumedBytes, SignatureSize)
 }

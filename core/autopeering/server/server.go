@@ -11,6 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/core/autopeering/server/proto"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/netutil"
@@ -266,8 +267,8 @@ func (s *Server) encode(data []byte) *pb.Packet {
 	}
 
 	return &pb.Packet{
-		PublicKey: s.local.PublicKey().Bytes(),
-		Signature: s.local.Sign(data).Bytes(),
+		PublicKey: lo.PanicOnErr(s.local.PublicKey().Bytes()),
+		Signature: lo.PanicOnErr(s.local.Sign(data).Bytes()),
 		Data:      append([]byte(nil), data...),
 	}
 }
