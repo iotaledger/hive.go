@@ -2,6 +2,7 @@ package websockethub
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"go.uber.org/atomic"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
+)
+
+var (
+	ErrWebsocketServerUnavailable = errors.New("websocket server unavailable")
+	ErrClientDisconnected         = errors.New("client was disconnected")
 )
 
 type ClientConnectionEvent struct {
@@ -32,10 +38,11 @@ func newEvents() *Events {
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
-	options *websocket.AcceptOptions
-
 	// used Logger instance.
 	logger *logger.Logger
+
+	// the accept options of the websocket per client.
+	acceptOptions *websocket.AcceptOptions
 
 	// registered clients.
 	clients map[*Client]struct{}
@@ -53,8 +60,7 @@ type Hub struct {
 	unregister chan *Client
 
 	// context of the websocket hub
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx context.Context
 
 	// indicates that the websocket hub was shut down
 	shutdownFlag *atomic.Bool
@@ -75,20 +81,17 @@ type message struct {
 	dontDrop bool
 }
 
-func NewHub(logger *logger.Logger, options *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
-	ctx, ctxCancel := context.WithCancel(context.Background())
-
+func NewHub(logger *logger.Logger, acceptOptions *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
 	return &Hub{
 		logger:                logger,
-		options:               options,
+		acceptOptions:         acceptOptions,
 		clientSendChannelSize: clientSendChannelSize,
 		clients:               make(map[*Client]struct{}),
 		broadcast:             make(chan *message, broadcastQueueSize),
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
-		ctx:                   ctx,
-		ctxCancel:             ctxCancel,
-		shutdownFlag:          atomic.NewBool(false),
+		ctx:                   nil,
+		shutdownFlag:          atomic.NewBool(true),
 		clientReadLimit:       clientReadLimit,
 		lastClientID:          atomic.NewUint32(0),
 		events:                newEvents(),
@@ -101,10 +104,10 @@ func (h *Hub) Events() *Events {
 }
 
 // BroadcastMsg sends a message to all clients.
-func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
+func (h *Hub) BroadcastMsg(ctx context.Context, data interface{}, dontDrop ...bool) error {
 	if h.shutdownFlag.Load() {
-		// hub was already shut down
-		return
+		// hub was already shut down or was not started yet
+		return ErrWebsocketServerUnavailable
 	}
 
 	notDrop := false
@@ -116,17 +119,24 @@ func (h *Hub) BroadcastMsg(data interface{}, dontDrop ...bool) {
 
 	if notDrop {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-h.ctx.Done():
+			return ErrWebsocketServerUnavailable
 		case h.broadcast <- msg:
+			return nil
 		}
-
-		return
 	}
 
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-h.ctx.Done():
+		return ErrWebsocketServerUnavailable
 	case h.broadcast <- msg:
+		return nil
 	default:
+		return nil
 	}
 }
 
@@ -134,7 +144,7 @@ func (h *Hub) removeClient(client *Client) {
 	delete(h.clients, client)
 	close(client.ExitSignal)
 
-	// wait until writePump and checkPong finished
+	// wait until writePump and readPump finished
 	client.shutdownWaitGroup.Wait()
 
 	// drain the send channel
@@ -167,12 +177,16 @@ func (h *Hub) Clients() int {
 
 // Run starts the hub.
 func (h *Hub) Run(ctx context.Context) {
+	// set the hub context so it can be used by the clients
+	h.ctx = ctx
+
+	// set the hub as running
+	h.shutdownFlag.Store(false)
 
 	for {
 		select {
 		case <-ctx.Done():
 			h.shutdownFlag.Store(true)
-			h.ctxCancel()
 
 			for client := range h.clients {
 				h.removeClient(client)
@@ -184,17 +198,20 @@ func (h *Hub) Run(ctx context.Context) {
 			// register client
 			h.clients[client] = struct{}{}
 
-			client.shutdownWaitGroup.Add(2)
+			client.shutdownWaitGroup.Add(3)
 
-			// first start the write pump to answer requests from checkPong
-			client.startWaitGroup.Add(1)
+			//nolint:contextcheck // client context is already based on the hub ctx
 			go client.writePump()
+
+			// first start the read pump to read pong answers from keepAlive
+			client.startWaitGroup.Add(1)
+			go client.readPump()
 			client.startWaitGroup.Wait()
 
-			// wait until checkPong started, before calling onConnect
+			// wait until keepAlive started, before calling onConnect
 			client.startWaitGroup.Add(1)
+			//nolint:contextcheck // client context is already based on the hub ctx
 			go client.keepAlive()
-			go client.readPump()
 			client.startWaitGroup.Wait()
 
 			if client.onConnect != nil {
@@ -251,15 +268,16 @@ func (h *Hub) Run(ctx context.Context) {
 // ServeWebsocket handles websocket requests from the peer.
 // onCreate gets called when the client is created.
 // onConnect gets called when the client was registered.
-func (h *Hub) ServeWebsocket(w http.ResponseWriter,
+func (h *Hub) ServeWebsocket(
+	w http.ResponseWriter,
 	r *http.Request,
 	onCreate func(client *Client),
 	onConnect func(client *Client),
-	onDisconnect func(client *Client)) {
+	onDisconnect func(client *Client)) error {
 
 	if h.shutdownFlag.Load() {
-		// hub was already shut down
-		return
+		// hub was already shut down or was not started yet
+		return ErrWebsocketServerUnavailable
 	}
 
 	defer func() {
@@ -268,36 +286,38 @@ func (h *Hub) ServeWebsocket(w http.ResponseWriter,
 		}
 	}()
 
-	conn, err := websocket.Accept(w, r, h.options)
+	conn, err := websocket.Accept(w, r, h.acceptOptions)
 	if err != nil {
-		h.logger.Warnf("upgrade websocket error: %v", err)
-		return
+		h.logger.Warn(err.Error())
+		return err
 	}
 
-	clientID := ClientID(h.lastClientID.Inc())
-	keepAliveContext, keepAliveCancel := context.WithCancel(h.ctx)
-
-	client := &Client{
-		id:               clientID,
-		hub:              h,
-		conn:             conn,
-		keepAliveContext: keepAliveContext,
-		keepAliveCancel:  keepAliveCancel,
-		ExitSignal:       make(chan struct{}),
-		sendChan:         make(chan interface{}, h.clientSendChannelSize),
-		sendChanClosed:   make(chan struct{}),
-		onConnect:        onConnect,
-		onDisconnect:     onDisconnect,
-		shutdownFlag:     atomic.NewBool(false),
-		readLimit:        h.clientReadLimit,
-	}
-
+	client := NewClient(h, conn, onConnect, onDisconnect)
 	if onCreate != nil {
 		onCreate(client)
 	}
 
+	return h.Register(client)
+}
+
+func (h *Hub) Stopped() bool {
+	return h.shutdownFlag.Load()
+}
+
+func (h *Hub) Register(client *Client) error {
 	select {
 	case <-h.ctx.Done():
+		return ErrWebsocketServerUnavailable
 	case h.register <- client:
+		return nil
+	}
+}
+
+func (h *Hub) Unregister(client *Client) error {
+	select {
+	case <-h.ctx.Done():
+		return ErrWebsocketServerUnavailable
+	case h.unregister <- client:
+		return nil
 	}
 }
