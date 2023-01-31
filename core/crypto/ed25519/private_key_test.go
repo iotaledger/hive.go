@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	"github.com/oasisprotocol/ed25519"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 func TestPrivateKeyFromBytesTooShort(t *testing.T) {
 	bytes := make([]byte, 10)
 	_, _, err := PrivateKeyFromBytes(bytes)
-	assert.EqualError(t, err, "bytes too short")
+	require.EqualError(t, err, ErrNotEnoughBytes.Error())
 }
 
 func TestPrivateKeyFromBytes(t *testing.T) {
@@ -20,9 +21,9 @@ func TestPrivateKeyFromBytes(t *testing.T) {
 
 	privateKey, consumedBytes, err := PrivateKeyFromBytes(bytes)
 
-	assert.Equal(t, privateKey.Bytes(), bytes[:PrivateKeySize])
-	assert.NoError(t, err)
-	assert.Equal(t, consumedBytes, PrivateKeySize)
+	require.Equal(t, lo.PanicOnErr(privateKey.Bytes()), bytes[:PrivateKeySize])
+	require.NoError(t, err)
+	require.Equal(t, consumedBytes, PrivateKeySize)
 }
 
 func TestPrivateKeyFromSeed(t *testing.T) {
@@ -31,7 +32,7 @@ func TestPrivateKeyFromSeed(t *testing.T) {
 
 	privateKey := PrivateKeyFromSeed(seed)
 
-	assert.EqualValues(t, privateKey.Bytes(), ed25519.NewKeyFromSeed(seed))
+	require.EqualValues(t, lo.PanicOnErr(privateKey.Bytes()), ed25519.NewKeyFromSeed(seed))
 }
 
 func TestPrivateKey_Sign(t *testing.T) {
@@ -41,12 +42,12 @@ func TestPrivateKey_Sign(t *testing.T) {
 	data := []byte("DataToSign")
 	sig := privateKey.Sign(data)
 
-	assert.Equal(t, sig.Bytes(), ed25519.Sign(privateKey.Bytes(), data))
+	require.Equal(t, lo.PanicOnErr(sig.Bytes()), ed25519.Sign(lo.PanicOnErr(privateKey.Bytes()), data))
 }
 
 func TestPrivateKey_Public(t *testing.T) {
 	publicKey, privateKey, err := GenerateKey()
 	require.NoError(t, err)
 
-	assert.Equal(t, privateKey.Public(), publicKey)
+	require.Equal(t, privateKey.Public(), publicKey)
 }

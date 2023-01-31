@@ -215,7 +215,12 @@ func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 
 // UpdateLocalPrivateKey stores the provided key in the database.
 func (db *DB) UpdateLocalPrivateKey(key ed25519.PrivateKey) error {
-	if err := db.store.Set(localFieldKey(dbLocalKey), key.Bytes()); err != nil {
+	keyBytes, err := key.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := db.store.Set(localFieldKey(dbLocalKey), keyBytes); err != nil {
 		return err
 	}
 

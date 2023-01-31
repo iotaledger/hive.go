@@ -2,6 +2,7 @@ package ed25519
 
 import (
 	"github.com/oasisprotocol/ed25519"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -9,6 +10,10 @@ const (
 	SignatureSize  = ed25519.SignatureSize
 	PrivateKeySize = ed25519.PrivateKeySize
 	SeedSize       = ed25519.SeedSize
+)
+
+var (
+	ErrNotEnoughBytes = errors.New("not enough bytes")
 )
 
 // GenerateKey creates a public/private key pair.
