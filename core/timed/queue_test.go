@@ -208,6 +208,9 @@ func TestTimedQueueCancel(t *testing.T) {
 	queueElements[0].Cancel()
 	queueElements[len(elements)-1].Cancel()
 
+	// A further call to cancel should not panic
+	queueElements[0].Cancel()
+
 	// wait all element is clear
 	wg.Wait()
 	assert.Equal(t, 0, tq.Size())

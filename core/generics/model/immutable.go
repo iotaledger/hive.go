@@ -18,7 +18,7 @@ import (
 type Immutable[OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	M InnerModelType
 
-	bytes      []byte
+	bytes      *[]byte // using a pointer here because serix uses reflection which creates a copy of the object
 	cacheBytes bool
 	bytesMutex *sync.RWMutex
 }
@@ -47,6 +47,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) New(inner
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Init() {
 	i.cacheBytes = true
 	i.bytesMutex = new(sync.RWMutex)
+	i.bytes = new([]byte)
 }
 
 // InnerModel returns the inner Model that holds the data.
@@ -84,7 +85,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 		i.bytesMutex.Lock()
 		defer i.bytesMutex.Unlock()
 		// Store the bytes we decoded to avoid any future Encode calls.
-		i.bytes = bytes[:consumedBytes]
+		*i.bytes = bytes[:consumedBytes]
 	}
 
 	return consumedBytes, nil
@@ -94,10 +95,10 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (bytes []byte, err error) {
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
 	i.bytesMutex.RLock()
-	if i.cacheBytes && len(i.bytes) > 0 {
+	if i.cacheBytes && i.bytes != nil && len(*i.bytes) > 0 {
 		defer i.bytesMutex.RUnlock()
 
-		return i.bytes, nil
+		return *i.bytes, nil
 	}
 	i.bytesMutex.RUnlock()
 
@@ -114,7 +115,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) Bytes() (
 		defer i.bytesMutex.Unlock()
 
 		// Store the encoded bytes to avoid future calls to Encode.
-		i.bytes = encodedBytes
+		*i.bytes = encodedBytes
 	}
 
 	return encodedBytes, err
