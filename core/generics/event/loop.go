@@ -7,6 +7,6 @@ import (
 var Loop *workerpool.UnboundedWorkerPool
 
 func init() {
-	Loop = workerpool.NewUnboundedWorkerPool()
+	Loop = workerpool.NewUnboundedWorkerPool("event.Loop")
 	Loop.Start()
 }

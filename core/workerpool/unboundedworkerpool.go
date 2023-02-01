@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 
@@ -8,6 +9,7 @@ import (
 )
 
 type UnboundedWorkerPool struct {
+	Name                string
 	PendingTasksCounter *syncutils.Counter
 	Queue               *syncutils.Stack[*WorkerPoolTask]
 	ShutdownComplete    sync.WaitGroup
@@ -19,12 +21,13 @@ type UnboundedWorkerPool struct {
 	mutex          syncutils.RWMutex
 }
 
-func NewUnboundedWorkerPool(optsWorkerCount ...int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
+func NewUnboundedWorkerPool(name string, optsWorkerCount ...int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
 	if len(optsWorkerCount) == 0 {
 		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
 	}
 
 	return &UnboundedWorkerPool{
+		Name:                name,
 		PendingTasksCounter: syncutils.NewCounter(),
 		Queue:               syncutils.NewStack[*WorkerPoolTask](),
 		workerCount:         optsWorkerCount[0],
@@ -50,7 +53,7 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 
 func (u *UnboundedWorkerPool) Submit(task func(), optStackTrace ...string) {
 	if !u.IsRunning() {
-		panic("worker pool is not running")
+		panic(fmt.Sprintf("worker pool '%s' is not running", u.Name))
 	}
 
 	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {

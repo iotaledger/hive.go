@@ -37,7 +37,7 @@ func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *Unbounded
 	g.poolsMutex.Lock()
 	defer g.poolsMutex.Unlock()
 
-	pool = NewUnboundedWorkerPool(optsWorkerCount...)
+	pool = NewUnboundedWorkerPool(name, optsWorkerCount...)
 	pool.PendingTasksCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()
@@ -49,6 +49,10 @@ func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *Unbounded
 	g.pools.Set(name, pool)
 
 	return pool.Start()
+}
+
+func (g *Group) Wait() {
+	g.PendingChildrenCounter.WaitIsZero()
 }
 
 func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
