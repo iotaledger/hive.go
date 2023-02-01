@@ -53,11 +53,11 @@ func (u *UnboundedWorkerPool) Submit(task func(), optStackTrace ...string) {
 		panic("worker pool is not running")
 	}
 
-	if u.PendingTasksCounter.Increase(); len(optStackTrace) == 0 {
-		optStackTrace = []string{""}
+	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {
+		u.Queue.Push(newWorkerPoolTask(func() { u.PendingTasksCounter.Decrease() }, task, optStackTrace[0]))
+	} else {
+		u.Queue.Push(newWorkerPoolTask(func() { u.PendingTasksCounter.Decrease() }, task, ""))
 	}
-
-	u.Queue.Push(newWorkerPoolTask(func() { u.PendingTasksCounter.Decrease() }, task, optStackTrace[0]))
 }
 
 func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *UnboundedWorkerPool) {
