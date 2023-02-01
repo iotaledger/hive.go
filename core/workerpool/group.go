@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,6 +56,28 @@ func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
 	defer g.poolsMutex.RUnlock()
 
 	return g.pools.Get(name)
+}
+
+func (g *Group) Pools() map[string]*UnboundedWorkerPool {
+	g.poolsMutex.RLock()
+	defer g.poolsMutex.RUnlock()
+
+	g.groupsMutex.RLock()
+	defer g.groupsMutex.RUnlock()
+
+	wp := make(map[string]*UnboundedWorkerPool)
+	g.pools.ForEach(func(key string, val *UnboundedWorkerPool) bool {
+		wp[fmt.Sprintf("%s.%s", g.name, key)] = val
+		return true
+	})
+	g.groups.ForEach(func(prefix string, group *Group) bool {
+		for name, pool := range group.Pools() {
+			wp[fmt.Sprintf("%s.%s", g.name, name)] = pool
+		}
+		return true
+	})
+
+	return wp
 }
 
 func (g *Group) CreateGroup(name string) (group *Group) {
