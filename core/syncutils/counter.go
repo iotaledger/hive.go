@@ -3,56 +3,40 @@ package syncutils
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/core/generics/orderedmap"
 )
 
 type Counter struct {
-	value         int
-	mutex         sync.RWMutex
-	updatedEvent  *event.Linkable[*counterEvent]
-	increasedCond *sync.Cond
-	decreasedCond *sync.Cond
+	value              int
+	valueMutex         sync.RWMutex
+	valueIncreasedCond *sync.Cond
+	valueDecreasedCond *sync.Cond
+	subscribers        *orderedmap.OrderedMap[uint64, func(oldValue, newValue int)]
+	subscribersCounter uint64
+	subscribersMutex   sync.RWMutex
 }
 
 func NewCounter() (newCounter *Counter) {
 	newCounter = new(Counter)
-	newCounter.updatedEvent = event.NewLinkable[*counterEvent]()
-	newCounter.increasedCond = sync.NewCond(&newCounter.mutex)
-	newCounter.decreasedCond = sync.NewCond(&newCounter.mutex)
+	newCounter.valueIncreasedCond = sync.NewCond(&newCounter.valueMutex)
+	newCounter.valueDecreasedCond = sync.NewCond(&newCounter.valueMutex)
+	newCounter.subscribers = orderedmap.New[uint64, func(oldValue int, newValue int)]()
 
 	return
 }
 
-func (c *Counter) Subscribe(updateCallbacks ...func(oldValue, newValue int)) (unsubscribe func()) {
-	if len(updateCallbacks) == 0 {
-		return func() {}
-	}
-
-	closure := event.NewClosure(func(event *counterEvent) {
-		for _, updateCallback := range updateCallbacks {
-			updateCallback(event.oldValue, event.newValue)
-		}
-	})
-
-	c.updatedEvent.Hook(closure)
-
-	return func() {
-		c.updatedEvent.Detach(closure)
-	}
-}
-
 func (c *Counter) Get() (value int) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.valueMutex.RLock()
+	defer c.valueMutex.RUnlock()
 
 	return c.value
 }
 
 func (c *Counter) Set(newValue int) (oldValue int) {
 	if oldValue = c.set(newValue); oldValue < newValue {
-		c.increasedCond.Broadcast()
+		c.valueIncreasedCond.Broadcast()
 	} else if oldValue > newValue {
-		c.decreasedCond.Broadcast()
+		c.valueDecreasedCond.Broadcast()
 	}
 
 	return oldValue
@@ -60,9 +44,9 @@ func (c *Counter) Set(newValue int) (oldValue int) {
 
 func (c *Counter) Update(delta int) (newValue int) {
 	if newValue = c.update(delta); delta > 1 {
-		c.increasedCond.Broadcast()
+		c.valueIncreasedCond.Broadcast()
 	} else if delta < 1 {
-		c.decreasedCond.Broadcast()
+		c.valueDecreasedCond.Broadcast()
 	}
 
 	return newValue
@@ -81,57 +65,90 @@ func (c *Counter) WaitIsZero() {
 }
 
 func (c *Counter) WaitIsBelow(threshold int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.valueMutex.Lock()
+	defer c.valueMutex.Unlock()
 
 	for c.value >= threshold {
-		c.decreasedCond.Wait()
+		c.valueDecreasedCond.Wait()
 	}
 }
 
 func (c *Counter) WaitIsAbove(threshold int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.valueMutex.Lock()
+	defer c.valueMutex.Unlock()
 
 	for c.value <= threshold {
-		c.increasedCond.Wait()
+		c.valueIncreasedCond.Wait()
+	}
+}
+
+func (c *Counter) Subscribe(subscribers ...func(oldValue, newValue int)) (unsubscribe func()) {
+	if len(subscribers) == 0 {
+		return func() {}
+	}
+
+	subscriberID := c.subscribe(func(oldValue, newValue int) {
+		for _, updateCallback := range subscribers {
+			updateCallback(oldValue, newValue)
+		}
+	})
+
+	return func() {
+		c.unsubscribe(subscriberID)
 	}
 }
 
 func (c *Counter) set(newValue int) (oldValue int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.valueMutex.Lock()
+	defer c.valueMutex.Unlock()
 
 	if oldValue = c.value; newValue != oldValue {
-		c.updatedEvent.Trigger(&counterEvent{
-			oldValue: oldValue,
-			newValue: newValue,
-		})
+		c.value = newValue
+
+		c.notifySubscribers(oldValue, newValue)
 	}
 
 	return oldValue
 }
 
 func (c *Counter) update(delta int) (newValue int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	if delta == 0 {
-		return c.value
-	}
+	c.valueMutex.Lock()
+	defer c.valueMutex.Unlock()
 
 	oldValue := c.value
-	newValue = oldValue + delta
+	if newValue = oldValue + delta; newValue != oldValue {
+		c.value = newValue
 
-	c.updatedEvent.Trigger(&counterEvent{
-		oldValue: oldValue,
-		newValue: newValue,
-	})
+		c.notifySubscribers(oldValue, newValue)
+	}
 
 	return newValue
 }
 
-type counterEvent struct {
-	oldValue int
-	newValue int
+func (c *Counter) subscribe(callback func(oldValue, newValue int)) (subscriptionID uint64) {
+	c.subscribersMutex.Lock()
+	defer c.subscribersMutex.Unlock()
+
+	c.subscribersCounter++
+	c.subscribers.Set(c.subscribersCounter, callback)
+
+	return c.subscribersCounter
+}
+
+func (c *Counter) unsubscribe(subscriptionID uint64) {
+	c.subscribersMutex.Lock()
+	defer c.subscribersMutex.Unlock()
+
+	c.subscribers.Delete(subscriptionID)
+}
+
+func (c *Counter) notifySubscribers(oldValue, newValue int) {
+	c.subscribersMutex.RLock()
+	defer c.subscribersMutex.RUnlock()
+
+	c.subscribers.ForEach(func(_ uint64, subscription func(oldValue, newValue int)) bool {
+		subscription(oldValue, newValue)
+
+		return true
+	})
 }
