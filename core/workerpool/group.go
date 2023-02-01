@@ -58,26 +58,26 @@ func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
 	return g.pools.Get(name)
 }
 
-func (g *Group) Pools() map[string]*UnboundedWorkerPool {
+func (g *Group) Pools() (pools map[string]*UnboundedWorkerPool) {
+	pools = make(map[string]*UnboundedWorkerPool)
+
 	g.poolsMutex.RLock()
-	defer g.poolsMutex.RUnlock()
-
-	g.groupsMutex.RLock()
-	defer g.groupsMutex.RUnlock()
-
-	wp := make(map[string]*UnboundedWorkerPool)
-	g.pools.ForEach(func(key string, val *UnboundedWorkerPool) bool {
-		wp[fmt.Sprintf("%s.%s", g.name, key)] = val
+	g.pools.ForEach(func(name string, pool *UnboundedWorkerPool) bool {
+		pools[fmt.Sprintf("%s.%s", g.name, name)] = pool
 		return true
 	})
-	g.groups.ForEach(func(prefix string, group *Group) bool {
+	g.poolsMutex.RUnlock()
+
+	g.groupsMutex.RLock()
+	g.groups.ForEach(func(_ string, group *Group) bool {
 		for name, pool := range group.Pools() {
-			wp[fmt.Sprintf("%s.%s", g.name, name)] = pool
+			pools[fmt.Sprintf("%s.%s", g.name, name)] = pool
 		}
 		return true
 	})
+	g.groupsMutex.RUnlock()
 
-	return wp
+	return pools
 }
 
 func (g *Group) CreateGroup(name string) (group *Group) {

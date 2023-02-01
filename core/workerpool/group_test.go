@@ -31,6 +31,7 @@ func Test(t *testing.T) {
 	})
 
 	fmt.Println(group)
+	fmt.Println(group.Pools())
 
 	group.Shutdown()
 
