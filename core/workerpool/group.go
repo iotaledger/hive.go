@@ -4,5 +4,5 @@ type Group struct {
 }
 
 func (g *Group) CreatePool() *UnboundedWorkerPool {
-
+	return nil
 }
