@@ -1,6 +1,8 @@
 package workerpool
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/generics/orderedmap"
@@ -83,6 +85,59 @@ func (g *Group) Shutdown() {
 	g.shutdown()
 }
 
+func (g *Group) String() (humanReadable string) {
+	if indentedString := g.indentedString(0); indentedString != "" {
+		return strings.TrimRight(g.indentedString(0), "\r\n")
+	}
+
+	return "> " + g.name + " (0 pending children)"
+}
+
+func (g *Group) indentedString(indentation int) (humanReadable string) {
+	if pendingChildren := g.PendingChildrenCounter.Get(); pendingChildren != 0 {
+		if children := g.childrenString(indentation + 1); children != "" {
+			humanReadable = strings.Repeat(indentationString, indentation) + "> " + g.name + " (" + strconv.Itoa(pendingChildren) + " pending children) {\n"
+			humanReadable += children
+			humanReadable += strings.Repeat(indentationString, indentation) + "}\n"
+		}
+	}
+
+	return humanReadable
+}
+
+func (g *Group) childrenString(indentation int) (humanReadable string) {
+	humanReadable = g.poolsString(indentation)
+
+	groups := g.groupsString(indentation)
+	if humanReadable != "" && groups != "" {
+		humanReadable += strings.Repeat(indentationString, indentation) + "\n"
+	}
+
+	return humanReadable + groups
+}
+
+func (g *Group) poolsString(indentation int) (humanReadable string) {
+	g.pools.ForEach(func(key string, value *UnboundedWorkerPool) bool {
+		if currentValue := value.PendingTasksCounter.Get(); currentValue > 0 {
+			humanReadable += strings.Repeat(indentationString, indentation) + "- " + key + " (" + strconv.Itoa(currentValue) + " pending tasks)\n"
+		}
+
+		return true
+	})
+
+	return humanReadable
+}
+
+func (g *Group) groupsString(indentation int) (humanReadable string) {
+	g.groups.ForEach(func(key string, value *Group) bool {
+		humanReadable += value.indentedString(indentation)
+
+		return true
+	})
+
+	return humanReadable
+}
+
 func (g *Group) shutdown() {
 	g.shutdownPools()
 	g.shutdownGroups()
@@ -109,3 +164,5 @@ func (g *Group) shutdownGroups() {
 		return true
 	})
 }
+
+const indentationString = "    "
