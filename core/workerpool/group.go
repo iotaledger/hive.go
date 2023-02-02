@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/generics/orderedmap"
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
@@ -100,7 +101,7 @@ func (g *Group) Pools() (pools map[string]*UnboundedWorkerPool) {
 }
 
 func (g *Group) CreateGroup(name string) (group *Group) {
-	group = newGroupWithRoot(name, g.root)
+	group = newGroupWithRoot(name, lo.Cond(g.root != nil, g.root, g))
 	group.PendingChildrenCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()

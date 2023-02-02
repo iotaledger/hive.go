@@ -7,7 +7,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	group := NewGroup("protocol")
+	group := NewGroup(t.Name())
 	_ = group.CreatePool("poolA")
 
 	subgroup1 := group.CreateGroup("sub1")
