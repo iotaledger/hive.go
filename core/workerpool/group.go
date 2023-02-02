@@ -18,14 +18,20 @@ type Group struct {
 	poolsMutex  sync.RWMutex
 	groups      *orderedmap.OrderedMap[string, *Group]
 	groupsMutex sync.RWMutex
+	root        *Group
 }
 
 func NewGroup(name string) (group *Group) {
+	return newGroupWithRoot(name, nil)
+}
+
+func newGroupWithRoot(name string, root *Group) (group *Group) {
 	return &Group{
 		PendingChildrenCounter: syncutils.NewCounter(),
 		name:                   name,
 		pools:                  orderedmap.New[string, *UnboundedWorkerPool](),
 		groups:                 orderedmap.New[string, *Group](),
+		root:                   root,
 	}
 }
 
@@ -53,6 +59,15 @@ func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *Unbounded
 
 func (g *Group) Wait() {
 	g.PendingChildrenCounter.WaitIsZero()
+}
+
+func (g *Group) WaitAll() {
+	if g.root != nil {
+		g.root.Wait()
+		return
+	}
+
+	g.Wait()
 }
 
 func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
@@ -85,7 +100,7 @@ func (g *Group) Pools() (pools map[string]*UnboundedWorkerPool) {
 }
 
 func (g *Group) CreateGroup(name string) (group *Group) {
-	group = NewGroup(name)
+	group = newGroupWithRoot(name, g.root)
 	group.PendingChildrenCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()
