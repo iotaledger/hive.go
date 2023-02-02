@@ -53,7 +53,9 @@ func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *Unbounded
 		}
 	})
 
-	g.pools.Set(name, pool)
+	if !g.pools.Set(name, pool) {
+		panic(fmt.Sprintf("pool '%s' already exists", name))
+	}
 
 	return pool.Start()
 }
@@ -109,7 +111,9 @@ func (g *Group) CreateGroup(name string) (group *Group) {
 		}
 	})
 
-	g.groups.Set(name, group)
+	if !g.groups.Set(name, group) {
+		panic(fmt.Sprintf("group '%s' already exists", name))
+	}
 
 	return group
 }
