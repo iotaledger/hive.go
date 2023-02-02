@@ -58,17 +58,16 @@ func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *Unbounded
 	return pool.Start()
 }
 
+func (g *Group) Root() *Group {
+	return lo.Cond(g.root != nil, g.root, g)
+}
+
 func (g *Group) Wait() {
 	g.PendingChildrenCounter.WaitIsZero()
 }
 
 func (g *Group) WaitAll() {
-	if g.root != nil {
-		g.root.Wait()
-		return
-	}
-
-	g.Wait()
+	g.Root().Wait()
 }
 
 func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
@@ -101,7 +100,7 @@ func (g *Group) Pools() (pools map[string]*UnboundedWorkerPool) {
 }
 
 func (g *Group) CreateGroup(name string) (group *Group) {
-	group = newGroupWithRoot(name, lo.Cond(g.root != nil, g.root, g))
+	group = newGroupWithRoot(name, g.Root())
 	group.PendingChildrenCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()

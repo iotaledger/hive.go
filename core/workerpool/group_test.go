@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test(t *testing.T) {
 	group := NewGroup(t.Name())
 	_ = group.CreatePool("poolA")
+
+	require.Equal(t, group, group.Root())
 
 	subgroup1 := group.CreateGroup("sub1")
 	pool1 := subgroup1.CreatePool("pool1")
@@ -17,6 +21,8 @@ func Test(t *testing.T) {
 	subgroup2 := group.CreateGroup("sub2")
 	subSubGroup := subgroup2.CreateGroup("loop")
 	_ = subSubGroup.CreatePool("pool3")
+
+	require.Equal(t, group, subSubGroup.Root())
 
 	pool1.Submit(func() {
 		time.Sleep(1 * time.Second)
