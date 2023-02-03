@@ -23,7 +23,7 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelTy
 	idMutex *sync.RWMutex
 	M       InnerModelType
 
-	bytes      []byte
+	bytes      *[]byte // using a pointer here because serix uses reflection which creates a copy of the object
 	cacheBytes bool
 	bytesMutex *sync.RWMutex
 
@@ -60,6 +60,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 
 	s.idMutex = new(sync.RWMutex)
 	s.bytesMutex = new(sync.RWMutex)
+	s.bytes = new([]byte)
 	s.RWMutex = new(sync.RWMutex)
 	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
 
@@ -127,7 +128,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Fr
 		s.bytesMutex.Lock()
 		defer s.bytesMutex.Unlock()
 		// Store the bytes we decoded to avoid any future Encode calls.
-		s.bytes = bytes[:consumedBytes]
+		*s.bytes = bytes[:consumedBytes]
 	}
 
 	return consumedBytes, nil
@@ -140,10 +141,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 
 	// Return the encoded bytes if we already encoded this object to bytes or decoded it from bytes.
 	s.bytesMutex.RLock()
-	if s.cacheBytes && len(s.bytes) > 0 {
+	if s.cacheBytes && s.bytes != nil && len(*s.bytes) > 0 {
 		defer s.bytesMutex.RUnlock()
 
-		return s.bytes, nil
+		return *s.bytes, nil
 	}
 	s.bytesMutex.RUnlock()
 
@@ -160,7 +161,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) By
 		defer s.bytesMutex.Unlock()
 
 		// Store the encoded bytes to avoid future calls to Encode.
-		s.bytes = encodedBytes
+		*s.bytes = encodedBytes
 	}
 
 	return encodedBytes, err
@@ -171,7 +172,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 	s.bytesMutex.Lock()
 	defer s.bytesMutex.Unlock()
 
-	s.bytes = nil
+	s.bytes = new([]byte)
 }
 
 // FromObjectStorage deserializes a model from the object storage.
