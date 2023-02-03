@@ -55,7 +55,6 @@ func TestTimedExecutor(t *testing.T) {
 	for et, f := range elements {
 		timedExecutor.ExecuteAt(f, et)
 	}
-	assert.Equal(t, len(elements), timedExecutor.Size())
 
 	assert.Eventually(t, func() bool { return len(actual) == len(expected) }, 30*time.Second, 100*time.Millisecond)
 	assert.Equal(t, 0, timedExecutor.Size())

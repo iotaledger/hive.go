@@ -11,7 +11,7 @@ import (
 func Test_NonBlockingNoFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(workerCount)
+	wp := NewUnboundedWorkerPool(t.Name(), workerCount)
 
 	wp.Start()
 
@@ -49,7 +49,7 @@ func Test_NonBlockingNoFlush(t *testing.T) {
 func Test_NonBlockingFlush(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(workerCount)
+	wp := NewUnboundedWorkerPool(t.Name(), workerCount)
 
 	wp.Start()
 
@@ -82,7 +82,7 @@ func Test_NonBlockingFlush(t *testing.T) {
 func Test_QueueWaitSizeIsBelow(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(workerCount)
+	wp := NewUnboundedWorkerPool(t.Name(), workerCount)
 
 	wp.Start()
 
@@ -117,7 +117,7 @@ func Test_QueueWaitSizeIsBelow(t *testing.T) {
 func Test_EmptyPoolStartupAndShutdown(t *testing.T) {
 	const workerCount = 2
 
-	wp := NewUnboundedWorkerPool(workerCount)
+	wp := NewUnboundedWorkerPool(t.Name(), workerCount)
 
 	wp.Start()
 
