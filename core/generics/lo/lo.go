@@ -107,6 +107,34 @@ func Values[K comparable, V any](in map[K]V) []V {
 	return result
 }
 
+// First returns the first element of the slice or an optionally provided default value if the collection is empty (if
+// no default value is provided, the zero value of the collection's element type is returned).
+func First[T any](slice []T, optDefaultValue ...T) (firstElement T) {
+	if len(slice) == 0 {
+		if len(optDefaultValue) == 0 {
+			return
+		}
+
+		return optDefaultValue[0]
+	}
+
+	return slice[0]
+}
+
+// Any returns the first element of the map or an optionally provided default value if the collection is empty (if no
+// default value is provided, the zero value of the collection's element type is returned).
+func Any[K comparable, V any](collection map[K]V, optDefaultValue ...V) (anyValue V) {
+	for _, v := range collection {
+		return v
+	}
+
+	if len(optDefaultValue) == 0 {
+		return
+	}
+
+	return optDefaultValue[0]
+}
+
 // ForEach iterates over elements of collection and invokes iteratee for each element.
 func ForEach[T any](collection []T, iteratee func(T)) {
 	for _, item := range collection {
