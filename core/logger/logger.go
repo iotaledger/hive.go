@@ -40,30 +40,35 @@ const (
 var ErrGlobalLoggerAlreadyInitialized = errors.New("global logger already initialized")
 
 var (
-	level  = zap.NewAtomicLevel()
-	logger *Logger
+	level = zap.NewAtomicLevel()
 
-	initialized typeutils.AtomicBool // true, if the global logger was successfully initialized
-	mu          sync.Mutex           // prevents multiple initializations at the same time
+	globalLogger            *Logger
+	globalLoggerLock        sync.Mutex           // prevents multiple initializations at the same time
+	globalLoggerInitialized typeutils.AtomicBool // true, if the global logger was successfully initialized
 )
+
+// SetGlobalLogger sets the provided logger as the global logger.
+func SetGlobalLogger(root *Logger) error {
+	globalLoggerLock.Lock()
+	defer globalLoggerLock.Unlock()
+
+	if globalLoggerInitialized.IsSet() {
+		return ErrGlobalLoggerAlreadyInitialized
+	}
+	globalLogger = root
+	globalLoggerInitialized.Set()
+
+	return nil
+}
 
 // InitGlobalLogger initializes the global logger from the provided config.
 func InitGlobalLogger(config *configuration.Configuration) error {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if initialized.IsSet() {
-		return ErrGlobalLoggerAlreadyInitialized
-	}
 	root, err := NewRootLoggerFromConfiguration(config, level)
 	if err != nil {
 		return err
 	}
 
-	logger = root
-	initialized.Set()
-
-	return nil
+	return SetGlobalLogger(root)
 }
 
 // NewRootLoggerFromConfiguration creates a new root logger from the provided configuration.
@@ -155,11 +160,11 @@ func SetLevel(l Level) {
 
 // NewLogger returns a new named child of the global root logger.
 func NewLogger(name string) *Logger {
-	if !initialized.IsSet() {
+	if !globalLoggerInitialized.IsSet() {
 		panic("global logger not initialized")
 	}
 
-	return logger.Named(name)
+	return globalLogger.Named(name)
 }
 
 // NewExampleLogger builds a Logger that's designed to be only used in tests or examples.

@@ -165,9 +165,9 @@ func initGlobal(t require.TestingT, cfg Config) func() {
 
 	// de-initialize the global logger
 	return func() {
-		logger = nil
-		initialized.UnSet()
-		mu = sync.Mutex{}
+		globalLogger = nil
+		globalLoggerInitialized.UnSet()
+		globalLoggerLock = sync.Mutex{}
 	}
 }
 
