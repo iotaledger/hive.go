@@ -22,7 +22,7 @@ type Template struct {
 	TokenMappings map[string]string
 }
 
-// NewTemplate creates a new Template of the given file with the named token mappings.
+// NewTemplate creates a new Template with the given token mappings.
 func NewTemplate(tokenMappings map[string]string) *Template {
 	return &Template{
 		TokenMappings: tokenMappings,

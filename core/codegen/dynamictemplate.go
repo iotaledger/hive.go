@@ -13,6 +13,7 @@ func NewDynamicTemplate[T any](tokenMappings map[string]func(T) string) *Dynamic
 	}
 }
 
+// TranscribedContent first derives the tokens that related the Content of the Template by replacing the tokens with the given argument.
 func (d *DynamicTemplate[T]) TranscribedContent(arg T) (string, error) {
 	for token, mapping := range d.tokenMappings {
 		d.Template.TokenMappings[token] = mapping(arg)

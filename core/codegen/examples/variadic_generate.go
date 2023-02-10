@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/iotaledger/hive.go/core/codegen"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 // This file is used to generate the variadic generic event implementations.
@@ -15,15 +16,12 @@ func main() {
 		panic("expected at least one argument (the amount of variadics to generate)")
 	}
 
-	paramCount, paramCountErr := strconv.Atoi(os.Args[1])
-	panicOnError(paramCountErr)
-
 	template := codegen.NewVariadic()
-	panicOnError(template.Parse(os.Getenv("GOFILE")))
-	panicOnError(template.Generate("variadic_generated.go", paramCount))
+	noError(template.Parse(os.Getenv("GOFILE")))
+	noError(template.Generate("variadic_generated.go", lo.PanicOnErr(strconv.Atoi(os.Args[1]))))
 }
 
-func panicOnError(err error) {
+func noError(err error) {
 	if err != nil {
 		panic(err)
 	}
