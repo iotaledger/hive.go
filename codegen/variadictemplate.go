@@ -3,11 +3,12 @@ package codegen
 import (
 	"strconv"
 	"strings"
+
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
-// VariadicTemplate is a template that can be used to generate variadic implementations with generic type parameters.
-//
-// It takes a file with the following tokens as an input and creates multiple variadic instances of the code:
+// VariadicTemplate is a template that can be used to generate variadic implementations with generic type parameters,
+// by replacing the following tokens when creating the different variadic instances of the source file:
 //
 //   - paramCount: the number of parameters of the generic variadic instance - i.e. 3
 //   - typeParams: list of type parameters without their constraints - i.e. "[T1, T2, T3]"
@@ -15,9 +16,6 @@ import (
 //   - params: list of arguments without their type: "arg1, arg2, arg3"
 //   - Params: list of arguments with their type: "arg1 T1, arg2 T2, arg3 T3"
 //   - Types: list of types: "T1, T2, T3"
-//
-// Tokens have to be surrounded by /* and */ as comments in the source file. Neighboring whitespaces can be removed by
-// adding a "-" in the beginning or the end of the token.
 type VariadicTemplate struct {
 	*DynamicTemplate[int]
 }
@@ -47,13 +45,15 @@ func NewVariadicTemplate() *VariadicTemplate {
 }
 
 // Generate generates the file with the given name and the given number of variadic type parameters.
-func (v *VariadicTemplate) Generate(fileName string, typeParameterCount int) error {
-	return v.DynamicTemplate.Transcribe(fileName, func() string {
-		var variadics []string
-		for i := 1; i <= typeParameterCount; i++ {
-			variadics = append(variadics, v.DynamicTemplate.TranscribeContent(i))
-		}
+func (v *VariadicTemplate) Generate(fileName string, typeParams int, optGenerator ...func(int) string) error {
+	return v.DynamicTemplate.Generate(fileName, typeParams, lo.First(optGenerator, v.GenerateContent))
+}
 
-		return strings.Join(variadics, "\n\n")
-	})
+func (v *VariadicTemplate) GenerateContent(typeParams int) string {
+	var variadics []string
+	for i := 1; i <= typeParams; i++ {
+		variadics = append(variadics, v.DynamicTemplate.GenerateContent(i))
+	}
+
+	return strings.Join(variadics, "\n\n")
 }

@@ -6,8 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/iotaledger/hive.go/core/codegen"
 	"github.com/iotaledger/hive.go/core/generics/lo"
+
+	"github.com/iotaledger/hive.go/codegen"
 )
 
 // This file is used to generate the variadic generic event implementations.

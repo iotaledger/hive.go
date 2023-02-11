@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
-// Template is a struct that can be used to transcribe "go generate" templates by rewriting a set of tokens.
+// Template is a template that can be parsed and then transcribed to a file
 type Template struct {
 	// Header contains the Header of the file above the "go generate" statement.
 	Header string
@@ -47,16 +47,16 @@ func (t *Template) Parse(fileName string) error {
 	return nil
 }
 
-// Transcribe writes the transcribed template to the given file.
-func (t *Template) Transcribe(fileName string, transcribeFunc ...func() string) error {
+// Generate writes the transcribed template to the given file.
+func (t *Template) Generate(fileName string, optGenerator ...func() string) error {
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
 		generatedFileHeader + t.Header,
-		lo.First(transcribeFunc, t.TranscribeContent)(),
+		lo.First(optGenerator, t.GenerateContent)(),
 	}, "\n\n")), 0644)
 }
 
-// TranscribeContent translates the tokens in the dynamic content to the mapped ones from the tokenMappings.
-func (t *Template) TranscribeContent() string {
+// GenerateContent translates the tokens in the content to the mapped ones from the tokenMappings.
+func (t *Template) GenerateContent() string {
 	content := string(regexp.MustCompile(`\s*/\*-`).ReplaceAll([]byte(t.Content), []byte("/*")))
 	content = string(regexp.MustCompile(`-\*/\s*`).ReplaceAll([]byte(content), []byte("*/")))
 
