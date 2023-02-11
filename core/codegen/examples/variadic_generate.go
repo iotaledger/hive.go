@@ -16,7 +16,7 @@ func main() {
 		panic("expected at least one argument (the amount of variadics to generate)")
 	}
 
-	template := codegen.NewVariadic()
+	template := codegen.NewVariadicTemplate()
 	noError(template.Parse(os.Getenv("GOFILE")))
 	noError(template.Generate("variadic_generated.go", lo.PanicOnErr(strconv.Atoi(os.Args[1]))))
 }

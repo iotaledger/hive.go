@@ -1,23 +1,25 @@
 package codegen
 
+// DynamicTemplate is a Template that allows to dynamically adjust the token mappings at runtime.
 type DynamicTemplate[T any] struct {
-	tokenMappings map[string]func(T) string
+	dynamicTokenMappings map[string]func(T) string
 
 	*Template
 }
 
-func NewDynamicTemplate[T any](tokenMappings map[string]func(T) string) *DynamicTemplate[T] {
+// NewDynamicTemplate creates a new DynamicTemplate with the given token mappings.
+func NewDynamicTemplate[T any](dynamicTokenMappings map[string]func(T) string) *DynamicTemplate[T] {
 	return &DynamicTemplate[T]{
-		Template:      NewTemplate(make(map[string]string)),
-		tokenMappings: tokenMappings,
+		Template:             NewTemplate(make(map[string]string)),
+		dynamicTokenMappings: dynamicTokenMappings,
 	}
 }
 
-// TranscribedContent first derives the tokens that related the Content of the Template by replacing the tokens with the given argument.
-func (d *DynamicTemplate[T]) TranscribedContent(arg T) (string, error) {
-	for token, mapping := range d.tokenMappings {
+// TranscribeContent first derives the tokens that related the Content of the Template by replacing the tokens with the given argument.
+func (d *DynamicTemplate[T]) TranscribeContent(arg T) string {
+	for token, mapping := range d.dynamicTokenMappings {
 		d.Template.TokenMappings[token] = mapping(arg)
 	}
 
-	return d.Template.TranscribedContent()
+	return d.Template.TranscribeContent()
 }
