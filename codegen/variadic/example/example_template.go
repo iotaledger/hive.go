@@ -8,7 +8,7 @@ package example
 func PanicOnErr /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{" any]"}}{{end -}}*/ ( /*{{- if hasParams}}{{typedParams}}{{", "}}{{end -}}*/ err error) /*{{- if hasParams}}{{"("}}{{types}}{{")"}}{{end}}*/ {
 	if err != nil {
 		panic(err)
-	}
+	} /*{{- if hasParams}}*/
 
-	return /*{{params}}*/
+	return /*{{params}}{{end}}*/
 }

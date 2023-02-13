@@ -6,8 +6,6 @@ func PanicOnErr(err error) {
 	if err != nil {
 		panic(err)
 	}
-
-	return 
 }
 
 // PanicOnErr1 panics if err is not nil and otherwise returns the remaining 1 generic parameters.
