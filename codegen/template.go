@@ -15,7 +15,7 @@ import (
 // to the "go generate" pattern.
 //
 // In addition to the standard template delimiters (https://pkg.go.dev/text/template), it supports /*{{ ... }}*/, which
-// allows to "hide" template code in go comments. The data in the template is exposed as function pipelines.
+// allows to "hide" template code in go comments. Data is provided to the template as function pipelines.
 type Template struct {
 	// Header contains the "fixed" Header of the file above the "go generate" statement (not processed by the template).
 	Header string
@@ -27,7 +27,7 @@ type Template struct {
 	Mappings template.FuncMap
 }
 
-// NewTemplate creates a new Template with the given token mappings.
+// NewTemplate creates a new Template with the given pipeline mappings.
 func NewTemplate(mappings template.FuncMap) *Template {
 	return &Template{
 		Mappings: mappings,
@@ -53,8 +53,8 @@ func (t *Template) Parse(fileName string) error {
 	return nil
 }
 
-// Generate generates the file with the given fileName according to the processed Template (it can receive an optional
-// generator function that overrides the way the Content is generated).
+// Generate generates the file with the given fileName (it can receive an optional generator function that overrides the
+// way the Content is generated).
 func (t *Template) Generate(fileName string, optGenerator ...func() (string, error)) error {
 	generatedContent, err := lo.First(optGenerator, t.GenerateContent)()
 	if err != nil {
@@ -67,7 +67,7 @@ func (t *Template) Generate(fileName string, optGenerator ...func() (string, err
 	}, "\n\n")), 0644)
 }
 
-// GenerateContent generates the Content of the file according to the processed Template.
+// GenerateContent generates the dynamic Content of the file by processing the template.
 func (t *Template) GenerateContent() (string, error) {
 	// replace /*{{ and }}*/ with {{ and }} to "unpack" statements that are embedded as comments
 	content := regexp.MustCompile(`/\*{{`).ReplaceAll([]byte(t.Content), []byte("{{"))
