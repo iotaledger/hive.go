@@ -52,6 +52,7 @@ func New() *Variadic {
 // Generate generates a file containing the desired number of variadic instances (it can receive an optional generator
 // function that overrides the way the Content is generated).
 func (v *Variadic) Generate(fileName string, minParamCount, maxParamCount int, optGenerator ...func() (string, error)) error {
+	// we store the parameters in the template so the pipelines can dynamically change their output for each instance
 	v.currentParamCount = minParamCount
 	v.maxParamCount = maxParamCount
 
