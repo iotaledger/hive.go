@@ -17,25 +17,25 @@ import (
 // In addition to the standard template delimiters (https://pkg.go.dev/text/template), it supports /*{{ ... }}*/, which
 // allows to "hide" template code in go comments. Data is provided to the template as function pipelines.
 type Template struct {
-	// Header contains the "fixed" Header of the file above the "go generate" statement (not processed by the template).
-	Header string
+	// header contains the "fixed" header of the file above the "go generate" statement (not processed by the template).
+	header string
 
-	// Content contains "dynamic" the Content of the file below the "go generate" statement.
-	Content string
+	// content contains "dynamic" the content of the file below the "go generate" statement.
+	content string
 
-	// Mappings is a set of tokens that are being mapped to pipelines in the template.
-	Mappings template.FuncMap
+	// mappings is a set of tokens that are being mapped to pipelines in the template.
+	mappings template.FuncMap
 }
 
 // NewTemplate creates a new Template with the given pipeline mappings.
 func NewTemplate(mappings template.FuncMap) *Template {
 	return &Template{
-		Mappings: mappings,
+		mappings: mappings,
 	}
 }
 
-// Parse parses the given file and extracts the Header and Content by splitting the file at the "go:generate" directive.
-// It automatically removes existing "//go:build ignore" directives from the Header.
+// Parse parses the given file and extracts the header and content by splitting the file at the "go:generate" directive.
+// It automatically removes existing "//go:build ignore" directives from the header.
 func (t *Template) Parse(fileName string) error {
 	readFile, err := os.ReadFile(fileName)
 	if err != nil {
@@ -47,14 +47,14 @@ func (t *Template) Parse(fileName string) error {
 		return errors.Errorf("could not find go:generate directive in %s", fileName)
 	}
 
-	t.Header = strings.TrimSpace(strings.ReplaceAll(splitTemplate[0], "//go:build ignore", ""))
-	t.Content = strings.TrimSpace(splitTemplate[1][strings.Index(splitTemplate[1], "\n"):])
+	t.header = strings.TrimSpace(strings.ReplaceAll(splitTemplate[0], "//go:build ignore", ""))
+	t.content = strings.TrimSpace(splitTemplate[1][strings.Index(splitTemplate[1], "\n"):])
 
 	return nil
 }
 
 // Generate generates the file with the given fileName (it can receive an optional generator function that overrides the
-// way the Content is generated).
+// way the content is generated).
 func (t *Template) Generate(fileName string, optGenerator ...func() (string, error)) error {
 	generatedContent, err := lo.First(optGenerator, t.GenerateContent)()
 	if err != nil {
@@ -62,18 +62,18 @@ func (t *Template) Generate(fileName string, optGenerator ...func() (string, err
 	}
 
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
-		generatedFileHeader + t.Header,
+		generatedFileHeader + t.header,
 		generatedContent,
 	}, "\n\n")), 0644)
 }
 
-// GenerateContent generates the dynamic Content of the file by processing the template.
+// GenerateContent generates the dynamic content of the file by processing the template.
 func (t *Template) GenerateContent() (string, error) {
 	// replace /*{{ and }}*/ with {{ and }} to "unpack" statements that are embedded as comments
-	content := regexp.MustCompile(`/\*{{`).ReplaceAll([]byte(t.Content), []byte("{{"))
+	content := regexp.MustCompile(`/\*{{`).ReplaceAll([]byte(t.content), []byte("{{"))
 	content = regexp.MustCompile(`}}\*/`).ReplaceAll(content, []byte("}}"))
 
-	tmpl, err := template.New("template").Funcs(t.Mappings).Parse(string(content))
+	tmpl, err := template.New("template").Funcs(t.mappings).Parse(string(content))
 	if err != nil {
 		return "", errors.Errorf("could not parse template: %w", err)
 	}

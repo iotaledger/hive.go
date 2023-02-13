@@ -85,27 +85,26 @@ func (v *Variadic) paramCount() int {
 
 // params is a pipeline for the template that returns the current list of variadic parameters (without types).
 func (v *Variadic) params() string {
-	return variadicString("arg%d", v.currentParamCount)
+	return v.repeatVariadicString("arg%d", ", ")
 }
 
 // typedParams is a pipeline for the template that returns the current list of variadic parameters (including types).
 func (v *Variadic) typedParams() string {
-	return variadicString("arg%d T%d", v.currentParamCount)
+	return v.repeatVariadicString("arg%d T%d", ", ")
 }
 
 // types is a pipeline for the template that returns the current list of variadic types.
 func (v *Variadic) types() string {
-	return variadicString("T%d", v.currentParamCount)
+	return v.repeatVariadicString("T%d", ", ")
 }
 
-// variadicString is a utility function that builds a variadic comma separated string from a template.
-//
-// Example: variadicString("func(%d)", 3) returns  "func(1), func(2), func(3)"
-func variadicString(template string, count int) string {
-	var results []string
-	for i := 1; i <= count; i++ {
-		results = append(results, strings.ReplaceAll(template, "%d", strconv.Itoa(i)))
+// repeatVariadicString repeats a template string for the current number of variadic parameters and replaces "%d" with
+// the index of each iteration (i.e. repeatVariadicString("func(%d)", ", ") might return "func(1), func(2), func(3)").
+func (v *Variadic) repeatVariadicString(template string, separator string) string {
+	var variadicParts []string
+	for index := 1; index <= v.currentParamCount; index++ {
+		variadicParts = append(variadicParts, strings.ReplaceAll(template, "%d", strconv.Itoa(index)))
 	}
 
-	return strings.Join(results, ", ")
+	return strings.Join(variadicParts, separator)
 }
