@@ -7,8 +7,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/errors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/pkg/errors"
 )
 
 // Template is a wrapper around the text/template package that provides a generic way for generating files according

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/errors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/codegen"
 )
