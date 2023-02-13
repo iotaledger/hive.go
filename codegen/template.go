@@ -1,35 +1,41 @@
 package codegen
 
 import (
+	"bytes"
 	"os"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/cockroachdb/errors"
-
 	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
-// Template is a template that can be parsed and then transcribed to a file
+// Template is a wrapper around the text/template package that provides a generic way for generating files according
+// to the "go generate" pattern.
+//
+// In addition to the standard template delimiters (https://pkg.go.dev/text/template), it supports /*{{ ... }}*/, which
+// allows to "hide" template code in go comments. The data in the template is exposed as function pipelines.
 type Template struct {
-	// Header contains the Header of the file above the "go generate" statement.
+	// Header contains the "fixed" Header of the file above the "go generate" statement (not processed by the template).
 	Header string
 
-	// Content contains the Content of the file below the "go generate" statement.
+	// Content contains "dynamic" the Content of the file below the "go generate" statement.
 	Content string
 
-	// TokenMappings is a set of tokens that are being replaced when transcribing the Content.
-	TokenMappings map[string]string
+	// Mappings is a set of tokens that are being mapped to pipelines in the template.
+	Mappings template.FuncMap
 }
 
 // NewTemplate creates a new Template with the given token mappings.
-func NewTemplate(tokenMappings map[string]string) *Template {
+func NewTemplate(mappings template.FuncMap) *Template {
 	return &Template{
-		TokenMappings: tokenMappings,
+		Mappings: mappings,
 	}
 }
 
 // Parse parses the given file and extracts the Header and Content by splitting the file at the "go:generate" directive.
+// It automatically removes existing "//go:build ignore" directives from the Header.
 func (t *Template) Parse(fileName string) error {
 	readFile, err := os.ReadFile(fileName)
 	if err != nil {
@@ -47,24 +53,37 @@ func (t *Template) Parse(fileName string) error {
 	return nil
 }
 
-// Generate writes the transcribed template to the given file.
-func (t *Template) Generate(fileName string, optGenerator ...func() string) error {
+// Generate generates the file with the given fileName according to the processed Template (it can receive an optional
+// generator function that overrides the way the Content is generated).
+func (t *Template) Generate(fileName string, optGenerator ...func() (string, error)) error {
+	generatedContent, err := lo.First(optGenerator, t.GenerateContent)()
+	if err != nil {
+		return errors.Errorf("could not generate content: %w", err)
+	}
+
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
 		generatedFileHeader + t.Header,
-		lo.First(optGenerator, t.GenerateContent)(),
+		generatedContent,
 	}, "\n\n")), 0644)
 }
 
-// GenerateContent translates the tokens in the content to the mapped ones from the tokenMappings.
-func (t *Template) GenerateContent() string {
-	content := string(regexp.MustCompile(`\s*/\*-`).ReplaceAll([]byte(t.Content), []byte("/*")))
-	content = string(regexp.MustCompile(`-\*/\s*`).ReplaceAll([]byte(content), []byte("*/")))
+// GenerateContent generates the Content of the file according to the processed Template.
+func (t *Template) GenerateContent() (string, error) {
+	// replace /*{{ and }}*/ with {{ and }} to "unpack" statements that are embedded as comments
+	content := regexp.MustCompile(`/\*{{`).ReplaceAll([]byte(t.Content), []byte("{{"))
+	content = regexp.MustCompile(`}}\*/`).ReplaceAll(content, []byte("}}"))
 
-	for token, replacement := range t.TokenMappings {
-		content = strings.ReplaceAll(content, "/*"+token+"*/", replacement)
+	tmpl, err := template.New("template").Funcs(t.Mappings).Parse(string(content))
+	if err != nil {
+		return "", errors.Errorf("could not parse template: %w", err)
 	}
 
-	return content
+	buffer := new(bytes.Buffer)
+	if err := tmpl.Execute(buffer, nil); err != nil {
+		return "", errors.Errorf("could not execute template: %w", err)
+	}
+
+	return buffer.String(), nil
 }
 
 // generatedFileHeader is the header that is being added to the top of the generated file.
