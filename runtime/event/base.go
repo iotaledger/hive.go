@@ -29,9 +29,9 @@ func newBase[TriggerFunc any](opts ...Option) *base[TriggerFunc] {
 }
 
 // Hook adds a new hook to the base and returns it.
-func (e *base[TriggerFunc]) Hook(triggerFunc TriggerFunc, opts ...Option) (hook *Hook[TriggerFunc]) {
+func (e *base[TriggerFunc]) Hook(triggerFunc TriggerFunc, opts ...Option) *Hook[TriggerFunc] {
 	hookID := e.hooksCounter.Add(1)
-	hook = newHook(triggerFunc, func() { e.hooks.Delete(hookID) }, opts...)
+	hook := newHook(triggerFunc, func() { e.hooks.Delete(hookID) }, opts...)
 
 	e.hooks.Set(hookID, hook)
 
@@ -55,7 +55,7 @@ func (e *base[TriggerFunc]) linkTo(target eventInterface[TriggerFunc], triggerFu
 }
 
 // targetWorkerPool returns the worker pool of the given hook or the base's worker pool if the hook does not have one.
-func (e *base[TriggerFunc]) targetWorkerPool(hook *Hook[TriggerFunc]) (workerPool *workerpool.UnboundedWorkerPool) {
+func (e *base[TriggerFunc]) targetWorkerPool(hook *Hook[TriggerFunc]) *workerpool.UnboundedWorkerPool {
 	if hook.workerPool != nil {
 		if hook.workerPool == noWorkerPool {
 			return nil
