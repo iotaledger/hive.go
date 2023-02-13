@@ -1,12 +1,12 @@
 package variadic
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/codegen"
 )
@@ -65,7 +65,7 @@ func (v *Variadic) GenerateContent() (string, error) {
 	for ; v.currentParamCount <= v.maxParamCount; v.currentParamCount++ {
 		generatedContent, err := v.Template.GenerateContent()
 		if err != nil {
-			return "", errors.Errorf("failed to generate variadic %d: %w", v.currentParamCount, err)
+			return "", fmt.Errorf("failed to generate variadic %d: %w", v.currentParamCount, err)
 		}
 
 		variadicInstances = append(variadicInstances, generatedContent)
