@@ -12,15 +12,23 @@ import (
 
 // base is the generic base type for all events.
 type base[TriggerFunc any] struct {
-	hooks        *orderedmap.OrderedMap[uint64, *Hook[TriggerFunc]]
-	hooksCounter atomic.Uint64
-	link         *Hook[TriggerFunc]
-	linkMutex    sync.Mutex
+	// hooks is a dictionary of all hooks that are currently hooked to the event.
+	hooks *orderedmap.OrderedMap[uint64, *Hook[TriggerFunc]]
 
+	// hooksCounter is used to assign a unique ID to each hook.
+	hooksCounter atomic.Uint64
+
+	// link is the Hook to another event.
+	link *Hook[TriggerFunc]
+
+	// linkMutex is used to prevent concurrent access to the link.
+	linkMutex sync.Mutex
+
+	// triggerSettings is the settings that are used to trigger the event.
 	*triggerSettings
 }
 
-// newBase creates a new base.
+// newBase creates a new base instance.
 func newBase[TriggerFunc any](opts ...Option) *base[TriggerFunc] {
 	return &base[TriggerFunc]{
 		hooks:           orderedmap.New[uint64, *Hook[TriggerFunc]](),
@@ -28,7 +36,7 @@ func newBase[TriggerFunc any](opts ...Option) *base[TriggerFunc] {
 	}
 }
 
-// Hook adds a new hook to the base and returns it.
+// Hook adds a new hook to the event and returns it.
 func (e *base[TriggerFunc]) Hook(triggerFunc TriggerFunc, opts ...Option) *Hook[TriggerFunc] {
 	hookID := e.hooksCounter.Add(1)
 	hook := newHook(triggerFunc, func() { e.hooks.Delete(hookID) }, opts...)
@@ -69,5 +77,6 @@ func (e *base[TriggerFunc]) targetWorkerPool(hook *Hook[TriggerFunc]) *workerpoo
 
 // eventInterface is an interface that is used to match the Hook interface of events for linking.
 type eventInterface[TriggerFunc any] interface {
-	Hook(callback TriggerFunc, opts ...Option) (hook *Hook[TriggerFunc])
+	// Hook adds a new hook to the event and returns it.
+	Hook(callback TriggerFunc, opts ...Option) *Hook[TriggerFunc]
 }

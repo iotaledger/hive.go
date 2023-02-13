@@ -2,8 +2,10 @@ module hive.go/runtime
 
 go 1.19
 
+replace github.com/iotaledger/hive.go/core => ../core
+
 require (
-	github.com/iotaledger/hive.go/core v1.0.0-rc.3
+	github.com/iotaledger/hive.go/core v1.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.8.1
 )
 
