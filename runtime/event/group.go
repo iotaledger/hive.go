@@ -14,12 +14,12 @@ type Group[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]] st
 }
 
 // GroupConstructor returns the linkable constructor for the given type.
-func GroupConstructor[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]](newFunc func() GroupPtrType) (constructor func(...GroupPtrType) GroupPtrType) {
+func GroupConstructor[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]](newFunc func() GroupPtrType) func(...GroupPtrType) GroupPtrType {
 	return func(optLinkTargets ...GroupPtrType) (self GroupPtrType) {
 		self = newFunc()
 
 		selfValue := reflect.ValueOf(self).Elem()
-		self.onLinkUpdated(func(linkTarget GroupPtrType) {
+		self.linkUpdatedEvent().Hook(func(linkTarget GroupPtrType) {
 			if linkTarget == nil {
 				linkTarget = new(GroupType)
 			}
@@ -48,12 +48,7 @@ func (g *Group[GroupType, GroupPtrType]) LinkTo(target GroupPtrType) {
 	g.linkUpdatedEvent().Trigger(target)
 }
 
-// onLinkUpdated registers a callback to be called when the link to the referenced Group is set or updated.
-func (g *Group[GroupType, GroupPtrType]) onLinkUpdated(callback func(linkTarget GroupPtrType)) {
-	g.linkUpdatedEvent().Hook(callback)
-}
-
-// linkUpdatedEvent returns the linkUpdated Event.
+// linkUpdatedEvent returns the linkUpdated Event (it is lazily created to simplify the embedding).
 func (g *Group[GroupType, GroupPtrType]) linkUpdatedEvent() *Event1[GroupPtrType] {
 	g.Do(func() {
 		g.linkUpdated = New1[GroupPtrType]()
@@ -66,6 +61,6 @@ func (g *Group[GroupType, GroupPtrType]) linkUpdatedEvent() *Event1[GroupPtrType
 type ptrGroupType[GroupType any, GroupPtrType constraints.Ptr[GroupType]] interface {
 	*GroupType
 
-	onLinkUpdated(callback func(GroupPtrType))
+	linkUpdatedEvent() *Event1[GroupPtrType]
 	LinkTo(target GroupPtrType)
 }

@@ -4,8 +4,6 @@ package event
 
 //go:generate go run github.com/iotaledger/hive.go/codegen/variadic/cmd@e0630dc 0 9 events.go
 
-// region Event {{- if hasParams}}{{paramCount}}{{end}}
-
 // Event {{- if hasParams}}{{paramCount}}{{end}} is an event with {{if hasParams}}{{paramCount}}{{else}}no{{end}} generic parameters.
 type Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{" any]"}}{{end}}*/ struct {
 	*base[func( /*{{- types -}}*/ )]
@@ -47,5 +45,3 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*/) LinkTo(target *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end -}}*/) {
 	e.linkTo(target, e.Trigger)
 }
-
-// endregion
