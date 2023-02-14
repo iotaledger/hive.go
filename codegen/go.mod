@@ -2,9 +2,10 @@ module github.com/iotaledger/hive.go/codegen
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/core => ../core
-
-require github.com/iotaledger/hive.go/core v1.0.0-00010101000000-000000000000
+require (
+	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230209145929-d30a974ef09f
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
+)
 
 require (
 	github.com/cockroachdb/errors v1.9.1 // indirect
@@ -23,5 +24,4 @@ require (
 	golang.org/x/crypto v0.2.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 )

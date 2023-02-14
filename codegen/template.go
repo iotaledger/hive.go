@@ -2,13 +2,13 @@ package codegen
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"text/template"
 
 	"github.com/iotaledger/hive.go/core/generics/lo"
+	"golang.org/x/xerrors"
 )
 
 // Template is a wrapper around the text/template package that provides a generic way for generating files according
@@ -39,12 +39,12 @@ func NewTemplate(mappings template.FuncMap) *Template {
 func (t *Template) Parse(fileName string) error {
 	readFile, err := os.ReadFile(fileName)
 	if err != nil {
-		return fmt.Errorf("could not read file %s: %w", fileName, err)
+		return xerrors.Errorf("could not read file %s: %w", fileName, err)
 	}
 
 	splitTemplate := strings.Split(string(readFile), "//go:generate")
 	if len(splitTemplate) != 2 {
-		return fmt.Errorf("could not find go:generate directive in %s", fileName)
+		return xerrors.Errorf("could not find go:generate directive in %s", fileName)
 	}
 
 	t.header = strings.TrimSpace(strings.ReplaceAll(splitTemplate[0], "//go:build ignore", ""))
@@ -58,7 +58,7 @@ func (t *Template) Parse(fileName string) error {
 func (t *Template) Generate(fileName string, optGenerator ...func() (string, error)) error {
 	generatedContent, err := lo.First(optGenerator, t.GenerateContent)()
 	if err != nil {
-		return fmt.Errorf("could not generate content: %w", err)
+		return xerrors.Errorf("could not generate content: %w", err)
 	}
 
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
@@ -75,12 +75,12 @@ func (t *Template) GenerateContent() (string, error) {
 
 	tmpl, err := template.New("template").Funcs(t.mappings).Parse(string(content))
 	if err != nil {
-		return "", fmt.Errorf("could not parse template: %w", err)
+		return "", xerrors.Errorf("could not parse template: %w", err)
 	}
 
 	buffer := new(bytes.Buffer)
 	if err := tmpl.Execute(buffer, nil); err != nil {
-		return "", fmt.Errorf("could not execute template: %w", err)
+		return "", xerrors.Errorf("could not execute template: %w", err)
 	}
 
 	return buffer.String(), nil

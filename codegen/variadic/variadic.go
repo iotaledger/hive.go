@@ -1,14 +1,14 @@
 package variadic
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
+	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/codegen"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 // Variadic is a template that translates code into a set of variadic implementations with generic type parameters.
@@ -65,7 +65,7 @@ func (v *Variadic) GenerateContent() (string, error) {
 	for ; v.currentParamCount <= v.maxParamCount; v.currentParamCount++ {
 		generatedContent, err := v.Template.GenerateContent()
 		if err != nil {
-			return "", fmt.Errorf("failed to generate variadic %d: %w", v.currentParamCount, err)
+			return "", xerrors.Errorf("failed to generate variadic %d: %w", v.currentParamCount, err)
 		}
 
 		variadicInstances = append(variadicInstances, generatedContent)
