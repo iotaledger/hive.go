@@ -11,7 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/serializer/v2"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (b []byte, err error) {
