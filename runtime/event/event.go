@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
-// event is the generic base type for all events.
+// event is the base type for all generic events.
 type event[TriggerFunc any] struct {
 	// hooks is a dictionary of callbacks that are currently registered with the event.
 	hooks *orderedmap.OrderedMap[uint64, *Hook[TriggerFunc]]
@@ -23,7 +23,7 @@ type event[TriggerFunc any] struct {
 	// linkMutex is used to prevent concurrent access to the link.
 	linkMutex sync.Mutex
 
-	// triggerSettings is the settings that are used to trigger the event.
+	// triggerSettings are the settings that keep track of the number of times the event was triggered.
 	*triggerSettings
 }
 
@@ -43,7 +43,7 @@ func (e *event[TriggerFunc]) Hook(triggerFunc TriggerFunc, opts ...Option) *Hook
 	return hook
 }
 
-// linkTo hooks the trigger function to the given target event.
+// linkTo unhooks the previous Hook and then hooks the trigger function to the given target event.
 func (e *event[TriggerFunc]) linkTo(target eventInterface[TriggerFunc], triggerFunc TriggerFunc) {
 	e.linkMutex.Lock()
 	defer e.linkMutex.Unlock()

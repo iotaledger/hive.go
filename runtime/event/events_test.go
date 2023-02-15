@@ -92,12 +92,13 @@ func TestEvent1_Hook_WorkerPool(t *testing.T) {
 func TestEvent1_WithoutWorkerPool(t *testing.T) {
 	var eventFired atomic.Bool
 
-	testEvent := New1[int](WithoutWorkerPool())
+	testEvent := New1[int](WithWorkerPool(nil))
 	testEvent.Hook(func(int) {
 		time.Sleep(1 * time.Second)
 
 		eventFired.Store(true)
 	})
+	require.Equal(t, (*workerpool.UnboundedWorkerPool)(nil), testEvent.WorkerPool())
 
 	testEvent.Trigger(0)
 
@@ -114,7 +115,7 @@ func TestEvent1_Hook_WithoutWorkerPool(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		eventFired.Store(true)
-	}, WithoutWorkerPool())
+	}, WithWorkerPool(nil))
 	require.Nil(t, hook.WorkerPool())
 
 	testEvent.Trigger(0)
@@ -161,7 +162,7 @@ type Events struct {
 	Group[Events, *Events]
 }
 
-var NewEvents = GroupConstructor(func() *Events {
+var NewEvents = CreateGroupConstructor(func() *Events {
 	return &Events{
 		Event:     New1[int](),
 		SubEvents: NewSubEvents(),
@@ -174,7 +175,7 @@ type SubEvents struct {
 	Group[SubEvents, *SubEvents]
 }
 
-var NewSubEvents = GroupConstructor(func() *SubEvents {
+var NewSubEvents = CreateGroupConstructor(func() *SubEvents {
 	return &SubEvents{
 		Event: New1[error](),
 	}

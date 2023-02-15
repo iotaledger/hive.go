@@ -13,8 +13,8 @@ type Group[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]] st
 	sync.Once
 }
 
-// GroupConstructor returns the linkable constructor for the given type.
-func GroupConstructor[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]](newFunc func() GroupPtrType) func(...GroupPtrType) GroupPtrType {
+// CreateGroupConstructor returns the linkable constructor for the given event group.
+func CreateGroupConstructor[GroupType any, GroupPtrType ptrGroupType[GroupType, GroupPtrType]](newFunc func() GroupPtrType) func(...GroupPtrType) GroupPtrType {
 	return func(optLinkTargets ...GroupPtrType) (self GroupPtrType) {
 		self = newFunc()
 

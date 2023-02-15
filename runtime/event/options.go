@@ -8,24 +8,23 @@ import (
 	"github.com/iotaledger/hive.go/core/workerpool"
 )
 
-// WithMaxTriggerCount sets the maximum number of times an event (or hook) shall be triggered.
+// WithMaxTriggerCount sets the maximum number of times an entity shall be triggered.
 func WithMaxTriggerCount(maxTriggerCount uint64) Option {
 	return func(triggerSettings *triggerSettings) {
 		triggerSettings.maxTriggerCount = maxTriggerCount
 	}
 }
 
-// WithWorkerPool sets the worker pool that shall be used to execute the triggered function.
+// WithWorkerPool sets the worker pool that is used to process the trigger (nil forces execution in-place).
 func WithWorkerPool(workerPool *workerpool.UnboundedWorkerPool) Option {
+	if workerPool == nil {
+		return func(triggerSettings *triggerSettings) {
+			triggerSettings.workerPool = noWorkerPool
+		}
+	}
+
 	return func(triggerSettings *triggerSettings) {
 		triggerSettings.workerPool = workerPool
-	}
-}
-
-// WithoutWorkerPool disables the usage of worker pools for the triggered element.
-func WithoutWorkerPool() Option {
-	return func(triggerSettings *triggerSettings) {
-		triggerSettings.workerPool = noWorkerPool
 	}
 }
 
@@ -61,7 +60,7 @@ func (t *triggerSettings) WorkerPool() *workerpool.UnboundedWorkerPool {
 	return lo.Return2(t.hasWorkerPool())
 }
 
-// hasWorkerPool returns true if a worker pool is set
+// hasWorkerPool returns if a worker pool (and which one) is set.
 func (t *triggerSettings) hasWorkerPool() (bool, *workerpool.UnboundedWorkerPool) {
 	if t.workerPool == noWorkerPool {
 		return true, nil
@@ -75,7 +74,7 @@ func (t *triggerSettings) currentTriggerExceedsMaxTriggerCount() bool {
 	return t.triggerCount.Add(1) > t.maxTriggerCount && t.maxTriggerCount != 0
 }
 
-// noWorkerPool is a special value that indicates that no worker pool shall be used.
+// noWorkerPool is a special value that indicates that no worker pool shall be used (forced).
 var noWorkerPool = &workerpool.UnboundedWorkerPool{}
 
 // Option is a function that configures the triggerSettings.

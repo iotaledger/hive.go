@@ -20,18 +20,15 @@ func (e *Event) Trigger() {
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func()]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger()
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger()
 			})
+		default:
+			hook.trigger()
 		}
 
 		return true
@@ -62,18 +59,15 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1)
 			})
+		default:
+			hook.trigger(arg1)
 		}
 
 		return true
@@ -104,18 +98,15 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2)
 			})
+		default:
+			hook.trigger(arg1, arg2)
 		}
 
 		return true
@@ -146,18 +137,15 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3)
 		}
 
 		return true
@@ -188,18 +176,15 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4)
 		}
 
 		return true
@@ -230,18 +215,15 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4, arg5)
 		}
 
 		return true
@@ -272,18 +254,15 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
 
 		return true
@@ -314,18 +293,15 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
 
 		return true
@@ -356,18 +332,15 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
 
 		return true
@@ -398,18 +371,15 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8, T9)]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 			})
+		default:
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
 
 		return true

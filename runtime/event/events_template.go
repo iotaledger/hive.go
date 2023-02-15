@@ -23,18 +23,15 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func( /*{{- types -}}*/ )]) bool {
-		if hook.currentTriggerExceedsMaxTriggerCount() {
+		switch workerPool := hook.WorkerPool(); true {
+		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
-
-			return true
-		}
-
-		if workerPool := hook.WorkerPool(); workerPool == nil {
-			hook.trigger( /*{{- params -}}*/ )
-		} else {
+		case workerPool != nil:
 			workerPool.Submit(func() {
 				hook.trigger( /*{{- params -}}*/ )
 			})
+		default:
+			hook.trigger( /*{{- params -}}*/ )
 		}
 
 		return true

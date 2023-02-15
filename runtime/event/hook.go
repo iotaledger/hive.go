@@ -24,6 +24,7 @@ func newHook[TriggerFunc any](id uint64, event *event[TriggerFunc], trigger Trig
 	}
 }
 
+// WorkerPool returns the worker pool that is used to trigger the callback.
 func (h *Hook[TriggerFunc]) WorkerPool() *workerpool.UnboundedWorkerPool {
 	if has, workerPool := h.hasWorkerPool(); has {
 		return workerPool
