@@ -9,11 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/runtime/event"
+
 	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/core/ioutils"
 	"github.com/iotaledger/hive.go/core/logger"
+
+	"github.com/iotaledger/hive.go/app/daemon"
 )
 
 // AppSelfShutdownCaller is used to signal a app self shutdown caused by an error.
@@ -29,9 +31,9 @@ type selfShutdownRequest struct {
 // Events holds Shutdown related events.
 type Events struct {
 	// Fired when a app self shutdown was caused by an error.
-	AppSelfShutdown *events.Event
+	AppSelfShutdown *event.Event
 	// Fired when a clean shutdown was requested.
-	AppShutdown *events.Event
+	AppShutdown *event.Event
 }
 
 // ShutdownHandler waits until a shutdown signal was received or the app tried to shutdown itself,
@@ -87,8 +89,8 @@ func NewShutdownHandler(log *logger.Logger, daemon daemon.Daemon, opts ...option
 		gracefulStop:    make(chan os.Signal, 1),
 		appSelfShutdown: make(chan selfShutdownRequest),
 		Events: &Events{
-			AppSelfShutdown: events.NewEvent(AppSelfShutdownCaller),
-			AppShutdown:     events.NewEvent(events.VoidCaller),
+			AppSelfShutdown: event.New(AppSelfShutdownCaller),
+			AppShutdown:     event.New(),
 		},
 	}, opts)
 
