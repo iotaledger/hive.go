@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/core
 
-go 1.19
+go 1.20
 
 // Temporary replace until we are done with refactoring hive.go
 replace github.com/iotaledger/hive.go/ds => ../ds
