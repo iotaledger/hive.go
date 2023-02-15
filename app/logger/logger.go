@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/iotaledger/hive.go/core/configuration"
+	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 

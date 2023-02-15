@@ -3,7 +3,7 @@ package daemon
 import (
 	"context"
 
-	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/app/logger"
 )
 
 // WorkerFunc is the function to run a worker accepting its context.

@@ -7,12 +7,12 @@ import (
 	"github.com/jellydator/ttlcache/v2"
 	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/autopeering/mana"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/timeutil"
 )
 

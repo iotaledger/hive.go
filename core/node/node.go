@@ -7,8 +7,8 @@ import (
 
 	"go.uber.org/dig"
 
-	"github.com/iotaledger/hive.go/core/daemon"
-	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/app/daemon"
+	"github.com/iotaledger/hive.go/app/logger"
 )
 
 var (
@@ -26,6 +26,7 @@ type Node struct {
 	depContainer  *dig.Container
 }
 
+// deprecated
 func New(optionalOptions ...NodeOption) *Node {
 	node := &Node{
 		wg:            &sync.WaitGroup{},

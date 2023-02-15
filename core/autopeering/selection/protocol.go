@@ -10,13 +10,13 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
 	pb "github.com/iotaledger/hive.go/core/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/core/autopeering/server"
 	"github.com/iotaledger/hive.go/core/backoff"
 	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 

@@ -3,8 +3,8 @@ package discover
 import (
 	"time"
 
+	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
-	"github.com/iotaledger/hive.go/core/logger"
 )
 
 // Default values for the global parameters.

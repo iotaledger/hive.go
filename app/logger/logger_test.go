@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/configuration"
+	"github.com/iotaledger/hive.go/app/configuration"
 )
 
 func init() {

@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/iotaledger/hive.go/app/logger"
 	pb "github.com/iotaledger/hive.go/core/autopeering/discover/proto"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	peerpb "github.com/iotaledger/hive.go/core/autopeering/peer/proto"
@@ -17,7 +18,6 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/server"
 	"github.com/iotaledger/hive.go/core/backoff"
 	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/netutil"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
