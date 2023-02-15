@@ -181,6 +181,15 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	return s.delete(key)
 }
 
+// Clear removes all the entries from the map.
+func (s *ShrinkingMap[K, V]) Clear() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.m = make(map[K]V)
+	s.deletedKeys = 0
+}
+
 // delete removes the entry with the given key, and possibly
 // shrinks the map if the shrinking conditions have been reached.
 // This does not lock the mutex.
