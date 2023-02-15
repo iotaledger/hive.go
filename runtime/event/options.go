@@ -5,7 +5,8 @@ import (
 
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/generics/options"
-	"github.com/iotaledger/hive.go/core/workerpool"
+
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // WithMaxTriggerCount sets the maximum number of times an entity shall be triggered.
@@ -16,7 +17,7 @@ func WithMaxTriggerCount(maxTriggerCount uint64) Option {
 }
 
 // WithWorkerPool sets the worker pool that is used to process the trigger (nil forces execution in-place).
-func WithWorkerPool(workerPool *workerpool.UnboundedWorkerPool) Option {
+func WithWorkerPool(workerPool *workerpool.WorkerPool) Option {
 	if workerPool == nil {
 		return func(triggerSettings *triggerSettings) {
 			triggerSettings.workerPool = noWorkerPool
@@ -30,7 +31,7 @@ func WithWorkerPool(workerPool *workerpool.UnboundedWorkerPool) Option {
 
 // triggerSettings is a struct that contains trigger related settings and logic.
 type triggerSettings struct {
-	workerPool      *workerpool.UnboundedWorkerPool
+	workerPool      *workerpool.WorkerPool
 	triggerCount    atomic.Uint64
 	maxTriggerCount uint64
 }
@@ -56,12 +57,12 @@ func (t *triggerSettings) MaxTriggerCountReached() bool {
 }
 
 // WorkerPool returns the worker pool that shall be used to execute the triggered function.
-func (t *triggerSettings) WorkerPool() *workerpool.UnboundedWorkerPool {
+func (t *triggerSettings) WorkerPool() *workerpool.WorkerPool {
 	return lo.Return2(t.hasWorkerPool())
 }
 
 // hasWorkerPool returns if a worker pool (and which one) is set.
-func (t *triggerSettings) hasWorkerPool() (bool, *workerpool.UnboundedWorkerPool) {
+func (t *triggerSettings) hasWorkerPool() (bool, *workerpool.WorkerPool) {
 	if t.workerPool == noWorkerPool {
 		return true, nil
 	}
@@ -75,7 +76,7 @@ func (t *triggerSettings) currentTriggerExceedsMaxTriggerCount() bool {
 }
 
 // noWorkerPool is a special value that indicates that no worker pool shall be used (forced).
-var noWorkerPool = &workerpool.UnboundedWorkerPool{}
+var noWorkerPool = &workerpool.WorkerPool{}
 
 // Option is a function that configures the triggerSettings.
 type Option = options.Option[triggerSettings]

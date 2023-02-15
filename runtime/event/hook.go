@@ -2,7 +2,8 @@ package event
 
 import (
 	"github.com/iotaledger/hive.go/core/generics/options"
-	"github.com/iotaledger/hive.go/core/workerpool"
+
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // Hook is a container that holds a trigger function and its trigger settings.
@@ -25,7 +26,7 @@ func newHook[TriggerFunc any](id uint64, event *event[TriggerFunc], trigger Trig
 }
 
 // WorkerPool returns the worker pool that is used to trigger the callback.
-func (h *Hook[TriggerFunc]) WorkerPool() *workerpool.UnboundedWorkerPool {
+func (h *Hook[TriggerFunc]) WorkerPool() *workerpool.WorkerPool {
 	if has, workerPool := h.hasWorkerPool(); has {
 		return workerPool
 	}

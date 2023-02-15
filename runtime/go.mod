@@ -1,10 +1,11 @@
-module hive.go/runtime
+module github.com/iotaledger/hive.go/runtime
 
 go 1.19
 
 require (
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3
 	github.com/stretchr/testify v1.8.1
+	go.uber.org/atomic v1.10.0
 )
 
 require (
@@ -20,7 +21,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/panjf2000/ants/v2 v2.6.0 // indirect
 	github.com/petermattis/goid v0.0.0-20221018141743-354ef7f2fd21 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

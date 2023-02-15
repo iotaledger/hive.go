@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/workerpool"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 func Benchmark(b *testing.B) {
@@ -63,7 +64,7 @@ func TestTriggerSettings_Hook_MaxTriggerCount(t *testing.T) {
 }
 
 func TestEvent1_Hook_WorkerPool(t *testing.T) {
-	workerPool := workerpool.NewUnboundedWorkerPool(t.Name()).Start()
+	workerPool := workerpool.New(t.Name()).Start()
 
 	var eventFired atomic.Bool
 
@@ -98,7 +99,7 @@ func TestEvent1_WithoutWorkerPool(t *testing.T) {
 
 		eventFired.Store(true)
 	})
-	require.Equal(t, (*workerpool.UnboundedWorkerPool)(nil), testEvent.WorkerPool())
+	require.Equal(t, (*workerpool.WorkerPool)(nil), testEvent.WorkerPool())
 
 	testEvent.Trigger(0)
 
@@ -106,7 +107,7 @@ func TestEvent1_WithoutWorkerPool(t *testing.T) {
 }
 
 func TestEvent1_Hook_WithoutWorkerPool(t *testing.T) {
-	workerPool := workerpool.NewUnboundedWorkerPool(t.Name()).Start()
+	workerPool := workerpool.New(t.Name()).Start()
 
 	var eventFired atomic.Bool
 

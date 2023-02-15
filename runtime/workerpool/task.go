@@ -10,41 +10,21 @@ import (
 	"github.com/iotaledger/hive.go/core/types"
 )
 
-// region Task /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Task is a task that is executed by a WorkerPool.
 type Task struct {
-	params     []interface{}
-	resultChan chan interface{}
-}
-
-func (task *Task) Return(result interface{}) {
-	task.resultChan <- result
-	close(task.resultChan)
-}
-
-func (task *Task) Param(index int) interface{} {
-	return task.params[index]
-}
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region BlockingQueueWorkerPoolTask //////////////////////////////////////////////////////////////////////////////////
-
-// WorkerPoolTask is a task that is executed by a BlockingQueuedWorkerPool.
-type WorkerPoolTask struct {
 	decreasePendingCounterFunc func()
 	workerFunc                 func()
 	doneChan                   chan types.Empty
 	stackTrace                 string
 }
 
-// newWorkerPoolTask creates a new BlockingQueueWorkerPoolTask.
-func newWorkerPoolTask(decreasePendingCounterFunc func(), workerFunc func(), stackTrace string) *WorkerPoolTask {
+// newTask creates a new BlockingQueueWorkerPoolTask.
+func newTask(decreasePendingCounterFunc func(), workerFunc func(), stackTrace string) *Task {
 	if debug.GetEnabled() && stackTrace == "" {
 		stackTrace = debug.ClosureStackTrace(workerFunc)
 	}
 
-	return &WorkerPoolTask{
+	return &Task{
 		decreasePendingCounterFunc: decreasePendingCounterFunc,
 		workerFunc:                 workerFunc,
 		doneChan:                   make(chan types.Empty),
@@ -53,7 +33,7 @@ func newWorkerPoolTask(decreasePendingCounterFunc func(), workerFunc func(), sta
 }
 
 // run executes the task.
-func (t *WorkerPoolTask) run() {
+func (t *Task) run() {
 	if debug.GetEnabled() {
 		go t.detectedHangingTasks()
 	}
@@ -63,13 +43,13 @@ func (t *WorkerPoolTask) run() {
 }
 
 // markDone marks the task as done.
-func (t *WorkerPoolTask) markDone() {
+func (t *Task) markDone() {
 	close(t.doneChan)
 	t.decreasePendingCounterFunc()
 }
 
 // detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
-func (t *WorkerPoolTask) detectedHangingTasks() {
+func (t *Task) detectedHangingTasks() {
 	timer := time.NewTimer(debug.DeadlockDetectionTimeout)
 	defer timeutil.CleanupTimer(timer)
 
@@ -81,5 +61,3 @@ func (t *WorkerPoolTask) detectedHangingTasks() {
 		fmt.Println("\n" + strings.Replace(strings.Replace(t.stackTrace, "closure:", "task:", 1), "called by", "queued by", 1))
 	}
 }
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
