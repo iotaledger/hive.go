@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/iotaledger/hive.go/core/configuration"
 )
 
 func init() {
@@ -90,11 +88,13 @@ func TestNewLogger(t *testing.T) {
 	defer os.Remove(temp.Name())
 
 	// override the default config to also write to temp file
-	cfg := defaultCfg
+	cfg := DefaultCfg
 	cfg.OutputPaths = append(cfg.OutputPaths, temp.Name())
 
-	// init the global logger for that temp file and de-init afterwards
-	defer initGlobal(t, cfg)()
+	rootLogger, err := NewRootLogger(cfg)
+	require.NoError(t, err)
+	SetGlobalLogger(rootLogger)
+	defer cleanupGlobalLogger()
 
 	t.Run("info", func(t *testing.T) {
 		logger := NewLogger("test")
@@ -121,54 +121,14 @@ func TestNewLoggerWithoutInit(t *testing.T) {
 	assert.Panics(t, func() { NewLogger("test") })
 }
 
-func TestInitGlobalAfterError(t *testing.T) {
-	// create invalid config
-	cfg := defaultCfg
-	cfg.Level = "invalid"
+func TestSetGlobalTwice(t *testing.T) {
+	rootLogger1, err := NewRootLogger(DefaultCfg)
+	require.NoError(t, err)
+	require.NoError(t, SetGlobalLogger(rootLogger1))
 
-	c := configuration.New()
-	require.NoError(t, c.Set(ConfigurationKeyLevel, cfg.Level))
-	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller))
-	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace))
-	require.NoError(t, c.Set(ConfigurationKeyEncoding, cfg.Encoding))
-	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths))
-	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents))
-	require.Error(t, InitGlobalLogger(c))
-
-	initGlobal(t, defaultCfg)()
-}
-
-func TestInitGlobalTwice(t *testing.T) {
-	c := configuration.New()
-	require.NoError(t, c.Set(ConfigurationKeyLevel, defaultCfg.Level))
-	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, defaultCfg.DisableCaller))
-	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, defaultCfg.DisableStacktrace))
-	require.NoError(t, c.Set(ConfigurationKeyEncoding, defaultCfg.Encoding))
-	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, defaultCfg.OutputPaths))
-	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, defaultCfg.DisableEvents))
-
-	require.NoError(t, InitGlobalLogger(c))
-	assert.Errorf(t, InitGlobalLogger(c), ErrGlobalLoggerAlreadyInitialized.Error())
-}
-
-func initGlobal(t require.TestingT, cfg Config) func() {
-	c := configuration.New()
-	require.NoError(t, c.Set(ConfigurationKeyLevel, cfg.Level))
-	require.NoError(t, c.Set(ConfigurationKeyDisableCaller, cfg.DisableCaller))
-	require.NoError(t, c.Set(ConfigurationKeyDisableStacktrace, cfg.DisableStacktrace))
-	require.NoError(t, c.Set(ConfigurationKeyEncoding, cfg.Encoding))
-	require.NoError(t, c.Set(ConfigurationKeyOutputPaths, cfg.OutputPaths))
-	require.NoError(t, c.Set(ConfigurationKeyDisableEvents, cfg.DisableEvents))
-
-	err := InitGlobalLogger(c)
-	require.NoError(t, err, "Failed to init global logger.")
-
-	// de-initialize the global logger
-	return func() {
-		globalLogger = nil
-		globalLoggerInitialized.UnSet()
-		globalLoggerLock = sync.Mutex{}
-	}
+	rootLogger2, err := NewRootLogger(DefaultCfg)
+	require.NoError(t, err)
+	assert.Errorf(t, SetGlobalLogger(rootLogger2), ErrGlobalLoggerAlreadyInitialized.Error())
 }
 
 func getLogs(t require.TestingT, file *os.File) string {
@@ -176,4 +136,10 @@ func getLogs(t require.TestingT, file *os.File) string {
 	require.NoError(t, err, "Couldn't read log contents from file.")
 
 	return string(byteContents)
+}
+
+func cleanupGlobalLogger() {
+	globalLogger = nil
+	globalLoggerInitialized.UnSet()
+	globalLoggerLock = sync.Mutex{}
 }

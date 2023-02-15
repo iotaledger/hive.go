@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/core/ioutils"

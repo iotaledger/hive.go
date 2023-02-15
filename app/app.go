@@ -14,18 +14,18 @@ import (
 	flag "github.com/spf13/pflag"
 	"go.uber.org/dig"
 
-	"github.com/iotaledger/hive.go/core/configuration"
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/configuration"
+	"github.com/iotaledger/hive.go/app/daemon"
+	"github.com/iotaledger/hive.go/app/version"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/timeutil"
-	"github.com/iotaledger/hive.go/core/version"
 )
 
 const (
 	DefaultFlagSetName = "appConfig"
 )
 
-// Info provides informations about the app.
+// Info provides information about the app.
 type Info struct {
 	Name                string
 	Version             string
@@ -295,7 +295,7 @@ Command line flags:
 	// check if help text should be displayed
 	if *help {
 		if !*helpFull {
-			// hides all non essential flags from the help/usage text.
+			// hides all non-essential flags from the help/usage text.
 			configuration.HideFlags(a.configs.FlagSets(), a.options.initComponent.NonHiddenFlags)
 		}
 		flag.Usage()

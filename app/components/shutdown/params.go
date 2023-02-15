@@ -3,7 +3,7 @@ package shutdown
 import (
 	"time"
 
-	"github.com/iotaledger/hive.go/core/app"
+	"github.com/iotaledger/hive.go/app"
 )
 
 // ParametersShutdown contains the definition of the parameters used by shutdown.

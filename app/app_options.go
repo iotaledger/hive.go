@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/daemon"
 )
 
 // the default options applied to the App.
