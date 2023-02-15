@@ -5,133 +5,124 @@ import (
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
-type OrderedMap struct {
-	head       *Element
-	tail       *Element
-	dictionary map[interface{}]*Element
+type OrderedMap[K comparable, V any] struct {
+	head       *Element[K, V]
+	tail       *Element[K, V]
+	dictionary map[K]*Element[K, V]
 	size       int
 	mutex      sync.RWMutex
 }
 
 // New returns a new *OrderedMap.
-func New() *OrderedMap {
-	orderedMap := new(OrderedMap)
+func New[K comparable, V any]() *OrderedMap[K, V] {
+	orderedMap := new(OrderedMap[K, V])
 	orderedMap.Initialize()
 
 	return orderedMap
 }
 
 // Initialize returns the first map entry.
-func (orderedMap *OrderedMap) Initialize() {
-	orderedMap.mutex.Lock()
-	defer orderedMap.mutex.Unlock()
-	orderedMap.dictionary = make(map[interface{}]*Element)
+func (o *OrderedMap[K, V]) Initialize() {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	o.dictionary = make(map[K]*Element[K, V])
 }
 
 // Head returns the first map entry.
-func (orderedMap *OrderedMap) Head() (key, value interface{}, exists bool) {
-	orderedMap.mutex.RLock()
-	defer orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) Head() (key K, value V, exists bool) {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
 
-	if exists = orderedMap.head != nil; !exists {
+	if exists = o.head != nil; !exists {
 		return
 	}
-	key = orderedMap.head.key
-	value = orderedMap.head.value
+	key = o.head.key
+	value = o.head.value
 
 	return
 }
 
 // Tail returns the last map entry.
-func (orderedMap *OrderedMap) Tail() (key, value interface{}, exists bool) {
-	orderedMap.mutex.RLock()
-	defer orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) Tail() (key K, value V, exists bool) {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
 
-	if exists = orderedMap.tail != nil; !exists {
+	if exists = o.tail != nil; !exists {
 		return
 	}
-	key = orderedMap.tail.key
-	value = orderedMap.tail.value
+	key = o.tail.key
+	value = o.tail.value
 
 	return
 }
 
 // Has returns if an entry with the given key exists.
-func (orderedMap *OrderedMap) Has(key interface{}) (has bool) {
-	orderedMap.mutex.RLock()
-	defer orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) Has(key K) (has bool) {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
 
-	_, has = orderedMap.dictionary[key]
+	_, has = o.dictionary[key]
 
 	return
 }
 
 // Get returns the value mapped to the given key if exists.
-func (orderedMap *OrderedMap) Get(key interface{}) (interface{}, bool) {
-	orderedMap.mutex.RLock()
-	defer orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) Get(key K) (value V, exists bool) {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
 
-	orderedMapElement, orderedMapElementExists := orderedMap.dictionary[key]
+	orderedMapElement, orderedMapElementExists := o.dictionary[key]
 	if !orderedMapElementExists {
-		return nil, false
+		var result V
+		return result, false
 	}
 
 	return orderedMapElement.value, true
 }
 
-// Set adds a key-value pair to the orderedMap. It returns false if the same pair already exists.
-func (orderedMap *OrderedMap) Set(key interface{}, newValue interface{}) bool {
-	if oldValue, oldValueExists := orderedMap.Get(key); oldValueExists && oldValue == newValue {
+// Set adds a key-value pair to the orderedMap. It returns false if the key already existed.
+func (o *OrderedMap[K, V]) Set(key K, newValue V) bool {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+
+	if oldValue, oldValueExists := o.dictionary[key]; oldValueExists {
+		oldValue.value = newValue
 		return false
 	}
 
-	orderedMap.mutex.Lock()
-	defer orderedMap.mutex.Unlock()
+	newElement := new(Element[K, V])
+	newElement.key = key
+	newElement.value = newValue
 
-	if oldValue, oldValueExists := orderedMap.dictionary[key]; oldValueExists {
-		if oldValue.value == newValue {
-			return false
-		}
-
-		oldValue.value = newValue
-
-		return true
-	}
-
-	newElement := &Element{
-		key:   key,
-		value: newValue,
-	}
-
-	if orderedMap.head == nil {
-		orderedMap.head = newElement
+	if o.head == nil {
+		o.head = newElement
 	} else {
-		orderedMap.tail.next = newElement
-		newElement.prev = orderedMap.tail
+		o.tail.next = newElement
+		newElement.prev = o.tail
 	}
-	orderedMap.tail = newElement
-	orderedMap.size++
+	o.tail = newElement
+	o.size++
 
-	orderedMap.dictionary[key] = newElement
+	o.dictionary[key] = newElement
 
 	return true
 }
 
 // ForEach iterates through the orderedMap and calls the consumer function for every element.
 // The iteration can be aborted by returning false in the consumer.
-func (orderedMap *OrderedMap) ForEach(consumer func(key, value interface{}) bool) bool {
-	orderedMap.mutex.RLock()
-	currentEntry := orderedMap.head
-	orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) ForEach(consumer func(key K, value V) bool) bool {
+	o.mutex.RLock()
+	currentEntry := o.head
+	o.mutex.RUnlock()
 
 	for currentEntry != nil {
 		if !consumer(currentEntry.key, currentEntry.value) {
 			return false
 		}
 
-		orderedMap.mutex.RLock()
+		o.mutex.RLock()
 		currentEntry = currentEntry.next
-		orderedMap.mutex.RUnlock()
+		o.mutex.RUnlock()
 	}
 
 	return true
@@ -139,72 +130,152 @@ func (orderedMap *OrderedMap) ForEach(consumer func(key, value interface{}) bool
 
 // ForEachReverse iterates through the orderedMap in reverse order and calls the consumer function for every element.
 // The iteration can be aborted by returning false in the consumer.
-func (orderedMap *OrderedMap) ForEachReverse(consumer func(key, value interface{}) bool) bool {
-	orderedMap.mutex.RLock()
-	currentEntry := orderedMap.tail
-	orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) ForEachReverse(consumer func(key K, value V) bool) bool {
+	o.mutex.RLock()
+	currentEntry := o.tail
+	o.mutex.RUnlock()
 
 	for currentEntry != nil {
 		if !consumer(currentEntry.key, currentEntry.value) {
 			return false
 		}
 
-		orderedMap.mutex.RLock()
+		o.mutex.RLock()
 		currentEntry = currentEntry.prev
-		orderedMap.mutex.RUnlock()
+		o.mutex.RUnlock()
 	}
 
 	return true
 }
 
 // Clear removes all elements from the OrderedMap.
-func (orderedMap *OrderedMap) Clear() {
-	orderedMap.mutex.Lock()
-	defer orderedMap.mutex.Unlock()
+func (o *OrderedMap[K, V]) Clear() {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
 
-	orderedMap.head = nil
-	orderedMap.tail = nil
-	orderedMap.size = 0
-	orderedMap.dictionary = make(map[interface{}]*Element)
+	o.head = nil
+	o.tail = nil
+	o.size = 0
+	o.dictionary = make(map[K]*Element[K, V])
 }
 
 // Delete deletes the given key (and related value) from the orderedMap.
 // It returns false if the key is not found.
-func (orderedMap *OrderedMap) Delete(key interface{}) bool {
-	if _, valueExists := orderedMap.Get(key); !valueExists {
+func (o *OrderedMap[K, V]) Delete(key K) bool {
+	if _, valueExists := o.Get(key); !valueExists {
 		return false
 	}
 
-	orderedMap.mutex.Lock()
-	defer orderedMap.mutex.Unlock()
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
 
-	value, valueExists := orderedMap.dictionary[key]
+	value, valueExists := o.dictionary[key]
 	if !valueExists {
 		return false
 	}
 
-	delete(orderedMap.dictionary, key)
-	orderedMap.size--
+	delete(o.dictionary, key)
+	o.size--
 
 	if value.prev != nil {
 		value.prev.next = value.next
 	} else {
-		orderedMap.head = value.next
+		o.head = value.next
 	}
 
 	if value.next != nil {
 		value.next.prev = value.prev
 	} else {
-		orderedMap.tail = value.prev
+		o.tail = value.prev
 	}
 
 	return true
 }
 
 // Size returns the size of the orderedMap.
-func (orderedMap *OrderedMap) Size() int {
-	orderedMap.mutex.RLock()
-	defer orderedMap.mutex.RUnlock()
+func (o *OrderedMap[K, V]) Size() int {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
 
-	return orderedMap.size
+	return o.size
 }
+
+// Clone returns a copy of the orderedMap.
+func (o *OrderedMap[K, V]) Clone() (cloned *OrderedMap[K, V]) {
+	cloned = New[K, V]()
+	o.ForEach(func(key K, value V) bool {
+		cloned.Set(key, value)
+
+		return true
+	})
+
+	return
+}
+
+/*
+
+// Encode returns a serialized byte slice of the object.
+func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
+	seri := serializer.NewSerializer()
+
+	seri.WriteNum(uint32(orderedMap.Size()), func(err error) error {
+		return errors.Wrap(err, "failed to write OrderedMap size to serializer")
+	})
+
+	orderedMap.ForEach(func(key K, val V) bool {
+		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), key)
+		if err != nil {
+			seri.AbortIf(func(err error) error {
+				return errors.Wrap(err, "encode OrderedMap key")
+			})
+		}
+		seri.WriteBytes(keyBytes, func(err error) error {
+			return errors.Wrap(err, "failed to write OrderedMap key to serializer")
+		})
+
+		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
+		seri.AbortIf(func(_ error) error {
+			return errors.Wrap(err, "failed to serialize OrderedMap value")
+		})
+		seri.WriteBytes(valBytes, func(err error) error {
+			return errors.Wrap(err, "failed to write OrderedMap value to serializer")
+		})
+
+		return true
+	})
+
+	return seri.Serialize()
+}
+
+// Decode deserializes bytes into a valid object.
+func (orderedMap *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	orderedMap = New[K, V]()
+	var mapSize uint32
+	bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
+	if err != nil {
+		return 0, err
+	}
+	bytesRead += bytesReadSize
+
+	for i := uint32(0); i < mapSize; i++ {
+		var key K
+		bytesReadKey, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &key)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadKey
+
+		var value V
+		bytesReadValue, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &value)
+		if err != nil {
+			return 0, err
+		}
+		bytesRead += bytesReadValue
+
+		orderedMap.Set(key, value)
+	}
+
+	return bytesRead, nil
+}
+
+*/

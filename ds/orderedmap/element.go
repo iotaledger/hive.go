@@ -1,9 +1,9 @@
 package orderedmap
 
 // Element defines the model of each element of the orderedMap.
-type Element struct {
-	key   interface{}
-	value interface{}
-	prev  *Element
-	next  *Element
+type Element[K comparable, V any] struct {
+	key   K
+	value V
+	prev  *Element[K, V]
+	next  *Element[K, V]
 }
