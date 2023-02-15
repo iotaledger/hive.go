@@ -3,14 +3,14 @@ package udp
 import (
 	"net"
 
-	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 type udpServerEvents struct {
-	Start       *events.Event
-	Shutdown    *events.Event
-	ReceiveData *events.Event
-	Error       *events.Event
+	Start       *event.Event
+	Shutdown    *event.Event
+	ReceiveData *event.Event2[*net.UDPAddr, []byte]
+	Error       *event.Event1[error]
 }
 
 func udpAddrAndDataCaller(handler interface{}, params ...interface{}) {
