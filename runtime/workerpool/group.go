@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/iotaledger/hive.go/core/generics/orderedmap"
 	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/ds/orderedmap"
 )
 
 type Group struct {

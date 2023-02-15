@@ -3,7 +3,7 @@ package syncutils
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/orderedmap"
+	"github.com/iotaledger/hive.go/ds/orderedmap"
 )
 
 type Counter struct {

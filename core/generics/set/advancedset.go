@@ -7,9 +7,9 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/generics/orderedmap"
 	"github.com/iotaledger/hive.go/core/generics/walker"
 	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/orderedmap"
 )
 
 // AdvancedSet is a set that offers advanced features.
