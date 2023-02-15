@@ -4,8 +4,8 @@ import (
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 // region Signature ////////////////////////////////////////////////////////////////////////////////////////////////////

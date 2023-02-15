@@ -3,9 +3,9 @@ package protocol
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/protocol/message"
 	"github.com/iotaledger/hive.go/core/protocol/tlv"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/runtime/event"
 )
 

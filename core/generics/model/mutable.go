@@ -10,7 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/iotaledger/hive.go/core/cerrors"
-	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // Mutable is the base type for simple mutable models. It should be embedded in a wrapper type.

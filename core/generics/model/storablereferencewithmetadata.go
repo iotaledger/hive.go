@@ -8,11 +8,11 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/generics/objectstorage"
-	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // StorableReferenceWithMetadata is the base type for all storable reference models. It should be embedded in a wrapper type.

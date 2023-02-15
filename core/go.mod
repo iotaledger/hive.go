@@ -4,6 +4,7 @@ go 1.20
 
 // Temporary replace until we are done with refactoring hive.go
 replace github.com/iotaledger/hive.go/ds => ../ds
+replace github.com/iotaledger/hive.go/serializer/v2 => ../serializer
 replace github.com/iotaledger/hive.go/runtime => ../runtime
 
 require (
@@ -11,9 +12,7 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/emirpasic/gods v1.18.1
-	github.com/ethereum/go-ethereum v1.10.26
 	github.com/golang/protobuf v1.5.2
-	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
 	github.com/iotaledger/hive.go/ds v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/runtime v0.0.0-00010101000000-000000000000
@@ -48,9 +47,11 @@ require (
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/getsentry/sentry-go v0.15.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

@@ -8,9 +8,9 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
 	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 func TestNewStructStorage(t *testing.T) {

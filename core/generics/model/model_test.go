@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/iotaledger/hive.go/core/serix"
 	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 func TestModel(t *testing.T) {

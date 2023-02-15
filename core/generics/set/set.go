@@ -2,7 +2,7 @@ package set
 
 import (
 	"github.com/iotaledger/hive.go/core/datastructure/set"
-	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // Set is a collection of elements.
