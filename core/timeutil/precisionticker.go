@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 // region PrecisionTicker //////////////////////////////////////////////////////////////////////////////////////////////

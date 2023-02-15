@@ -12,8 +12,8 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/syncutils"
 	"github.com/iotaledger/hive.go/core/timed"
-	"github.com/iotaledger/hive.go/core/types"
 	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.

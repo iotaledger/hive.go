@@ -1,7 +1,7 @@
 package set
 
 import (
-	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 // simpleSet implements a non-thread safe Set.

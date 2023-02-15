@@ -22,8 +22,8 @@ import (
 	"github.com/iotaledger/hive.go/core/kvstore/pebble"
 	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/testutil"
-	"github.com/iotaledger/hive.go/core/types"
 	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 const (

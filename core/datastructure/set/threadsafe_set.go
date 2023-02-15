@@ -3,7 +3,7 @@ package set
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 // threadSafeSet implements a thread safe Set.

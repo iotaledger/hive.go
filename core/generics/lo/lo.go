@@ -3,7 +3,7 @@ package lo
 import (
 	"github.com/iotaledger/hive.go/core/generics/constraints"
 	"github.com/iotaledger/hive.go/core/generics/set"
-	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/types"
 )
 
 // Cond is a conditional statement that returns the trueValue if the condition is true and the falseValue otherwise.
