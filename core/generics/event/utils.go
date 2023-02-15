@@ -1,6 +1,6 @@
 package event
 
-import "github.com/iotaledger/hive.go/core/workerpool"
+import "github.com/iotaledger/hive.go/runtime/workerpool"
 
 func Attach[T any](event *Linkable[T], callback func(event T), triggerMaxCount ...uint64) (detachFunc func()) {
 	closure := NewClosure(callback)

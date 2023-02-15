@@ -5,7 +5,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/debug"
 	"github.com/iotaledger/hive.go/core/generics/orderedmap"
-	"github.com/iotaledger/hive.go/core/workerpool"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // Event represents an object that is triggered to notify code of "interesting updates" that may affect its behavior.

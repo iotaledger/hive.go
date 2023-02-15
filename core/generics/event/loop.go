@@ -1,7 +1,7 @@
 package event
 
 import (
-	"github.com/iotaledger/hive.go/core/workerpool"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 var Loop *workerpool.UnboundedWorkerPool

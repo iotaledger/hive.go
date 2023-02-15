@@ -1,6 +1,6 @@
 package event
 
-import "github.com/iotaledger/hive.go/core/workerpool"
+import "github.com/iotaledger/hive.go/runtime/workerpool"
 
 type handler[T any] struct {
 	callback func(T)
