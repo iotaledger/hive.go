@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/subscriptionmanager"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 const (
