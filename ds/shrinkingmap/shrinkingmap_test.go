@@ -3,7 +3,7 @@ package shrinkingmap
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShrinkingMap_Ratio(t *testing.T) {
@@ -15,18 +15,18 @@ func TestShrinkingMap_Ratio(t *testing.T) {
 		shrink.Set(i, i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 
 	for i := 0; i < 67; i++ {
-		assert.Equal(t, i, shrink.deletedKeys)
+		require.Equal(t, i, shrink.deletedKeys)
 		shrink.Delete(i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 	shrink.Delete(99)
-	assert.Equal(t, 1, shrink.deletedKeys)
+	require.Equal(t, 1, shrink.deletedKeys)
 	shrink.Shrink()
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 }
 
 func TestShrinkingMap_Count(t *testing.T) {
@@ -38,18 +38,18 @@ func TestShrinkingMap_Count(t *testing.T) {
 		shrink.Set(i, i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 
 	for i := 0; i < 10; i++ {
-		assert.Equal(t, i, shrink.deletedKeys)
+		require.Equal(t, i, shrink.deletedKeys)
 		shrink.Delete(i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 	shrink.Delete(99)
-	assert.Equal(t, 1, shrink.deletedKeys)
+	require.Equal(t, 1, shrink.deletedKeys)
 	shrink.Shrink()
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 }
 
 func TestShrinkingMap_Both(t *testing.T) {
@@ -62,18 +62,18 @@ func TestShrinkingMap_Both(t *testing.T) {
 		shrink.Set(i, i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 
 	for i := 0; i < 70; i++ {
-		assert.Equal(t, i, shrink.deletedKeys)
+		require.Equal(t, i, shrink.deletedKeys)
 		shrink.Delete(i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 	shrink.Delete(99)
-	assert.Equal(t, 1, shrink.deletedKeys)
+	require.Equal(t, 1, shrink.deletedKeys)
 	shrink.Shrink()
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 
 	// check ratio condition reached after count
 	shrink = New[int, int](
@@ -84,18 +84,18 @@ func TestShrinkingMap_Both(t *testing.T) {
 		shrink.Set(i, i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 
 	for i := 0; i < 67; i++ {
-		assert.Equal(t, i, shrink.deletedKeys)
+		require.Equal(t, i, shrink.deletedKeys)
 		shrink.Delete(i)
 	}
 
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 	shrink.Delete(99)
-	assert.Equal(t, 1, shrink.deletedKeys)
+	require.Equal(t, 1, shrink.deletedKeys)
 	shrink.Shrink()
-	assert.Equal(t, 0, shrink.deletedKeys)
+	require.Equal(t, 0, shrink.deletedKeys)
 }
 
 func TestShrinkingMap_Empty(t *testing.T) {
@@ -106,19 +106,19 @@ func TestShrinkingMap_Empty(t *testing.T) {
 		WithShrinkingThresholdCount(70),
 	)
 
-	assert.True(t, shrink.IsEmpty())
+	require.True(t, shrink.IsEmpty())
 
 	for i := 0; i < 100; i++ {
 		shrink.Set(i, i)
 	}
-	assert.Equal(t, 100, shrink.Size())
-	assert.False(t, shrink.IsEmpty())
+	require.Equal(t, 100, shrink.Size())
+	require.False(t, shrink.IsEmpty())
 
 	for i := 0; i < 100; i++ {
 		shrink.Delete(i)
 	}
 
-	assert.Equal(t, 0, shrink.Size())
-	assert.True(t, shrink.IsEmpty())
-	assert.True(t, shrink.deletedKeys > 0)
+	require.Equal(t, 0, shrink.Size())
+	require.True(t, shrink.IsEmpty())
+	require.True(t, shrink.deletedKeys > 0)
 }

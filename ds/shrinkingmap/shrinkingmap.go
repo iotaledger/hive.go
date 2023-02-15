@@ -1,5 +1,7 @@
 package shrinkingmap
 
+import "sync"
+
 // the default options applied to the ShrinkingMap.
 var defaultOptions = []Option{
 	WithShrinkingThresholdRatio(10.0),
@@ -52,6 +54,8 @@ type ShrinkingMap[K comparable, V any] struct {
 
 	// holds the map options.
 	opts *Options
+
+	mutex sync.RWMutex
 }
 
 // New returns a new ShrinkingMap.
@@ -70,6 +74,9 @@ func New[K comparable, V any](opts ...Option) *ShrinkingMap[K, V] {
 
 // Set adds a key-value pair to the map. It returns true if the key was created.
 func (s *ShrinkingMap[K, V]) Set(key K, value V) (wasCreated bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	_, exists := s.m[key]
 	s.m[key] = value
 
@@ -78,13 +85,35 @@ func (s *ShrinkingMap[K, V]) Set(key K, value V) (wasCreated bool) {
 
 // Get returns the value mapped to the given key, and the boolean flag that indicated if the key exists.
 func (s *ShrinkingMap[K, V]) Get(key K) (value V, exists bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	value, exists = s.m[key]
 
 	return
 }
 
+// GetOrCreate returns the value mapped to the given key and the boolean flag that indicated if the values was created.
+// If the value does not exist the passed func will be called and the provided value will be set.
+func (s *ShrinkingMap[K, V]) GetOrCreate(key K, defaultValueFunc func() V) (value V, created bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if existingValue, exists := s.m[key]; exists {
+		return existingValue, false
+	}
+
+	value = defaultValueFunc()
+	s.m[key] = value
+
+	return value, true
+}
+
 // Has returns if an entry with the given key exists.
 func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	_, has = s.m[key]
 
 	return
@@ -93,6 +122,9 @@ func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 // ForEachKey iterates through the map and calls the consumer for every element.
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	for k := range s.m {
 		if !callback(k) {
 			return
@@ -103,6 +135,9 @@ func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
 // ForEach iterates through the map and calls the consumer for every element.
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	for k, v := range s.m {
 		if !callback(k, v) {
 			return
@@ -112,8 +147,11 @@ func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
 
 // Pop removes the first element from the map and returns it.
 func (s *ShrinkingMap[K, V]) Pop() (key K, value V, exists bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	for k, v := range s.m {
-		s.Delete(k)
+		s.delete(k)
 
 		return k, v, true
 	}
@@ -123,6 +161,9 @@ func (s *ShrinkingMap[K, V]) Pop() (key K, value V, exists bool) {
 
 // Size returns the number of entries in the map.
 func (s *ShrinkingMap[K, V]) Size() (size int) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	return len(s.m)
 }
 
@@ -134,6 +175,16 @@ func (s *ShrinkingMap[K, V]) IsEmpty() (empty bool) {
 // Delete removes the entry with the given key, and possibly
 // shrinks the map if the shrinking conditions have been reached.
 func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.delete(key)
+}
+
+// delete removes the entry with the given key, and possibly
+// shrinks the map if the shrinking conditions have been reached.
+// This does not lock the mutex.
+func (s *ShrinkingMap[K, V]) delete(key K) (deleted bool) {
 	if _, deleted = s.m[key]; !deleted {
 		return false
 	}
@@ -142,7 +193,7 @@ func (s *ShrinkingMap[K, V]) Delete(key K) (deleted bool) {
 	delete(s.m, key)
 
 	if s.shouldShrink() {
-		s.Shrink()
+		s.shrink()
 	}
 
 	return true
@@ -160,7 +211,7 @@ func (s *ShrinkingMap[K, V]) AsMap() (asMap map[K]V) {
 
 // shouldShrink checks if the conditions to shrink the map are met.
 func (s *ShrinkingMap[K, V]) shouldShrink() bool {
-	size := s.Size()
+	size := len(s.m)
 
 	// check if one of the conditions was defined, otherwise never shrink
 	if !(s.opts.shrinkingThresholdRatio != 0.0 || s.opts.shrinkingThresholdCount != 0) {
@@ -195,6 +246,14 @@ func (s *ShrinkingMap[K, V]) shouldShrink() bool {
 
 // Shrink shrinks the map.
 func (s *ShrinkingMap[K, V]) Shrink() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.shrink()
+}
+
+// shrink shrinks the map without locking the mutex.
+func (s *ShrinkingMap[K, V]) shrink() {
 	newMap := make(map[K]V, len(s.m))
 
 	for k, v := range s.m {
