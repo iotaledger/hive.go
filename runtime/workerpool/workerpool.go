@@ -21,7 +21,7 @@ type WorkerPool struct {
 	mutex          syncutils.RWMutex
 }
 
-func New(name string, optsWorkerCount ...int) (newUnboundedWorkerPool *WorkerPool) {
+func New(name string, optsWorkerCount ...int) (newWorkerPool *WorkerPool) {
 	if len(optsWorkerCount) == 0 {
 		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
 	}

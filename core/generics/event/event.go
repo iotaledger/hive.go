@@ -39,7 +39,7 @@ func (e *Event[T]) Attach(closure *Closure[T], triggerMaxCount ...uint64) {
 
 // AttachWithWorkerPool allows to register a Closure that is executed asynchronously in the specified worker pool when the Event triggers.
 // If 'triggerMaxCount' is >0, the Closure is automatically detached after exceeding the trigger limit.
-func (e *Event[T]) AttachWithWorkerPool(closure *Closure[T], wp *workerpool.UnboundedWorkerPool, triggerMaxCount ...uint64) {
+func (e *Event[T]) AttachWithWorkerPool(closure *Closure[T], wp *workerpool.WorkerPool, triggerMaxCount ...uint64) {
 	if closure == nil {
 		return
 	}

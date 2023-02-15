@@ -11,7 +11,7 @@ func Attach[T any](event *Linkable[T], callback func(event T), triggerMaxCount .
 	}
 }
 
-func AttachWithWorkerPool[T any](event *Linkable[T], callback func(event T), wp *workerpool.UnboundedWorkerPool, triggerMaxCount ...uint64) (detachFunc func()) {
+func AttachWithWorkerPool[T any](event *Linkable[T], callback func(event T), wp *workerpool.WorkerPool, triggerMaxCount ...uint64) (detachFunc func()) {
 	closure := NewClosure(callback)
 	event.AttachWithWorkerPool(closure, wp, triggerMaxCount...)
 

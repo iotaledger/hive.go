@@ -4,9 +4,9 @@ import (
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
-var Loop *workerpool.UnboundedWorkerPool
+var Loop *workerpool.WorkerPool
 
 func init() {
-	Loop = workerpool.NewUnboundedWorkerPool("event.Loop")
+	Loop = workerpool.New("event.Loop")
 	Loop.Start()
 }
