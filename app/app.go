@@ -16,9 +16,9 @@ import (
 
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/app/logger"
+	"github.com/iotaledger/hive.go/app/version"
+	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/timeutil"
-	"github.com/iotaledger/hive.go/core/version"
 )
 
 const (

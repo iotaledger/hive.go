@@ -36,7 +36,7 @@ type Config struct {
 	DisableEvents bool `default:"true" usage:"prevents log messages from being raced as events" json:"disableEvents"`
 }
 
-var defaultCfg = Config{
+var DefaultCfg = Config{
 	Level:             "info",
 	DisableCaller:     true,
 	DisableStacktrace: false,

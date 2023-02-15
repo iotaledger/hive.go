@@ -9,11 +9,11 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/core/autopeering/server/proto"
 	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/netutil"
 	"github.com/iotaledger/hive.go/core/timeutil"
 )

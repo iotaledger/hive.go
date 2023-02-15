@@ -8,8 +8,8 @@ import (
 	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
 
-	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/core/logger"
 )
 
 var (
