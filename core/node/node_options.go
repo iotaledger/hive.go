@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/daemon"
 )
 
 //nolint:revive // will be replaces by app package anyway

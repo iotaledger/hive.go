@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/iotaledger/hive.go/app/logger"
 	"github.com/iotaledger/hive.go/core/generics/event"
-	"github.com/iotaledger/hive.go/core/logger"
 )
 
 const (
@@ -27,6 +27,7 @@ type Plugin struct {
 	wg      *sync.WaitGroup
 }
 
+// deprecated
 // NewPlugin creates a new plugin with the given name, default status and callbacks.
 // The last specified callback is the mandatory run callback, while all other callbacks are configure callbacks.
 func NewPlugin(name string, deps interface{}, status int, callbacks ...Callback) *Plugin {

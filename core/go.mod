@@ -2,6 +2,9 @@ module github.com/iotaledger/hive.go/core
 
 go 1.19
 
+// Temporary replace until we are done with refactoring hive.go
+replace github.com/iotaledger/hive.go/app => ../app
+
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
@@ -12,9 +15,9 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
+	github.com/iotaledger/hive.go/app v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/jellydator/ttlcache/v2 v2.11.1
-	github.com/knadh/koanf v1.4.4
 	github.com/kr/text v0.2.0
 	github.com/libp2p/go-libp2p v0.23.4
 	github.com/mr-tron/base58 v1.2.0
@@ -22,19 +25,23 @@ require (
 	github.com/panjf2000/ants/v2 v2.6.0
 	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/sasha-s/go-deadlock v0.3.1
-	github.com/spf13/cast v1.5.0
-	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
 	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
 	go.dedis.ch/kyber/v3 v3.0.14
 	go.uber.org/atomic v1.10.0
-	go.uber.org/dig v1.15.0
-	go.uber.org/zap v1.23.0
+	go.uber.org/dig v1.16.1
 	golang.org/x/crypto v0.2.0
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	google.golang.org/protobuf v1.28.1
-	gopkg.in/yaml.v2 v2.4.0
 	nhooyr.io/websocket v1.8.7
+)
+
+require (
+	github.com/knadh/koanf v1.4.4 // indirect
+	github.com/spf13/cast v1.5.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	go.uber.org/zap v1.23.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (
