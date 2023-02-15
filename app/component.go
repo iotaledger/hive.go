@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/core/logger"
 )
 

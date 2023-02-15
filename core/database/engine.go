@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/ioutils"
 )
 
@@ -22,23 +21,6 @@ const (
 	EngineMapDB   Engine = "mapdb"
 	EnginePebble  Engine = "pebble"
 	EngineRocksDB Engine = "rocksdb"
-)
-
-var (
-	allowedEnginesDefault = []Engine{
-		EngineAuto,
-		EngineBadger,
-		EngineDebug,
-		EngineMapDB,
-		EnginePebble,
-		EngineRocksDB,
-	}
-
-	enginesStorage = map[Engine]struct{}{
-		EngineBadger:  {},
-		EnginePebble:  {},
-		EngineRocksDB: {},
-	}
 )
 
 var (
@@ -73,35 +55,30 @@ func getSupportedEnginesString(supportedEngines []Engine) string {
 }
 
 // EngineAllowed checks if the database engine is allowed.
-func EngineAllowed(dbEngine Engine, allowedEngines ...Engine) (Engine, error) {
+func EngineAllowed(dbEngine Engine, allowedEngines []Engine) (Engine, error) {
 
-	tmpAllowedEngines := allowedEnginesDefault
-	if len(allowedEngines) > 0 {
-		tmpAllowedEngines = allowedEngines
-	}
-
-	for _, allowedEngine := range tmpAllowedEngines {
+	for _, allowedEngine := range allowedEngines {
 		if dbEngine == allowedEngine {
 			return dbEngine, nil
 		}
 	}
 
-	return EngineUnknown, fmt.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, getSupportedEnginesString(tmpAllowedEngines))
+	return EngineUnknown, fmt.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, getSupportedEnginesString(allowedEngines))
 }
 
 // EngineFromStringAllowed parses an engine from a string and checks if the database engine is allowed.
-func EngineFromStringAllowed(dbEngineStr string, allowedEngines ...Engine) (Engine, error) {
-	return EngineAllowed(engineFromString(dbEngineStr), allowedEngines...)
+func EngineFromStringAllowed(dbEngineStr string, allowedEngines []Engine) (Engine, error) {
+	return EngineAllowed(engineFromString(dbEngineStr), allowedEngines)
 }
 
 // CheckEngine checks if the correct database engine is used.
 // This function stores a so called "database info file" in the database folder or
 // checks if an existing "database info file" contains the correct engine.
 // Otherwise the files in the database folder are not compatible.
-func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine, allowedEngines ...Engine) (Engine, error) {
+func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine, allowedEngines []Engine) (Engine, error) {
 
 	// check if the given target engine is allowed
-	_, err := EngineAllowed(dbEngine, allowedEngines...)
+	_, err := EngineAllowed(dbEngine, allowedEngines)
 	if err != nil {
 		return EngineUnknown, err
 	}
@@ -154,7 +131,7 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 
 		targetEngine = dbEngine
 	} else {
-		dbEngineFromInfoFile, err := LoadEngineFromFile(dbInfoFilePath, allowedEngines...)
+		dbEngineFromInfoFile, err := LoadEngineFromFile(dbInfoFilePath, allowedEngines)
 		if err != nil {
 			return EngineUnknown, err
 		}
@@ -171,24 +148,14 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 }
 
 // LoadEngineFromFile returns the engine from the "database info file".
-func LoadEngineFromFile(path string, allowedEngines ...Engine) (Engine, error) {
-
-	tmpAllowedEngines := lo.Keys(enginesStorage)
-	if len(allowedEngines) > 0 {
-		// allowed engines were give, filter for storage engines only
-		tmpAllowedEngines = lo.Filter(allowedEngines, func(engine Engine) bool {
-			_, exists := enginesStorage[engine]
-			return exists
-		})
-	}
-
+func LoadEngineFromFile(path string, allowedEngines []Engine) (Engine, error) {
 	var info databaseInfo
 
 	if err := ioutils.ReadTOMLFromFile(path, &info); err != nil {
 		return "", fmt.Errorf("unable to read database info file: %w", err)
 	}
 
-	return EngineFromStringAllowed(info.Engine, tmpAllowedEngines...)
+	return EngineFromStringAllowed(info.Engine, allowedEngines)
 }
 
 // storeDatabaseInfoToFile stores the used engine in a "database info file".

@@ -1,8 +1,6 @@
 package ed25519
 
 import (
-	"fmt"
-
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
 )
@@ -12,15 +10,7 @@ type PrivateKey [PrivateKeySize]byte
 
 // PrivateKeyFromBytes creates a PrivateKey from the given bytes.
 func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, consumedBytes int, err error) {
-	if len(bytes) < PrivateKeySize {
-		err = fmt.Errorf("bytes too short")
-
-		return
-	}
-
-	copy(result[:], bytes)
-	consumedBytes = PrivateKeySize
-
+	consumedBytes, err = (&result).FromBytes(bytes)
 	return
 }
 
@@ -46,12 +36,23 @@ func (privateKey PrivateKey) Public() (result PublicKey) {
 	return
 }
 
-// Bytes returns the privateKey in bytes.
-func (privateKey PrivateKey) Bytes() []byte {
-	return privateKey[:]
+// FromBytes initializes the PrivateKey from the given bytes.
+func (privateKey *PrivateKey) FromBytes(bytes []byte) (consumedBytes int, err error) {
+	if len(bytes) < PrivateKeySize {
+		return 0, ErrNotEnoughBytes
+	}
+
+	copy(privateKey[:], bytes)
+
+	return PrivateKeySize, nil
 }
 
-// String returns a human readable version of the PrivateKey (base58 encoded).
+// Bytes returns the privateKey in bytes.
+func (privateKey PrivateKey) Bytes() ([]byte, error) {
+	return privateKey[:], nil
+}
+
+// String returns a human-readable version of the PrivateKey (base58 encoded).
 func (privateKey PrivateKey) String() string {
 	return base58.Encode(privateKey[:])
 }

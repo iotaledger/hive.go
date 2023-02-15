@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/daemon"
+	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/core/typeutils"
 )
 

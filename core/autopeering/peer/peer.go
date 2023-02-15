@@ -12,6 +12,7 @@ import (
 	pb "github.com/iotaledger/hive.go/core/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 )
 
@@ -86,7 +87,7 @@ func NewPeer(id *identity.Identity, ip net.IP, services service.Service) *Peer {
 // ToProto encodes a given peer into a proto buffer Peer message.
 func (p *Peer) ToProto() *pb.Peer {
 	return &pb.Peer{
-		PublicKey: p.PublicKey().Bytes(),
+		PublicKey: lo.PanicOnErr(p.PublicKey().Bytes()),
 		Ip:        p.IP().String(),
 		Services:  p.services.ToProto(),
 	}

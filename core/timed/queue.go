@@ -261,8 +261,13 @@ func (timedQueueElement *QueueElement) Cancel() {
 	// remove element from queue
 	timedQueueElement.timedQueue.removeElement(timedQueueElement)
 
-	// close the cancel channel to notify subscribers
-	close(timedQueueElement.cancel)
+	select {
+	case <-timedQueueElement.cancel:
+		// channel is already closed
+	default:
+		// close the cancel channel to notify subscribers
+		close(timedQueueElement.cancel)
+	}
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

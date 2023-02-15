@@ -14,6 +14,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/marshalutil"
 	"github.com/iotaledger/hive.go/core/serix"
 )
@@ -26,7 +27,7 @@ type ID [IDLength]byte
 
 // NewID computes the ID corresponding to the given public key.
 func NewID(key ed25519.PublicKey) ID {
-	return sha256.Sum256(key.Bytes())
+	return sha256.Sum256(lo.PanicOnErr(key.Bytes()))
 }
 
 // IDFromMarshalUtil unmarshals an ID using a MarshalUtil (for easier unmarshaling).

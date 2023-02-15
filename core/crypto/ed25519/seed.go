@@ -72,7 +72,7 @@ func (seed *Seed) subSeed(n uint64) (subSeed []byte) {
 	return
 }
 
-// String returns a human readable version of the Seed (base58 encoded).
+// String returns a human-readable version of the Seed (base58 encoded).
 func (seed *Seed) String() string {
 	return base58.Encode(seed.seedBytes)
 }

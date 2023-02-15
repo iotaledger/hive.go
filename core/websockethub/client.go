@@ -1,11 +1,17 @@
 package websockethub
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
+
+	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/core/timeutil"
 )
 
 const (
@@ -13,39 +19,16 @@ const (
 	writeWait = 10 * time.Second
 
 	// time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = 5 * time.Second
 
-	// send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-)
-
-// The message types are defined in RFC 6455, section 11.8.
-const (
-	// TextMessage denotes a text data message. The text message payload is
-	// interpreted as UTF-8 encoded text data.
-	TextMessage = 1
-
-	// BinaryMessage denotes a binary data message.
-	BinaryMessage = 2
-
-	// CloseMessage denotes a close control message. The optional message
-	// payload contains a numeric code and text. Use the FormatCloseMessage
-	// function to format a close message payload.
-	CloseMessage = 8
-
-	// PingMessage denotes a ping control message. The optional message payload
-	// is UTF-8 encoded text.
-	PingMessage = 9
-
-	// PongMessage denotes a pong control message. The optional message payload
-	// is UTF-8 encoded text.
-	PongMessage = 10
+	// send pings to peer with this period.
+	pingPeriod = 30 * time.Second
 )
 
 // WebsocketMsg is a message received via websocket.
 type WebsocketMsg struct {
 	// MsgType is the type of the message based on RFC 6455.
-	MsgType int
+	MsgType websocket.MessageType
 	// Data is the received data of the message.
 	Data []byte
 }
@@ -55,6 +38,8 @@ type ClientID uint32
 
 // Client is a middleman between the node and the websocket connection.
 type Client struct {
+	*logger.WrappedLogger
+
 	// the id of the client.
 	id ClientID
 
@@ -63,6 +48,10 @@ type Client struct {
 
 	// the websocket connection.
 	conn *websocket.Conn
+
+	// a context which is canceled when the ping times out and the client should be dropped.
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// a channel which is closed when the websocket client is disconnected.
 	ExitSignal chan struct{}
@@ -100,25 +89,103 @@ type Client struct {
 	readLimit int64
 }
 
+func NewClient(hub *Hub, conn *websocket.Conn, onConnect func(client *Client), onDisconnect func(client *Client)) *Client {
+	ctx, cancel := context.WithCancel(hub.ctx)
+
+	clientID := ClientID(hub.lastClientID.Inc())
+
+	return &Client{
+		WrappedLogger:  logger.NewWrappedLogger(hub.logger.Named(fmt.Sprintf("client %d", clientID))),
+		id:             clientID,
+		hub:            hub,
+		conn:           conn,
+		ctx:            ctx,
+		cancel:         cancel,
+		ExitSignal:     make(chan struct{}),
+		sendChan:       make(chan interface{}, hub.clientSendChannelSize),
+		sendChanClosed: make(chan struct{}),
+		onConnect:      onConnect,
+		onDisconnect:   onDisconnect,
+		shutdownFlag:   atomic.NewBool(false),
+		readLimit:      hub.clientReadLimit,
+	}
+}
+
 // ID returns the id of the client.
 func (c *Client) ID() ClientID {
 	return c.id
 }
 
-// checkPong checks if the client is still available and answers to the ping messages
-// that are sent periodically in the writePump function.
+// keepAlive sends ping messages to the client and waits for pong responses.
+// if no pong response is received in time, the client context is canceled.
+func (c *Client) keepAlive() {
+	// start the timer with 0, so it fires immediately
+	pingTimer := time.NewTimer(0)
+
+	defer func() {
+		timeutil.CleanupTimer(pingTimer)
+
+		// always cancel the client context if we exit this function to clean up the client
+		c.cancel()
+
+		c.shutdownWaitGroup.Done()
+	}()
+
+	sendPing := func() error {
+		pongCtx, pongCancel := context.WithTimeout(c.ctx, pongWait)
+		defer pongCancel()
+
+		if err := c.conn.Ping(pongCtx); err != nil {
+			return err
+		}
+
+		// reset the ping timer, so a new ping event is fired after "pingPeriod".
+		// we can safely reset the timer here, because the timer channel was consumed already.
+		pingTimer.Reset(pingPeriod)
+
+		return nil
+	}
+
+	c.startWaitGroup.Done()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			// the client context is done
+			return
+		case <-c.ExitSignal:
+			// the Hub closed the channel
+			return
+		case <-pingTimer.C:
+			if err := sendPing(); err != nil {
+				// failed to send ping or receive pong
+				// => client seems to be unhealthy
+				c.LogWarn(err.Error())
+
+				// send an unregister message to the hub
+				_ = c.hub.Unregister(c)
+
+				return
+			}
+		}
+	}
+}
+
+// readPump reads incoming messages and stops if the client does not respond to the keep alive pings
+// that are sent periodically in the keepAlive function.
 //
 // at most one reader per websocket connection is allowed.
-func (c *Client) checkPong() {
+func (c *Client) readPump() {
 
 	defer func() {
 		select {
-		case <-c.hub.ctx.Done():
+		case <-c.ctx.Done():
+			// the client context is done
 		case <-c.ExitSignal:
-			// the Hub closed the channel.
+			// the Hub closed the channel
 		default:
-			// send a unregister message to the hub
-			c.hub.unregister <- c
+			// send an unregister message to the hub
+			_ = c.hub.Unregister(c)
 		}
 
 		if c.ReceiveChan != nil {
@@ -131,6 +198,7 @@ func (c *Client) checkPong() {
 					break drainLoop
 				}
 			}
+
 			close(c.ReceiveChan)
 		}
 
@@ -138,25 +206,13 @@ func (c *Client) checkPong() {
 	}()
 
 	c.startWaitGroup.Done()
-
 	c.conn.SetReadLimit(c.readLimit)
-	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
-	}
-
-	c.conn.SetPongHandler(func(string) error {
-		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-			c.hub.logger.Warnf("Websocket SetReadDeadline error: %v", err)
-		}
-
-		return nil
-	})
 
 	for {
-		msgType, data, err := c.conn.ReadMessage()
+		msgType, data, err := c.conn.Read(c.ctx)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				c.hub.logger.Warnf("Websocket ReadMessage error: %v", err)
+			if websocket.CloseStatus(err) == websocket.StatusGoingAway || websocket.CloseStatus(err) == websocket.StatusAbnormalClosure {
+				c.LogWarnf("Websocket ReadMessage error: %v", err)
 			}
 
 			return
@@ -165,15 +221,16 @@ func (c *Client) checkPong() {
 		if c.ReceiveChan != nil {
 			select {
 
-			case <-c.hub.ctx.Done():
+			case <-c.ctx.Done():
+				// the client context is done
 				return
 
 			case <-c.ExitSignal:
-				// the Hub closed the channel.
+				// the Hub closed the channel
 				return
 
 			case c.ReceiveChan <- &WebsocketMsg{MsgType: msgType, Data: data}:
-				// send the received message to the user.
+				// send the received message to the user
 			}
 		}
 	}
@@ -183,9 +240,6 @@ func (c *Client) checkPong() {
 //
 // at most one writer per websocket connection is allowed.
 func (c *Client) writePump() {
-
-	pingTicker := time.NewTicker(pingPeriod)
-
 	defer func() {
 		// signal the hub to not send messages to sendChan anymore
 		close(c.sendChanClosed)
@@ -193,66 +247,58 @@ func (c *Client) writePump() {
 		// mark the client as shutdown
 		c.shutdownFlag.Store(true)
 
-		// stop the ping ticker
-		pingTicker.Stop()
-
 		select {
-		case <-c.hub.ctx.Done():
+		case <-c.ctx.Done():
+			// the client context is done
 		case <-c.ExitSignal:
-			// the Hub closed the channel.
+			// the Hub closed the channel
 		default:
-			// send a unregister message to the hub
-			c.hub.unregister <- c
+			// send an unregister message to the hub
+			_ = c.hub.Unregister(c)
 		}
 
 		// close the websocket connection
-		c.conn.Close()
+		if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+			c.LogWarnf("Websocket closing error: %v", err)
+		}
 
 		c.shutdownWaitGroup.Done()
 	}()
 
-	c.startWaitGroup.Done()
+	sendMsg := func(msg any) error {
+		ctx, cancel := context.WithTimeout(c.ctx, writeWait)
+		defer cancel()
+
+		return wsjson.Write(ctx, c.conn, msg)
+	}
 
 	for {
 		select {
 
-		case <-c.hub.ctx.Done():
+		case <-c.ctx.Done():
+			// the client context is done
 			return
 
 		case <-c.ExitSignal:
-			// the Hub closed the channel.
-			if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-				c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+			// the Hub closed the channel
+			if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+				c.LogWarnf("Websocket closing error: %v", err)
 			}
 
 			return
 
 		case msg, ok := <-c.sendChan:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
-			}
-
 			if !ok {
-				// the Hub closed the channel.
-				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					c.hub.logger.Warnf("Websocket WriteMessage error: %v", err)
+				// the Hub closed the channel
+				if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+					c.LogWarnf("Websocket closing error: %v", err)
 				}
 
 				return
 			}
 
-			if err := c.conn.WriteJSON(msg); err != nil {
-				c.hub.logger.Warnf("Websocket error: %v", err)
-
-				return
-			}
-
-		case <-pingTicker.C:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				c.hub.logger.Warnf("Websocket SetWriteDeadline error: %v", err)
-			}
-
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := sendMsg(msg); err != nil {
+				c.LogWarnf("Websocket error: %v", err)
 				return
 			}
 		}
@@ -260,33 +306,44 @@ func (c *Client) writePump() {
 }
 
 // Send sends a message to the client.
-func (c *Client) Send(msg interface{}, dontDrop ...bool) {
-	if c.hub.shutdownFlag.Load() {
+func (c *Client) Send(ctx context.Context, msg interface{}, dontDrop ...bool) error {
+	if c.hub.Stopped() {
 		// hub was already shut down
-		return
+		return ErrWebsocketServerUnavailable
 	}
 
 	if c.shutdownFlag.Load() {
 		// client was already shutdown
-		return
+		return ErrClientDisconnected
 	}
 
 	if len(dontDrop) > 0 && dontDrop[0] {
 		select {
-		case <-c.hub.ctx.Done():
+		case <-c.ctx.Done():
+			return c.ctx.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-c.ExitSignal:
+			return ErrClientDisconnected
 		case <-c.sendChanClosed:
+			return ErrClientDisconnected
 		case c.sendChan <- msg:
+			return nil
 		}
-
-		return
 	}
 
 	select {
-	case <-c.hub.ctx.Done():
+	case <-c.ctx.Done():
+		return c.ctx.Err()
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-c.ExitSignal:
+		return ErrClientDisconnected
 	case <-c.sendChanClosed:
+		return ErrClientDisconnected
 	case c.sendChan <- msg:
+		return nil
 	default:
+		return nil
 	}
 }
