@@ -128,6 +128,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 
 	// wait for workers to finish
 	wp.Shutdown(false)
+	wp.PendingTasksCounter.WaitIsZero()
 
 	// count messages still in the store
 	messagesInStore := 0
