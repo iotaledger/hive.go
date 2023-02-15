@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/core/generics/lo"
 )
 
 const (
@@ -70,28 +70,12 @@ func newEventMock(t *testing.T) (*eventMock, func()) {
 	m := &eventMock{}
 	m.Test(t)
 
-	debugC := event.NewClosure(func(event *LogEvent) { m.debug(event.Level, event.Name, event.Msg) })
-	infoC := event.NewClosure(func(event *LogEvent) { m.info(event.Level, event.Name, event.Msg) })
-	warnC := event.NewClosure(func(event *LogEvent) { m.warn(event.Level, event.Name, event.Msg) })
-	errorC := event.NewClosure(func(event *LogEvent) { m.error(event.Level, event.Name, event.Msg) })
-	panicC := event.NewClosure(func(event *LogEvent) { m.panic(event.Level, event.Name, event.Msg) })
-	anyC := event.NewClosure(func(event *LogEvent) { m.any(event.Level, event.Name, event.Msg) })
-
-	Events.DebugMsg.Hook(debugC)
-	Events.InfoMsg.Hook(infoC)
-	Events.WarningMsg.Hook(warnC)
-	Events.ErrorMsg.Hook(errorC)
-	Events.PanicMsg.Hook(panicC)
-	Events.AnyMsg.Hook(anyC)
-
-	teardown := func() {
-		Events.DebugMsg.Detach(debugC)
-		Events.InfoMsg.Detach(infoC)
-		Events.WarningMsg.Detach(warnC)
-		Events.ErrorMsg.Detach(errorC)
-		Events.PanicMsg.Detach(panicC)
-		Events.AnyMsg.Detach(anyC)
-	}
-
-	return m, teardown
+	return m, lo.Batch(
+		Events.DebugMsg.Hook(func(event *LogEvent) { m.debug(event.Level, event.Name, event.Msg) }).Unhook,
+		Events.InfoMsg.Hook(func(event *LogEvent) { m.info(event.Level, event.Name, event.Msg) }).Unhook,
+		Events.WarningMsg.Hook(func(event *LogEvent) { m.warn(event.Level, event.Name, event.Msg) }).Unhook,
+		Events.ErrorMsg.Hook(func(event *LogEvent) { m.error(event.Level, event.Name, event.Msg) }).Unhook,
+		Events.PanicMsg.Hook(func(event *LogEvent) { m.panic(event.Level, event.Name, event.Msg) }).Unhook,
+		Events.AnyMsg.Hook(func(event *LogEvent) { m.any(event.Level, event.Name, event.Msg) }).Unhook,
+	)
 }
