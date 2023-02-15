@@ -1,11 +1,11 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 type Events struct {
-	ObjectEvicted *events.Event
+	ObjectEvicted *event.Event2[[]byte, StorableObject]
 }
 
 func evictionEvent(handler interface{}, params ...interface{}) {

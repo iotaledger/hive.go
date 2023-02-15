@@ -1,11 +1,11 @@
 package objectstorage
 
 import (
-	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
@@ -19,15 +19,15 @@ type ObjectStorage[T StorableObject] struct {
 func NewStructStorage[U any, T PtrStorableObject[U]](store kvstore.KVStore, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
 	newObjectStorage = &ObjectStorage[T]{
 		Events: &Events{
-			ObjectEvicted: events.NewEvent(evictionEvent[T]),
+			ObjectEvicted: event.New2[[]byte, objectstorage.StorableObject](),
 		},
 
 		ObjectStorage: objectstorage.New(store, objectFactory[T, U], optionalOptions...),
 	}
 
-	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
+	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(func(key []byte, object objectstorage.StorableObject) {
 		newObjectStorage.Events.ObjectEvicted.Trigger(key, object.(T))
-	}))
+	})
 
 	return newObjectStorage
 }
@@ -36,15 +36,15 @@ func NewStructStorage[U any, T PtrStorableObject[U]](store kvstore.KVStore, opti
 func NewInterfaceStorage[T StorableObject](store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) (newObjectStorage *ObjectStorage[T]) {
 	newObjectStorage = &ObjectStorage[T]{
 		Events: &Events{
-			ObjectEvicted: events.NewEvent(evictionEvent[T]),
+			ObjectEvicted: event.New2[[]byte, objectstorage.StorableObject](),
 		},
 
 		ObjectStorage: objectstorage.New(store, func(key, data []byte) (objectstorage.StorableObject, error) { return objectFactory(key, data) }, optionalOptions...),
 	}
 
-	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(events.NewClosure(func(key []byte, object objectstorage.StorableObject) {
+	newObjectStorage.ObjectStorage.Events.ObjectEvicted.Hook(func(key []byte, object objectstorage.StorableObject) {
 		newObjectStorage.Events.ObjectEvicted.Trigger(key, object.(T))
-	}))
+	})
 
 	return newObjectStorage
 }
