@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 // DAGMutex is a multi-entity reader/writer mutual exclusion lock that allows for starvation.

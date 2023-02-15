@@ -2,6 +2,8 @@ module github.com/iotaledger/hive.go/core
 
 go 1.19
 
+// Temporary replace until we are done with refactoring hive.go
+replace github.com/iotaledger/hive.go/ds => ../ds
 replace github.com/iotaledger/hive.go/runtime => ../runtime
 
 require (
@@ -13,6 +15,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
+	github.com/iotaledger/hive.go/ds v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/runtime v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/jellydator/ttlcache/v2 v2.11.1

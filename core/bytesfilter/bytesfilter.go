@@ -3,8 +3,8 @@ package bytesfilter
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 type BytesFilter struct {

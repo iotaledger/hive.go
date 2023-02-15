@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 type randomMapEntry[K comparable, V any] struct {

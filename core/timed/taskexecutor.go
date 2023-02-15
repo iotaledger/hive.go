@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 // region TaskExecutor ////////////////////////////////////////////////////////////////////////////////////////////
