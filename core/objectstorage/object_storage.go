@@ -7,7 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
-	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/runtime/event"
+
 	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/core/syncutils"
 	"github.com/iotaledger/hive.go/core/timed"
@@ -44,7 +45,7 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timed.NewExecutor(storageOptions.releaseExecutorWorkerCount))),
 
 		Events: Events{
-			ObjectEvicted: events.NewEvent(evictionEvent),
+			ObjectEvicted: event.New2[[]byte, StorableObject](),
 		},
 	}
 }

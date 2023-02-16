@@ -12,7 +12,6 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
 )
@@ -195,9 +194,9 @@ func newEventNetwork(t *testing.T) *eventNetwork {
 
 func (e *eventNetwork) attach(mgr *manager) {
 	id := mgr.getID()
-	mgr.Events.OutgoingPeering.Hook(event.NewClosure(func(ev *PeeringEvent) { e.outgoingPeering(id, ev) }))
-	mgr.Events.IncomingPeering.Hook(event.NewClosure(func(ev *PeeringEvent) { e.incomingPeering(id, ev) }))
-	mgr.Events.Dropped.Hook(event.NewClosure(func(ev *DroppedEvent) { e.dropped(id, ev) }))
+	mgr.Events.OutgoingPeering.Hook(func(ev *PeeringEvent) { e.outgoingPeering(id, ev) })
+	mgr.Events.IncomingPeering.Hook(func(ev *PeeringEvent) { e.incomingPeering(id, ev) })
+	mgr.Events.Dropped.Hook(func(ev *DroppedEvent) { e.dropped(id, ev) })
 }
 
 func (e *eventNetwork) outgoingPeering(id identity.ID, ev *PeeringEvent) {

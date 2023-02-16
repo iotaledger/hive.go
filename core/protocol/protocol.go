@@ -4,9 +4,9 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/byteutils"
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/protocol/message"
 	"github.com/iotaledger/hive.go/core/protocol/tlv"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 // Protocol encapsulates the logic of parsing and sending protocol messages.
@@ -31,21 +31,21 @@ func New(r *message.Registry) *Protocol {
 	definitions := r.Definitions()
 
 	// allocate event handlers for all message types
-	receiveHandlers := make([]*event.Event[[]byte], len(definitions))
-	sentHandlers := make([]*event.Event[*VoidEvent], len(definitions))
+	receiveHandlers := make([]*event.Event1[[]byte], len(definitions))
+	sentHandlers := make([]*event.Event1[*VoidEvent], len(definitions))
 	for i, def := range definitions {
 		if def == nil {
 			continue
 		}
-		receiveHandlers[i] = event.New[[]byte]()
-		sentHandlers[i] = event.New[*VoidEvent]()
+		receiveHandlers[i] = event.New1[[]byte]()
+		sentHandlers[i] = event.New1[*VoidEvent]()
 	}
 
 	protocol := &Protocol{
 		msgRegistry: r,
 		Events: &Events{
 			Received: receiveHandlers,
-			Error:    event.New[error](),
+			Error:    event.New1[error](),
 		},
 		// the first message on the protocol is a TLV header
 		readBuffer:  make([]byte, tlv.HeaderMessageDefinition.MaxBytesLength),

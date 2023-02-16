@@ -2,21 +2,21 @@ package discover
 
 import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
-	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 // Events contains all the events that are triggered during the peer discovery.
 type Events struct {
 	// A PeerDiscovered event is triggered, when a new peer has been discovered and verified.
-	PeerDiscovered *event.Event[*PeerDiscoveredEvent]
+	PeerDiscovered *event.Event1[*PeerDiscoveredEvent]
 	// A PeerDeleted event is triggered, when a discovered and verified peer could not be re-verified.
-	PeerDeleted *event.Event[*PeerDeletedEvent]
+	PeerDeleted *event.Event1[*PeerDeletedEvent]
 }
 
 func newEvents() *Events {
 	return &Events{
-		PeerDiscovered: event.New[*PeerDiscoveredEvent](),
-		PeerDeleted:    event.New[*PeerDeletedEvent](),
+		PeerDiscovered: event.New1[*PeerDiscoveredEvent](),
+		PeerDeleted:    event.New1[*PeerDeletedEvent](),
 	}
 }
 

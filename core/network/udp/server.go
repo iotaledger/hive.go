@@ -4,8 +4,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/iotaledger/hive.go/core/events"
 	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 //nolint:revive // better be explicit here
@@ -65,10 +65,10 @@ func NewServer(receiveBufferSize int) *UDPServer {
 	return &UDPServer{
 		ReceiveBufferSize: receiveBufferSize,
 		Events: udpServerEvents{
-			Start:       events.NewEvent(events.VoidCaller),
-			Shutdown:    events.NewEvent(events.VoidCaller),
-			ReceiveData: events.NewEvent(udpAddrAndDataCaller),
-			Error:       events.NewEvent(events.ErrorCaller),
+			Start:       event.New(),
+			Shutdown:    event.New(),
+			ReceiveData: event.New2[*net.UDPAddr, []byte](),
+			Error:       event.New1[error](),
 		},
 	}
 }

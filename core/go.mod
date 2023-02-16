@@ -2,6 +2,8 @@ module github.com/iotaledger/hive.go/core
 
 go 1.19
 
+replace github.com/iotaledger/hive.go/runtime => ../runtime
+
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
@@ -11,13 +13,13 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
+	github.com/iotaledger/hive.go/runtime v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kr/text v0.2.0
 	github.com/libp2p/go-libp2p v0.23.4
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e
-	github.com/panjf2000/ants/v2 v2.6.0
 	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/sasha-s/go-deadlock v0.3.1
@@ -43,23 +45,23 @@ require (
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/getsentry/sentry-go v0.12.0 // indirect
+	github.com/getsentry/sentry-go v0.15.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/klauspost/compress v1.15.10 // indirect
+	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/libp2p/go-openssl v0.1.0 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
-	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
+	github.com/petermattis/goid v0.0.0-20221018141743-354ef7f2fd21 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/rogpeppe/go-internal v1.8.1 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	go.dedis.ch/fixbuf v1.0.3 // indirect
@@ -68,5 +70,6 @@ require (
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

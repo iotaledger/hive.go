@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/subscriptionmanager"
 )
 
@@ -154,17 +153,17 @@ func TestSubscriptionManager_ClientCleanup(t *testing.T) {
 	subscribe_client_1 := 0
 	unsubscribe_client_1 := 0
 
-	manager.Events().TopicSubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+	manager.Events().TopicSubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
 		if event.ClientID == clientID_1 {
 			subscribe_client_1++
 		}
-	}))
+	})
 
-	manager.Events().TopicUnsubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+	manager.Events().TopicUnsubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
 		if event.ClientID == clientID_1 {
 			unsubscribe_client_1++
 		}
-	}))
+	})
 
 	manager.Connect(clientID_1)
 	manager.Subscribe(clientID_1, topic_1)
@@ -202,9 +201,9 @@ func TestSubscriptionManager_MaxTopicSubscriptionsPerClient(t *testing.T) {
 		subscriptionmanager.WithCleanupThresholdCount[string, string](0))
 
 	clientDropped := false
-	manager.Events().DropClient.Hook(event.NewClosure(func(event *subscriptionmanager.DropClientEvent[string]) {
+	manager.Events().DropClient.Hook(func(event *subscriptionmanager.DropClientEvent[string]) {
 		clientDropped = true
-	}))
+	})
 
 	require.Equal(t, 0, manager.SubscribersSize())
 	require.Equal(t, 0, manager.TopicsSize())
@@ -253,18 +252,18 @@ func TestSubscriptionManager_TopicEvents(t *testing.T) {
 		subscriptionmanager.WithCleanupThresholdCount[string, string](0))
 
 	topicAdded := false
-	manager.Events().TopicAdded.Hook(event.NewClosure(func(event *subscriptionmanager.TopicEvent[string]) {
+	manager.Events().TopicAdded.Hook(func(event *subscriptionmanager.TopicEvent[string]) {
 		if event.Topic == topic_1 {
 			topicAdded = true
 		}
-	}))
+	})
 
 	topicRemoved := false
-	manager.Events().TopicRemoved.Hook(event.NewClosure(func(event *subscriptionmanager.TopicEvent[string]) {
+	manager.Events().TopicRemoved.Hook(func(event *subscriptionmanager.TopicEvent[string]) {
 		if event.Topic == topic_1 {
 			topicRemoved = true
 		}
-	}))
+	})
 
 	require.Equal(t, 0, manager.SubscribersSize())
 	require.Equal(t, 0, manager.TopicsSize())

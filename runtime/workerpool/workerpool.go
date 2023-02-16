@@ -8,34 +8,34 @@ import (
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
-type UnboundedWorkerPool struct {
+type WorkerPool struct {
 	Name                string
 	PendingTasksCounter *syncutils.Counter
-	Queue               *syncutils.Stack[*WorkerPoolTask]
+	Queue               *syncutils.Stack[*Task]
 	ShutdownComplete    sync.WaitGroup
 
 	workerCount    int
 	isRunning      bool
-	dispatcherChan chan *WorkerPoolTask
+	dispatcherChan chan *Task
 	shutdownSignal chan bool
 	mutex          syncutils.RWMutex
 }
 
-func NewUnboundedWorkerPool(name string, optsWorkerCount ...int) (newUnboundedWorkerPool *UnboundedWorkerPool) {
+func New(name string, optsWorkerCount ...int) (newWorkerPool *WorkerPool) {
 	if len(optsWorkerCount) == 0 {
 		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
 	}
 
-	return &UnboundedWorkerPool{
+	return &WorkerPool{
 		Name:                name,
 		PendingTasksCounter: syncutils.NewCounter(),
-		Queue:               syncutils.NewStack[*WorkerPoolTask](),
+		Queue:               syncutils.NewStack[*Task](),
 		workerCount:         optsWorkerCount[0],
 		shutdownSignal:      make(chan bool, optsWorkerCount[0]),
 	}
 }
 
-func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
+func (u *WorkerPool) Start() (self *WorkerPool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
@@ -51,19 +51,19 @@ func (u *UnboundedWorkerPool) Start() (self *UnboundedWorkerPool) {
 	return u
 }
 
-func (u *UnboundedWorkerPool) Submit(task func(), optStackTrace ...string) {
+func (u *WorkerPool) Submit(task func(), optStackTrace ...string) {
 	if !u.IsRunning() {
 		panic(fmt.Sprintf("worker pool '%s' is not running", u.Name))
 	}
 
 	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {
-		u.Queue.Push(newWorkerPoolTask(func() { u.PendingTasksCounter.Decrease() }, task, optStackTrace[0]))
+		u.Queue.Push(newTask(func() { u.PendingTasksCounter.Decrease() }, task, optStackTrace[0]))
 	} else {
-		u.Queue.Push(newWorkerPoolTask(func() { u.PendingTasksCounter.Decrease() }, task, ""))
+		u.Queue.Push(newTask(func() { u.PendingTasksCounter.Decrease() }, task, ""))
 	}
 }
 
-func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *UnboundedWorkerPool) {
+func (u *WorkerPool) Shutdown(cancelPendingTasks ...bool) (self *WorkerPool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
@@ -80,24 +80,24 @@ func (u *UnboundedWorkerPool) Shutdown(cancelPendingTasks ...bool) (self *Unboun
 	return u
 }
 
-func (u *UnboundedWorkerPool) IsRunning() (isRunning bool) {
+func (u *WorkerPool) IsRunning() (isRunning bool) {
 	u.mutex.RLock()
 	defer u.mutex.RUnlock()
 
 	return u.isRunning
 }
 
-func (u *UnboundedWorkerPool) WorkerCount() (workerCount int) {
+func (u *WorkerPool) WorkerCount() (workerCount int) {
 	return u.workerCount
 }
 
-func (u *UnboundedWorkerPool) startDispatcher() {
-	u.dispatcherChan = make(chan *WorkerPoolTask, u.workerCount)
+func (u *WorkerPool) startDispatcher() {
+	u.dispatcherChan = make(chan *Task, u.workerCount)
 
 	go u.dispatcher()
 }
 
-func (u *UnboundedWorkerPool) dispatcher() {
+func (u *WorkerPool) dispatcher() {
 	for u.IsRunning() || u.Queue.Size() > 0 {
 		if task, success := u.Queue.PopOrWait(u.IsRunning); success {
 			u.dispatcherChan <- task
@@ -109,7 +109,7 @@ func (u *UnboundedWorkerPool) dispatcher() {
 	close(u.dispatcherChan)
 }
 
-func (u *UnboundedWorkerPool) startWorkers() {
+func (u *WorkerPool) startWorkers() {
 	for i := 0; i < u.workerCount; i++ {
 		u.ShutdownComplete.Add(1)
 
@@ -117,13 +117,13 @@ func (u *UnboundedWorkerPool) startWorkers() {
 	}
 }
 
-func (u *UnboundedWorkerPool) worker() {
+func (u *WorkerPool) worker() {
 	defer u.ShutdownComplete.Done()
 
 	u.handleShutdown(u.workerReadLoop())
 }
 
-func (u *UnboundedWorkerPool) workerReadLoop() (shutdownSignal bool) {
+func (u *WorkerPool) workerReadLoop() (shutdownSignal bool) {
 	for {
 		select {
 		case shutdownSignal = <-u.shutdownSignal:
@@ -143,7 +143,7 @@ func (u *UnboundedWorkerPool) workerReadLoop() (shutdownSignal bool) {
 	}
 }
 
-func (u *UnboundedWorkerPool) handleShutdown(cancelPendingTasks bool) {
+func (u *WorkerPool) handleShutdown(cancelPendingTasks bool) {
 	for task, success := <-u.dispatcherChan; success; task, success = <-u.dispatcherChan {
 		if cancelPendingTasks {
 			task.markDone()

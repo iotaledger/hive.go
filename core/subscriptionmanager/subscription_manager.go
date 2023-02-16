@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/generics/constraints"
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 var (
@@ -46,30 +46,30 @@ type DropClientEvent[C ClientID] struct {
 // Events contains all the events that are triggered by the SubscriptionManager.
 type Events[C ClientID, T Topic] struct {
 	// ClientConnected event is triggered when a new client connected.
-	ClientConnected *event.Event[*ClientEvent[C]]
+	ClientConnected *event.Event1[*ClientEvent[C]]
 	// ClientDisconnected event is triggered when a client disconnected.
-	ClientDisconnected *event.Event[*ClientEvent[C]]
+	ClientDisconnected *event.Event1[*ClientEvent[C]]
 	// TopicSubscribed event is triggered when a client subscribed to a topic.
-	TopicSubscribed *event.Event[*ClientTopicEvent[C, T]]
+	TopicSubscribed *event.Event1[*ClientTopicEvent[C, T]]
 	// TopicUnsubscribed event is triggered when a client unsubscribed from a topic.
-	TopicUnsubscribed *event.Event[*ClientTopicEvent[C, T]]
+	TopicUnsubscribed *event.Event1[*ClientTopicEvent[C, T]]
 	// TopicAdded event is triggered when a topic is subscribed for the first time by any client.
-	TopicAdded *event.Event[*TopicEvent[T]]
+	TopicAdded *event.Event1[*TopicEvent[T]]
 	// TopicRemoved event is triggered when a topic is not subscribed anymore by any client.
-	TopicRemoved *event.Event[*TopicEvent[T]]
+	TopicRemoved *event.Event1[*TopicEvent[T]]
 	// DropClient event is triggered when a client should be dropped.
-	DropClient *event.Event[*DropClientEvent[C]]
+	DropClient *event.Event1[*DropClientEvent[C]]
 }
 
 func newEvents[C ClientID, T Topic]() *Events[C, T] {
 	return &Events[C, T]{
-		ClientConnected:    event.New[*ClientEvent[C]](),
-		ClientDisconnected: event.New[*ClientEvent[C]](),
-		TopicSubscribed:    event.New[*ClientTopicEvent[C, T]](),
-		TopicUnsubscribed:  event.New[*ClientTopicEvent[C, T]](),
-		TopicAdded:         event.New[*TopicEvent[T]](),
-		TopicRemoved:       event.New[*TopicEvent[T]](),
-		DropClient:         event.New[*DropClientEvent[C]](),
+		ClientConnected:    event.New1[*ClientEvent[C]](),
+		ClientDisconnected: event.New1[*ClientEvent[C]](),
+		TopicSubscribed:    event.New1[*ClientTopicEvent[C, T]](),
+		TopicUnsubscribed:  event.New1[*ClientTopicEvent[C, T]](),
+		TopicAdded:         event.New1[*TopicEvent[T]](),
+		TopicRemoved:       event.New1[*TopicEvent[T]](),
+		DropClient:         event.New1[*DropClientEvent[C]](),
 	}
 }
 

@@ -1,23 +1,23 @@
 package tcp
 
 import (
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/network"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 type serverEvents struct {
-	Start    *event.Event[*StartEvent]
-	Shutdown *event.Event[*ShutdownEvent]
-	Connect  *event.Event[*ConnectEvent]
-	Error    *event.Event[error]
+	Start    *event.Event1[*StartEvent]
+	Shutdown *event.Event1[*ShutdownEvent]
+	Connect  *event.Event1[*ConnectEvent]
+	Error    *event.Event1[error]
 }
 
 func newServerEvents() *serverEvents {
 	return &serverEvents{
-		Start:    event.New[*StartEvent](),
-		Shutdown: event.New[*ShutdownEvent](),
-		Connect:  event.New[*ConnectEvent](),
-		Error:    event.New[error](),
+		Start:    event.New1[*StartEvent](),
+		Shutdown: event.New1[*ShutdownEvent](),
+		Connect:  event.New1[*ConnectEvent](),
+		Error:    event.New1[error](),
 	}
 }
 

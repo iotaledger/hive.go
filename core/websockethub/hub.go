@@ -8,8 +8,8 @@ import (
 	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 var (
@@ -24,15 +24,15 @@ type ClientConnectionEvent struct {
 // Events contains all the events that are triggered by the websocket hub.
 type Events struct {
 	// A ClientConnected event is triggered, when a new client has connected to the websocket hub.
-	ClientConnected *event.Event[*ClientConnectionEvent]
+	ClientConnected *event.Event1[*ClientConnectionEvent]
 	// A ClientDisconnected event is triggered, when a client has disconnected from the websocket hub.
-	ClientDisconnected *event.Event[*ClientConnectionEvent]
+	ClientDisconnected *event.Event1[*ClientConnectionEvent]
 }
 
 func newEvents() *Events {
 	return &Events{
-		ClientConnected:    event.New[*ClientConnectionEvent](),
-		ClientDisconnected: event.New[*ClientConnectionEvent](),
+		ClientConnected:    event.New1[*ClientConnectionEvent](),
+		ClientDisconnected: event.New1[*ClientConnectionEvent](),
 	}
 }
 
