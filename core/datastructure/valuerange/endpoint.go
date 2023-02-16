@@ -4,7 +4,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
-	"github.com/iotaledger/hive.go/core/stringify"
+	"github.com/iotaledger/hive.go/stringify"
 )
 
 // EndPoint contains information about where ValueRanges start and end. It combines a threshold value with a BoundType.

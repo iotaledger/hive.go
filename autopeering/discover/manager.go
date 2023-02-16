@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/timeutil"
+	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 
 const (

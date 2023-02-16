@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/iotaledger/hive.go/core/network"
-	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 //nolint:revive // better be explicit here

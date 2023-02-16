@@ -11,7 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/platform"
 	"github.com/iotaledger/hive.go/core/reflect"
-	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 )
 
 // region interfaces ///////////////////////////////////////////////////////////////////////////////////////////////////

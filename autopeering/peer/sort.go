@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/iotaledger/hive.go/autopeering/distance"
-	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // PeerDistance defines the relative distance wrt a remote peer.

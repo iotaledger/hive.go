@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/syncutils"
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 type Group struct {

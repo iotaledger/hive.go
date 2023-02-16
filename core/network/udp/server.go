@@ -4,8 +4,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/iotaledger/hive.go/core/syncutils"
 	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 //nolint:revive // better be explicit here

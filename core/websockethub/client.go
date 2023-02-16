@@ -11,7 +11,7 @@ import (
 	"nhooyr.io/websocket/wsjson"
 
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/timeutil"
+	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 
 const (

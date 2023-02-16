@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/core/debug"
+	"github.com/iotaledger/hive.go/runtime/debug"
 )
 
 func Benchmark(b *testing.B) {

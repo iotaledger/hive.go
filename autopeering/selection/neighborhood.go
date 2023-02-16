@@ -6,8 +6,8 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/distance"
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 type Neighborhood struct {

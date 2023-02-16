@@ -4,16 +4,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jellydator/ttlcache/v2"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/timeutil"
+	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 
 const (

@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 type ByteArrayFilter struct {

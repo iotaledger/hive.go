@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/iotaledger/hive.go/lo"
 	"golang.org/x/xerrors"
 )
 

@@ -3,7 +3,7 @@ package kvstore
 import (
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/generics/constraints"
+	"github.com/iotaledger/hive.go/constraints"
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.

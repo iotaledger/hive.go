@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/peer/peertest"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 func TestGetFurthest(t *testing.T) {

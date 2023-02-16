@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 func TestStorable(t *testing.T) {
