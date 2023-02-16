@@ -19,6 +19,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/kvstore/testutil"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
@@ -97,7 +98,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 			metadataStorage.ComputeIfAbsent(messageIDBytes, func(key []byte) objectstorage.StorableObject {
 				cachedMissingMessage, stored := missingMessageStorage.StoreIfAbsent(newTestObject(messageIDString, x))
 				if stored {
-					createdMap.Store(typeutils.BytesToString(key), "CREATED")
+					createdMap.Store(string(key), "CREATED")
 
 					cachedMissingMessage.Release()
 

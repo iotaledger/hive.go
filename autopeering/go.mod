@@ -8,6 +8,7 @@ require (
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20230216134451-891d09082b28
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
+	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/atomic v1.10.0
@@ -40,6 +41,7 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

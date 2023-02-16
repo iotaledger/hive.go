@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jellydator/ttlcache/v2"
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/autopeering/mana"

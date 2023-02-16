@@ -75,13 +75,13 @@ func (p *Protocol) Start(s server.Sender) {
 	p.Protocol.Sender = s
 	p.mgr.start()
 	p.log.Debug("discover started")
-	p.running.Set()
+	p.running.Store(true)
 }
 
 // Close finalizes the protocol.
 func (p *Protocol) Close() {
 	p.closeOnce.Do(func() {
-		p.running.UnSet()
+		p.running.Store(false)
 		p.mgr.close()
 	})
 }
@@ -146,7 +146,7 @@ func (p *Protocol) GetVerifiedPeers() []*peer.Peer {
 
 // HandleMessage responds to incoming peer discovery messages.
 func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *identity.Identity, data []byte) (bool, error) {
-	if !p.running.IsSet() {
+	if !p.running.Load() {
 		return false, nil
 	}
 

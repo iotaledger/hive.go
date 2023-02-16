@@ -200,7 +200,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 			return xerrors.Errorf("tried to overwrite existing background worker (%s): %w", name, ErrDuplicateBackgroundWorker)
 		}
 
-		if exWorker.running.IsSet() {
+		if exWorker.running.Load() {
 			return xerrors.Errorf("%w: %s is still running", ErrExistingBackgroundWorkerStillRunning, name)
 		}
 
