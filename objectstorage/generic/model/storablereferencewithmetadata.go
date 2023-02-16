@@ -10,14 +10,15 @@ import (
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/iotaledger/hive.go/core/generics/objectstorage"
+	"github.com/iotaledger/hive.go/core/generics/model"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // StorableReferenceWithMetadata is the base type for all storable reference models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
-type StorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType ReferenceWithMetadataPtrType[OuterModelType, SourceIDType, TargetIDType, InnerModelType], SourceIDType, TargetIDType, InnerModelType any] struct {
+type StorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType model.ReferenceWithMetadataPtrType[OuterModelType, SourceIDType, TargetIDType, InnerModelType], SourceIDType, TargetIDType, InnerModelType any] struct {
 	sourceID SourceIDType
 	targetID TargetIDType
 	M        InnerModelType
@@ -27,7 +28,7 @@ type StorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType Referen
 }
 
 // NewStorableReferenceWithMetadata creates a new storable reference model instance.
-func NewStorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType ReferenceWithMetadataPtrType[OuterModelType, SourceIDType, TargetIDType, InnerModelType], SourceIDType, TargetIDType, InnerModelType any](sourceID SourceIDType, targetID TargetIDType, model *InnerModelType) (newInstance *OuterModelType) {
+func NewStorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType model.ReferenceWithMetadataPtrType[OuterModelType, SourceIDType, TargetIDType, InnerModelType], SourceIDType, TargetIDType, InnerModelType any](sourceID SourceIDType, targetID TargetIDType, model *InnerModelType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	(OuterModelPtrType)(newInstance).New(sourceID, targetID, model)
 

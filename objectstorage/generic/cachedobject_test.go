@@ -1,5 +1,5 @@
 //nolint:revive // we don't care about these linters in test cases
-package objectstorage
+package generic
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 

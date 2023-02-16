@@ -14,16 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/runtime/workerpool"
-
-	"github.com/iotaledger/hive.go/core/kvstore"
-	"github.com/iotaledger/hive.go/core/kvstore/badger"
-	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
-	"github.com/iotaledger/hive.go/core/kvstore/pebble"
-	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/testutil"
 	"github.com/iotaledger/hive.go/core/typeutils"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/badger"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/kvstore/pebble"
+	"github.com/iotaledger/hive.go/objectstorage"
+    "github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 const (
@@ -82,7 +81,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool.New(t.Name(), 1024)
+	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
 	wp.Start()
 
 	// result counters

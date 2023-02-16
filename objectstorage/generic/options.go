@@ -1,10 +1,10 @@
-package objectstorage
+package generic
 
 import (
 	"time"
 
-	"github.com/iotaledger/hive.go/core/kvstore/debug"
-	"github.com/iotaledger/hive.go/core/objectstorage"
+	"github.com/iotaledger/hive.go/kvstore/debug"
+	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 type (

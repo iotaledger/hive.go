@@ -9,14 +9,15 @@ import (
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/iotaledger/hive.go/core/generics/objectstorage"
+	"github.com/iotaledger/hive.go/core/generics/model"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // StorableReference is the base type for all storable reference models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
-type StorableReference[OuterModelType any, OuterModelPtrType ReferencePtrType[OuterModelType, SourceIDType, TargetIDType], SourceIDType, TargetIDType any] struct {
+type StorableReference[OuterModelType any, OuterModelPtrType model.ReferencePtrType[OuterModelType, SourceIDType, TargetIDType], SourceIDType, TargetIDType any] struct {
 	sourceID SourceIDType
 	targetID TargetIDType
 
@@ -24,7 +25,7 @@ type StorableReference[OuterModelType any, OuterModelPtrType ReferencePtrType[Ou
 }
 
 // NewStorableReference creates a new storable reference model instance.
-func NewStorableReference[OuterModelType any, OuterModelPtrType ReferencePtrType[OuterModelType, SourceIDType, TargetIDType], SourceIDType, TargetIDType any](sourceID SourceIDType, targetID TargetIDType) (newInstance *OuterModelType) {
+func NewStorableReference[OuterModelType any, OuterModelPtrType model.ReferencePtrType[OuterModelType, SourceIDType, TargetIDType], SourceIDType, TargetIDType any](sourceID SourceIDType, targetID TargetIDType) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	(OuterModelPtrType)(newInstance).New(sourceID, targetID)
 

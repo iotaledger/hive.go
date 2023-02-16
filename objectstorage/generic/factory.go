@@ -1,7 +1,7 @@
-package objectstorage
+package generic
 
 import (
-	"github.com/iotaledger/hive.go/core/kvstore"
+	"github.com/iotaledger/hive.go/kvstore"
 )
 
 // NewStoreWithRealm creates a new kvstore.KVStore with the given the store and prefixes.

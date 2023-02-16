@@ -1,6 +1,6 @@
-package objectstorage
+package generic
 
-import "github.com/iotaledger/hive.go/core/objectstorage"
+import "github.com/iotaledger/hive.go/objectstorage"
 
 type LeakDetectionOptions = objectstorage.LeakDetectionOptions
 type LeakDetectionWrapper = objectstorage.LeakDetectionWrapper

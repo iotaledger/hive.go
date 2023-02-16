@@ -11,14 +11,15 @@ import (
 
 	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/generics/lo"
-	"github.com/iotaledger/hive.go/core/generics/objectstorage"
+	"github.com/iotaledger/hive.go/core/generics/model"
+	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // Storable is the base type for all storable models. It should be embedded in a wrapper type.
 // It provides locking and serialization primitives.
 // Types that implement interfaces need to override the serialization logic so that the correct interface can be inferred.
-type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
+type Storable[IDType, OuterModelType any, OuterModelPtrType model.PtrType[OuterModelType, InnerModelType], InnerModelType any] struct {
 	id      *IDType
 	idMutex *sync.RWMutex
 	M       InnerModelType
@@ -32,7 +33,7 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType PtrType[OuterModelTy
 }
 
 // NewStorable creates a new storable model instance.
-func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType PtrType[OuterModelType, InnerModelType]](model *InnerModelType, cacheBytes ...bool) (newInstance *OuterModelType) {
+func NewStorable[IDType, OuterModelType, InnerModelType any, OuterModelPtrType model.PtrType[OuterModelType, InnerModelType]](model *InnerModelType, cacheBytes ...bool) (newInstance *OuterModelType) {
 	newInstance = new(OuterModelType)
 	(OuterModelPtrType)(newInstance).New(model, cacheBytes...)
 

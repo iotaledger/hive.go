@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/core/marshalutil"
-	"github.com/iotaledger/hive.go/core/objectstorage"
+	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 type testObject struct {

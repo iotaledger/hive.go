@@ -1,6 +1,6 @@
-package objectstorage
+package generic
 
-import "github.com/iotaledger/hive.go/core/objectstorage"
+import "github.com/iotaledger/hive.go/objectstorage"
 
 // StorableObject is an interface to be implemented by an object that is stored in the ObjectStorage.
 type StorableObject interface {

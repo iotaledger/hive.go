@@ -1,11 +1,11 @@
-package objectstorage
+package generic
 
 import (
 	"strconv"
 
-	"github.com/iotaledger/hive.go/core/kvstore"
-	"github.com/iotaledger/hive.go/core/objectstorage"
 	"github.com/iotaledger/hive.go/core/stringify"
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/objectstorage"
 )
 
 // region CachedObject //////////////////////////////////////////////////////////////////////////////////////////

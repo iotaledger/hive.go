@@ -8,5 +8,6 @@ use (
 	./core
 	./ds
 	./kvstore
+	./objectstorage
 	./serializer
 )
