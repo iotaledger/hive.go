@@ -15,7 +15,7 @@ type Group struct {
 	PendingChildrenCounter *syncutils.Counter
 
 	name        string
-	pools       *orderedmap.OrderedMap[string, *UnboundedWorkerPool]
+	pools       *orderedmap.OrderedMap[string, *WorkerPool]
 	poolsMutex  sync.RWMutex
 	groups      *orderedmap.OrderedMap[string, *Group]
 	groupsMutex sync.RWMutex
@@ -30,7 +30,7 @@ func newGroupWithRoot(name string, root *Group) (group *Group) {
 	return &Group{
 		PendingChildrenCounter: syncutils.NewCounter(),
 		name:                   name,
-		pools:                  orderedmap.New[string, *UnboundedWorkerPool](),
+		pools:                  orderedmap.New[string, *WorkerPool](),
 		groups:                 orderedmap.New[string, *Group](),
 		root:                   root,
 	}
@@ -40,11 +40,11 @@ func (g *Group) Name() (name string) {
 	return g.name
 }
 
-func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *UnboundedWorkerPool) {
+func (g *Group) CreatePool(name string, optsWorkerCount ...int) (pool *WorkerPool) {
 	g.poolsMutex.Lock()
 	defer g.poolsMutex.Unlock()
 
-	pool = NewUnboundedWorkerPool(name, optsWorkerCount...)
+	pool = New(name, optsWorkerCount...)
 	pool.PendingTasksCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()
@@ -72,18 +72,18 @@ func (g *Group) WaitAll() {
 	g.Root().Wait()
 }
 
-func (g *Group) Pool(name string) (pool *UnboundedWorkerPool, exists bool) {
+func (g *Group) Pool(name string) (pool *WorkerPool, exists bool) {
 	g.poolsMutex.RLock()
 	defer g.poolsMutex.RUnlock()
 
 	return g.pools.Get(name)
 }
 
-func (g *Group) Pools() (pools map[string]*UnboundedWorkerPool) {
-	pools = make(map[string]*UnboundedWorkerPool)
+func (g *Group) Pools() (pools map[string]*WorkerPool) {
+	pools = make(map[string]*WorkerPool)
 
 	g.poolsMutex.RLock()
-	g.pools.ForEach(func(name string, pool *UnboundedWorkerPool) bool {
+	g.pools.ForEach(func(name string, pool *WorkerPool) bool {
 		pools[fmt.Sprintf("%s.%s", g.name, name)] = pool
 		return true
 	})
@@ -163,7 +163,7 @@ func (g *Group) childrenString(indentation int) (humanReadable string) {
 }
 
 func (g *Group) poolsString(indentation int) (humanReadable string) {
-	g.pools.ForEach(func(key string, value *UnboundedWorkerPool) bool {
+	g.pools.ForEach(func(key string, value *WorkerPool) bool {
 		if currentValue := value.PendingTasksCounter.Get(); currentValue > 0 {
 			humanReadable += strings.Repeat(indentationString, indentation) + "- " + key + " (" + strconv.Itoa(currentValue) + " pending tasks)\n"
 		}
@@ -193,7 +193,7 @@ func (g *Group) shutdownPools() {
 	g.poolsMutex.RLock()
 	defer g.poolsMutex.RUnlock()
 
-	g.pools.ForEach(func(_ string, pool *UnboundedWorkerPool) bool {
+	g.pools.ForEach(func(_ string, pool *WorkerPool) bool {
 		pool.Shutdown(true)
 
 		return true

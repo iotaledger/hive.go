@@ -5,9 +5,12 @@ go 1.19
 // Temporary replace until we are done with refactoring hive.go
 replace github.com/iotaledger/hive.go/core => ../core
 
+replace github.com/iotaledger/hive.go/runtime => ../runtime
+
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3
+	github.com/iotaledger/hive.go/runtime v1.0.0-00010101000000-000000000000
 	github.com/knadh/koanf v1.4.4
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.5.0
@@ -24,7 +27,6 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -40,7 +42,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/panjf2000/ants/v2 v2.6.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
 	github.com/petermattis/goid v0.0.0-20221018141743-354ef7f2fd21 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

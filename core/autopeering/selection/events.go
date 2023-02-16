@@ -3,28 +3,28 @@ package selection
 import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer"
 	"github.com/iotaledger/hive.go/core/autopeering/salt"
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 // Events contains all the events that are triggered during the neighbor selection.
 type Events struct {
 	// A SaltUpdated event is triggered, when the private and public salt were updated.
-	SaltUpdated *event.Event[*SaltUpdatedEvent]
+	SaltUpdated *event.Event1[*SaltUpdatedEvent]
 	// An OutgoingPeering event is triggered, when a valid response of PeeringRequest has been received.
-	OutgoingPeering *event.Event[*PeeringEvent]
+	OutgoingPeering *event.Event1[*PeeringEvent]
 	// An IncomingPeering event is triggered, when a valid PeerRequest has been received.
-	IncomingPeering *event.Event[*PeeringEvent]
+	IncomingPeering *event.Event1[*PeeringEvent]
 	// A Dropped event is triggered, when a neighbor is dropped or when a drop message is received.
-	Dropped *event.Event[*DroppedEvent]
+	Dropped *event.Event1[*DroppedEvent]
 }
 
 func newEvents() *Events {
 	return &Events{
-		SaltUpdated:     event.New[*SaltUpdatedEvent](),
-		OutgoingPeering: event.New[*PeeringEvent](),
-		IncomingPeering: event.New[*PeeringEvent](),
-		Dropped:         event.New[*DroppedEvent](),
+		SaltUpdated:     event.New1[*SaltUpdatedEvent](),
+		OutgoingPeering: event.New1[*PeeringEvent](),
+		IncomingPeering: event.New1[*PeeringEvent](),
+		Dropped:         event.New1[*DroppedEvent](),
 	}
 }
 

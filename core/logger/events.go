@@ -4,29 +4,29 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 var Events *EventsStruct
 
 // EventsStruct contains all the events that are triggered by the logger.
 type EventsStruct struct {
-	DebugMsg   *event.Event[*LogEvent]
-	InfoMsg    *event.Event[*LogEvent]
-	WarningMsg *event.Event[*LogEvent]
-	ErrorMsg   *event.Event[*LogEvent]
-	PanicMsg   *event.Event[*LogEvent]
-	AnyMsg     *event.Event[*LogEvent]
+	DebugMsg   *event.Event1[*LogEvent]
+	InfoMsg    *event.Event1[*LogEvent]
+	WarningMsg *event.Event1[*LogEvent]
+	ErrorMsg   *event.Event1[*LogEvent]
+	PanicMsg   *event.Event1[*LogEvent]
+	AnyMsg     *event.Event1[*LogEvent]
 }
 
 func newEventsStruct() *EventsStruct {
 	return &EventsStruct{
-		DebugMsg:   event.New[*LogEvent](),
-		InfoMsg:    event.New[*LogEvent](),
-		WarningMsg: event.New[*LogEvent](),
-		ErrorMsg:   event.New[*LogEvent](),
-		PanicMsg:   event.New[*LogEvent](),
-		AnyMsg:     event.New[*LogEvent](),
+		DebugMsg:   event.New1[*LogEvent](),
+		InfoMsg:    event.New1[*LogEvent](),
+		WarningMsg: event.New1[*LogEvent](),
+		ErrorMsg:   event.New1[*LogEvent](),
+		PanicMsg:   event.New1[*LogEvent](),
+		AnyMsg:     event.New1[*LogEvent](),
 	}
 }
 

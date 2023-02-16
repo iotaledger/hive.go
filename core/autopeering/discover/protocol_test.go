@@ -15,7 +15,6 @@ import (
 	"github.com/iotaledger/hive.go/core/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/core/autopeering/server"
 	"github.com/iotaledger/hive.go/core/autopeering/server/servertest"
-	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/core/logger"
@@ -253,8 +252,8 @@ func TestProtEvents(t *testing.T) {
 	defer closeM()
 
 	e := newEventNetwork(t)
-	protM.Events().PeerDiscovered.Hook(event.NewClosure(e.peerDiscovered))
-	protM.Events().PeerDeleted.Hook(event.NewClosure(e.peerDeleted))
+	protM.Events().PeerDiscovered.Hook(e.peerDiscovered)
+	protM.Events().PeerDeleted.Hook(e.peerDeleted)
 
 	time.Sleep(graceTime) // wait for the master to initialize
 
