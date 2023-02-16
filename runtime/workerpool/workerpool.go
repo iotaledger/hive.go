@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 type WorkerPool struct {

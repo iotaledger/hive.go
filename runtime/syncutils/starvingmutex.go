@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/debug"
 	"github.com/iotaledger/hive.go/core/stringify"
 	"github.com/iotaledger/hive.go/core/timeutil"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/runtime/debug"
 )
 
 // A StarvingMutex is a reader/writer mutual exclusion lock that allows for starvation of readers or writers by first

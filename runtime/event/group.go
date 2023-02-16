@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/constraints"
+	"github.com/iotaledger/hive.go/constraints"
 )
 
 // Group is a trait that can be embedded into a struct to make the contained events linkable.
