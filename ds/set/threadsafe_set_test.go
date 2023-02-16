@@ -43,7 +43,7 @@ func TestThreadSafeSet_ForEach(t *testing.T) {
 
 	expectedElements := initThreadSafeSet(3, 0)
 	assert.Equal(t, 3, expectedElements.Size(), "wrong size")
-	set.ForEach(func(element interface{}) {
+	set.ForEach(func(element string) {
 		assert.True(t, expectedElements.Delete(element))
 	})
 	assert.Equal(t, 0, expectedElements.Size(), "wrong size")
@@ -66,8 +66,8 @@ func TestThreadSafeSet_Size(t *testing.T) {
 	assert.Equal(t, 100000, set.Size(), "wrong size")
 }
 
-func initThreadSafeSet(count int, start int) Set {
-	set := newThreadSafeSet()
+func initThreadSafeSet(count int, start int) Set[string] {
+	set := newThreadSafeSet[string]()
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))

@@ -2,57 +2,79 @@ package set
 
 import (
 	"context"
+	"github.com/pkg/errors"
 
-	"github.com/cockroachdb/errors"
-
-	"github.com/iotaledger/hive.go/core/datastructure/set"
+	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
-// genericSet implements a generic wrapper for a non-generic Set.
-type genericSet[T comparable] struct {
-	set.Set
+// simpleSet implements a non-thread safe Set.
+type simpleSet[T comparable] struct {
+	elements map[T]types.Empty
 }
 
-// newGenericSetWrapper returns a new generic Set.
-func newGenericSet[T comparable](s set.Set) *genericSet[T] {
-	return &genericSet[T]{
-		Set: s,
+// newSimpleSet returns a new non-thread safe Set.
+func newSimpleSet[T comparable]() *simpleSet[T] {
+	return &simpleSet[T]{
+		elements: make(map[T]types.Empty),
 	}
 }
 
 // Add adds a new element to the Set and returns true if the element was not present in the set before.
-func (set *genericSet[T]) Add(element T) bool {
-	return set.Set.Add(element)
+func (s *simpleSet[T]) Add(element T) bool {
+	if _, elementExists := s.elements[element]; elementExists {
+		return false
+	}
+
+	s.elements[element] = types.Void
+
+	return true
 }
 
 // Delete removes the element from the Set and returns true if it did exist.
-func (set *genericSet[T]) Delete(element T) bool {
-	return set.Set.Delete(element)
+func (s *simpleSet[T]) Delete(element T) bool {
+	_, elementExists := s.elements[element]
+	if elementExists {
+		delete(s.elements, element)
+	}
+
+	return elementExists
 }
 
 // Has returns true if the element exists in the Set.
-func (set *genericSet[T]) Has(element T) bool {
-	return set.Set.Has(element)
+func (s *simpleSet[T]) Has(element T) bool {
+	_, elementExists := s.elements[element]
+
+	return elementExists
 }
 
 // ForEach iterates through the set and calls the callback for every element.
-func (set *genericSet[T]) ForEach(callback func(element T)) {
-	set.Set.ForEach(func(element interface{}) {
-		callback(element.(T))
-	})
+func (s *simpleSet[T]) ForEach(callback func(element T)) {
+	for element := range s.elements {
+		callback(element)
+	}
+}
+
+// Clear removes all elements from the Set.
+func (s *simpleSet[T]) Clear() {
+	s.elements = make(map[T]types.Empty)
+}
+
+// Size returns the size of the Set.
+func (s *simpleSet[T]) Size() int {
+	return len(s.elements)
 }
 
 // Encode returns a serialized byte slice of the object.
-func (set *genericSet[T]) Encode() ([]byte, error) {
+func (s *simpleSet[T]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
-	seri.WriteNum(uint32(set.Size()), func(err error) error {
+	seri.WriteNum(uint32(s.Size()), func(err error) error {
 		return errors.Wrap(err, "failed to write set size to serializer")
 	})
 
-	set.ForEach(func(elem T) {
+	s.ForEach(func(elem T) {
 		bytes, err := serix.DefaultAPI.Encode(context.Background(), elem)
 		if err != nil {
 			seri.AbortIf(func(err error) error {
@@ -68,7 +90,7 @@ func (set *genericSet[T]) Encode() ([]byte, error) {
 }
 
 // Decode deserializes bytes into a valid object.
-func (set *genericSet[T]) Decode(b []byte) (bytesRead int, err error) {
+func (s *simpleSet[T]) Decode(b []byte) (bytesRead int, err error) {
 	var elemCount uint32
 	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &elemCount)
 	if err != nil {
@@ -82,11 +104,11 @@ func (set *genericSet[T]) Decode(b []byte) (bytesRead int, err error) {
 			return 0, err
 		}
 		bytesRead += bytesReadVoter
-		set.Set.Add(elem)
+		s.Add(elem)
 	}
 
 	return bytesRead, nil
 }
 
 // code contract - make sure the type implements the interface.
-var _ Set[int] = &genericSet[int]{}
+var _ Set[int] = &simpleSet[int]{}
