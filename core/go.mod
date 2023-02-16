@@ -2,11 +2,6 @@ module github.com/iotaledger/hive.go/core
 
 go 1.20
 
-// Temporary replace until we are done with refactoring hive.go
-replace github.com/iotaledger/hive.go/ds => ../ds
-replace github.com/iotaledger/hive.go/serializer/v2 => ../serializer
-replace github.com/iotaledger/hive.go/runtime => ../runtime
-
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
@@ -14,8 +9,6 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/golang/protobuf v1.5.2
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
-	github.com/iotaledger/hive.go/ds v0.0.0-00010101000000-000000000000
-	github.com/iotaledger/hive.go/runtime v0.0.0-00010101000000-000000000000
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kr/text v0.2.0

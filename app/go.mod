@@ -2,11 +2,6 @@ module github.com/iotaledger/hive.go/app
 
 go 1.19
 
-// Temporary replace until we are done with refactoring hive.go
-replace github.com/iotaledger/hive.go/core => ../core
-
-replace github.com/iotaledger/hive.go/runtime => ../runtime
-
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3

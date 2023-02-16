@@ -2,13 +2,9 @@ module github.com/iotaledger/hive.go/apputils
 
 go 1.19
 
-// Temporary replace until we are done with refactoring hive.go
-replace github.com/iotaledger/hive.go/app => ../app
-
 require (
 	github.com/fbiville/markdown-table-formatter v0.3.0
 	github.com/iancoleman/orderedmap v0.2.0
-	github.com/iotaledger/hive.go/app v0.0.0-00010101000000-000000000000
 	github.com/spf13/pflag v1.0.5
 )
 
