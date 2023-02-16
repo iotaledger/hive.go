@@ -1,9 +1,7 @@
 package lo
 
 import (
-	"github.com/iotaledger/hive.go/core/generics/constraints"
-	"github.com/iotaledger/hive.go/ds/set"
-	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/constraints"
 )
 
 // Cond is a conditional statement that returns the trueValue if the condition is true and the falseValue otherwise.
@@ -62,12 +60,12 @@ func KeyBy[K comparable, V any](collection []V, iteratee func(V) K) map[K]V {
 }
 
 // KeyOnlyBy transforms a slice or an array of structs to a map containing the keys based on a pivot callback.
-func KeyOnlyBy[K comparable, V any](collection []V, iteratee func(V) K) map[K]types.Empty {
-	result := make(map[K]types.Empty, len(collection))
+func KeyOnlyBy[K comparable, V any](collection []V, iteratee func(V) K) map[K]struct{} {
+	result := make(map[K]struct{}, len(collection))
 
 	for _, v := range collection {
 		k := iteratee(v)
-		result[k] = types.Void
+		result[k] = struct{}{}
 	}
 
 	return result
@@ -202,16 +200,6 @@ func Sum[T constraints.Numeric](collection ...T) T {
 	return Reduce(collection, func(sum, value T) T {
 		return sum + value
 	}, sumElem)
-}
-
-// Unique returns a set of unique elements from the collection.
-func Unique[T comparable](collection []T) (unique *set.AdvancedSet[T]) {
-	unique = set.NewAdvancedSet[T]()
-	for _, item := range collection {
-		unique.Add(item)
-	}
-
-	return unique
 }
 
 // MergeMaps updates the base map with values from the update map and returns the extended base map.
