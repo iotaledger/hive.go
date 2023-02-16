@@ -2,7 +2,7 @@ package lo
 
 import (
 	"github.com/iotaledger/hive.go/core/generics/constraints"
-	"github.com/iotaledger/hive.go/core/generics/set"
+	"github.com/iotaledger/hive.go/ds/set"
 	"github.com/iotaledger/hive.go/ds/types"
 )
 
