@@ -71,6 +71,21 @@ func InitGlobalLogger(config *configuration.Configuration) error {
 	return SetGlobalLogger(root)
 }
 
+func getEncoderConfig(cfg Config) (zapcore.EncoderConfig, error) {
+	// create a deep copy of all basic types (the func pointers are also fine)
+	encoderConfig := defaultEncoderConfig
+
+	if cfg.EncodingConfig.EncodeTime != "" {
+		var timeEncoder zapcore.TimeEncoder
+		if err := timeEncoder.UnmarshalText([]byte(cfg.EncodingConfig.EncodeTime)); err != nil {
+			return zapcore.EncoderConfig{}, err
+		}
+		encoderConfig.EncodeTime = timeEncoder
+	}
+
+	return encoderConfig, nil
+}
+
 // NewRootLoggerFromConfiguration creates a new root logger from the provided configuration.
 func NewRootLoggerFromConfiguration(config *configuration.Configuration, levelOverride ...zap.AtomicLevel) (*Logger, error) {
 	cfg := defaultCfg
@@ -113,7 +128,13 @@ func NewRootLogger(cfg Config, levelOverride ...zap.AtomicLevel) (*Logger, error
 	if err := level.UnmarshalText([]byte(cfg.Level)); err != nil {
 		return nil, err
 	}
-	enc, err := newEncoder(cfg.Encoding, defaultEncoderConfig)
+
+	encoderConfig, err := getEncoderConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load encoder config: %w", err)
+	}
+
+	enc, err := newEncoder(cfg.Encoding, encoderConfig)
 	if err != nil {
 		return nil, err
 	}
