@@ -8,8 +8,6 @@ replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
 
 replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
@@ -18,7 +16,7 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/core v0.0.0-unpublished
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
 	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished

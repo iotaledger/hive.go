@@ -8,8 +8,6 @@ replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
 replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
 
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
@@ -39,7 +37,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished // indirect
 	github.com/iotaledger/hive.go/lo v0.0.0-unpublished // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished // indirect

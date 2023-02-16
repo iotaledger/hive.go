@@ -2,10 +2,8 @@ module github.com/iotaledger/hive.go/lo
 
 go 1.20
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/stretchr/testify v1.8.1
 )
 

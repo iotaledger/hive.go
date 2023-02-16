@@ -4,8 +4,6 @@ go 1.20
 
 replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
 
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
@@ -16,7 +14,7 @@ replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
 
 require (
 	github.com/cockroachdb/errors v1.9.0
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
 	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
 	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished

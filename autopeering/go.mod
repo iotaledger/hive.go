@@ -14,8 +14,6 @@ replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
 
 replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
 
 require (
@@ -40,7 +38,7 @@ require (
 	github.com/getsentry/sentry-go v0.15.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished // indirect
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished // indirect

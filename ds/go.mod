@@ -4,13 +4,11 @@ go 1.19
 
 replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
 
 require (
 	github.com/emirpasic/gods v1.18.1
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished
 	github.com/pkg/errors v0.9.1

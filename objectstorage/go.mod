@@ -14,8 +14,6 @@ replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
 
 replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
 
-replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
-
 replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
 
 require (
@@ -53,7 +51,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
