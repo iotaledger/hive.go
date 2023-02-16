@@ -7,16 +7,13 @@ import (
 	pebbledb "github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 
-	"github.com/iotaledger/hive.go/core/kvstore"
-	"github.com/iotaledger/hive.go/core/kvstore/pebble"
+	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/pebble"
 )
 
 // PebbleDB creates a temporary PebbleKVStore that automatically gets cleaned up when the test finishes.
 func PebbleDB(t *testing.T) (kvstore.KVStore, error) {
-	dir, err := TempDir(t)
-	if err != nil {
-		return nil, err
-	}
+	dir := t.TempDir()
 
 	cache := pebbledb.NewCache(1 << 30)
 	defer cache.Unref()
