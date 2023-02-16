@@ -1,7 +1,13 @@
 package orderedmap
 
 import (
+	"context"
 	"sync"
+	
+	"golang.org/x/xerrors"
+
+	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // OrderedMap provides a concurrent-safe ordered map.
@@ -212,33 +218,31 @@ func (o *OrderedMap[K, V]) Clone() (cloned *OrderedMap[K, V]) {
 	return
 }
 
-/*
-
 // Encode returns a serialized byte slice of the object.
-func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
+func (o *OrderedMap[K, V]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
-	seri.WriteNum(uint32(orderedMap.Size()), func(err error) error {
-		return errors.Wrap(err, "failed to write OrderedMap size to serializer")
+	seri.WriteNum(uint32(o.Size()), func(err error) error {
+		return xerrors.Errorf("failed to write OrderedMap size to serializer: %w", err)
 	})
 
-	orderedMap.ForEach(func(key K, val V) bool {
+	o.ForEach(func(key K, val V) bool {
 		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), key)
 		if err != nil {
 			seri.AbortIf(func(err error) error {
-				return errors.Wrap(err, "encode OrderedMap key")
+				return xerrors.Errorf("failed to encode OrderedMap key: %w", err)
 			})
 		}
 		seri.WriteBytes(keyBytes, func(err error) error {
-			return errors.Wrap(err, "failed to write OrderedMap key to serializer")
+			return xerrors.Errorf("failed to write OrderedMap key to serializer: %w", err)
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
 		seri.AbortIf(func(_ error) error {
-			return errors.Wrap(err, "failed to serialize OrderedMap value")
+			return xerrors.Errorf("failed to serialize OrderedMap value: %w", err)
 		})
 		seri.WriteBytes(valBytes, func(err error) error {
-			return errors.Wrap(err, "failed to write OrderedMap value to serializer")
+			return xerrors.Errorf("failed to write OrderedMap value to serializer: %w", err)
 		})
 
 		return true
@@ -248,8 +252,8 @@ func (orderedMap *OrderedMap[K, V]) Encode() ([]byte, error) {
 }
 
 // Decode deserializes bytes into a valid object.
-func (orderedMap *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
-	orderedMap = New[K, V]()
+func (o *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
+	o = New[K, V]()
 	var mapSize uint32
 	bytesReadSize, err := serix.DefaultAPI.Decode(context.Background(), b[bytesRead:], &mapSize)
 	if err != nil {
@@ -272,10 +276,8 @@ func (orderedMap *OrderedMap[K, V]) Decode(b []byte) (bytesRead int, err error) 
 		}
 		bytesRead += bytesReadValue
 
-		orderedMap.Set(key, value)
+		o.Set(key, value)
 	}
 
 	return bytesRead, nil
 }
-
-*/
