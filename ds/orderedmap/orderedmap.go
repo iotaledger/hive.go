@@ -3,7 +3,7 @@ package orderedmap
 import (
 	"context"
 	"sync"
-	
+
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
