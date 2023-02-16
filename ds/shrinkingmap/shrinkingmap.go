@@ -1,6 +1,8 @@
 package shrinkingmap
 
-import "sync"
+import (
+	"sync"
+)
 
 // the default options applied to the ShrinkingMap.
 var defaultOptions = []Option{
@@ -123,9 +125,13 @@ func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
+	var copiedElements []K
 	for k := range s.m {
+		copiedElements = append(copiedElements, k)
+	}
+	s.mutex.RUnlock()
+
+	for _, k := range copiedElements {
 		if !callback(k) {
 			return
 		}
@@ -136,9 +142,13 @@ func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
+	copiedElements := make(map[K]V)
 	for k, v := range s.m {
+		copiedElements[k] = v
+	}
+	s.mutex.RUnlock()
+
+	for k, v := range copiedElements {
 		if !callback(k, v) {
 			return
 		}

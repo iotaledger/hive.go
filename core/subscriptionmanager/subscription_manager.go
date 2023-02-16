@@ -401,9 +401,11 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (boo
 			unsubscribedTopics = append(unsubscribedTopics, topic)
 		}
 
+		// delete the topic
+		subscribedTopics.Delete(topic)
+
 		return true
 	})
-	subscribedTopics.Clear()
 
 	// delete the client
 	s.subscribers.Delete(clientID)
