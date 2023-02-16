@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/autopeering/discover/proto"
@@ -19,7 +20,6 @@ import (
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/netutil"
-	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 const (
@@ -43,7 +43,7 @@ type Protocol struct {
 	log     *logger.Logger // protocol logger
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
-	running   *typeutils.AtomicBool
+	running   *atomic.Bool
 	closeOnce sync.Once
 }
 
@@ -62,7 +62,7 @@ func New(local *peer.Local, version uint32, networkID uint32, opts ...Option) *P
 		version: version,
 		netID:   networkID,
 		log:     args.log,
-		running: typeutils.NewAtomicBool(),
+		running: atomic.NewBool(false),
 	}
 
 	p.mgr = newManager(p, args.masterPeers, args.log.Named("mgr"))

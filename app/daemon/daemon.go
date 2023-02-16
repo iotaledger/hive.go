@@ -6,11 +6,11 @@ import (
 	"sort"
 	"sync"
 
+	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/syncutils"
-	"github.com/iotaledger/hive.go/core/typeutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 // Errors for the daemon package.
@@ -81,8 +81,8 @@ func New() *OrderedDaemon {
 	stoppedCtx, stoppedCtxCancel := context.WithCancel(context.Background())
 
 	return &OrderedDaemon{
-		running:                typeutils.NewAtomicBool(),
-		stopped:                typeutils.NewAtomicBool(),
+		running:                atomic.NewBool(false),
+		stopped:                atomic.NewBool(false),
 		stoppedCtx:             stoppedCtx,
 		stoppedCtxCancel:       stoppedCtxCancel,
 		workers:                make(map[string]*worker),
@@ -94,8 +94,8 @@ func New() *OrderedDaemon {
 // OrderedDaemon is an orchestrator for background workers.
 // stopOnce ensures that the daemon can only be terminated once.
 type OrderedDaemon struct {
-	running                *typeutils.AtomicBool
-	stopped                *typeutils.AtomicBool
+	running                *atomic.Bool
+	stopped                *atomic.Bool
 	stoppedCtx             context.Context
 	stoppedCtxCancel       context.CancelFunc
 	stopOnce               sync.Once
@@ -110,7 +110,7 @@ type worker struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	handler       WorkerFunc
-	running       *typeutils.AtomicBool
+	running       *atomic.Bool
 	shutdownOrder int
 }
 
@@ -121,7 +121,7 @@ func (d *OrderedDaemon) GetRunningBackgroundWorkers() []string {
 
 	result := make([]string, 0)
 	for _, name := range d.shutdownOrderWorker {
-		if !d.workers[name].running.IsSet() {
+		if !d.workers[name].running.Load() {
 			continue
 		}
 		result = append(result, name)
@@ -156,7 +156,7 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 	shutdownOrderWaitGroup := d.wgPerSameShutdownOrder[worker.shutdownOrder]
 	shutdownOrderWaitGroup.Add(1)
 
-	worker.running.Set()
+	worker.running.Store(true)
 	go func() {
 		if d.logger != nil {
 			d.logger.Debugf("Starting Background Worker: %s ...", name)
@@ -174,7 +174,7 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 		// only after cleanup is finished, we can unset the running flag,
 		// otherwise there is a race condition between starting another worker with the same name
 		// and a worker that is scheduled for cleanup.
-		worker.running.UnSet()
+		worker.running.Store(false)
 
 		if d.logger != nil {
 			d.logger.Debugf("Stopping Background Worker: %s ... done", name)
@@ -196,7 +196,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 
 	exWorker, workerExistsAlready := d.workers[name]
 	if workerExistsAlready {
-		if !d.running.IsSet() {
+		if !d.running.Load() {
 			return xerrors.Errorf("tried to overwrite existing background worker (%s): %w", name, ErrDuplicateBackgroundWorker)
 		}
 
@@ -225,7 +225,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		handler:       handler,
-		running:       typeutils.NewAtomicBool(),
+		running:       atomic.NewBool(false),
 		shutdownOrder: shutdownOrder,
 	}
 
@@ -260,7 +260,7 @@ func (d *OrderedDaemon) Start() {
 	defer d.lock.Unlock()
 
 	if !d.IsRunning() {
-		d.running.Set()
+		d.running.Store(true)
 		for name, worker := range d.workers {
 			d.runBackgroundWorker(name, worker.handler)
 		}
@@ -305,14 +305,14 @@ func (d *OrderedDaemon) shutdown() {
 		d.logger.Debugf("Shutting down ...")
 	}
 
-	d.stopped.Set()
+	d.stopped.Store(true)
 	d.stoppedCtxCancel()
 	if !d.IsRunning() {
 		return
 	}
 
 	d.stopWorkers()
-	d.running.UnSet()
+	d.running.Store(false)
 	d.clear()
 }
 
@@ -326,7 +326,7 @@ func (d *OrderedDaemon) stopWorkers() {
 		prevPriority := workers[shutdownOrderWorker[0]].shutdownOrder
 		for _, name := range shutdownOrderWorker {
 			worker := workers[name]
-			if !worker.running.IsSet() {
+			if !worker.running.Load() {
 				worker.ctxCancel()
 
 				continue
@@ -407,12 +407,12 @@ func (d *OrderedDaemon) ShutdownAndWait() {
 
 // IsRunning checks whether the daemon is running.
 func (d *OrderedDaemon) IsRunning() bool {
-	return d.running.IsSet()
+	return d.running.Load()
 }
 
 // IsStopped checks whether the daemon was stopped.
 func (d *OrderedDaemon) IsStopped() bool {
-	return d.stopped.IsSet()
+	return d.stopped.Load()
 }
 
 // ContextStopped returns a context that is done when the deamon is stopped.

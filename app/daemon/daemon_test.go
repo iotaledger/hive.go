@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 // graceTime for go routines to start.
@@ -50,51 +50,51 @@ func TestShutdownWithoutStart(t *testing.T) {
 func TestStartShutdown(t *testing.T) {
 	d := daemon.New()
 
-	var isShutdown, wasStarted typeutils.AtomicBool
+	var isShutdown, wasStarted atomic.Bool
 	err := d.BackgroundWorker("A", func(ctx context.Context) {
-		wasStarted.Set()
+		wasStarted.Store(true)
 		<-ctx.Done()
-		isShutdown.Set()
+		isShutdown.Store(true)
 	})
 	require.NoError(t, err)
 	time.Sleep(graceTime)
 
-	assert.False(t, wasStarted.IsSet())
-	assert.False(t, isShutdown.IsSet())
+	assert.False(t, wasStarted.Load())
+	assert.False(t, isShutdown.Load())
 
 	d.Start()
 	time.Sleep(graceTime)
-	assert.True(t, wasStarted.IsSet())
-	assert.False(t, isShutdown.IsSet())
+	assert.True(t, wasStarted.Load())
+	assert.False(t, isShutdown.Load())
 
 	d.ShutdownAndWait()
-	assert.True(t, wasStarted.IsSet())
-	assert.True(t, isShutdown.IsSet())
+	assert.True(t, wasStarted.Load())
+	assert.True(t, isShutdown.Load())
 }
 
 func TestRun(t *testing.T) {
 	d := daemon.New()
 
-	var workerStarted typeutils.AtomicBool
+	var workerStarted atomic.Bool
 	err := d.BackgroundWorker("A", func(ctx context.Context) {
-		workerStarted.Set()
+		workerStarted.Store(true)
 		<-ctx.Done()
 	})
 	require.NoError(t, err)
 
-	assert.False(t, workerStarted.IsSet())
+	assert.False(t, workerStarted.Load())
 
-	var runFinished typeutils.AtomicBool
+	var runFinished atomic.Bool
 	go func() {
 		d.Run()
-		runFinished.Set()
+		runFinished.Store(true)
 	}()
 	time.Sleep(graceTime)
-	assert.False(t, runFinished.IsSet())
+	assert.False(t, runFinished.Load())
 
 	d.ShutdownAndWait()
 	time.Sleep(graceTime)
-	assert.True(t, runFinished.IsSet())
+	assert.True(t, runFinished.Load())
 }
 
 func TestShutdownOrder(t *testing.T) {
@@ -191,12 +191,12 @@ func TestReRun(t *testing.T) {
 	time.Sleep(graceTime)
 
 	// should throw no error because the daemon was terminated and can be reused now
-	var wasStarted typeutils.AtomicBool
+	var wasStarted atomic.Bool
 	require.NoError(t, d.BackgroundWorker("A", func(ctx context.Context) {
-		wasStarted.Set()
+		wasStarted.Store(true)
 		<-ctx.Done()
 	}))
 
 	d.ShutdownAndWait()
-	assert.True(t, wasStarted.IsSet())
+	assert.True(t, wasStarted.Load())
 }

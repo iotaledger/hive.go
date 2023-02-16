@@ -140,6 +140,6 @@ func getLogs(t require.TestingT, file *os.File) string {
 
 func cleanupGlobalLogger() {
 	globalLogger = nil
-	globalLoggerInitialized.UnSet()
+	globalLoggerInitialized.Store(false)
 	globalLoggerLock = sync.Mutex{}
 }

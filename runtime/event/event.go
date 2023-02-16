@@ -3,9 +3,9 @@ package event
 import (
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/core/generics/options"
-	"github.com/iotaledger/hive.go/core/typeutils"
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 )
 
@@ -52,11 +52,15 @@ func (e *event[TriggerFunc]) linkTo(target eventInterface[TriggerFunc], triggerF
 		e.link.Unhook()
 	}
 
-	if typeutils.IsInterfaceNil(target) {
+	if IsInterfaceNil(target) {
 		e.link = nil
 	} else {
 		e.link = target.Hook(triggerFunc)
 	}
+}
+
+func IsInterfaceNil(param interface{}) bool {
+	return param == nil || (*[2]uintptr)(unsafe.Pointer(&param))[1] == 0
 }
 
 // eventInterface is an interface that is used to match the generic Hook function of events during the linking process.

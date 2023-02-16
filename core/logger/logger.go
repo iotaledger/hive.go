@@ -7,10 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 // The Logger uses the sugared logger.
@@ -42,8 +41,8 @@ var (
 	level = zap.NewAtomicLevel()
 
 	globalLogger            *Logger
-	globalLoggerLock        sync.Mutex           // prevents multiple initializations at the same time
-	globalLoggerInitialized typeutils.AtomicBool // true, if the global logger was successfully initialized
+	globalLoggerLock        sync.Mutex  // prevents multiple initializations at the same time
+	globalLoggerInitialized atomic.Bool // true, if the global logger was successfully initialized
 )
 
 // SetGlobalLogger sets the provided logger as the global logger.
@@ -51,11 +50,11 @@ func SetGlobalLogger(root *Logger) error {
 	globalLoggerLock.Lock()
 	defer globalLoggerLock.Unlock()
 
-	if globalLoggerInitialized.IsSet() {
+	if globalLoggerInitialized.Load() {
 		return ErrGlobalLoggerAlreadyInitialized
 	}
 	globalLogger = root
-	globalLoggerInitialized.Set()
+	globalLoggerInitialized.Store(true)
 
 	return nil
 }
@@ -112,7 +111,7 @@ func SetLevel(l Level) {
 
 // NewLogger returns a new named child of the global root logger.
 func NewLogger(name string) *Logger {
-	if !globalLoggerInitialized.IsSet() {
+	if !globalLoggerInitialized.Load() {
 		panic("global logger not initialized")
 	}
 
