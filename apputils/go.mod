@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/fbiville/markdown-table-formatter v0.3.0
 	github.com/iancoleman/orderedmap v0.2.0
-	github.com/iotaledger/hive.go/app v0.0.0-20230216134451-891d09082b28
+	github.com/iotaledger/hive.go/app v0.0.0-20230216141344-81fbe82b4e78
 	github.com/spf13/pflag v1.0.5
 )
 

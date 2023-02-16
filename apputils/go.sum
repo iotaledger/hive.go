@@ -133,8 +133,8 @@ github.com/hjson/hjson-go/v4 v4.0.0 h1:wlm6IYYqHjOdXH1gHev4VoXCaW20HdQAGCxdOEEg2
 github.com/hjson/hjson-go/v4 v4.0.0/go.mod h1:KaYt3bTw3zhBjYqnXkYywcYctk0A2nxeEFTse3rH13E=
 github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6jq8pNA=
 github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
-github.com/iotaledger/hive.go/app v0.0.0-20230216134451-891d09082b28 h1:Ov1+AqWKgE75HIRBtp2ii693hNA4yKPy1m3K/G2the4=
-github.com/iotaledger/hive.go/app v0.0.0-20230216134451-891d09082b28/go.mod h1:w5poFshuURxuSi2uDj98RjCqGFdG1CA2qQZJ3jpfCus=
+github.com/iotaledger/hive.go/app v0.0.0-20230216141344-81fbe82b4e78 h1:beYL5e0YfdkB+Ysrd19d6aLNxdzVXN2t57c/Hhcd1z8=
+github.com/iotaledger/hive.go/app v0.0.0-20230216141344-81fbe82b4e78/go.mod h1:w5poFshuURxuSi2uDj98RjCqGFdG1CA2qQZJ3jpfCus=
 github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5 h1:bxuVqe4KMBvyZyKxWnWj1RjNxuvNHKpDGHs8/GHthAk=
 github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5/go.mod h1:MQ9aTBgr3UDlNKgu687jz3X7BU/4LeNhlMLvW9qIgIc=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
