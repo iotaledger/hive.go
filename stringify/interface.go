@@ -3,12 +3,15 @@ package stringify
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/iotaledger/hive.go/core/typeutils"
+	"unsafe"
 )
 
+func IsInterfaceNil(param interface{}) bool {
+	return param == nil || (*[2]uintptr)(unsafe.Pointer(&param))[1] == 0
+}
+
 func Interface(value interface{}) string {
-	if typeutils.IsInterfaceNil(value) {
+	if IsInterfaceNil(value) {
 		return "<nil>"
 	}
 
