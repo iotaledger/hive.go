@@ -2,13 +2,7 @@ module github.com/iotaledger/hive.go/core
 
 go 1.20
 
-replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
-
-replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
-
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
-
-replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
 
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
 
@@ -16,10 +10,10 @@ require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
-	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
+	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished
-	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/libp2p/go-libp2p v0.25.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e

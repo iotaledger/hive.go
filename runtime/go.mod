@@ -4,17 +4,11 @@ go 1.19
 
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
-replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
-
-replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
-
-replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
-
 require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
-	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
-	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished
+	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/atomic v1.10.0

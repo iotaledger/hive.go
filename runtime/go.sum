@@ -4,6 +4,10 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea h1:9HTkpKWhvtQitzxf7ezy7Z5yIQy0JTBxMSCUUQGefks=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
+github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c h1:/D1rnl4WMHB9J2M6vTcVaU/pP41YtBRmWtUQyn9VOi4=
+github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:NNHmDc0w73wjFi41syxDXA/MjaxHhJjrDQDfelFeeYc=
+github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c h1:DrjKTQWZEJ7qSodUjwE2krdrHsheGApZ8HyuoZWANto=
+github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:l/F3cA/+67QdNj+sohv2v4HhmsdOcWScoA+sVYoAE4c=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 h1:q2e307iGHPdTGp0hoxKjt1H5pDo6utceo3dQVK3I5XQ=

@@ -6,13 +6,7 @@ replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
-replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
-
-replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
-
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
-
-replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
 
 require (
 	github.com/hashicorp/go-version v1.6.0
@@ -33,25 +27,24 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished // indirect
-	github.com/iotaledger/hive.go/lo v0.0.0-unpublished // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
-	github.com/petermattis/goid v0.0.0-20221018141743-354ef7f2fd21 // indirect
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/net v0.0.0-20210410081132-afb366fc7cd1 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

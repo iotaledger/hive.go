@@ -12,6 +12,10 @@ github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6
 github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea h1:9HTkpKWhvtQitzxf7ezy7Z5yIQy0JTBxMSCUUQGefks=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
+github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c h1:/D1rnl4WMHB9J2M6vTcVaU/pP41YtBRmWtUQyn9VOi4=
+github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:NNHmDc0w73wjFi41syxDXA/MjaxHhJjrDQDfelFeeYc=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c h1:vOh32RLyFP5F0f9LuYafp2om4kKEByKfFGJkPnQHF4Q=
+github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c/go.mod h1:1A+evr4i4J/ZbIzlEjcehdlvH6mS2uyr9ZYeH7MvdJI=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=

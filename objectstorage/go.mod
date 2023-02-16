@@ -10,21 +10,15 @@ replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
 
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
-replace github.com/iotaledger/hive.go/lo v0.0.0-unpublished => ../lo
-
-replace github.com/iotaledger/hive.go/stringify v0.0.0-unpublished => ../stringify
-
-replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../serializer
-
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/iotaledger/hive.go/core v0.0.0-unpublished
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
 	github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished
-	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
+	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished
-	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
@@ -45,7 +39,7 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
-	github.com/getsentry/sentry-go v0.15.0 // indirect
+	github.com/getsentry/sentry-go v0.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -57,19 +51,18 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
-	github.com/petermattis/goid v0.0.0-20221018141743-354ef7f2fd21 // indirect
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.13.0 // indirect
+	github.com/prometheus/client_golang v1.12.0 // indirect
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a // indirect
-	github.com/prometheus/common v0.37.0 // indirect
-	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/prometheus/common v0.32.1 // indirect
+	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b // indirect
+	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/net v0.3.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
