@@ -8,8 +8,8 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/iotaledger/hive.go/core/kvstore"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 

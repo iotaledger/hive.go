@@ -6,5 +6,6 @@ use (
 	./codegen
 	./core
 	./ds
+	./kvstore
 	./serializer
 )

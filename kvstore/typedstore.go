@@ -4,16 +4,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/core/generics/constraints"
-	"github.com/iotaledger/hive.go/core/kvstore"
 )
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
 type TypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]] struct {
-	kv kvstore.KVStore
+	kv KVStore
 }
 
 // NewTypedStore is the constructor for TypedStore.
-func NewTypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]](kv kvstore.KVStore) *TypedStore[K, V, KPtr, VPtr] {
+func NewTypedStore[K, V any, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]](kv KVStore) *TypedStore[K, V, KPtr, VPtr] {
 	return &TypedStore[K, V, KPtr, VPtr]{
 		kv: kv,
 	}
@@ -74,8 +73,8 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Delete(key K) (err error) {
 	return nil
 }
 
-func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix kvstore.KeyPrefix, callback func(key K, value V) (advance bool), direction ...kvstore.IterDirection) (err error) {
-	if iterationErr := t.kv.Iterate(prefix, func(key kvstore.Key, value kvstore.Value) bool {
+func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix KeyPrefix, callback func(key K, value V) (advance bool), direction ...IterDirection) (err error) {
+	if iterationErr := t.kv.Iterate(prefix, func(key Key, value Value) bool {
 		var keyDecoded KPtr = new(K)
 		if _, err = keyDecoded.FromBytes(key); err != nil {
 			return false
