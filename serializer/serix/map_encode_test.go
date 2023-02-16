@@ -17,6 +17,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
 
+	coreTypes "github.com/iotaledger/hive.go/core/types"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -28,8 +29,8 @@ func must(err error) {
 }
 
 type serializableStruct struct {
-	bytes types.Identifier `serix:"0"`
-	index uint64           `serix:"1"`
+	bytes coreTypes.Identifier `serix:"0"`
+	index uint64               `serix:"1"`
 }
 
 func (s serializableStruct) EncodeJSON() (any, error) {
@@ -403,7 +404,7 @@ func TestMapEncodeDecode(t *testing.T) {
 					in: &example{
 						Entries: map[serializableStruct]types.Empty{
 							serializableStruct{
-								bytes: types.NewIdentifier([]byte("test")),
+								bytes: coreTypes.NewIdentifier([]byte("test")),
 								index: 1,
 							}: types.Void,
 						},
