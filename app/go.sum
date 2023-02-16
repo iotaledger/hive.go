@@ -144,6 +144,8 @@ github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a h1:+4Wl5Bci7
 github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a/go.mod h1:ezxsTQrl0mjRHI6Mw/sfIxFgPvgbZtMniQ16eZ8+tAE=
 github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c h1:/D1rnl4WMHB9J2M6vTcVaU/pP41YtBRmWtUQyn9VOi4=
 github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:NNHmDc0w73wjFi41syxDXA/MjaxHhJjrDQDfelFeeYc=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2 h1:488ovyVuZFSc1uYOo7nYHCzlLHa6VAAC2rwxUv/QPxE=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2/go.mod h1:262bjsuqKq3qhK4SJEgHZPA8ulBKO59uXlrdiBWY42Q=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c h1:DrjKTQWZEJ7qSodUjwE2krdrHsheGApZ8HyuoZWANto=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:l/F3cA/+67QdNj+sohv2v4HhmsdOcWScoA+sVYoAE4c=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=

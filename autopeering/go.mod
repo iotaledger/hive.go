@@ -6,14 +6,12 @@ replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
 replace github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished => ../kvstore
 
-replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
-
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/iotaledger/hive.go/core v0.0.0-unpublished
 	github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
-	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/atomic v1.10.0

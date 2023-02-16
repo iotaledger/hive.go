@@ -4,12 +4,10 @@ go 1.19
 
 replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
-replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
-
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/core v0.0.0-unpublished
-	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
 	github.com/knadh/koanf v1.4.4
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.5.0

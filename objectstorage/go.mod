@@ -6,15 +6,13 @@ replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
 replace github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished => ../kvstore
 
-replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
-
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/iotaledger/hive.go/core v0.0.0-unpublished
 	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a
 	github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
-	github.com/iotaledger/hive.go/runtime v0.0.0-unpublished
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/mr-tron/base58 v1.2.0
@@ -44,7 +42,7 @@ require (
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
-	github.com/klauspost/compress v1.12.3 // indirect
+	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -61,6 +59,6 @@ require (
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/net v0.3.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
