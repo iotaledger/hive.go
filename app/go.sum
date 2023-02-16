@@ -140,6 +140,8 @@ github.com/hjson/hjson-go/v4 v4.0.0 h1:wlm6IYYqHjOdXH1gHev4VoXCaW20HdQAGCxdOEEg2
 github.com/hjson/hjson-go/v4 v4.0.0/go.mod h1:KaYt3bTw3zhBjYqnXkYywcYctk0A2nxeEFTse3rH13E=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea h1:9HTkpKWhvtQitzxf7ezy7Z5yIQy0JTBxMSCUUQGefks=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
+github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a h1:+4Wl5Bci71My+SrOKliEvGOZ2Rk8JNIVxrjsRhbTs50=
+github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a/go.mod h1:ezxsTQrl0mjRHI6Mw/sfIxFgPvgbZtMniQ16eZ8+tAE=
 github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c h1:/D1rnl4WMHB9J2M6vTcVaU/pP41YtBRmWtUQyn9VOi4=
 github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c/go.mod h1:NNHmDc0w73wjFi41syxDXA/MjaxHhJjrDQDfelFeeYc=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c h1:DrjKTQWZEJ7qSodUjwE2krdrHsheGApZ8HyuoZWANto=

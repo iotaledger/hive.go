@@ -2,11 +2,9 @@ module github.com/iotaledger/hive.go/runtime
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
-
 require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
-	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
+	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/sasha-s/go-deadlock v0.3.1

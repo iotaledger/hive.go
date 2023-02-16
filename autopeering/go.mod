@@ -4,8 +4,6 @@ go 1.19
 
 replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
-replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
-
 replace github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished => ../kvstore
 
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
@@ -33,7 +31,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a // indirect
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c // indirect
 	github.com/kr/pretty v0.3.1 // indirect

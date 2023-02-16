@@ -4,8 +4,6 @@ go 1.19
 
 replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
 
-replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
-
 replace github.com/iotaledger/hive.go/runtime v0.0.0-unpublished => ../runtime
 
 require (
@@ -31,7 +29,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-unpublished // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a // indirect
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c // indirect
 	github.com/kr/text v0.2.0 // indirect
