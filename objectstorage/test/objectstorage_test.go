@@ -3,7 +3,6 @@ package test
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -35,11 +34,10 @@ const (
 	usedDatabase = dbMapDB
 )
 
-func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
+func testStorage(t *testing.T, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbBadger:
-		dir, err := os.MkdirTemp("", "database.badger")
-		require.NoError(t, err)
+		dir := t.TempDir()
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err)
 
@@ -49,8 +47,7 @@ func testStorage(t require.TestingT, realm []byte) (kvstore.KVStore, error) {
 		return mapdb.NewMapDB().WithRealm(realm)
 
 	case dbPebble:
-		dir, err := os.MkdirTemp("", "database.pebble")
-		require.NoError(t, err)
+		dir := t.TempDir()
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err)
 
@@ -525,31 +522,31 @@ func TestDeletionWithMoreThanTwoPartitions(t *testing.T) {
 }
 
 func TestStorableObjectFlags(t *testing.T) {
-	testObject := newTestObject("Batman", 44)
+	o := newTestObject("Batman", 44)
 
-	assert.Equal(t, false, testObject.IsModified())
-	testObject.SetModified(true)
-	assert.Equal(t, true, testObject.IsModified())
-	testObject.SetModified(false)
-	assert.Equal(t, false, testObject.IsModified())
-	testObject.SetModified(true)
-	assert.Equal(t, true, testObject.IsModified())
+	assert.Equal(t, false, o.IsModified())
+	o.SetModified(true)
+	assert.Equal(t, true, o.IsModified())
+	o.SetModified(false)
+	assert.Equal(t, false, o.IsModified())
+	o.SetModified(true)
+	assert.Equal(t, true, o.IsModified())
 
-	assert.Equal(t, false, testObject.IsDeleted())
-	testObject.Delete(true)
-	assert.Equal(t, true, testObject.IsDeleted())
-	testObject.Delete(false)
-	assert.Equal(t, false, testObject.IsDeleted())
-	testObject.Delete(true)
-	assert.Equal(t, true, testObject.IsDeleted())
+	assert.Equal(t, false, o.IsDeleted())
+	o.Delete(true)
+	assert.Equal(t, true, o.IsDeleted())
+	o.Delete(false)
+	assert.Equal(t, false, o.IsDeleted())
+	o.Delete(true)
+	assert.Equal(t, true, o.IsDeleted())
 
-	assert.Equal(t, false, testObject.ShouldPersist())
-	testObject.Persist(true)
-	assert.Equal(t, true, testObject.ShouldPersist())
-	testObject.Persist(false)
-	assert.Equal(t, false, testObject.ShouldPersist())
-	testObject.Persist(true)
-	assert.Equal(t, true, testObject.ShouldPersist())
+	assert.Equal(t, false, o.ShouldPersist())
+	o.Persist(true)
+	assert.Equal(t, true, o.ShouldPersist())
+	o.Persist(false)
+	assert.Equal(t, false, o.ShouldPersist())
+	o.Persist(true)
+	assert.Equal(t, true, o.ShouldPersist())
 }
 
 func BenchmarkStore(b *testing.B) {

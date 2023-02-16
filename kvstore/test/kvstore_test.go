@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"os"
 	"strconv"
 	"testing"
 
@@ -31,12 +30,11 @@ var (
 	}
 )
 
-func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvstore.KVStore, error) {
+func testStore(t *testing.T, dbImplementation string, realm []byte) (kvstore.KVStore, error) {
 	switch dbImplementation {
 
 	case "badger":
-		dir, err := os.MkdirTemp("", "database.badger")
-		require.NoError(t, err, "used db: %s", dbImplementation)
+		dir := t.TempDir()
 		db, err := badger.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
@@ -46,16 +44,14 @@ func testStore(t require.TestingT, dbImplementation string, realm []byte) (kvsto
 		return mapdb.NewMapDB().WithRealm(realm)
 
 	case "pebble":
-		dir, err := os.MkdirTemp("", "database.pebble")
-		require.NoError(t, err, "used db: %s", dbImplementation)
+		dir := t.TempDir()
 		db, err := pebble.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
 		return pebble.New(db).WithRealm(realm)
 
 	case "rocksdb":
-		dir, err := os.MkdirTemp("", "database.rocksdb")
-		require.NoError(t, err, "used db: %s", dbImplementation)
+		dir := t.TempDir()
 		db, err := rocksdb.CreateDB(dir)
 		require.NoError(t, err, "used db: %s", dbImplementation)
 
