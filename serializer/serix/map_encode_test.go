@@ -16,9 +16,8 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/blake2b"
 
-	coreTypes "github.com/iotaledger/hive.go/core/types"
-	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
@@ -28,9 +27,11 @@ func must(err error) {
 	}
 }
 
+type Identifier [blake2b.Size256]byte
+
 type serializableStruct struct {
-	bytes coreTypes.Identifier `serix:"0"`
-	index uint64               `serix:"1"`
+	bytes Identifier `serix:"0"`
+	index uint64     `serix:"1"`
 }
 
 func (s serializableStruct) EncodeJSON() (any, error) {
@@ -393,7 +394,7 @@ func TestMapEncodeDecode(t *testing.T) {
 			name: "serializable",
 			paras: func() paras {
 				type example struct {
-					Entries map[serializableStruct]types.Empty `serix:"0"`
+					Entries map[serializableStruct]struct{} `serix:"0"`
 				}
 
 				api := serix.NewAPI()
@@ -402,11 +403,11 @@ func TestMapEncodeDecode(t *testing.T) {
 				return paras{
 					api: api,
 					in: &example{
-						Entries: map[serializableStruct]types.Empty{
+						Entries: map[serializableStruct]struct{}{
 							serializableStruct{
-								bytes: coreTypes.NewIdentifier([]byte("test")),
+								bytes: blake2b.Sum256([]byte("test")),
 								index: 1,
-							}: types.Void,
+							}: struct{}{},
 						},
 					},
 				}
