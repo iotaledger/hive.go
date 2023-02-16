@@ -8,7 +8,7 @@ import (
 
 	"github.com/iotaledger/hive.go/core/bitmask"
 	"github.com/iotaledger/hive.go/core/generalheap"
-	"github.com/iotaledger/hive.go/core/generics/options"
+	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 

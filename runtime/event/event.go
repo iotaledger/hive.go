@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/ds/orderedmap"
+	"github.com/iotaledger/hive.go/runtime/options"
 )
 
 // event is the base type for all generic events.

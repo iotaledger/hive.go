@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/core/ioutils"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/options"
 )
 
 // AppSelfShutdownCaller is used to signal a app self shutdown caused by an error.

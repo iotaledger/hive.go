@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/constraints"
-	"github.com/iotaledger/hive.go/core/generics/options"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/options"
 )
 
 var (

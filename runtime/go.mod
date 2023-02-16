@@ -2,8 +2,6 @@ module github.com/iotaledger/hive.go/runtime
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
-
 replace github.com/iotaledger/hive.go/ds v0.0.0-unpublished => ../ds
 
 replace github.com/iotaledger/hive.go/constraints v0.0.0-unpublished => ../constraints
@@ -16,7 +14,6 @@ replace github.com/iotaledger/hive.go/serializer/v2 v2.0.0-unpublished => ../ser
 
 require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-unpublished
-	github.com/iotaledger/hive.go/core v0.0.0-unpublished
 	github.com/iotaledger/hive.go/ds v0.0.0-unpublished
 	github.com/iotaledger/hive.go/lo v0.0.0-unpublished
 	github.com/iotaledger/hive.go/stringify v0.0.0-unpublished
