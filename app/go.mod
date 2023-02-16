@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3
-	github.com/iotaledger/hive.go/runtime v1.0.0-00010101000000-000000000000
 	github.com/knadh/koanf v1.4.4
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.5.0

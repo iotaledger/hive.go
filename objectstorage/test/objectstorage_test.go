@@ -21,7 +21,7 @@ import (
 	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/kvstore/testutil"
 	"github.com/iotaledger/hive.go/objectstorage"
-    "github.com/iotaledger/hive.go/runtime/workerpool"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 	usedDatabase = dbMapDB
 )
 
-func testStorage(t *testing.T, realm []byte) (kvstore.KVStore, error) {
+func testStorage(t testing.TB, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbBadger:
 		dir := t.TempDir()
@@ -78,8 +78,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool.NewBlockingQueuedWorkerPool(workerpool.WorkerCount(1024), workerpool.QueueSize(objectCount), workerpool.FlushTasksAtShutdown(true))
-	wp.Start()
+	wp := workerpool.New(t.Name(), 1024).Start()
 
 	// result counters
 	var eventsCounter int32
