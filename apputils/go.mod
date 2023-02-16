@@ -2,8 +2,6 @@ module github.com/iotaledger/hive.go/apputils
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
-
 replace github.com/iotaledger/hive.go/app v0.0.0-unpublished => ../app
 
 require (
@@ -15,8 +13,8 @@ require (
 
 require (
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/iotaledger/hive.go/core v0.0.0-unpublished // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5 // indirect
 	github.com/knadh/koanf v1.4.4 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

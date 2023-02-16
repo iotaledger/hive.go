@@ -2,11 +2,9 @@ module github.com/iotaledger/hive.go/app
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/core v0.0.0-unpublished => ../core
-
 require (
 	github.com/hashicorp/go-version v1.6.0
-	github.com/iotaledger/hive.go/core v0.0.0-unpublished
+	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5
 	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
 	github.com/knadh/koanf v1.4.4
 	github.com/pkg/errors v0.9.1

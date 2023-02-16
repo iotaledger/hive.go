@@ -118,6 +118,8 @@ github.com/imkira/go-interpol v1.1.0/go.mod h1:z0h2/2T3XF8kyEPpRgJ3kmNv+C43p+I/C
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea h1:9HTkpKWhvtQitzxf7ezy7Z5yIQy0JTBxMSCUUQGefks=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
+github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5 h1:bxuVqe4KMBvyZyKxWnWj1RjNxuvNHKpDGHs8/GHthAk=
+github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5/go.mod h1:MQ9aTBgr3UDlNKgu687jz3X7BU/4LeNhlMLvW9qIgIc=
 github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a h1:+4Wl5Bci71My+SrOKliEvGOZ2Rk8JNIVxrjsRhbTs50=
 github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a/go.mod h1:ezxsTQrl0mjRHI6Mw/sfIxFgPvgbZtMniQ16eZ8+tAE=
 github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c h1:/D1rnl4WMHB9J2M6vTcVaU/pP41YtBRmWtUQyn9VOi4=
