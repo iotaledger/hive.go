@@ -1,9 +1,5 @@
 package stack
 
-import (
-	"github.com/iotaledger/hive.go/core/datastructure/stack"
-)
-
 // Stack is a stack of elements.
 type Stack[T any] interface {
 	// Push pushes an element onto the top of this Stack.
@@ -27,5 +23,9 @@ type Stack[T any] interface {
 
 // New returns a new Stack that is thread safe if the optional threadSafe parameter is set to true.
 func New[T any](threadSafe ...bool) Stack[T] {
-	return newGenericStack[T](stack.New(threadSafe...))
+	if len(threadSafe) >= 1 && threadSafe[0] {
+		return newThreadSafeStack[T]()
+	}
+
+	return newSimpleStack[T]()
 }

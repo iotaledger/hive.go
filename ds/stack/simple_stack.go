@@ -1,61 +1,54 @@
 package stack
 
 // simpleStack implements a non-thread safe Stack.
-type simpleStack []interface{}
+type simpleStack[T any] []T
 
 // newSimpleStack returns a new non-thread safe Stack.
-func newSimpleStack() *simpleStack {
-	return &simpleStack{}
+func newSimpleStack[T any]() *simpleStack[T] {
+	return new(simpleStack[T])
 }
 
 // Push pushes an element onto the top of this Stack.
-func (s *simpleStack) Push(element interface{}) {
+func (s *simpleStack[T]) Push(element T) {
 	*s = append(*s, element)
 }
 
 // Pop removes and returns the top element of this Stack.
-func (s *simpleStack) Pop() interface{} {
+func (s *simpleStack[T]) Pop() (value T, exists bool) {
 	if s.IsEmpty() {
-		return nil
+		return value, false
 	}
 
 	index := len(*s) - 1
 	element := (*s)[index]
-	// erase element to avoid memory leaks for long lasting stacks
-	(*s)[index] = nil
 	*s = (*s)[:index]
 
-	return element
+	return element, true
 }
 
 // Peek returns the top element of this Stack without removing it.
-func (s *simpleStack) Peek() interface{} {
+func (s *simpleStack[T]) Peek() (value T, exists bool) {
 	if (*s).IsEmpty() {
-		return nil
+		return value, false
 	}
 
-	return (*s)[len(*s)-1]
+	return (*s)[len(*s)-1], true
 }
 
 // Clear removes all elements from this Stack.
-func (s *simpleStack) Clear() {
-	// erase elements to avoid memory leaks for long lasting stacks
-	for index := range *s {
-		(*s)[index] = nil
-	}
-
+func (s *simpleStack[T]) Clear() {
 	*s = (*s)[:0]
 }
 
 // Size returns the amount of elements in this Stack.
-func (s *simpleStack) Size() int {
+func (s *simpleStack[T]) Size() int {
 	return len(*s)
 }
 
 // IsEmpty checks if this Stack is empty.
-func (s *simpleStack) IsEmpty() bool {
+func (s *simpleStack[T]) IsEmpty() bool {
 	return len(*s) == 0
 }
 
 // code contract - make sure the type implements the interface.
-var _ Stack = &simpleStack{}
+var _ Stack[int] = &simpleStack[int]{}
