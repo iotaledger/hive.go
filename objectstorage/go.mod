@@ -2,13 +2,11 @@ module github.com/iotaledger/hive.go/objectstorage
 
 go 1.19
 
-replace github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished => ../kvstore
-
 require (
 	github.com/cockroachdb/errors v1.9.0
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5
 	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a
-	github.com/iotaledger/hive.go/kvstore v0.0.0-unpublished
+	github.com/iotaledger/hive.go/kvstore v0.0.0-20230216134451-891d09082b28
 	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
