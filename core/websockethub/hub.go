@@ -119,25 +119,41 @@ func (h *Hub) BroadcastMsg(ctx context.Context, data interface{}, dontDrop ...bo
 	msg := &message{data: data, dontDrop: notDrop}
 
 	if notDrop {
+		// we need to nest the broadcast into the default case because
+		// the select cases are executed in random order if multiple
+		// conditions are true at the time of entry in the select case.
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-h.ctx.Done():
 			return ErrWebsocketServerUnavailable
-		case h.broadcast <- msg:
-			return nil
+		default:
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-h.ctx.Done():
+				return ErrWebsocketServerUnavailable
+			case h.broadcast <- msg:
+				return nil
+			}
 		}
 	}
 
+	// we need to nest the broadcast into the default case because
+	// the select cases are executed in random order if multiple
+	// conditions are true at the time of entry in the select case.
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-h.ctx.Done():
 		return ErrWebsocketServerUnavailable
-	case h.broadcast <- msg:
-		return nil
 	default:
-		return nil
+		select {
+		case h.broadcast <- msg:
+			return nil
+		default:
+			return nil
+		}
 	}
 }
 
@@ -184,50 +200,89 @@ func (h *Hub) Run(ctx context.Context) {
 	// set the hub as running
 	h.shutdownFlag.Store(false)
 
+	shutdownAndRemoveAllClients := func() {
+		h.shutdownFlag.Store(true)
+
+		for client := range h.clients {
+			h.removeClient(client)
+		}
+	}
+
 	for {
+		// we need to nest the non-error cases into the default case because
+		// the select cases are executed in random order if multiple
+		// conditions are true at the time of entry in the select case.
 		select {
 		case <-ctx.Done():
-			h.shutdownFlag.Store(true)
-
-			for client := range h.clients {
-				h.removeClient(client)
-			}
-
+			shutdownAndRemoveAllClients()
 			return
 
-		case client := <-h.register:
-			// register client
-			h.clients[client] = struct{}{}
+		default:
+			select {
+			case <-ctx.Done():
+				shutdownAndRemoveAllClients()
+				return
 
-			client.shutdownWaitGroup.Add(3)
+			case client := <-h.register:
+				// register client
+				h.clients[client] = struct{}{}
 
-			//nolint:contextcheck // client context is already based on the hub ctx
-			go client.writePump()
+				client.shutdownWaitGroup.Add(3)
 
-			// first start the read pump to read pong answers from keepAlive
-			client.startWaitGroup.Add(1)
-			go client.readPump()
-			client.startWaitGroup.Wait()
+				//nolint:contextcheck // client context is already based on the hub ctx
+				go client.writePump()
 
-			// wait until keepAlive started, before calling onConnect
-			client.startWaitGroup.Add(1)
-			//nolint:contextcheck // client context is already based on the hub ctx
-			go client.keepAlive()
-			client.startWaitGroup.Wait()
+				// first start the read pump to read pong answers from keepAlive
+				client.startWaitGroup.Add(1)
+				go client.readPump()
+				client.startWaitGroup.Wait()
 
-			if client.onConnect != nil {
-				client.onConnect(client)
-			}
-			h.events.ClientConnected.Trigger(&ClientConnectionEvent{ID: client.id})
+				// wait until keepAlive started, before calling onConnect
+				client.startWaitGroup.Add(1)
+				//nolint:contextcheck // client context is already based on the hub ctx
+				go client.keepAlive()
+				client.startWaitGroup.Wait()
 
-		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				h.removeClient(client)
-				h.logger.Infof("Removed websocket client")
-			}
+				if client.onConnect != nil {
+					client.onConnect(client)
+				}
+				h.events.ClientConnected.Trigger(&ClientConnectionEvent{ID: client.id})
 
-		case message := <-h.broadcast:
-			if message.dontDrop {
+			case client := <-h.unregister:
+				if _, ok := h.clients[client]; ok {
+					h.removeClient(client)
+					h.logger.Infof("Removed websocket client")
+				}
+
+			case message := <-h.broadcast:
+				if message.dontDrop {
+					for client := range h.clients {
+						if client.FilterCallback != nil {
+							if !client.FilterCallback(client, message.data) {
+								// do not broadcast the message to this client
+								continue
+							}
+						}
+
+						// we need to nest the sendChan into the default case because
+						// the select cases are executed in random order if multiple
+						// conditions are true at the time of entry in the select case.
+						select {
+						case <-ctx.Done():
+						case <-client.ExitSignal:
+						case <-client.sendChanClosed:
+						default:
+							select {
+							case <-ctx.Done():
+							case <-client.ExitSignal:
+							case <-client.sendChanClosed:
+							case client.sendChan <- message.data:
+							}
+						}
+					}
+
+					continue
+				}
 				for client := range h.clients {
 					if client.FilterCallback != nil {
 						if !client.FilterCallback(client, message.data) {
@@ -236,30 +291,19 @@ func (h *Hub) Run(ctx context.Context) {
 						}
 					}
 
+					// we need to nest the sendChan into the default case because
+					// the select cases are executed in random order if multiple
+					// conditions are true at the time of entry in the select case.
 					select {
 					case <-ctx.Done():
 					case <-client.ExitSignal:
 					case <-client.sendChanClosed:
-					case client.sendChan <- message.data:
+					default:
+						select {
+						case client.sendChan <- message.data:
+						default:
+						}
 					}
-				}
-
-				continue
-			}
-			for client := range h.clients {
-				if client.FilterCallback != nil {
-					if !client.FilterCallback(client, message.data) {
-						// do not broadcast the message to this client
-						continue
-					}
-				}
-
-				select {
-				case <-ctx.Done():
-				case <-client.ExitSignal:
-				case <-client.sendChanClosed:
-				case client.sendChan <- message.data:
-				default:
 				}
 			}
 		}
@@ -306,19 +350,35 @@ func (h *Hub) Stopped() bool {
 }
 
 func (h *Hub) Register(client *Client) error {
+	// we need to nest the register into the default case because
+	// the select cases are executed in random order if multiple
+	// conditions are true at the time of entry in the select case.
 	select {
 	case <-h.ctx.Done():
 		return ErrWebsocketServerUnavailable
-	case h.register <- client:
-		return nil
+	default:
+		select {
+		case <-h.ctx.Done():
+			return ErrWebsocketServerUnavailable
+		case h.register <- client:
+			return nil
+		}
 	}
 }
 
 func (h *Hub) Unregister(client *Client) error {
+	// we need to nest the unregister into the default case because
+	// the select cases are executed in random order if multiple
+	// conditions are true at the time of entry in the select case.
 	select {
 	case <-h.ctx.Done():
 		return ErrWebsocketServerUnavailable
-	case h.unregister <- client:
-		return nil
+	default:
+		select {
+		case <-h.ctx.Done():
+			return ErrWebsocketServerUnavailable
+		case h.unregister <- client:
+			return nil
+		}
 	}
 }
