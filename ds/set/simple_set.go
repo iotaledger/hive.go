@@ -77,7 +77,7 @@ func (s *simpleSet[T]) Encode() ([]byte, error) {
 	s.ForEach(func(elem T) {
 		bytes, err := serix.DefaultAPI.Encode(context.Background(), elem)
 		if err != nil {
-			seri.AbortIf(func(err error) error {
+			seri.AbortIf(func(_ error) error {
 				return errors.Wrap(err, "failed to serialize element of a set")
 			})
 		}

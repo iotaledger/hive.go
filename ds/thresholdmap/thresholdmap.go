@@ -287,17 +287,21 @@ func (t ThresholdMap[K, V]) Encode() ([]byte, error) {
 
 	t.ForEach(func(elem *Element[K, V]) bool {
 		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), elem.Key())
-		seri.AbortIf(func(_ error) error {
-			return xerrors.Errorf("failed to encode ThresholdMap key: %w", err)
-		})
+		if err != nil {
+			seri.AbortIf(func(_ error) error {
+				return xerrors.Errorf("failed to encode ThresholdMap key: %w", err)
+			})
+		}
 		seri.WriteBytes(keyBytes, func(err error) error {
 			return xerrors.Errorf("failed to write ThresholdMap key to serializer: %w", err)
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), elem.Value())
-		seri.AbortIf(func(_ error) error {
-			return xerrors.Errorf("failed to serialize ThresholdMap value: %w", err)
-		})
+		if err != nil {
+			seri.AbortIf(func(_ error) error {
+				return xerrors.Errorf("failed to serialize ThresholdMap value: %w", err)
+			})
+		}
 		seri.WriteBytes(valBytes, func(err error) error {
 			return xerrors.Errorf("failed to write ThresholdMap value to serializer", err)
 		})
