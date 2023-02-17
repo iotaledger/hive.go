@@ -181,7 +181,7 @@ func TestSerialization(t *testing.T) {
 	bytes, err := orderedMap.Encode()
 	require.NoError(t, err)
 
-	decoded := New[string, uint8]()
+	decoded := new(OrderedMap[string, uint8])
 	bytesRead, err := decoded.Decode(bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), bytesRead)
