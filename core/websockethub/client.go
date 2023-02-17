@@ -115,6 +115,11 @@ func (c *Client) ID() ClientID {
 	return c.id
 }
 
+// Context returns the client context which is canceled when the ping times out and the client should be dropped.
+func (c *Client) Context() context.Context {
+	return c.ctx
+}
+
 // keepAlive sends ping messages to the client and waits for pong responses.
 // if no pong response is received in time, the client context is canceled.
 func (c *Client) keepAlive() {
