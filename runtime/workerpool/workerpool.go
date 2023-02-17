@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
