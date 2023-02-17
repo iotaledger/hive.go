@@ -9,6 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ds/walker"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // AdvancedSet is a set that offers advanced features.
@@ -33,13 +34,13 @@ func (t *AdvancedSet[T]) IsEmpty() (empty bool) {
 
 // Add adds a new element to the Set and returns true if the element was not present in the set before.
 func (t *AdvancedSet[T]) Add(element T) (added bool) {
-	return t.Set(element, types.Void)
+	return !lo.Return2(t.Set(element, types.Void))
 }
 
 // AddAll adds all elements to the AdvancedSet and returns true if any element has been added.
 func (t *AdvancedSet[T]) AddAll(elements *AdvancedSet[T]) (added bool) {
 	_ = elements.ForEach(func(element T) (err error) {
-		added = t.Set(element, types.Void) || added
+		added = !lo.Return2(t.Set(element, types.Void)) || added
 
 		return nil
 	})

@@ -47,9 +47,9 @@ func TestSetGetDelete(t *testing.T) {
 	orderedMap := New[string, string]()
 	require.NotNil(t, orderedMap)
 
-	// when adding the first new key,value pair, we must return true
-	keyValueAdded := orderedMap.Set("key", "value")
-	require.True(t, keyValueAdded)
+	// when adding the first new key,value pair, we must return false
+	_, previousValueExisted := orderedMap.Set("key", "value")
+	require.False(t, previousValueExisted)
 
 	// we should be able to retrieve the just added element
 	value, ok := orderedMap.Get("key")
@@ -61,10 +61,10 @@ func TestSetGetDelete(t *testing.T) {
 	require.Same(t, orderedMap.head, orderedMap.tail)
 	require.Equal(t, 1, orderedMap.Size())
 
-	// when adding the same key,value pair must return false
+	// when adding the same key,value pair must return true
 	// and size should not change;
-	keyValueAdded = orderedMap.Set("key", "value")
-	require.False(t, keyValueAdded)
+	_, previousValueExisted = orderedMap.Set("key", "value")
+	require.True(t, previousValueExisted)
 	require.Equal(t, 1, orderedMap.Size())
 
 	// when retrieving something that does not exist we
@@ -102,8 +102,8 @@ func TestForEach(t *testing.T) {
 	}
 
 	for _, element := range testElements {
-		keyValueAdded := orderedMap.Set(element.key, element.value)
-		require.True(t, keyValueAdded)
+		_, previousValueExisted := orderedMap.Set(element.key, element.value)
+		require.False(t, previousValueExisted)
 	}
 
 	// test that all elements are positive via ForEach

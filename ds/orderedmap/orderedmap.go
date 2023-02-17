@@ -86,14 +86,15 @@ func (o *OrderedMap[K, V]) Get(key K) (value V, exists bool) {
 	return orderedMapElement.value, true
 }
 
-// Set adds a key-value pair to the orderedMap. It returns false if the key already existed.
-func (o *OrderedMap[K, V]) Set(key K, newValue V) bool {
+// Set adds a key-value pair to the orderedMap.
+func (o *OrderedMap[K, V]) Set(key K, newValue V) (previousValue V, previousValueExisted bool) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
 	if oldValue, oldValueExists := o.dictionary[key]; oldValueExists {
+		previousValue = oldValue.value
 		oldValue.value = newValue
-		return false
+		return previousValue, true
 	}
 
 	newElement := new(Element[K, V])
@@ -111,7 +112,7 @@ func (o *OrderedMap[K, V]) Set(key K, newValue V) bool {
 
 	o.dictionary[key] = newElement
 
-	return true
+	return previousValue, false
 }
 
 // ForEach iterates through the orderedMap and calls the consumer function for every element.
