@@ -238,9 +238,11 @@ func (o *OrderedMap[K, V]) Encode() ([]byte, error) {
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
-		seri.AbortIf(func(_ error) error {
-			return xerrors.Errorf("failed to serialize OrderedMap value: %w", err)
-		})
+		if err != nil {
+			seri.AbortIf(func(err error) error {
+				return xerrors.Errorf("failed to serialize OrderedMap value: %w", err)
+			})
+		}
 		seri.WriteBytes(valBytes, func(err error) error {
 			return xerrors.Errorf("failed to write OrderedMap value to serializer: %w", err)
 		})
