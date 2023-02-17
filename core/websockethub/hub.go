@@ -83,7 +83,7 @@ type message struct {
 }
 
 func NewHub(logger *logger.Logger, acceptOptions *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
-	return &Hub{
+	h := &Hub{
 		logger:                logger,
 		acceptOptions:         acceptOptions,
 		clientSendChannelSize: clientSendChannelSize,
@@ -95,6 +95,9 @@ func NewHub(logger *logger.Logger, acceptOptions *websocket.AcceptOptions, broad
 		clientReadLimit:       clientReadLimit,
 		events:                newEvents(),
 	}
+	h.shutdownFlag.Store(true)
+
+	return h
 }
 
 // Events returns all the events that are triggered by the websocket hub.

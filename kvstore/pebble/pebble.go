@@ -25,7 +25,7 @@ type pebbleStore struct {
 func New(db *pebble.DB) kvstore.KVStore {
 	return &pebbleStore{
 		instance: db,
-		closed:   &atomic.Bool{},
+		closed:   new(atomic.Bool),
 	}
 }
 

@@ -26,7 +26,7 @@ type rocksDBStore struct {
 func New(db *RocksDB) kvstore.KVStore {
 	return &rocksDBStore{
 		instance: db,
-		closed:   &atomic.Bool{},
+		closed:   new(atomic.Bool),
 	}
 }
 

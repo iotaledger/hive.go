@@ -25,7 +25,7 @@ type badgerStore struct {
 func New(db *badger.DB) kvstore.KVStore {
 	return &badgerStore{
 		instance: db,
-		closed:   &atomic.Bool{},
+		closed:   new(atomic.Bool),
 	}
 }
 

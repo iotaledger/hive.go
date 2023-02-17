@@ -25,7 +25,7 @@ type mapDB struct {
 func NewMapDB() kvstore.KVStore {
 	return &mapDB{
 		m:      &syncedKVMap{m: make(map[string][]byte)},
-		closed: &atomic.Bool{},
+		closed: new(atomic.Bool),
 	}
 }
 
