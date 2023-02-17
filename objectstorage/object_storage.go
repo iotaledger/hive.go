@@ -1094,7 +1094,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
-		if consumers := cachedObjects[j].consumers.Dec(); consumers == 0 {
+		if consumers := cachedObjects[j].consumers.Add(1); consumers == 0 {
 			cachedObjects[j].evict()
 		}
 	}

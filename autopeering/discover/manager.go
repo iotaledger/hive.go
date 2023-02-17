@@ -5,11 +5,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
+
+	"github.com/iotaledger/hive.go/autopeering/peer"
+	"github.com/iotaledger/hive.go/autopeering/server"
 )
 
 const (
@@ -211,7 +212,7 @@ func (m *manager) updatePeer(update *peer.Peer) uint {
 			// update the wrapped peer and verifiedCount
 			p.setPeer(update)
 
-			return uint(p.verifiedCount.Inc())
+			return uint(p.verifiedCount.Add(1))
 		}
 	}
 
@@ -298,7 +299,7 @@ func (m *manager) addVerifiedPeer(p *peer.Peer) bool {
 	}
 
 	mp := newMPeer(p)
-	mp.verifiedCount.Inc()
+	mp.verifiedCount.Add(1)
 
 	if len(m.active) >= maxManaged {
 		return m.addReplacement(mp)
