@@ -11,7 +11,7 @@ import (
 
 func TestTicker_ExternalContext(t *testing.T) {
 	// use counter to track execution state
-	counter := new(atomic.Uint64)
+	var counter atomic.Uint64
 
 	// create "external" context
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -48,7 +48,7 @@ func TestTicker_ExternalContext(t *testing.T) {
 
 func TestTicker_ManualShutdown(t *testing.T) {
 	// use counter to track execution state
-	counter := new(atomic.Uint64)
+	var counter atomic.Uint64
 
 	// create ticker and wait for manual shutdown
 	ticker := NewTicker(func() {
