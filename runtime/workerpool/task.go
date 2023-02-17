@@ -12,44 +12,52 @@ import (
 
 // Task is a task that is executed by a WorkerPool.
 type Task struct {
-	decreasePendingCounterFunc func()
-	workerFunc                 func()
-	doneChan                   chan types.Empty
-	stackTrace                 string
+	// workerFunc is the function that is executed by the WorkerPool.
+	workerFunc func()
+
+	// doneCallback is called when the Task is done.
+	doneCallback func()
+
+	// stackTrace is the stack trace of the Task.
+	stackTrace string
+
+	// doneChan is used to indicate that the Task is done.
+	doneChan chan types.Empty
 }
 
-// newTask creates a new BlockingQueueWorkerPoolTask.
-func newTask(decreasePendingCounterFunc func(), workerFunc func(), stackTrace string) *Task {
+// newTask creates a new Task.
+func newTask(workerFunc func(), doneCallback func(), stackTrace string) *Task {
 	if debug.GetEnabled() && stackTrace == "" {
 		stackTrace = debug.ClosureStackTrace(workerFunc)
 	}
 
 	return &Task{
-		decreasePendingCounterFunc: decreasePendingCounterFunc,
-		workerFunc:                 workerFunc,
-		doneChan:                   make(chan types.Empty),
-		stackTrace:                 stackTrace,
+		workerFunc:   workerFunc,
+		doneCallback: doneCallback,
+		stackTrace:   stackTrace,
+		doneChan:     make(chan types.Empty),
 	}
 }
 
-// run executes the task.
+// run executes the Task.
 func (t *Task) run() {
 	if debug.GetEnabled() {
-		go t.detectedHangingTasks()
+		go t.detectDeadlock()
 	}
 
 	t.workerFunc()
 	t.markDone()
 }
 
-// markDone marks the task as done.
+// markDone marks the Task as done.
 func (t *Task) markDone() {
 	close(t.doneChan)
-	t.decreasePendingCounterFunc()
+
+	t.doneCallback()
 }
 
-// detectedHangingTasks is a debug method that is used to print information about possibly hanging task executions.
-func (t *Task) detectedHangingTasks() {
+// detectDeadlock detects if the Task is stuck and prints the stack trace.
+func (t *Task) detectDeadlock() {
 	timer := time.NewTimer(debug.DeadlockDetectionTimeout)
 	defer timeutil.CleanupTimer(timer)
 
