@@ -154,6 +154,9 @@ func (c *Client) keepAlive() {
 	c.startWaitGroup.Done()
 
 	for {
+		// we need to nest the pingTimer.C into the default case because
+		// the select cases are executed in random order if multiple
+		// conditions are true at the time of entry in the select case.
 		select {
 		case <-c.ctx.Done():
 			// the client context is done
@@ -161,16 +164,25 @@ func (c *Client) keepAlive() {
 		case <-c.ExitSignal:
 			// the Hub closed the channel
 			return
-		case <-pingTimer.C:
-			if err := sendPing(); err != nil {
-				// failed to send ping or receive pong
-				// => client seems to be unhealthy
-				c.LogWarn(err.Error())
-
-				// send an unregister message to the hub
-				_ = c.hub.Unregister(c)
-
+		default:
+			select {
+			case <-c.ctx.Done():
+				// the client context is done
 				return
+			case <-c.ExitSignal:
+				// the Hub closed the channel
+				return
+			case <-pingTimer.C:
+				if err := sendPing(); err != nil {
+					// failed to send ping or receive pong
+					// => client seems to be unhealthy
+					c.LogWarn(err.Error())
+
+					// send an unregister message to the hub
+					_ = c.hub.Unregister(c)
+
+					return
+				}
 			}
 		}
 	}
@@ -224,18 +236,27 @@ func (c *Client) readPump() {
 		}
 
 		if c.ReceiveChan != nil {
+			// we need to nest the ReceiveChan into the default case because
+			// the select cases are executed in random order if multiple
+			// conditions are true at the time of entry in the select case.
 			select {
-
 			case <-c.ctx.Done():
 				// the client context is done
 				return
-
 			case <-c.ExitSignal:
 				// the Hub closed the channel
 				return
-
-			case c.ReceiveChan <- &WebsocketMsg{MsgType: msgType, Data: data}:
-				// send the received message to the user
+			default:
+				select {
+				case <-c.ctx.Done():
+					// the client context is done
+					return
+				case <-c.ExitSignal:
+					// the Hub closed the channel
+					return
+				case c.ReceiveChan <- &WebsocketMsg{MsgType: msgType, Data: data}:
+					// send the received message to the user
+				}
 			}
 		}
 	}
@@ -277,34 +298,44 @@ func (c *Client) writePump() {
 		return wsjson.Write(ctx, c.conn, msg)
 	}
 
-	for {
-		select {
+	closeConnection := func() {
+		if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
+			c.LogWarnf("Websocket closing error: %v", err)
+		}
+	}
 
+	for {
+		// we need to nest the c.sendChan into the default case because
+		// the select cases are executed in random order if multiple
+		// conditions are true at the time of entry in the select case.
+		select {
 		case <-c.ctx.Done():
 			// the client context is done
 			return
-
 		case <-c.ExitSignal:
 			// the Hub closed the channel
-			if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
-				c.LogWarnf("Websocket closing error: %v", err)
-			}
-
+			closeConnection()
 			return
-
-		case msg, ok := <-c.sendChan:
-			if !ok {
+		default:
+			select {
+			case <-c.ctx.Done():
+				// the client context is done
+				return
+			case <-c.ExitSignal:
 				// the Hub closed the channel
-				if err := c.conn.Close(websocket.StatusNormalClosure, ""); err != nil {
-					c.LogWarnf("Websocket closing error: %v", err)
+				closeConnection()
+				return
+			case msg, ok := <-c.sendChan:
+				if !ok {
+					// the Hub closed the channel
+					closeConnection()
+					return
 				}
 
-				return
-			}
-
-			if err := sendMsg(msg); err != nil {
-				c.LogWarnf("Websocket error: %v", err)
-				return
+				if err := sendMsg(msg); err != nil {
+					c.LogWarnf("Websocket error: %v", err)
+					return
+				}
 			}
 		}
 	}
@@ -323,6 +354,9 @@ func (c *Client) Send(ctx context.Context, msg interface{}, dontDrop ...bool) er
 	}
 
 	if len(dontDrop) > 0 && dontDrop[0] {
+		// we need to nest the sendChan into the default case because
+		// the select cases are executed in random order if multiple
+		// conditions are true at the time of entry in the select case.
 		select {
 		case <-c.ctx.Done():
 			return c.ctx.Err()
@@ -332,11 +366,25 @@ func (c *Client) Send(ctx context.Context, msg interface{}, dontDrop ...bool) er
 			return ErrClientDisconnected
 		case <-c.sendChanClosed:
 			return ErrClientDisconnected
-		case c.sendChan <- msg:
-			return nil
+		default:
+			select {
+			case <-c.ctx.Done():
+				return c.ctx.Err()
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-c.ExitSignal:
+				return ErrClientDisconnected
+			case <-c.sendChanClosed:
+				return ErrClientDisconnected
+			case c.sendChan <- msg:
+				return nil
+			}
 		}
 	}
 
+	// we need to nest the sendChan into the default case because
+	// the select cases are executed in random order if multiple
+	// conditions are true at the time of entry in the select case.
 	select {
 	case <-c.ctx.Done():
 		return c.ctx.Err()
@@ -346,9 +394,12 @@ func (c *Client) Send(ctx context.Context, msg interface{}, dontDrop ...bool) er
 		return ErrClientDisconnected
 	case <-c.sendChanClosed:
 		return ErrClientDisconnected
-	case c.sendChan <- msg:
-		return nil
 	default:
-		return nil
+		select {
+		case c.sendChan <- msg:
+			return nil
+		default:
+			return nil
+		}
 	}
 }
