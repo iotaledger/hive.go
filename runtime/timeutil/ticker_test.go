@@ -2,16 +2,16 @@ package timeutil
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 )
 
 func TestTicker_ExternalContext(t *testing.T) {
 	// use counter to track execution state
-	counter := atomic.NewUint64(0)
+	counter := new(atomic.Uint64)
 
 	// create "external" context
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -28,9 +28,9 @@ func TestTicker_ExternalContext(t *testing.T) {
 
 	// create ticker and wait for external shutdown
 	ticker := NewTicker(func() {
-		counter.Inc()
+		counter.Add(1)
 		time.Sleep(1 * time.Second)
-		counter.Inc()
+		counter.Add(1)
 	}, 100*time.Millisecond, ctx)
 
 	// wait for the shutdown signal
@@ -48,13 +48,13 @@ func TestTicker_ExternalContext(t *testing.T) {
 
 func TestTicker_ManualShutdown(t *testing.T) {
 	// use counter to track execution state
-	counter := atomic.NewUint64(0)
+	counter := new(atomic.Uint64)
 
 	// create ticker and wait for manual shutdown
 	ticker := NewTicker(func() {
-		counter.Inc()
+		counter.Add(1)
 		time.Sleep(1 * time.Second)
-		counter.Inc()
+		counter.Add(1)
 	}, 100*time.Millisecond)
 
 	// manual shutdown when threshold is reached

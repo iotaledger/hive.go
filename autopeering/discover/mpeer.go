@@ -2,11 +2,11 @@ package discover
 
 import (
 	"fmt"
+	"sync/atomic"
 
-	"go.uber.org/atomic"
+	"github.com/iotaledger/hive.go/core/identity"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/core/identity"
 )
 
 // mpeer represents a discovered peer with additional data.

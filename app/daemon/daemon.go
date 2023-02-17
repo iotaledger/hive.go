@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"sync/atomic"
 
-	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/core/logger"
@@ -81,8 +81,6 @@ func New() *OrderedDaemon {
 	stoppedCtx, stoppedCtxCancel := context.WithCancel(context.Background())
 
 	return &OrderedDaemon{
-		running:                atomic.NewBool(false),
-		stopped:                atomic.NewBool(false),
 		stoppedCtx:             stoppedCtx,
 		stoppedCtxCancel:       stoppedCtxCancel,
 		workers:                make(map[string]*worker),
@@ -94,8 +92,8 @@ func New() *OrderedDaemon {
 // OrderedDaemon is an orchestrator for background workers.
 // stopOnce ensures that the daemon can only be terminated once.
 type OrderedDaemon struct {
-	running                *atomic.Bool
-	stopped                *atomic.Bool
+	running                atomic.Bool
+	stopped                atomic.Bool
 	stoppedCtx             context.Context
 	stoppedCtxCancel       context.CancelFunc
 	stopOnce               sync.Once
@@ -110,7 +108,7 @@ type worker struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	handler       WorkerFunc
-	running       *atomic.Bool
+	running       atomic.Bool
 	shutdownOrder int
 }
 
@@ -225,7 +223,6 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		handler:       handler,
-		running:       atomic.NewBool(false),
 		shutdownOrder: shutdownOrder,
 	}
 

@@ -5,12 +5,12 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
-
-	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/core/platform"
 	"github.com/iotaledger/hive.go/core/reflect"
+
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 )
 
@@ -78,14 +78,14 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) RTransaction(callback func(
 }
 
 var (
-	internalIDCounter = atomic.NewInt64(0)
+	internalIDCounter = new(atomic.Int64)
 )
 
 func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
 	return &LeakDetectionWrapperImpl{
 		CachedObjectImpl: cachedObject,
-		internalID:       internalIDCounter.Inc(),
-		released:         atomic.NewBool(false),
+		internalID:       internalIDCounter.Add(1),
+		released:         new(atomic.Bool),
 	}
 }
 

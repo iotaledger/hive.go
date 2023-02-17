@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync/atomic"
 
-	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
 
-	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/runtime/event"
+
+	"github.com/iotaledger/hive.go/core/logger"
 )
 
 var (
@@ -63,13 +64,13 @@ type Hub struct {
 	ctx context.Context
 
 	// indicates that the websocket hub was shut down
-	shutdownFlag *atomic.Bool
+	shutdownFlag atomic.Bool
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	clientReadLimit int64
 
 	// lastClientID holds the ClientID of the last connected client
-	lastClientID *atomic.Uint32
+	lastClientID atomic.Uint32
 
 	// events of the websocket hub
 	events *Events
@@ -91,9 +92,7 @@ func NewHub(logger *logger.Logger, acceptOptions *websocket.AcceptOptions, broad
 		register:              make(chan *Client, 1),
 		unregister:            make(chan *Client, 1),
 		ctx:                   nil,
-		shutdownFlag:          atomic.NewBool(true),
 		clientReadLimit:       clientReadLimit,
-		lastClientID:          atomic.NewUint32(0),
 		events:                newEvents(),
 	}
 }

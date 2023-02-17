@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/iotaledger/hive.go/core/backoff"
+	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/core/netutil"
 
 	pb "github.com/iotaledger/hive.go/autopeering/discover/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	peerpb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/core/backoff"
-	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/netutil"
 )
 
 const (
@@ -43,7 +44,7 @@ type Protocol struct {
 	log     *logger.Logger // protocol logger
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
-	running   *atomic.Bool
+	running   atomic.Bool
 	closeOnce sync.Once
 }
 
@@ -62,7 +63,6 @@ func New(local *peer.Local, version uint32, networkID uint32, opts ...Option) *P
 		version: version,
 		netID:   networkID,
 		log:     args.log,
-		running: atomic.NewBool(false),
 	}
 
 	p.mgr = newManager(p, args.masterPeers, args.log.Named("mgr"))

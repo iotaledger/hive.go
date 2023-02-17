@@ -3,14 +3,15 @@ package pebble
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
-	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
+
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
-	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 // pebbleStore implements the KVStore interface around a pebble instance.
@@ -24,7 +25,7 @@ type pebbleStore struct {
 func New(db *pebble.DB) kvstore.KVStore {
 	return &pebbleStore{
 		instance: db,
-		closed:   atomic.NewBool(false),
+		closed:   &atomic.Bool{},
 	}
 }
 

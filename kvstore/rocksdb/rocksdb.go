@@ -4,15 +4,16 @@ package rocksdb
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 
 	"github.com/iotaledger/grocksdb"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
+
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
-	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 type rocksDBStore struct {
@@ -25,7 +26,7 @@ type rocksDBStore struct {
 func New(db *RocksDB) kvstore.KVStore {
 	return &rocksDBStore{
 		instance: db,
-		closed:   atomic.NewBool(false),
+		closed:   &atomic.Bool{},
 	}
 }
 

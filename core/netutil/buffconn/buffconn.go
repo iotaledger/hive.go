@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
-
-	"go.uber.org/atomic"
 )
 
 const (
@@ -33,8 +32,8 @@ type BufferedConnection struct {
 	closeOnce            sync.Once
 	maxMessageSize       int
 
-	bytesRead    *atomic.Uint64
-	bytesWritten *atomic.Uint64
+	bytesRead    atomic.Uint64
+	bytesWritten atomic.Uint64
 }
 
 // NewBufferedConnection creates a new BufferedConnection from a net.Conn.
@@ -44,8 +43,6 @@ func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnectio
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
 		maxMessageSize:       maxMessageSize,
-		bytesRead:            atomic.NewUint64(0),
-		bytesWritten:         atomic.NewUint64(0),
 	}
 }
 
