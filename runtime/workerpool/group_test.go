@@ -43,3 +43,27 @@ func Test(t *testing.T) {
 
 	fmt.Println("ALL TASKS DONE")
 }
+
+func TestRecreateGroup(t *testing.T) {
+	workers := NewGroup(t.Name())
+
+	workers.CreateGroup("group1").Shutdown()
+	workers.CreateGroup("group1")
+
+	require.Panics(t, func() {
+		workers.CreateGroup("group1")
+		workers.CreateGroup("group1")
+	})
+}
+
+func TestRecreatePool(t *testing.T) {
+	workers := NewGroup(t.Name())
+
+	workers.CreatePool("pool1").Shutdown()
+	workers.CreatePool("pool1")
+
+	require.Panics(t, func() {
+		workers.CreatePool("pool1")
+		workers.CreatePool("pool1")
+	})
+}

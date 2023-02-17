@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/lo"
@@ -26,6 +27,9 @@ type Group struct {
 
 	// root is the root Group of this Group.
 	root *Group
+
+	// isShutdown is true if the group was shutdown.
+	isShutdown atomic.Bool
 }
 
 // NewGroup creates a new Group.
@@ -54,8 +58,8 @@ func (g *Group) CreatePool(name string, optWorkerCount ...int) *WorkerPool {
 		}
 	})
 
-	if !g.pools.Set(name, pool) {
-		panic(fmt.Sprintf("pool '%s' already exists", name))
+	if previousPool, previousPoolExists := g.pools.Set(name, pool); previousPoolExists && previousPool.IsRunning() {
+		panic(fmt.Sprintf("running pool '%s' already exists", name))
 	}
 
 	return pool.Start()
@@ -97,8 +101,8 @@ func (g *Group) CreateGroup(name string) *Group {
 		}
 	})
 
-	if !g.groups.Set(name, group) {
-		panic(fmt.Sprintf("group '%s' already exists", name))
+	if previousGroup, previousGroupExisted := g.groups.Set(name, group); previousGroupExisted && !previousGroup.IsShutdown() {
+		panic(fmt.Sprintf("running group '%s' already exists", name))
 	}
 
 	return group
@@ -122,6 +126,11 @@ func (g *Group) WaitParents() {
 // Root returns the root Group of the Group.
 func (g *Group) Root() *Group {
 	return lo.Cond(g.root != nil, g.root, g)
+}
+
+// IsShutdown returns true if the group was shutdown.
+func (g *Group) IsShutdown() bool {
+	return g.isShutdown.Load()
 }
 
 // Shutdown shuts down all child elements of the Group.
@@ -200,6 +209,10 @@ func (g *Group) groupsString(indent int) string {
 
 // shutdown shuts down all child elements of the Group.
 func (g *Group) shutdown() {
+	if g.isShutdown.Swap(true) {
+		return
+	}
+
 	g.pools.ForEach(func(_ string, pool *WorkerPool) bool {
 		pool.Shutdown(true)
 		return true
