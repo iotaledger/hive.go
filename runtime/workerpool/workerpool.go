@@ -5,23 +5,42 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/iotaledger/hive.go/core/generics/lo"
 	"github.com/iotaledger/hive.go/core/syncutils"
 )
 
+// WorkerPool is a pool of workers that can execute tasks.
 type WorkerPool struct {
-	Name                string
-	PendingTasksCounter *syncutils.Counter
-	Queue               *syncutils.Stack[*Task]
-	ShutdownComplete    sync.WaitGroup
+	// Name is the name of the WorkerPool.
+	Name string
 
-	workerCount    int
-	isRunning      bool
+	// PendingTasksCounter is the number of tasks that are currently pending.
+	PendingTasksCounter *syncutils.Counter
+
+	// Queue is the queue of tasks that are waiting to be executed.
+	Queue *syncutils.Stack[*Task]
+
+	// ShutdownComplete is a WaitGroup that is used to wait for the WorkerPool to shutdown.
+	ShutdownComplete sync.WaitGroup
+
+	// workerCount is the number of workers that are used to execute tasks.
+	workerCount int
+
+	// isRunning indicates if the WorkerPool is running.
+	isRunning bool
+
+	// dispatcherChan is the channel that is used to dispatch tasks to the workers.
 	dispatcherChan chan *Task
+
+	// shutdownSignal is the channel that is used to signal the workers to shut down.
 	shutdownSignal chan bool
-	mutex          syncutils.RWMutex
+
+	// mutex is used to synchronize access to the WorkerPool.
+	mutex syncutils.RWMutex
 }
 
-func New(name string, optsWorkerCount ...int) (newWorkerPool *WorkerPool) {
+// New creates a new WorkerPool with the given name and returns it.
+func New(name string, optsWorkerCount ...int) *WorkerPool {
 	if len(optsWorkerCount) == 0 {
 		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
 	}
@@ -35,106 +54,124 @@ func New(name string, optsWorkerCount ...int) (newWorkerPool *WorkerPool) {
 	}
 }
 
-func (u *WorkerPool) Start() (self *WorkerPool) {
-	u.mutex.Lock()
-	defer u.mutex.Unlock()
+// Start starts the WorkerPool.
+func (w *WorkerPool) Start() *WorkerPool {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 
-	if !u.isRunning {
-		u.ShutdownComplete.Wait()
+	if !w.isRunning {
+		w.ShutdownComplete.Wait()
 
-		u.isRunning = true
+		w.isRunning = true
 
-		u.startDispatcher()
-		u.startWorkers()
+		w.startDispatcher()
+		w.startWorkers()
 	}
 
-	return u
+	return w
 }
 
-func (u *WorkerPool) Submit(task func(), optStackTrace ...string) {
-	if !u.IsRunning() {
-		panic(fmt.Sprintf("worker pool '%s' is not running", u.Name))
+// Submit submits a new task to the WorkerPool.
+func (w *WorkerPool) Submit(workerFunc func(), optStackTrace ...string) {
+	if !w.IsRunning() {
+		panic(fmt.Sprintf("worker pool '%s' is not running", w.Name))
 	}
 
-	if u.PendingTasksCounter.Increase(); len(optStackTrace) >= 1 {
-		u.Queue.Push(newTask(func() { u.PendingTasksCounter.Decrease() }, task, optStackTrace[0]))
-	} else {
-		u.Queue.Push(newTask(func() { u.PendingTasksCounter.Decrease() }, task, ""))
-	}
+	w.increasePendingTasks()
+
+	w.Queue.Push(newTask(workerFunc, w.decreasePendingTasks, lo.First(optStackTrace)))
 }
 
-func (u *WorkerPool) Shutdown(cancelPendingTasks ...bool) (self *WorkerPool) {
-	u.mutex.Lock()
-	defer u.mutex.Unlock()
+// IsRunning returns true if the WorkerPool is running.
+func (w *WorkerPool) IsRunning() bool {
+	w.mutex.RLock()
+	defer w.mutex.RUnlock()
 
-	if u.isRunning {
-		u.isRunning = false
+	return w.isRunning
+}
 
-		for i := 0; i < u.workerCount; i++ {
-			u.shutdownSignal <- len(cancelPendingTasks) >= 1 && cancelPendingTasks[0]
+// WorkerCount returns the number of workers that are used to execute tasks.
+func (w *WorkerPool) WorkerCount() int {
+	return w.workerCount
+}
+
+// Shutdown shuts down the WorkerPool.
+func (w *WorkerPool) Shutdown(cancelPendingTasks ...bool) *WorkerPool {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if w.isRunning {
+		w.isRunning = false
+
+		for i := 0; i < w.workerCount; i++ {
+			w.shutdownSignal <- len(cancelPendingTasks) >= 1 && cancelPendingTasks[0]
 		}
 
-		u.Queue.SignalShutdown()
+		w.Queue.SignalShutdown()
 	}
 
-	return u
+	return w
 }
 
-func (u *WorkerPool) IsRunning() (isRunning bool) {
-	u.mutex.RLock()
-	defer u.mutex.RUnlock()
-
-	return u.isRunning
+// increasePendingTasks increases the number of pending tasks.
+func (w *WorkerPool) increasePendingTasks() {
+	w.PendingTasksCounter.Increase()
 }
 
-func (u *WorkerPool) WorkerCount() (workerCount int) {
-	return u.workerCount
+// decreasePendingTasks decreases the number of pending tasks.
+func (w *WorkerPool) decreasePendingTasks() {
+	w.PendingTasksCounter.Decrease()
 }
 
-func (u *WorkerPool) startDispatcher() {
-	u.dispatcherChan = make(chan *Task, u.workerCount)
+// startDispatcher starts the dispatcher that dispatches tasks to the workers.
+func (w *WorkerPool) startDispatcher() {
+	w.dispatcherChan = make(chan *Task, w.workerCount)
 
-	go u.dispatcher()
+	go w.dispatcher()
 }
 
-func (u *WorkerPool) dispatcher() {
-	for u.IsRunning() || u.Queue.Size() > 0 {
-		if task, success := u.Queue.PopOrWait(u.IsRunning); success {
-			u.dispatcherChan <- task
+// dispatcher is the dispatcher that dispatches tasks to the workers.
+func (w *WorkerPool) dispatcher() {
+	for w.IsRunning() || w.Queue.Size() > 0 {
+		if task, success := w.Queue.PopOrWait(w.IsRunning); success {
+			w.dispatcherChan <- task
 		}
 	}
 
-	u.PendingTasksCounter.WaitIsZero()
+	w.PendingTasksCounter.WaitIsZero()
 
-	close(u.dispatcherChan)
+	close(w.dispatcherChan)
 }
 
-func (u *WorkerPool) startWorkers() {
-	for i := 0; i < u.workerCount; i++ {
-		u.ShutdownComplete.Add(1)
+// startWorkers starts the workers that execute tasks.
+func (w *WorkerPool) startWorkers() {
+	for i := 0; i < w.workerCount; i++ {
+		w.ShutdownComplete.Add(1)
 
-		go u.worker()
+		go w.worker()
 	}
 }
 
-func (u *WorkerPool) worker() {
-	defer u.ShutdownComplete.Done()
+// worker is a worker that executes tasks.
+func (w *WorkerPool) worker() {
+	defer w.ShutdownComplete.Done()
 
-	u.handleShutdown(u.workerReadLoop())
+	w.handleShutdown(w.workerReadLoop())
 }
 
-func (u *WorkerPool) workerReadLoop() (shutdownSignal bool) {
+// workerReadLoop reads tasks from the dispatcherChan and executes them.
+func (w *WorkerPool) workerReadLoop() bool {
 	for {
 		select {
-		case shutdownSignal = <-u.shutdownSignal:
-			return
+		case shutdownSignal := <-w.shutdownSignal:
+			return shutdownSignal
 		default:
 			select {
-			case shutdownSignal = <-u.shutdownSignal:
-				return
-			case element, success := <-u.dispatcherChan:
+			case shutdownSignal := <-w.shutdownSignal:
+				return shutdownSignal
+			case element, success := <-w.dispatcherChan:
 				if !success {
-					return
+					return false
 				}
 
 				element.run()
@@ -143,8 +180,9 @@ func (u *WorkerPool) workerReadLoop() (shutdownSignal bool) {
 	}
 }
 
-func (u *WorkerPool) handleShutdown(cancelPendingTasks bool) {
-	for task, success := <-u.dispatcherChan; success; task, success = <-u.dispatcherChan {
+// handleShutdown handles the shutdown of the worker.
+func (w *WorkerPool) handleShutdown(cancelPendingTasks bool) {
+	for task, success := <-w.dispatcherChan; success; task, success = <-w.dispatcherChan {
 		if cancelPendingTasks {
 			task.markDone()
 		} else {
