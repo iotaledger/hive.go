@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 func TestOrderedMap_Size(t *testing.T) {
@@ -165,4 +167,24 @@ func TestConcurrencySafe(t *testing.T) {
 	wg.Wait()
 
 	require.Equal(t, 0, orderedMap.Size())
+}
+
+func TestSerialization(t *testing.T) {
+	serix.DefaultAPI.RegisterTypeSettings("", serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte))
+
+	orderedMap := New[string, uint8]()
+
+	orderedMap.Set("a", 0)
+	orderedMap.Set("b", 1)
+	orderedMap.Set("c", 2)
+
+	bytes, err := orderedMap.Encode()
+	require.NoError(t, err)
+
+	decoded := New[string, uint8]()
+	bytesRead, err := decoded.Decode(bytes)
+	require.NoError(t, err)
+	require.Equal(t, len(bytes), bytesRead)
+
+	require.Equal(t, orderedMap, decoded)
 }
