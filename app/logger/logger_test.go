@@ -1,10 +1,12 @@
 package logger
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestInitGlobalAfterError(t *testing.T) {

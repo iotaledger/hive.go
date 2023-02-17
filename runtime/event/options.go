@@ -5,7 +5,6 @@ import (
 
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/runtime/options"
-
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 

@@ -7,8 +7,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/iotaledger/hive.go/lo"
 	"golang.org/x/xerrors"
+
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // Template is a wrapper around the text/template package that provides a generic way for generating files according

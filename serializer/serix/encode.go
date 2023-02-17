@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
-
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 

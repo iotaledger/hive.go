@@ -2,6 +2,7 @@ package set
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/ds/types"
