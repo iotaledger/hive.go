@@ -64,7 +64,7 @@ func (t *Template) Generate(fileName string, optGenerator ...func() (string, err
 
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
 		generatedFileHeader + t.header,
-		generatedContent,
+		generatedContent + "\n",
 	}, "\n\n")), 0644)
 }
 
