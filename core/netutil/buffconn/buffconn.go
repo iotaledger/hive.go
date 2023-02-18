@@ -32,8 +32,8 @@ type BufferedConnection struct {
 	closeOnce            sync.Once
 	maxMessageSize       int
 
-	bytesRead    atomic.Uint64
-	bytesWritten atomic.Uint64
+	bytesRead    *atomic.Uint64
+	bytesWritten *atomic.Uint64
 }
 
 // NewBufferedConnection creates a new BufferedConnection from a net.Conn.
@@ -43,6 +43,8 @@ func NewBufferedConnection(conn net.Conn, maxMessageSize int) *BufferedConnectio
 		conn:                 conn,
 		incomingHeaderBuffer: make([]byte, headerSize),
 		maxMessageSize:       maxMessageSize,
+		bytesRead:            new(atomic.Uint64),
+		bytesWritten:         new(atomic.Uint64),
 	}
 }
 
