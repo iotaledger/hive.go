@@ -37,7 +37,7 @@ type LeakDetectionWrapperImpl struct {
 	*CachedObjectImpl
 
 	internalID       int64
-	released         *atomic.Bool
+	released         atomic.Bool
 	retainTime       time.Time
 	retainCallStack  *reflect.CallStack
 	releaseCallStack *reflect.CallStack
@@ -77,15 +77,12 @@ func (wrappedCachedObject *LeakDetectionWrapperImpl) RTransaction(callback func(
 	return wrappedCachedObject
 }
 
-var (
-	internalIDCounter = new(atomic.Int64)
-)
+var internalIDCounter atomic.Int64
 
 func newLeakDetectionWrapperImpl(cachedObject *CachedObjectImpl) LeakDetectionWrapper {
 	return &LeakDetectionWrapperImpl{
 		CachedObjectImpl: cachedObject,
 		internalID:       internalIDCounter.Add(1),
-		released:         new(atomic.Bool),
 	}
 }
 
