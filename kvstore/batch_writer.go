@@ -75,8 +75,8 @@ type BatchedWriter struct {
 	writeWg        sync.WaitGroup
 	startStopMutex syncutils.Mutex
 	autoStartOnce  sync.Once
-	running        *atomic.Bool
-	scheduledCount *atomic.Int32
+	running        atomic.Bool
+	scheduledCount atomic.Int32
 	batchQueue     chan BatchWriteObject
 	flushChan      chan struct{}
 	opts           *Options
@@ -92,8 +92,6 @@ func NewBatchedWriter(store KVStore, opts ...Option) *BatchedWriter {
 		store:          store,
 		writeWg:        sync.WaitGroup{},
 		startStopMutex: syncutils.Mutex{},
-		running:        new(atomic.Bool),
-		scheduledCount: new(atomic.Int32),
 		batchQueue:     make(chan BatchWriteObject, options.queueSize),
 		flushChan:      make(chan struct{}, 1), // must be buffered with size 1 since no receiver is actively waiting.
 		opts:           options,
@@ -171,7 +169,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 		if err != nil {
 			panic(err)
 		}
-		batchCollector := newBatchCollector(batchedMutation, bw.scheduledCount, bw.opts.batchSize)
+		batchCollector := newBatchCollector(batchedMutation, &bw.scheduledCount, bw.opts.batchSize)
 		shouldFlush := false
 
 		collectValues := func() {
@@ -232,7 +230,7 @@ func (bw *BatchedWriter) runBatchWriter() {
 						if err != nil {
 							panic(err)
 						}
-						batchCollector = newBatchCollector(batchedMutation, bw.scheduledCount, bw.opts.batchSize)
+						batchCollector = newBatchCollector(batchedMutation, &bw.scheduledCount, bw.opts.batchSize)
 					}
 
 				// no elements left
