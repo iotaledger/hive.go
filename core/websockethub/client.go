@@ -84,7 +84,7 @@ type Client struct {
 	shutdownWaitGroup sync.WaitGroup
 
 	// indicates that the client was shut down
-	shutdownFlag atomic.Bool
+	shutdownFlag *atomic.Bool
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	readLimit int64
@@ -107,6 +107,7 @@ func NewClient(hub *Hub, conn *websocket.Conn, onConnect func(client *Client), o
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
 		onDisconnect:   onDisconnect,
+		shutdownFlag:   new(atomic.Bool),
 		readLimit:      hub.clientReadLimit,
 	}
 }
