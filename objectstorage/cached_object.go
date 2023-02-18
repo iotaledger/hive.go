@@ -29,12 +29,12 @@ type CachedObjectImpl struct {
 	key                 []byte
 	objectStorage       *ObjectStorage
 	value               StorableObject
-	consumers           atomic.Int32
-	published           atomic.Bool
-	evicted             atomic.Bool
-	batchWriteScheduled atomic.Bool
-	scheduledTask       atomic.Pointer[timed.ScheduledTask]
-	blindDelete         atomic.Bool
+	consumers           *atomic.Int32
+	published           *atomic.Bool
+	evicted             *atomic.Bool
+	batchWriteScheduled *atomic.Bool
+	scheduledTask       *atomic.Pointer[timed.ScheduledTask]
+	blindDelete         *atomic.Bool
 	wg                  sync.WaitGroup
 	valueMutex          syncutils.RWMutex
 	transactionMutex    syncutils.RWMultiMutex
@@ -42,8 +42,14 @@ type CachedObjectImpl struct {
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		objectStorage: database,
-		key:           key,
+		objectStorage:       database,
+		key:                 key,
+		consumers:           new(atomic.Int32),
+		published:           new(atomic.Bool),
+		evicted:             new(atomic.Bool),
+		batchWriteScheduled: new(atomic.Bool),
+		scheduledTask:       new(atomic.Pointer[timed.ScheduledTask]),
+		blindDelete:         new(atomic.Bool),
 	}
 
 	result.wg.Add(1)
@@ -58,8 +64,15 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectI
 // tangle only returns value transactions in its load operations).
 func NewEmptyCachedObject(key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		key: key,
+		key:                 key,
+		consumers:           new(atomic.Int32),
+		published:           new(atomic.Bool),
+		evicted:             new(atomic.Bool),
+		batchWriteScheduled: new(atomic.Bool),
+		scheduledTask:       new(atomic.Pointer[timed.ScheduledTask]),
+		blindDelete:         new(atomic.Bool),
 	}
+	result.published.Store(true)
 
 	return
 }
