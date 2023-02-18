@@ -51,7 +51,7 @@ type Protocol struct {
 	log  *logger.Logger   // logging
 
 	mgr       *manager // the manager handles the actual neighbor selection
-	running   *atomic.Bool
+	running   atomic.Bool
 	closeOnce sync.Once
 }
 
@@ -73,7 +73,6 @@ func New(local *peer.Local, disc DiscoverProtocol, opts ...Option) *Protocol {
 		loc:      local,
 		disc:     disc,
 		log:      args.log,
-		running:  new(atomic.Bool),
 	}
 	p.mgr = newManager(p, disc.GetVerifiedPeers, args.log.Named("mgr"), args)
 
