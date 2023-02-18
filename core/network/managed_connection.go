@@ -3,9 +3,8 @@ package network
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
-
-	"go.uber.org/atomic"
 )
 
 // ManagedConnection provides a wrapper for a net.Conn to be used together with events.

@@ -2,17 +2,17 @@ package objectstorage
 
 import (
 	"sync"
-	"unsafe"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 	"github.com/iotaledger/hive.go/runtime/event"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
+
+	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
@@ -23,8 +23,8 @@ type ObjectStorage struct {
 	size               int
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
-	shutdown           *atomic.Bool
-	releaseExecutor    *atomic.UnsafePointer
+	shutdown           atomic.Bool
+	releaseExecutor    atomic.Pointer[timed.Executor]
 	partitionsManager  *PartitionsManager
 
 	Events Events
@@ -34,19 +34,17 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
-	storageOptions := newOptions(store, objectFactory, optionalOptions)
-
-	return &ObjectStorage{
+	o := &ObjectStorage{
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
-		options:           storageOptions,
-		shutdown:          atomic.NewBool(false),
-		releaseExecutor:   atomic.NewUnsafePointer(unsafe.Pointer(timed.NewExecutor(storageOptions.releaseExecutorWorkerCount))),
-
+		options:           newOptions(store, objectFactory, optionalOptions),
 		Events: Events{
 			ObjectEvicted: event.New2[[]byte, StorableObject](),
 		},
 	}
+	o.releaseExecutor.Store(timed.NewExecutor(o.options.releaseExecutorWorkerCount))
+
+	return o
 }
 
 func (objectStorage *ObjectStorage) Put(object StorableObject) CachedObject {
@@ -1077,7 +1075,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 	// cancel all pending release tasks (we flush manually) and create a new executor if we didn't shut down
 	objectStorage.ReleaseExecutor().Shutdown(timed.CancelPendingElements, timed.DontWaitForShutdown)
 	if !shutdown {
-		objectStorage.releaseExecutor.Store(unsafe.Pointer(timed.NewExecutor(objectStorage.options.releaseExecutorWorkerCount)))
+		objectStorage.releaseExecutor.Store(timed.NewExecutor(objectStorage.options.releaseExecutorWorkerCount))
 	}
 
 	// create a list of objects that shall be flushed (so the BatchWriter can access the cachedObjects mutex and delete)
@@ -1096,7 +1094,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
-		if consumers := cachedObjects[j].consumers.Dec(); consumers == 0 {
+		if consumers := cachedObjects[j].consumers.Add(-1); consumers == 0 {
 			cachedObjects[j].evict()
 		}
 	}

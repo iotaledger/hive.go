@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/iotaledger/hive.go/core/backoff"
+	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/core/logger"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/core/backoff"
-	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
 )
 
 const (
@@ -50,7 +51,7 @@ type Protocol struct {
 	log  *logger.Logger   // logging
 
 	mgr       *manager // the manager handles the actual neighbor selection
-	running   *atomic.Bool
+	running   atomic.Bool
 	closeOnce sync.Once
 }
 
@@ -72,7 +73,6 @@ func New(local *peer.Local, disc DiscoverProtocol, opts ...Option) *Protocol {
 		loc:      local,
 		disc:     disc,
 		log:      args.log,
-		running:  atomic.NewBool(false),
 	}
 	p.mgr = newManager(p, disc.GetVerifiedPeers, args.log.Named("mgr"), args)
 

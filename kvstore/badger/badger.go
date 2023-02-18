@@ -2,15 +2,16 @@ package badger
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
+
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
-	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 // badgerStore implements the KVStore interface around a BadgerDB instance.
@@ -24,7 +25,7 @@ type badgerStore struct {
 func New(db *badger.DB) kvstore.KVStore {
 	return &badgerStore{
 		instance: db,
-		closed:   atomic.NewBool(false),
+		closed:   new(atomic.Bool),
 	}
 }
 

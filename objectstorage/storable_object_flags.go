@@ -1,7 +1,7 @@
 package objectstorage
 
 import (
-	"go.uber.org/atomic"
+	"sync/atomic"
 )
 
 type StorableObjectFlags struct {

@@ -1,7 +1,7 @@
 package kvstore
 
 import (
-	"go.uber.org/atomic"
+	"sync/atomic"
 )
 
 // BatchCollector is used to collect objects that should be written.
@@ -34,7 +34,7 @@ func (br *BatchCollector) Add(objectToPersist BatchWriteObject) (batchSizeReache
 	}
 
 	objectToPersist.ResetBatchWriteScheduled()
-	br.scheduledCount.Dec()
+	br.scheduledCount.Add(-1)
 
 	objectToPersist.BatchWrite(br.batchedMuts)
 	br.writtenValues[br.writtenValuesCounter] = objectToPersist

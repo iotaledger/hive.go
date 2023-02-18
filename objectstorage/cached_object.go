@@ -1,16 +1,14 @@
 package objectstorage
 
 import (
-	"math"
 	"sync"
-	"unsafe"
-
-	"go.uber.org/atomic"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
+
+	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 )
 
 type CachedObject interface {
@@ -31,12 +29,12 @@ type CachedObjectImpl struct {
 	key                 []byte
 	objectStorage       *ObjectStorage
 	value               StorableObject
-	consumers           *atomic.Int32
-	published           *atomic.Bool
-	evicted             *atomic.Bool
-	batchWriteScheduled *atomic.Bool
-	scheduledTask       *atomic.UnsafePointer
-	blindDelete         *atomic.Bool
+	consumers           atomic.Int32
+	published           atomic.Bool
+	evicted             atomic.Bool
+	batchWriteScheduled atomic.Bool
+	scheduledTask       atomic.Pointer[timed.ScheduledTask]
+	blindDelete         atomic.Bool
 	wg                  sync.WaitGroup
 	valueMutex          syncutils.RWMutex
 	transactionMutex    syncutils.RWMultiMutex
@@ -44,14 +42,8 @@ type CachedObjectImpl struct {
 
 func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		objectStorage:       database,
-		key:                 key,
-		consumers:           atomic.NewInt32(0),
-		published:           atomic.NewBool(false),
-		evicted:             atomic.NewBool(false),
-		batchWriteScheduled: atomic.NewBool(false),
-		scheduledTask:       atomic.NewUnsafePointer(nil),
-		blindDelete:         atomic.NewBool(false),
+		objectStorage: database,
+		key:           key,
 	}
 
 	result.wg.Add(1)
@@ -66,14 +58,9 @@ func newCachedObject(database *ObjectStorage, key []byte) (result *CachedObjectI
 // tangle only returns value transactions in its load operations).
 func NewEmptyCachedObject(key []byte) (result *CachedObjectImpl) {
 	result = &CachedObjectImpl{
-		key:                 key,
-		consumers:           atomic.NewInt32(math.MinInt32),
-		published:           atomic.NewBool(true),
-		evicted:             atomic.NewBool(false),
-		batchWriteScheduled: atomic.NewBool(false),
-		scheduledTask:       atomic.NewUnsafePointer(nil),
-		blindDelete:         atomic.NewBool(false),
+		key: key,
 	}
+	result.published.Store(true)
 
 	return
 }
@@ -93,7 +80,7 @@ func (cachedObject *CachedObjectImpl) Get() (result StorableObject) {
 
 // Releases the object, to be picked up by the persistence layer (as soon as all consumers are done).
 func (cachedObject *CachedObjectImpl) Release(force ...bool) {
-	consumers := cachedObject.consumers.Dec()
+	consumers := cachedObject.consumers.Add(-1)
 	if consumers > 1 {
 		return
 	}
@@ -112,11 +99,9 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 	}
 
 	cachedObject.scheduledTask.Store(
-		unsafe.Pointer(
-			cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
-				cachedObject.delayedRelease,
-				cachedObject.objectStorage.options.cacheTime,
-			),
+		cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
+			cachedObject.delayedRelease,
+			cachedObject.objectStorage.options.cacheTime,
 		),
 	)
 }
@@ -151,7 +136,7 @@ func (cachedObject *CachedObjectImpl) Consume(consumer func(StorableObject), for
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) Retain() CachedObject {
-	if cachedObject.consumers.Inc() == 1 {
+	if cachedObject.consumers.Add(1) == 1 {
 		panic("called Retain() on an already released CachedObject")
 	}
 
@@ -222,7 +207,7 @@ func (cachedObject *CachedObjectImpl) RTransaction(callback func(object Storable
 
 // Registers a new consumer for this cached object.
 func (cachedObject *CachedObjectImpl) retain() CachedObject {
-	cachedObject.consumers.Inc()
+	cachedObject.consumers.Add(1)
 
 	cachedObject.cancelScheduledRelease()
 
