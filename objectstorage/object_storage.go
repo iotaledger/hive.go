@@ -23,8 +23,8 @@ type ObjectStorage struct {
 	size               int
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
-	shutdown           *atomic.Bool
-	releaseExecutor    *atomic.Pointer[timed.Executor]
+	shutdown           atomic.Bool
+	releaseExecutor    atomic.Pointer[timed.Executor]
 	partitionsManager  *PartitionsManager
 
 	Events Events
@@ -38,8 +38,6 @@ func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOpt
 		cachedObjects:     make(map[string]interface{}),
 		partitionsManager: NewPartitionsManager(),
 		options:           newOptions(store, objectFactory, optionalOptions),
-		shutdown:          new(atomic.Bool),
-		releaseExecutor:   new(atomic.Pointer[timed.Executor]),
 		Events: Events{
 			ObjectEvicted: event.New2[[]byte, StorableObject](),
 		},
