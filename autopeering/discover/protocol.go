@@ -44,7 +44,7 @@ type Protocol struct {
 	log     *logger.Logger // protocol logger
 
 	mgr       *manager // the manager handles the actual peer discovery and re-verification
-	running   atomic.Bool
+	running   *atomic.Bool
 	closeOnce sync.Once
 }
 
@@ -63,6 +63,7 @@ func New(local *peer.Local, version uint32, networkID uint32, opts ...Option) *P
 		version: version,
 		netID:   networkID,
 		log:     args.log,
+		running: new(atomic.Bool),
 	}
 
 	p.mgr = newManager(p, args.masterPeers, args.log.Named("mgr"))
