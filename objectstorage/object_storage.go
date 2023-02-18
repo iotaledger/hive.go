@@ -23,8 +23,8 @@ type ObjectStorage struct {
 	size               int
 	flushMutex         syncutils.RWMutex
 	cachedObjectsEmpty sync.WaitGroup
-	shutdown           atomic.Bool
-	releaseExecutor    atomic.Pointer[timed.Executor]
+	shutdown           *atomic.Bool
+	releaseExecutor    *atomic.Pointer[timed.Executor]
 	partitionsManager  *PartitionsManager
 
 	Events Events
@@ -35,13 +35,15 @@ type ConsumerFunc = func(key []byte, cachedObject *CachedObjectImpl) bool
 // New is the constructor for the ObjectStorage.
 func New(store kvstore.KVStore, objectFactory StorableObjectFactory, optionalOptions ...Option) *ObjectStorage {
 	o := &ObjectStorage{
+		cachedObjects:     make(map[string]interface{}),
+		partitionsManager: NewPartitionsManager(),
+		options:           newOptions(store, objectFactory, optionalOptions),
+		shutdown:          new(atomic.Bool),
+		releaseExecutor:   new(atomic.Pointer[timed.Executor]),
 		Events: Events{
 			ObjectEvicted: event.New2[[]byte, StorableObject](),
 		},
 	}
-	o.cachedObjects = make(map[string]interface{})
-	o.partitionsManager = NewPartitionsManager()
-	o.options = newOptions(store, objectFactory, optionalOptions)
 	o.releaseExecutor.Store(timed.NewExecutor(o.options.releaseExecutorWorkerCount))
 
 	return o
@@ -1094,7 +1096,7 @@ func (objectStorage *ObjectStorage) flush(shutdown bool) {
 
 	// force release the collected objects
 	for j := 0; j < i; j++ {
-		if consumers := cachedObjects[j].consumers.Add(1); consumers == 0 {
+		if consumers := cachedObjects[j].consumers.Add(-1); consumers == 0 {
 			cachedObjects[j].evict()
 		}
 	}
