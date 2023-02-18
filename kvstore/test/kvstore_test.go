@@ -784,7 +784,6 @@ func TestBatchedWithDuplicateKeys(t *testing.T) {
 }
 
 func TestBatchedWithLotsOfKeys(t *testing.T) {
-
 	prefix := []byte("testPrefix")
 	for _, dbImplementation := range dbImplementations {
 		store, err := testStore(t, dbImplementation, prefix)
@@ -820,6 +819,8 @@ func TestBatchedWithLotsOfKeys(t *testing.T) {
 
 		// Check that we checked the correct amount of entries
 		require.Equal(t, count, verifyCount, "used db: %s", dbImplementation)
+
+		require.NoError(t, store.Close())
 	}
 }
 
