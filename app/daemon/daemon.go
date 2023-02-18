@@ -81,8 +81,6 @@ func New() *OrderedDaemon {
 	stoppedCtx, stoppedCtxCancel := context.WithCancel(context.Background())
 
 	return &OrderedDaemon{
-		running:                new(atomic.Bool),
-		stopped:                new(atomic.Bool),
 		stoppedCtx:             stoppedCtx,
 		stoppedCtxCancel:       stoppedCtxCancel,
 		workers:                make(map[string]*worker),
@@ -94,8 +92,8 @@ func New() *OrderedDaemon {
 // OrderedDaemon is an orchestrator for background workers.
 // stopOnce ensures that the daemon can only be terminated once.
 type OrderedDaemon struct {
-	running                *atomic.Bool
-	stopped                *atomic.Bool
+	running                atomic.Bool
+	stopped                atomic.Bool
 	stoppedCtx             context.Context
 	stoppedCtxCancel       context.CancelFunc
 	stopOnce               sync.Once
