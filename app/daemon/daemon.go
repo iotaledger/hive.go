@@ -108,7 +108,7 @@ type worker struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	handler       WorkerFunc
-	running       *atomic.Bool
+	running       atomic.Bool
 	shutdownOrder int
 }
 
@@ -223,7 +223,6 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		handler:       handler,
-		running:       new(atomic.Bool),
 		shutdownOrder: shutdownOrder,
 	}
 
