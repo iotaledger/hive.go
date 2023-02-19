@@ -9,7 +9,6 @@ require (
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/stretchr/testify v1.8.1
-	go.uber.org/atomic v1.10.0
 )
 
 require (

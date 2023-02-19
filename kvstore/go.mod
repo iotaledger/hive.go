@@ -13,7 +13,6 @@ require (
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
-	go.uber.org/atomic v1.10.0
 )
 
 require (
