@@ -14,9 +14,13 @@ type threadSafeSet[T comparable] struct {
 
 // newThreadSafeSet returns a new thread safe Set.
 func newThreadSafeSet[T comparable]() *threadSafeSet[T] {
-	return &threadSafeSet[T]{
-		set: newSimpleSet[T](),
-	}
+	s := new(threadSafeSet[T])
+	s.initialize()
+	return s
+}
+
+func (s *threadSafeSet[T]) initialize() {
+	s.set = newSimpleSet[T]()
 }
 
 // Add adds a new element to the Set and returns true if the element was not present in the set before.
@@ -83,6 +87,8 @@ func (s *threadSafeSet[T]) Encode() ([]byte, error) {
 func (s *threadSafeSet[T]) Decode(b []byte) (bytesRead int, err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	s.initialize()
 
 	return s.set.Decode(b)
 }

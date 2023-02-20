@@ -17,9 +17,13 @@ type simpleSet[T comparable] struct {
 
 // newSimpleSet returns a new non-thread safe Set.
 func newSimpleSet[T comparable]() *simpleSet[T] {
-	return &simpleSet[T]{
-		elements: make(map[T]types.Empty),
-	}
+	s := new(simpleSet[T])
+	s.initialize()
+	return s
+}
+
+func (s *simpleSet[T]) initialize() {
+	s.elements = make(map[T]types.Empty)
 }
 
 // Add adds a new element to the Set and returns true if the element was not present in the set before.
@@ -92,6 +96,8 @@ func (s *simpleSet[T]) Encode() ([]byte, error) {
 
 // Decode deserializes bytes into a valid object.
 func (s *simpleSet[T]) Decode(b []byte) (bytesRead int, err error) {
+	s.initialize()
+
 	var elemCount uint32
 	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &elemCount)
 	if err != nil {

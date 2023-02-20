@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 func TestSimpleSet_Add(t *testing.T) {
@@ -64,6 +67,21 @@ func TestSimpleSet_Size(t *testing.T) {
 	assert.Equal(t, 0, set.Size(), "wrong size")
 	set = initSimpleSet(100000, 0)
 	assert.Equal(t, 100000, set.Size(), "wrong size")
+}
+
+func TestSimpleSet_Encoding(t *testing.T) {
+	serix.DefaultAPI.RegisterTypeSettings("", serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte))
+
+	set := initSimpleSet(3, 0)
+	bytes, err := set.Encode()
+	require.NoError(t, err)
+
+	decoded := new(simpleSet[string])
+	consumed, err := decoded.Decode(bytes)
+	require.NoError(t, err)
+	require.Equal(t, len(bytes), consumed)
+
+	require.Equal(t, set, decoded)
 }
 
 func initSimpleSet(count int, start int) Set[string] {
