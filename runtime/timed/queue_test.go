@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/iotaledger/hive.go/core/generalheap"
+	"github.com/iotaledger/hive.go/ds/generalheap"
 )
 
 func TestQueueElement_MemLeak(t *testing.T) {
