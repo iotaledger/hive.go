@@ -7,10 +7,10 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
-	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5
-	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230216132042-9c5c69b6d86c
+	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230220131352-f738318ff989
+	github.com/iotaledger/hive.go/ds v0.0.0-20230220131054-9fc1d8a45f04
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230220131221-b56c7a9b2fc8
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230220125853-8ead6385152c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 )
@@ -27,11 +27,13 @@ require (
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/getsentry/sentry-go v0.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c // indirect
+	github.com/iancoleman/orderedmap v0.2.0 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230220125853-8ead6385152c // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -46,8 +48,9 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
-	golang.org/x/net v0.0.0-20211008194852-3b03d305991f // indirect
+	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

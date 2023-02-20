@@ -1,7 +1,7 @@
 package debug
 
 import (
-	"github.com/iotaledger/hive.go/core/bitmask"
+	"github.com/iotaledger/hive.go/ds/bitmask"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
