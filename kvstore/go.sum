@@ -217,8 +217,8 @@ github.com/hydrogen18/memlistener v0.0.0-20200120041712-dcc25e7acd91/go.mod h1:q
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/imkira/go-interpol v1.1.0/go.mod h1:z0h2/2T3XF8kyEPpRgJ3kmNv+C43p+I/CoI+jC3w2iA=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
-github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195 h1:W5v+7oSXtSq2OSadYPyaAbPjTJW10T2bOgMDGZcyVOc=
-github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195/go.mod h1:AoAM7v6lyWRQzrmmegOEq759o1PgvvKvn2bEe1A1mc8=
+github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7 h1:dTrD7X2PTNgli6EbS4tV9qu3QAm/kBU3XaYZV2xdzys=
+github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7/go.mod h1:ZRdPu684P0fQ1z8sXz4dj9H5LWHhz4a9oCtvjunkSrw=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea h1:9HTkpKWhvtQitzxf7ezy7Z5yIQy0JTBxMSCUUQGefks=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
 github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5 h1:bxuVqe4KMBvyZyKxWnWj1RjNxuvNHKpDGHs8/GHthAk=

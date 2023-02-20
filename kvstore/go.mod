@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/cockroachdb/pebble v0.0.0-20221111210721-1bda21f14fc2
 	github.com/dgraph-io/badger/v2 v2.2007.4
-	github.com/iotaledger/grocksdb v1.7.5-0.20221128103803-fcdb79760195
+	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5
 	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a
