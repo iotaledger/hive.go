@@ -25,8 +25,8 @@ func (s *threadSafeSet[T]) initialize() {
 
 // Add adds a new element to the Set and returns true if the element was not present in the set before.
 func (s *threadSafeSet[T]) Add(element T) bool {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	return s.set.Add(element)
 }
