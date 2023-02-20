@@ -8,9 +8,16 @@ const (
 	ConfigurationKeyDisableStacktrace = "logger.disableStacktrace"
 	ConfigurationKeyStacktraceLevel   = "logger.stacktraceLevel"
 	ConfigurationKeyEncoding          = "logger.encoding"
+	ConfigurationKeyEncodingConfig    = "logger.encodingConfig"
 	ConfigurationKeyOutputPaths       = "logger.outputPaths"
 	ConfigurationKeyDisableEvents     = "logger.disableEvents"
 )
+
+type EncodingConfig struct {
+	// EncodeTime sets the logger's timestamp encoding. Valid values are "nanos", "millis", "iso8601", "rfc3339" and "rfc3339nano".
+	// The default is "rfc3339".
+	EncodeTime string `name:"timeEncoder" default:"rfc3339" usage:"sets the logger's timestamp encoding. (options: \"nanos\", \"millis\", \"iso8601\", \"rfc3339\" and \"rfc3339nano\")" json:"timeEncoder"`
+}
 
 // Config holds the settings to configure a root logger instance.
 type Config struct {
@@ -28,6 +35,8 @@ type Config struct {
 	// Encoding sets the logger's encoding. Valid values are "json" and "console".
 	// The default is "console".
 	Encoding string `default:"console" usage:"the logger's encoding (options: \"json\", \"console\")" json:"encoding"`
+	// EncodingConfig sets the logger's encoding config.
+	EncodingConfig EncodingConfig `default:"console" usage:"the logger's encoding config" json:"encodingConfig"`
 	// OutputPaths is a list of URLs, file paths or stdout/stderr to write logging output to.
 	// The default is ["stdout"].
 	OutputPaths []string `default:"stdout" usage:"a list of URLs, file paths or stdout/stderr to write logging output to" json:"outputPaths"`
@@ -42,8 +51,11 @@ var DefaultCfg = Config{
 	DisableStacktrace: false,
 	StacktraceLevel:   "panic",
 	Encoding:          "console",
-	OutputPaths:       []string{"stdout"},
-	DisableEvents:     true,
+	EncodingConfig: EncodingConfig{
+		EncodeTime: "rfc3339",
+	},
+	OutputPaths:   []string{"stdout"},
+	DisableEvents: true,
 }
 
 var defaultEncoderConfig = zapcore.EncoderConfig{

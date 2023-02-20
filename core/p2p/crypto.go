@@ -4,9 +4,8 @@ import (
 	"crypto/ed25519"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/core/crypto"
 )

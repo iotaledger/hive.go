@@ -3,12 +3,13 @@ package bytesfilter
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	dsTypes "github.com/iotaledger/hive.go/ds/types"
 )
 
 type BytesFilter struct {
-	knownIdentifiers *shrinkingmap.ShrinkingMap[types.Identifier, types.Empty]
+	knownIdentifiers *shrinkingmap.ShrinkingMap[types.Identifier, dsTypes.Empty]
 	identifiers      []types.Identifier
 	size             int
 	mutex            sync.RWMutex
@@ -16,7 +17,7 @@ type BytesFilter struct {
 
 func New(size int) *BytesFilter {
 	return &BytesFilter{
-		knownIdentifiers: shrinkingmap.New[types.Identifier, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
+		knownIdentifiers: shrinkingmap.New[types.Identifier, dsTypes.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
 		identifiers:      make([]types.Identifier, 0, size),
 		size:             size,
 	}
@@ -68,7 +69,7 @@ func (b *BytesFilter) addIdentifier(identifier types.Identifier) (added bool) {
 		b.identifiers = append(b.identifiers, identifier)
 	}
 
-	b.knownIdentifiers.Set(identifier, types.Void)
+	b.knownIdentifiers.Set(identifier, dsTypes.Void)
 
 	return true
 }

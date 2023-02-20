@@ -9,8 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/cerrors"
-	"github.com/iotaledger/hive.go/core/serix"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // Mutable is the base type for simple mutable models. It should be embedded in a wrapper type.
@@ -89,7 +88,7 @@ func (m *Mutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(b
 		return consumedBytes, errors.Errorf("could not deserialize model: %w", err)
 	}
 	if len(bytes) != consumedBytes {
-		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), ErrParseBytesFailed)
 	}
 
 	m.M = *(OuterModelPtrType)(outerInstance).InnerModel()

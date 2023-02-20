@@ -6,11 +6,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/iotaledger/hive.go/core/typeutils"
 )
 
 // The Logger uses the sugared logger.
@@ -42,8 +41,8 @@ var (
 	level = zap.NewAtomicLevel()
 
 	globalLogger            *Logger
-	globalLoggerLock        sync.Mutex           // prevents multiple initializations at the same time
-	globalLoggerInitialized typeutils.AtomicBool // true, if the global logger was successfully initialized
+	globalLoggerLock        sync.Mutex  // prevents multiple initializations at the same time
+	globalLoggerInitialized atomic.Bool // true, if the global logger was successfully initialized
 )
 
 // SetGlobalLogger sets the provided logger as the global logger.
@@ -51,13 +50,28 @@ func SetGlobalLogger(root *Logger) error {
 	globalLoggerLock.Lock()
 	defer globalLoggerLock.Unlock()
 
-	if globalLoggerInitialized.IsSet() {
+	if globalLoggerInitialized.Load() {
 		return ErrGlobalLoggerAlreadyInitialized
 	}
 	globalLogger = root
-	globalLoggerInitialized.Set()
+	globalLoggerInitialized.Store(true)
 
 	return nil
+}
+
+func getEncoderConfig(cfg Config) (zapcore.EncoderConfig, error) {
+	// create a deep copy of all basic types (the func pointers are also fine)
+	encoderConfig := defaultEncoderConfig
+
+	if cfg.EncodingConfig.EncodeTime != "" {
+		var timeEncoder zapcore.TimeEncoder
+		if err := timeEncoder.UnmarshalText([]byte(cfg.EncodingConfig.EncodeTime)); err != nil {
+			return zapcore.EncoderConfig{}, err
+		}
+		encoderConfig.EncodeTime = timeEncoder
+	}
+
+	return encoderConfig, nil
 }
 
 // NewRootLogger creates a new root logger from the provided configuration.
@@ -70,7 +84,13 @@ func NewRootLogger(cfg Config) (*Logger, error) {
 	if err := level.UnmarshalText([]byte(cfg.Level)); err != nil {
 		return nil, err
 	}
-	enc, err := newEncoder(cfg.Encoding, defaultEncoderConfig)
+
+	encoderConfig, err := getEncoderConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load encoder config: %w", err)
+	}
+
+	enc, err := newEncoder(cfg.Encoding, encoderConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +132,7 @@ func SetLevel(l Level) {
 
 // NewLogger returns a new named child of the global root logger.
 func NewLogger(name string) *Logger {
-	if !globalLoggerInitialized.IsSet() {
+	if !globalLoggerInitialized.Load() {
 		panic("global logger not initialized")
 	}
 

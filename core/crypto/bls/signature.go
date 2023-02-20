@@ -4,8 +4,8 @@ import (
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/byteutils"
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // region Signature ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +44,7 @@ func SignatureFromBase58EncodedString(base58EncodedString string) (signature Sig
 	return
 }
 
-// SignatureFromMarshalUtil unmarshals a Signature using a MarshalUtil (for easier unmarshaling).
+// SignatureFromMarshalUtil unmarshals a Signature using a MarshalUtil (for easier unmarshalling).
 func SignatureFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signature Signature, err error) {
 	signatureBytes, err := marshalUtil.ReadBytes(SignatureSize)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s Signature) Base58() string {
 	return base58.Encode(s.Bytes())
 }
 
-// String returns a human readable version of the signature.
+// String returns a human-readable version of the signature.
 func (s Signature) String() string {
 	return s.Base58()
 }
@@ -122,7 +122,7 @@ func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (
 	return
 }
 
-// SignatureWithPublicKeyFromMarshalUtil unmarshals a SignatureWithPublicKey using a MarshalUtil (for easier unmarshaling).
+// SignatureWithPublicKeyFromMarshalUtil unmarshals a SignatureWithPublicKey using a MarshalUtil (for easier unmarshalling).
 func SignatureWithPublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	if signatureWithPublicKey.PublicKey, err = PublicKeyFromMarshalUtil(marshalUtil); err != nil {
 		err = xerrors.Errorf("failed to parse PublicKey from MarshalUtil: %w", err)

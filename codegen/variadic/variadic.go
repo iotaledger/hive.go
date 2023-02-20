@@ -5,10 +5,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/iotaledger/hive.go/core/generics/lo"
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/codegen"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // Variadic is a template that translates code into a set of variadic implementations with generic type parameters.

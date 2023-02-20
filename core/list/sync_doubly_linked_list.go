@@ -1,7 +1,7 @@
 package list
 
 import (
-	"github.com/iotaledger/hive.go/core/syncutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 func NewSyncDoublyLinkedList() *SyncDoublyLinkedList {

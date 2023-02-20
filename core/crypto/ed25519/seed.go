@@ -2,13 +2,12 @@ package ed25519
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/binary"
 
 	"github.com/mr-tron/base58"
 	"github.com/oasisprotocol/ed25519"
 	"golang.org/x/crypto/blake2b"
-
-	"github.com/iotaledger/hive.go/core/byteutils"
 )
 
 // Seed is a generator for a deterministic sequence of KeyPairs.
@@ -67,7 +66,7 @@ func (seed *Seed) subSeed(n uint64) (subSeed []byte) {
 	binary.LittleEndian.PutUint64(indexBytes, n)
 	hashOfIndexBytes := blake2b.Sum256(indexBytes)
 
-	byteutils.XORBytes(subSeed, seed.seedBytes, hashOfIndexBytes[:])
+	subtle.XORBytes(subSeed, seed.seedBytes, hashOfIndexBytes[:])
 
 	return
 }

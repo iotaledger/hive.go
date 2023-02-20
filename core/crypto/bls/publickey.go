@@ -6,7 +6,7 @@ import (
 	"go.dedis.ch/kyber/v3/sign/bdn"
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // PublicKey is the type of BLS public keys.
@@ -43,7 +43,7 @@ func PublicKeyFromBase58EncodedString(base58String string) (publicKey PublicKey,
 	return
 }
 
-// PublicKeyFromMarshalUtil unmarshals a PublicKey using a MarshalUtil (for easier unmarshaling).
+// PublicKeyFromMarshalUtil unmarshals a PublicKey using a MarshalUtil (for easier unmarshalling).
 func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey PublicKey, err error) {
 	bytes, err := marshalUtil.ReadBytes(PublicKeySize)
 	if err != nil {
@@ -81,7 +81,7 @@ func (p PublicKey) Base58() string {
 	return base58.Encode(p.Bytes())
 }
 
-// String returns a human readable version of the PublicKey (base58 encoded).
+// String returns a human-readable version of the PublicKey (base58 encoded).
 func (p PublicKey) String() string {
 	return base58.Encode(p.Bytes())
 }

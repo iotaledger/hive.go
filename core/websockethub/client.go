@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 
 	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/timeutil"
+	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 
 const (
@@ -83,7 +83,7 @@ type Client struct {
 	shutdownWaitGroup sync.WaitGroup
 
 	// indicates that the client was shut down
-	shutdownFlag *atomic.Bool
+	shutdownFlag atomic.Bool
 
 	// indicates the max amount of bytes that will be read from a client, i.e. the max message size
 	readLimit int64
@@ -92,7 +92,7 @@ type Client struct {
 func NewClient(hub *Hub, conn *websocket.Conn, onConnect func(client *Client), onDisconnect func(client *Client)) *Client {
 	ctx, cancel := context.WithCancel(hub.ctx)
 
-	clientID := ClientID(hub.lastClientID.Inc())
+	clientID := ClientID(hub.lastClientID.Add(1))
 
 	return &Client{
 		WrappedLogger:  logger.NewWrappedLogger(hub.logger.Named(fmt.Sprintf("client %d", clientID))),
@@ -106,7 +106,6 @@ func NewClient(hub *Hub, conn *websocket.Conn, onConnect func(client *Client), o
 		sendChanClosed: make(chan struct{}),
 		onConnect:      onConnect,
 		onDisconnect:   onDisconnect,
-		shutdownFlag:   atomic.NewBool(false),
 		readLimit:      hub.clientReadLimit,
 	}
 }
