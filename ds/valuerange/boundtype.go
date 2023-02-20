@@ -2,11 +2,9 @@ package valuerange
 
 import (
 	"fmt"
-
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/cerrors"
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // BoundType indicates whether an EndPoint of some ValueRange is contained in the ValueRange itself ("closed") or not
@@ -41,17 +39,17 @@ func BoundTypeFromBytes(boundTypeBytes []byte) (boundType BoundType, consumedByt
 	return
 }
 
-// BoundTypeFromMarshalUtil unmarshals a BoundType using a MarshalUtil (for easier unmarshaling).
+// BoundTypeFromMarshalUtil unmarshals a BoundType using a MarshalUtil (for easier unmarshalling).
 func BoundTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (boundType BoundType, err error) {
 	boundTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = xerrors.Errorf("failed to read BoundType (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read BoundType (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
 
 	if boundType = BoundType(boundTypeByte); boundType > BoundTypeClosed {
-		err = xerrors.Errorf("unsupported BoundType (%X): %w", boundType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("unsupported BoundType (%X): %w", boundType, ErrParseBytesFailed)
 
 		return
 	}
@@ -64,7 +62,7 @@ func (b BoundType) Bytes() []byte {
 	return []byte{byte(b)}
 }
 
-// String returns a human readable version of the BoundType.
+// String returns a human-readable version of the BoundType.
 func (b BoundType) String() string {
 	if int(b) >= len(BoundTypeNames) {
 		return fmt.Sprintf("BoundType(%X)", uint8(b))

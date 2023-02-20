@@ -44,7 +44,7 @@ const (
 	ShutdownCommand Command = 0
 )
 
-// CommandNames contains a map from the command to its human readable name.
+// CommandNames contains a map from the command to its human-readable name.
 var CommandNames = map[Command]string{
 	ShutdownCommand:     "Shutdown",
 	IterateCommand:      "Iterate",

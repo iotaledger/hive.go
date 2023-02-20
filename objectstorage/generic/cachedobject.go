@@ -195,7 +195,7 @@ func (c CachedObjects[T]) Release(force ...bool) {
 	}
 }
 
-// String returns a human readable version of the CachedObjects.
+// String returns a human-readable version of the CachedObjects.
 func (c CachedObjects[T]) String() string {
 	structBuilder := stringify.NewStructBuilder("CachedObjects")
 	for i, cachedObject := range c {

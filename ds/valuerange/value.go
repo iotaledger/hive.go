@@ -6,8 +6,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/cerrors"
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // region ValueType ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,17 +65,17 @@ func ValueTypeFromBytes(valueTypeBytes []byte) (valueType ValueType, consumedByt
 	return
 }
 
-// ValueTypeFromMarshalUtil unmarshals a ValueType using a MarshalUtil (for easier unmarshaling).
+// ValueTypeFromMarshalUtil unmarshals a ValueType using a MarshalUtil (for easier unmarshalling).
 func ValueTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueType ValueType, err error) {
 	valueTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = xerrors.Errorf("failed to parse ValueType (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to parse ValueType (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
 
 	if valueType = ValueType(valueTypeByte); valueType > Uint64ValueType {
-		err = xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("unsupported ValueType (%X): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
@@ -89,7 +88,7 @@ func (v ValueType) Bytes() []byte {
 	return []byte{byte(v)}
 }
 
-// String returns a human readable representation of the ValueType.
+// String returns a human-readable representation of the ValueType.
 func (v ValueType) String() string {
 	if int(v) >= len(ValueTypeNames) {
 		return fmt.Sprintf("ValueType(%X)", uint8(v))
@@ -114,7 +113,7 @@ type Value interface {
 	// Bytes returns a marshaled version of the Value.
 	Bytes() []byte
 
-	// String returns a human readable version of the Value.
+	// String returns a human-readable version of the Value.
 	String() string
 }
 
@@ -131,7 +130,7 @@ func ValueFromBytes(valueBytes []byte) (value Value, consumedBytes int, err erro
 	return
 }
 
-// ValueFromMarshalUtil unmarshals a Value using a MarshalUtil (for easier unmarshaling).
+// ValueFromMarshalUtil unmarshals a Value using a MarshalUtil (for easier unmarshalling).
 func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (Value, error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -174,7 +173,7 @@ func ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (Value, error) {
 			return nil, xerrors.Errorf("failed to parse Uint64Value: %w", err)
 		}
 	default:
-		return nil, xerrors.Errorf("unsupported ValueType (%X): %w", valueType, cerrors.ErrParseBytesFailed)
+		return nil, xerrors.Errorf("unsupported ValueType (%X): %w", valueType, ErrParseBytesFailed)
 	}
 
 	return value, nil
@@ -201,7 +200,7 @@ func Int8ValueFromBytes(bytes []byte) (int8Value Int8Value, consumedBytes int, e
 	return
 }
 
-// Int8ValueFromMarshalUtil unmarshals an Int8Value using a MarshalUtil (for easier unmarshaling).
+// Int8ValueFromMarshalUtil unmarshals an Int8Value using a MarshalUtil (for easier unmarshalling).
 func Int8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int8Value Int8Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -210,14 +209,14 @@ func Int8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int8Value I
 		return
 	}
 	if valueType != Int8ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadInt8()
 	if err != nil {
-		err = xerrors.Errorf("failed to read int8 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read int8 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -257,7 +256,7 @@ func (i Int8Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Int8Value) String() string {
 	return "Int8Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
@@ -286,7 +285,7 @@ func Int16ValueFromBytes(bytes []byte) (int16Value Int16Value, consumedBytes int
 	return
 }
 
-// Int16ValueFromMarshalUtil unmarshals an Int16Value using a MarshalUtil (for easier unmarshaling).
+// Int16ValueFromMarshalUtil unmarshals an Int16Value using a MarshalUtil (for easier unmarshalling).
 func Int16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int16Value Int16Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -295,14 +294,14 @@ func Int16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int16Value
 		return
 	}
 	if valueType != Int16ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadInt16()
 	if err != nil {
-		err = xerrors.Errorf("failed to read int16 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read int16 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -342,7 +341,7 @@ func (i Int16Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Int16Value) String() string {
 	return "Int16Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
@@ -371,7 +370,7 @@ func Int32ValueFromBytes(bytes []byte) (int32Value Int32Value, consumedBytes int
 	return
 }
 
-// Int32ValueFromMarshalUtil unmarshals an Int32Value using a MarshalUtil (for easier unmarshaling).
+// Int32ValueFromMarshalUtil unmarshals an Int32Value using a MarshalUtil (for easier unmarshalling).
 func Int32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int32Value Int32Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -380,14 +379,14 @@ func Int32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int32Value
 		return
 	}
 	if valueType != Int32ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadInt32()
 	if err != nil {
-		err = xerrors.Errorf("failed to read int32 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read int32 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -427,7 +426,7 @@ func (i Int32Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Int32Value) String() string {
 	return "Int32Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
@@ -439,7 +438,7 @@ var _ Value = Int32Value(0)
 
 // region Int64Value ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Int64Value is a wrapper for int64 values that makes these values compatible with the Value interface so they can be
+// Int64Value is a wrapper for int64 values that makes these values compatible with the Value interface, so they can be
 // used in ValueRanges.
 type Int64Value int64
 
@@ -456,7 +455,7 @@ func Int64ValueFromBytes(bytes []byte) (int64Value Int64Value, consumedBytes int
 	return
 }
 
-// Int64ValueFromMarshalUtil unmarshals an Int64Value using a MarshalUtil (for easier unmarshaling).
+// Int64ValueFromMarshalUtil unmarshals an Int64Value using a MarshalUtil (for easier unmarshalling).
 func Int64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int64Value Int64Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -465,14 +464,14 @@ func Int64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int64Value
 		return
 	}
 	if valueType != Int64ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadInt64()
 	if err != nil {
-		err = xerrors.Errorf("failed to read int64 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read int64 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -512,7 +511,7 @@ func (i Int64Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Int64Value) String() string {
 	return "Int64Value(" + strconv.FormatInt(int64(i), 10) + ")"
 }
@@ -541,7 +540,7 @@ func Uint8ValueFromBytes(bytes []byte) (uint8Value Uint8Value, consumedBytes int
 	return
 }
 
-// Uint8ValueFromMarshalUtil unmarshals an Uint8Value using a MarshalUtil (for easier unmarshaling).
+// Uint8ValueFromMarshalUtil unmarshals an Uint8Value using a MarshalUtil (for easier unmarshalling).
 func Uint8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint8Value Uint8Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -550,14 +549,14 @@ func Uint8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint8Value
 		return
 	}
 	if valueType != Uint8ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadUint8()
 	if err != nil {
-		err = xerrors.Errorf("failed to read uint8 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read uint8 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -597,7 +596,7 @@ func (i Uint8Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Uint8Value) String() string {
 	return "Uint8Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
@@ -626,7 +625,7 @@ func Uint16ValueFromBytes(bytes []byte) (uint16Value Uint16Value, consumedBytes 
 	return
 }
 
-// Uint16ValueFromMarshalUtil unmarshals an Uint16Value using a MarshalUtil (for easier unmarshaling).
+// Uint16ValueFromMarshalUtil unmarshals an Uint16Value using a MarshalUtil (for easier unmarshalling).
 func Uint16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint16Value Uint16Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -635,14 +634,14 @@ func Uint16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint16Val
 		return
 	}
 	if valueType != Uint16ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadUint16()
 	if err != nil {
-		err = xerrors.Errorf("failed to read uint16 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read uint16 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -682,7 +681,7 @@ func (i Uint16Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Uint16Value) String() string {
 	return "Uint16Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
@@ -711,7 +710,7 @@ func Uint32ValueFromBytes(bytes []byte) (uint32Value Uint32Value, consumedBytes 
 	return
 }
 
-// Uint32ValueFromMarshalUtil unmarshals an Uint32Value using a MarshalUtil (for easier unmarshaling).
+// Uint32ValueFromMarshalUtil unmarshals an Uint32Value using a MarshalUtil (for easier unmarshalling).
 func Uint32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint32Value Uint32Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -720,14 +719,14 @@ func Uint32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint32Val
 		return
 	}
 	if valueType != Uint32ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadUint32()
 	if err != nil {
-		err = xerrors.Errorf("failed to read uint32 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read uint32 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -767,7 +766,7 @@ func (i Uint32Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Uint32Value) String() string {
 	return "Uint32Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }
@@ -796,7 +795,7 @@ func Uint64ValueFromBytes(bytes []byte) (uint64Value Uint64Value, consumedBytes 
 	return
 }
 
-// Uint64ValueFromMarshalUtil unmarshals an Uint64Value using a MarshalUtil (for easier unmarshaling).
+// Uint64ValueFromMarshalUtil unmarshals an Uint64Value using a MarshalUtil (for easier unmarshalling).
 func Uint64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint64Value Uint64Value, err error) {
 	valueType, err := ValueTypeFromMarshalUtil(marshalUtil)
 	if err != nil {
@@ -805,14 +804,14 @@ func Uint64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint64Val
 		return
 	}
 	if valueType != Uint64ValueType {
-		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("invalid ValueType (%s): %w", valueType, ErrParseBytesFailed)
 
 		return
 	}
 
 	value, err := marshalUtil.ReadUint64()
 	if err != nil {
-		err = xerrors.Errorf("failed to read uint64 (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read uint64 (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -852,7 +851,7 @@ func (i Uint64Value) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the Value.
+// String returns a human-readable version of the Value.
 func (i Uint64Value) String() string {
 	return "Uint64Value(" + strconv.FormatUint(uint64(i), 10) + ")"
 }

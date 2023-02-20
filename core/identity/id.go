@@ -12,11 +12,15 @@ import (
 	"github.com/mr-tron/base58"
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/core/crypto/ed25519"
-	"github.com/iotaledger/hive.go/core/marshalutil"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
+)
+
+var (
+	// ErrParseBytesFailed is returned if information can not be parsed from a sequence of bytes.
+	ErrParseBytesFailed = errors.New("failed to parse bytes")
 )
 
 // IDLength defines the length of an ID.
@@ -30,11 +34,11 @@ func NewID(key ed25519.PublicKey) ID {
 	return sha256.Sum256(lo.PanicOnErr(key.Bytes()))
 }
 
-// IDFromMarshalUtil unmarshals an ID using a MarshalUtil (for easier unmarshaling).
+// IDFromMarshalUtil unmarshals an ID using a MarshalUtil (for easier unmarshalling).
 func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) {
 	idBytes, err := marshalUtil.ReadBytes(IDLength)
 	if err != nil {
-		err = xerrors.Errorf("failed to parse ID (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to parse ID (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}

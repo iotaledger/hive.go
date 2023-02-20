@@ -3,7 +3,7 @@ package valuerange
 import (
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 	"github.com/iotaledger/hive.go/stringify"
 )
 
@@ -34,7 +34,7 @@ func EndPointFromBytes(endPointBytes []byte) (endPoint *EndPoint, consumedBytes 
 	return
 }
 
-// EndPointFromMarshalUtil unmarshals an EndPoint using a MarshalUtil (for easier unmarshaling).
+// EndPointFromMarshalUtil unmarshals an EndPoint using a MarshalUtil (for easier unmarshalling).
 func EndPointFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (endPoint *EndPoint, err error) {
 	endPoint = &EndPoint{}
 	if endPoint.value, err = ValueFromMarshalUtil(marshalUtil); err != nil {
@@ -69,7 +69,7 @@ func (e *EndPoint) Bytes() []byte {
 		Bytes()
 }
 
-// String returns a human readable version of the EndPoint.
+// String returns a human-readable version of the EndPoint.
 func (e *EndPoint) String() string {
 	return stringify.Struct("EndPoint",
 		stringify.NewStructField("value", e.value),

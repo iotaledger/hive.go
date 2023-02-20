@@ -7,13 +7,16 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
-
-	"github.com/iotaledger/hive.go/core/cerrors"
 )
 
 func init() {
 
 }
+
+var (
+	// ErrBase58DecodeFailed is returned if a base58 encoded string can not be decoded.
+	ErrBase58DecodeFailed = errors.New("failed to decode base58 encoded string")
+)
 
 // region Identifier ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -36,7 +39,7 @@ func (t *Identifier) FromRandomness() (err error) {
 func (t *Identifier) FromBase58(base58String string) (err error) {
 	decodedBytes, err := base58.Decode(base58String)
 	if err != nil {
-		return errors.Errorf("error while decoding base58 encoded Identifier (%v): %w", err, cerrors.ErrBase58DecodeFailed)
+		return errors.Errorf("error while decoding base58 encoded Identifier (%v): %w", err, ErrBase58DecodeFailed)
 	}
 
 	if _, err = t.Decode(decodedBytes); err != nil {

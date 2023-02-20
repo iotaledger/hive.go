@@ -9,7 +9,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/cerrors"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
@@ -76,7 +75,7 @@ func (i *Immutable[OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes
 		return consumedBytes, errors.Errorf("could not deserialize model: %w", err)
 	}
 	if len(bytes) != consumedBytes {
-		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), cerrors.ErrParseBytesFailed)
+		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), ErrParseBytesFailed)
 	}
 
 	i.M = *(OuterModelPtrType)(outerInstance).InnerModel()

@@ -42,7 +42,7 @@ func TestValueRange_Open(t *testing.T) {
 	assert.False(t, valueRange.Contains(Int64Value(114)), "the ValueRange should not contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestValueRange_Closed(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestValueRange_OpenClosed(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestValueRange_ClosedOpen(t *testing.T) {
 	assert.False(t, valueRange.Contains(Int64Value(114)), "the ValueRange should not contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -213,7 +213,7 @@ func TestValueRange_GreaterThan(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.True(t, valueRange.Contains(Int64Value(115)), "the ValueRange should contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -255,7 +255,7 @@ func TestValueRange_AtLeast(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.True(t, valueRange.Contains(Int64Value(115)), "the ValueRange should contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -297,7 +297,7 @@ func TestValueRange_LessThan(t *testing.T) {
 	assert.False(t, valueRange.Contains(Int64Value(114)), "the ValueRange should not contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -339,7 +339,7 @@ func TestValueRange_AtMost(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.False(t, valueRange.Contains(Int64Value(115)), "the ValueRange should not contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)
@@ -373,7 +373,7 @@ func TestValueRange_All(t *testing.T) {
 	assert.True(t, valueRange.Contains(Int64Value(114)), "the ValueRange should contain Int64Value(114)")
 	assert.True(t, valueRange.Contains(Int64Value(115)), "the ValueRange should contain Int64Value(115)")
 
-	// test marshaling and unmarshaling
+	// test marshaling and unmarshalling
 	valueRangeBytes := valueRange.Bytes()
 	restoredValueRange, consumedBytes, err := FromBytes(valueRangeBytes)
 	require.NoError(t, err)

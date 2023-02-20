@@ -43,7 +43,7 @@ func PrivateKeyFromBase58EncodedString(base58String string) (privateKey PrivateK
 	return
 }
 
-// PrivateKeyFromMarshalUtil unmarshals a PrivateKey using a MarshalUtil (for easier unmarshaling).
+// PrivateKeyFromMarshalUtil unmarshals a PrivateKey using a MarshalUtil (for easier unmarshalling).
 func PrivateKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (privateKey PrivateKey, err error) {
 	bytes, err := marshalUtil.ReadBytes(PrivateKeySize)
 	if err != nil {
@@ -105,7 +105,7 @@ func (p PrivateKey) Base58() string {
 	return base58.Encode(p.Bytes())
 }
 
-// String returns a human readable version of the PrivateKey (base58 encoded).
+// String returns a human-readable version of the PrivateKey (base58 encoded).
 func (p PrivateKey) String() string {
 	return p.Base58()
 }

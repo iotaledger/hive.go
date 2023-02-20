@@ -3,9 +3,8 @@ package valuerange
 import (
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/bitmask"
-	"github.com/iotaledger/hive.go/core/cerrors"
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/ds/bitmask"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // ValueRange defines the boundaries around a contiguous span of Values (i.e. "integers from 1 to 100 inclusive").
@@ -47,11 +46,11 @@ func FromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes in
 	return
 }
 
-// FromMarshalUtil unmarshals a ValueRange using a MarshalUtil (for easier unmarshaling).
+// FromMarshalUtil unmarshals a ValueRange using a MarshalUtil (for easier unmarshalling).
 func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRange, err error) {
 	endPointExistsMaskByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = xerrors.Errorf("failed to read endpoint exists mask (%v): %w", err, cerrors.ErrParseBytesFailed)
+		err = xerrors.Errorf("failed to read endpoint exists mask (%v): %w", err, ErrParseBytesFailed)
 
 		return
 	}
@@ -60,14 +59,14 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRan
 	endPointExistsMask := bitmask.BitMask(endPointExistsMaskByte)
 	if endPointExistsMask.HasBit(0) {
 		if valueRange.lowerEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse lower EndPoint from MarshalUtil: %w", cerrors.ErrParseBytesFailed)
+			err = xerrors.Errorf("failed to parse lower EndPoint from MarshalUtil: %w", ErrParseBytesFailed)
 
 			return
 		}
 	}
 	if endPointExistsMask.HasBit(1) {
 		if valueRange.upperEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse upper EndPoint from MarshalUtil: %w", cerrors.ErrParseBytesFailed)
+			err = xerrors.Errorf("failed to parse upper EndPoint from MarshalUtil: %w", ErrParseBytesFailed)
 
 			return
 		}
@@ -279,7 +278,7 @@ func (v *ValueRange) Bytes() []byte {
 	return marshalUtil.Bytes()
 }
 
-// String returns a human readable version of the ValueRange.
+// String returns a human-readable version of the ValueRange.
 func (v *ValueRange) String() string {
 	var lowerEndPoint string
 	switch {
