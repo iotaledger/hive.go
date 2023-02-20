@@ -1,11 +1,11 @@
 package generic
 
 import (
-	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/timed"
 )
 
 // ObjectStorage is a manual cache which keeps objects as long as consumers are using it.
