@@ -6,9 +6,8 @@ import (
 
 	"github.com/iotaledger/hive.go/core/timed"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/runtime/syncutils"
-
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 type CachedObject interface {

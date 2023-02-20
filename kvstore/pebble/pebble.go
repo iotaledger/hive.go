@@ -8,10 +8,9 @@ import (
 	"github.com/cockroachdb/pebble"
 
 	"github.com/iotaledger/hive.go/ds/types"
-	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
-
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
+	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 )
 
 // pebbleStore implements the KVStore interface around a pebble instance.
