@@ -6,7 +6,7 @@ import (
 	"go.dedis.ch/kyber/v3/sign/bdn"
 	"golang.org/x/xerrors"
 
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // PublicKey is the type of BLS public keys.

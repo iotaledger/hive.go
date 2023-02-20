@@ -3,7 +3,7 @@ package ed25519
 import (
 	"github.com/mr-tron/base58"
 
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 type Signature [SignatureSize]byte

@@ -7,7 +7,7 @@ import (
 	"github.com/oasisprotocol/ed25519"
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/marshalutil"
+	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
 // PublicKey is the type of Ed25519 public keys.
