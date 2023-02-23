@@ -5,10 +5,12 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 type Notifier[T comparable] struct {
-	listeners map[T]*listener
+	listeners *shrinkingmap.ShrinkingMap[T, *listener]
 	mutex     sync.RWMutex
 }
 
@@ -19,7 +21,7 @@ type listener struct {
 
 func New[T comparable]() *Notifier[T] {
 	return &Notifier[T]{
-		listeners: make(map[T]*listener),
+		listeners: shrinkingmap.New[T, *listener](),
 	}
 }
 
@@ -27,7 +29,7 @@ func (v *Notifier[T]) removeListener(value T) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
-	valueListeners, exists := v.listeners[value]
+	valueListeners, exists := v.listeners.Get(value)
 	if !exists {
 		return
 	}
@@ -36,7 +38,7 @@ func (v *Notifier[T]) removeListener(value T) {
 	if valueListeners.count == 0 {
 		// No one is listening anymore, so we can close the channel and clean up
 		close(valueListeners.channel)
-		delete(v.listeners, value)
+		v.listeners.Delete(value)
 	}
 }
 
@@ -45,15 +47,15 @@ func (v *Notifier[T]) Listener(value T) *Listener {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
-	if valueListeners, exists := v.listeners[value]; exists {
-		valueListeners.count++
-		return newListener(valueListeners.channel, func() {
+	if valueListener, exists := v.listeners.Get(value); exists {
+		valueListener.count++
+		return newListener(valueListener.channel, func() {
 			v.removeListener(value)
 		})
 	}
 
 	msgProcessedChan := make(chan struct{})
-	v.listeners[value] = &listener{msgProcessedChan, 1}
+	v.listeners.Set(value, &listener{msgProcessedChan, 1})
 
 	return newListener(msgProcessedChan, func() {
 		v.removeListener(value)
@@ -63,7 +65,7 @@ func (v *Notifier[T]) Listener(value T) *Listener {
 func (v *Notifier[T]) Notify(value T) {
 	v.mutex.RLock()
 	// check if the key was registered
-	if _, exists := v.listeners[value]; !exists {
+	if _, exists := v.listeners.Get(value); !exists {
 		v.mutex.RUnlock()
 
 		return
@@ -74,15 +76,15 @@ func (v *Notifier[T]) Notify(value T) {
 	defer v.mutex.Unlock()
 
 	// check again if the key is still registered
-	l, exists := v.listeners[value]
+	valueListener, exists := v.listeners.Get(value)
 	if !exists {
 		return
 	}
 
 	// trigger the event by closing the channel
-	close(l.channel)
+	close(valueListener.channel)
 
-	delete(v.listeners, value)
+	v.listeners.Delete(value)
 }
 
 var (

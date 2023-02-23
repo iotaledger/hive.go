@@ -59,5 +59,5 @@ func Test(t *testing.T) {
 	require.ErrorIs(t, gListener.Wait(ctx), context.Canceled)
 
 	// There should be no listeners registered
-	require.Empty(t, l.listeners)
+	require.True(t, l.listeners.IsEmpty())
 }
