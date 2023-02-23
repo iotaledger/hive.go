@@ -14,12 +14,16 @@ func New(opts ...Option) *Event {
 }
 
 // Trigger invokes the hooked callbacks.
-func (e *Event) Trigger() {
+func (e *Event) Trigger(preTrigger ...func()) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func()]) bool {
+		for _, p := range preTrigger {
+			p()
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -37,7 +41,7 @@ func (e *Event) Trigger() {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event) LinkTo(target *Event) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func() { e.Trigger() })
 }
 
 // Event1 is an event with 1 generic parameters.
@@ -53,12 +57,16 @@ func New1[T1 any](opts ...Option) *Event1[T1] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event1[T1]) Trigger(arg1 T1) {
+func (e *Event1[T1]) Trigger(arg1 T1, preTrigger ...func(T1)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1)]) bool {
+		for _, p := range preTrigger {
+			p(arg1)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -76,7 +84,7 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event1[T1]) LinkTo(target *Event1[T1]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1) { e.Trigger(arg1) })
 }
 
 // Event2 is an event with 2 generic parameters.
@@ -92,12 +100,16 @@ func New2[T1, T2 any](opts ...Option) *Event2[T1, T2] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
+func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2, preTrigger ...func(T1, T2)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -115,7 +127,7 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event2[T1, T2]) LinkTo(target *Event2[T1, T2]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2) { e.Trigger(arg1, arg2) })
 }
 
 // Event3 is an event with 3 generic parameters.
@@ -131,12 +143,16 @@ func New3[T1, T2, T3 any](opts ...Option) *Event3[T1, T2, T3] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
+func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3, preTrigger ...func(T1, T2, T3)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -154,7 +170,7 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event3[T1, T2, T3]) LinkTo(target *Event3[T1, T2, T3]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3) { e.Trigger(arg1, arg2, arg3) })
 }
 
 // Event4 is an event with 4 generic parameters.
@@ -170,12 +186,16 @@ func New4[T1, T2, T3, T4 any](opts ...Option) *Event4[T1, T2, T3, T4] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
+func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, preTrigger ...func(T1, T2, T3, T4)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -193,7 +213,7 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event4[T1, T2, T3, T4]) LinkTo(target *Event4[T1, T2, T3, T4]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4) { e.Trigger(arg1, arg2, arg3, arg4) })
 }
 
 // Event5 is an event with 5 generic parameters.
@@ -209,12 +229,16 @@ func New5[T1, T2, T3, T4, T5 any](opts ...Option) *Event5[T1, T2, T3, T4, T5] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5) {
+func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, preTrigger ...func(T1, T2, T3, T4, T5)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4, arg5)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -232,7 +256,7 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event5[T1, T2, T3, T4, T5]) LinkTo(target *Event5[T1, T2, T3, T4, T5]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5) { e.Trigger(arg1, arg2, arg3, arg4, arg5) })
 }
 
 // Event6 is an event with 6 generic parameters.
@@ -248,12 +272,16 @@ func New6[T1, T2, T3, T4, T5, T6 any](opts ...Option) *Event6[T1, T2, T3, T4, T5
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6) {
+func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, preTrigger ...func(T1, T2, T3, T4, T5, T6)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4, arg5, arg6)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -271,7 +299,7 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event6[T1, T2, T3, T4, T5, T6]) LinkTo(target *Event6[T1, T2, T3, T4, T5, T6]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6) })
 }
 
 // Event7 is an event with 7 generic parameters.
@@ -287,12 +315,16 @@ func New7[T1, T2, T3, T4, T5, T6, T7 any](opts ...Option) *Event7[T1, T2, T3, T4
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7) {
+func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -310,7 +342,7 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) LinkTo(target *Event7[T1, T2, T3, T4, T5, T6, T7]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7) })
 }
 
 // Event8 is an event with 8 generic parameters.
@@ -326,12 +358,16 @@ func New8[T1, T2, T3, T4, T5, T6, T7, T8 any](opts ...Option) *Event8[T1, T2, T3
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8) {
+func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7, T8)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -349,7 +385,7 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) LinkTo(target *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) })
 }
 
 // Event9 is an event with 9 generic parameters.
@@ -365,12 +401,16 @@ func New9[T1, T2, T3, T4, T5, T6, T7, T8, T9 any](opts ...Option) *Event9[T1, T2
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9) {
+func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7, T8, T9)) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8, T9)]) bool {
+		for _, p := range preTrigger {
+			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -388,5 +428,5 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) LinkTo(target *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) })
 }

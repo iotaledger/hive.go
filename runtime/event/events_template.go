@@ -17,12 +17,16 @@ func New /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{" any]"}}{{end -}}*
 }
 
 // Trigger invokes the hooked callbacks{{if hasParams}} with the given parameters{{end}}.
-func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*/) Trigger( /*{{- typedParams -}}*/ ) {
+func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*/) Trigger( /*{{- typedParams}}{{if hasParams}}{{", "}}{{end -}}*/ preTrigger ...func( /*{{- types -}}*/ )) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func( /*{{- types -}}*/ )]) bool {
+		for _, p := range preTrigger {
+			p( /*{{- params -}}*/ )
+		}
+
 		switch workerPool := hook.WorkerPool(); true {
 		case hook.currentTriggerExceedsMaxTriggerCount():
 			hook.Unhook()
@@ -40,5 +44,5 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*/) LinkTo(target *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end -}}*/) {
-	e.linkTo(target, e.Trigger)
+	e.linkTo(target, func( /*{{- typedParams -}}*/ ) { e.Trigger( /*{{- params -}}*/ ) })
 }
