@@ -65,9 +65,8 @@ func (v *Notifier[T]) Listener(value T) *Listener {
 func (v *Notifier[T]) Notify(value T) {
 	v.mutex.RLock()
 	// check if the key was registered
-	if _, exists := v.listeners.Get(value); !exists {
+	if !v.listeners.Has(value) {
 		v.mutex.RUnlock()
-
 		return
 	}
 	v.mutex.RUnlock()
