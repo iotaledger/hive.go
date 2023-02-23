@@ -8,18 +8,18 @@ import (
 )
 
 type Notifier[T comparable] struct {
-	listeners map[T]*listeners
+	listeners map[T]*listener
 	mutex     sync.RWMutex
 }
 
-type listeners struct {
+type listener struct {
 	channel chan struct{}
 	count   int
 }
 
 func New[T comparable]() *Notifier[T] {
 	return &Notifier[T]{
-		listeners: make(map[T]*listeners),
+		listeners: make(map[T]*listener),
 	}
 }
 
@@ -53,7 +53,7 @@ func (v *Notifier[T]) Listener(value T) *Listener {
 	}
 
 	msgProcessedChan := make(chan struct{})
-	v.listeners[value] = &listeners{msgProcessedChan, 1}
+	v.listeners[value] = &listener{msgProcessedChan, 1}
 
 	return newListener(msgProcessedChan, func() {
 		v.removeListener(value)
