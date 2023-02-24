@@ -35,8 +35,8 @@ func (r *RingBuffer[T]) Add(element T) {
 	}
 }
 
-// Get returns all the elements currently in the buffer, from newest to oldest.
-func (r *RingBuffer[T]) Get() []T {
+// Elements returns all the elements currently in the buffer, from newest to oldest.
+func (r *RingBuffer[T]) Elements() []T {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
