@@ -26,7 +26,9 @@ func TestTrigger_PreTrigger(t *testing.T) {
 	var hookCount atomic.Uint64
 	var preTriggerCount atomic.Uint64
 
-	testEvent := New1[int]()
+	testEvent := New1[int](WithPreTriggerFunc(func(i int) {
+		preTriggerCount.Add(1)
+	}))
 	testEvent.Hook(func(int) {
 		hookCount.Add(1)
 	})
@@ -37,9 +39,7 @@ func TestTrigger_PreTrigger(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		triggerCount.Add(1)
-		testEvent.Trigger(i, func(i int) {
-			preTriggerCount.Add(1)
-		})
+		testEvent.Trigger(i)
 	}
 
 	require.Equal(t, uint64(10), triggerCount.Load())
@@ -53,7 +53,9 @@ func TestTrigger_LinkTo_PreTrigger(t *testing.T) {
 	var hook2Count atomic.Uint64
 	var preTriggerCount atomic.Uint64
 
-	testEvent := New1[int]()
+	testEvent := New1[int](WithPreTriggerFunc(func(i int) {
+		preTriggerCount.Add(1)
+	}))
 	testEvent2 := New1[int]()
 	testEvent.Hook(func(int) {
 		hook1Count.Add(1)
@@ -67,9 +69,7 @@ func TestTrigger_LinkTo_PreTrigger(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		triggerCount.Add(1)
-		testEvent.Trigger(i, func(i int) {
-			preTriggerCount.Add(1)
-		})
+		testEvent.Trigger(i)
 	}
 
 	require.Equal(t, uint64(10), triggerCount.Load())

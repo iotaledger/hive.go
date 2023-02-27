@@ -14,24 +14,27 @@ func New(opts ...Option) *Event {
 }
 
 // Trigger invokes the hooked callbacks.
-func (e *Event) Trigger(preTrigger ...func()) {
+func (e *Event) Trigger() {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func()]) bool {
-		for _, p := range preTrigger {
-			p()
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc()
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger()
 			})
-		default:
+		} else {
 			hook.trigger()
 		}
 
@@ -57,24 +60,31 @@ func New1[T1 any](opts ...Option) *Event1[T1] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event1[T1]) Trigger(arg1 T1, preTrigger ...func(T1)) {
+func (e *Event1[T1]) Trigger(arg1 T1) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1)]) bool {
-		for _, p := range preTrigger {
-			p(arg1)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1)
+		}
+
+		if !IsInterfaceNil(hook.preTriggerFunc) {
+			hook.preTriggerFunc.(func(T1))(arg1)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1)
 			})
-		default:
+		} else {
 			hook.trigger(arg1)
 		}
 
@@ -100,24 +110,27 @@ func New2[T1, T2 any](opts ...Option) *Event2[T1, T2] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2, preTrigger ...func(T1, T2)) {
+func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2)
 		}
 
@@ -143,24 +156,27 @@ func New3[T1, T2, T3 any](opts ...Option) *Event3[T1, T2, T3] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3, preTrigger ...func(T1, T2, T3)) {
+func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3)
 		}
 
@@ -186,24 +202,27 @@ func New4[T1, T2, T3, T4 any](opts ...Option) *Event4[T1, T2, T3, T4] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, preTrigger ...func(T1, T2, T3, T4)) {
+func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4)
 		}
 
@@ -229,24 +248,27 @@ func New5[T1, T2, T3, T4, T5 any](opts ...Option) *Event5[T1, T2, T3, T4, T5] {
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, preTrigger ...func(T1, T2, T3, T4, T5)) {
+func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4, arg5)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4, arg5)
 		}
 
@@ -272,24 +294,27 @@ func New6[T1, T2, T3, T4, T5, T6 any](opts ...Option) *Event6[T1, T2, T3, T4, T5
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, preTrigger ...func(T1, T2, T3, T4, T5, T6)) {
+func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4, arg5, arg6)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
 
@@ -315,24 +340,27 @@ func New7[T1, T2, T3, T4, T5, T6, T7 any](opts ...Option) *Event7[T1, T2, T3, T4
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7)) {
+func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
 
@@ -358,24 +386,27 @@ func New8[T1, T2, T3, T4, T5, T6, T7, T8 any](opts ...Option) *Event8[T1, T2, T3
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7, T8)) {
+func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
 
@@ -401,24 +432,27 @@ func New9[T1, T2, T3, T4, T5, T6, T7, T8, T9 any](opts ...Option) *Event9[T1, T2
 }
 
 // Trigger invokes the hooked callbacks with the given parameters.
-func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9, preTrigger ...func(T1, T2, T3, T4, T5, T6, T7, T8, T9)) {
+func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9) {
 	if e.currentTriggerExceedsMaxTriggerCount() {
 		return
 	}
 
 	e.hooks.ForEach(func(_ uint64, hook *Hook[func(T1, T2, T3, T4, T5, T6, T7, T8, T9)]) bool {
-		for _, p := range preTrigger {
-			p(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+		if hook.currentTriggerExceedsMaxTriggerCount() {
+			hook.Unhook()
+			
+			return true
 		}
 
-		switch workerPool := hook.WorkerPool(); true {
-		case hook.currentTriggerExceedsMaxTriggerCount():
-			hook.Unhook()
-		case workerPool != nil:
+		if e.preTriggerFunc != nil {
+			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+		}
+
+		if workerPool := hook.WorkerPool(); workerPool != nil {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 			})
-		default:
+		} else {
 			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
 

@@ -28,11 +28,19 @@ func WithWorkerPool(workerPool *workerpool.WorkerPool) Option {
 	}
 }
 
+// WithPreTriggerFunc sets a function that is synchronously called before the trigger is executed.
+func WithPreTriggerFunc(preTriggerFunc any) Option {
+	return func(triggerSettings *triggerSettings) {
+		triggerSettings.preTriggerFunc = preTriggerFunc
+	}
+}
+
 // triggerSettings is a struct that contains trigger related settings and logic.
 type triggerSettings struct {
 	workerPool      *workerpool.WorkerPool
 	triggerCount    atomic.Uint64
 	maxTriggerCount uint64
+	preTriggerFunc  any
 }
 
 // WasTriggered returns true if Trigger was called at least once.
