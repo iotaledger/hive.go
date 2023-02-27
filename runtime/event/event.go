@@ -23,16 +23,25 @@ type event[TriggerFunc any] struct {
 	// linkMutex is used to prevent concurrent access to the link.
 	linkMutex sync.Mutex
 
+	// preTriggerFunc is a function that is called before each Hook is executed.
+	preTriggerFunc TriggerFunc
+
 	// triggerSettings are the settings that keep track of the number of times the event was triggered.
 	*triggerSettings
 }
 
 // newEvent creates a new event instance with the given options.
 func newEvent[TriggerFunc any](opts ...Option) *event[TriggerFunc] {
-	return &event[TriggerFunc]{
+	e := &event[TriggerFunc]{
 		hooks:           orderedmap.New[uint64, *Hook[TriggerFunc]](),
 		triggerSettings: options.Apply(new(triggerSettings), opts),
 	}
+
+	if !IsInterfaceNil(e.triggerSettings.preTriggerFunc) {
+		e.preTriggerFunc = e.triggerSettings.preTriggerFunc.(TriggerFunc)
+	}
+
+	return e
 }
 
 // Hook adds a new callback to the event and returns the corresponding Hook.

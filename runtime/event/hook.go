@@ -11,17 +11,26 @@ type Hook[TriggerFunc any] struct {
 	event   *event[TriggerFunc]
 	trigger TriggerFunc
 
+	// preTriggerFunc is a function that is called before each Hook is executed.
+	preTriggerFunc TriggerFunc
+
 	*triggerSettings
 }
 
 // newHook creates a new Hook.
 func newHook[TriggerFunc any](id uint64, event *event[TriggerFunc], trigger TriggerFunc, opts ...Option) *Hook[TriggerFunc] {
-	return &Hook[TriggerFunc]{
+	h := &Hook[TriggerFunc]{
 		id:              id,
 		event:           event,
 		trigger:         trigger,
 		triggerSettings: options.Apply(new(triggerSettings), opts),
 	}
+
+	if !IsInterfaceNil(h.triggerSettings.preTriggerFunc) {
+		h.preTriggerFunc = h.triggerSettings.preTriggerFunc.(TriggerFunc)
+	}
+
+	return h
 }
 
 // WorkerPool returns the worker pool that is used to trigger the callback.

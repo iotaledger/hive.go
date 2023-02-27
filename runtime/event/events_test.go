@@ -21,6 +21,63 @@ func Benchmark(b *testing.B) {
 	}
 }
 
+func TestTrigger_PreTrigger(t *testing.T) {
+	var triggerCount atomic.Uint64
+	var hookCount atomic.Uint64
+	var preTriggerCount atomic.Uint64
+
+	testEvent := New1[int](WithPreTriggerFunc(func(i int) {
+		preTriggerCount.Add(1)
+	}))
+	testEvent.Hook(func(int) {
+		hookCount.Add(1)
+	})
+
+	testEvent.Hook(func(int) {
+		hookCount.Add(1)
+	})
+
+	for i := 0; i < 10; i++ {
+		triggerCount.Add(1)
+		testEvent.Trigger(i)
+	}
+
+	require.Equal(t, uint64(10), triggerCount.Load())
+	require.Equal(t, uint64(20), preTriggerCount.Load())
+	require.Equal(t, uint64(20), hookCount.Load())
+}
+
+func TestTrigger_LinkTo_PreTrigger(t *testing.T) {
+	var triggerCount atomic.Uint64
+	var hook1Count atomic.Uint64
+	var hook2Count atomic.Uint64
+	var preTriggerCount atomic.Uint64
+
+	testEvent := New1[int](WithPreTriggerFunc(func(i int) {
+		preTriggerCount.Add(1)
+	}))
+	testEvent2 := New1[int]()
+	testEvent.Hook(func(int) {
+		hook1Count.Add(1)
+	})
+
+	testEvent2.Hook(func(int) {
+		hook2Count.Add(1)
+	})
+
+	testEvent2.LinkTo(testEvent)
+
+	for i := 0; i < 10; i++ {
+		triggerCount.Add(1)
+		testEvent.Trigger(i)
+	}
+
+	require.Equal(t, uint64(10), triggerCount.Load())
+	require.Equal(t, uint64(20), preTriggerCount.Load())
+	require.Equal(t, uint64(10), hook1Count.Load())
+	require.Equal(t, uint64(10), hook2Count.Load())
+}
+
 func TestTriggerSettings_MaxTriggerCount(t *testing.T) {
 	var triggerCount atomic.Uint64
 
