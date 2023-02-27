@@ -49,7 +49,7 @@ func (e *Event) Trigger() {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event) LinkTo(target *Event) {
-	e.linkTo(target, func() { e.Trigger() })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event1 is an event with 1 generic parameters.
@@ -100,7 +100,7 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event1[T1]) LinkTo(target *Event1[T1]) {
-	e.linkTo(target, func(arg1 T1) { e.Trigger(arg1) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event2 is an event with 2 generic parameters.
@@ -151,7 +151,7 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event2[T1, T2]) LinkTo(target *Event2[T1, T2]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2) { e.Trigger(arg1, arg2) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event3 is an event with 3 generic parameters.
@@ -202,7 +202,7 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event3[T1, T2, T3]) LinkTo(target *Event3[T1, T2, T3]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3) { e.Trigger(arg1, arg2, arg3) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event4 is an event with 4 generic parameters.
@@ -253,7 +253,7 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event4[T1, T2, T3, T4]) LinkTo(target *Event4[T1, T2, T3, T4]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4) { e.Trigger(arg1, arg2, arg3, arg4) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event5 is an event with 5 generic parameters.
@@ -304,7 +304,7 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event5[T1, T2, T3, T4, T5]) LinkTo(target *Event5[T1, T2, T3, T4, T5]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5) { e.Trigger(arg1, arg2, arg3, arg4, arg5) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event6 is an event with 6 generic parameters.
@@ -355,7 +355,7 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event6[T1, T2, T3, T4, T5, T6]) LinkTo(target *Event6[T1, T2, T3, T4, T5, T6]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event7 is an event with 7 generic parameters.
@@ -406,7 +406,7 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) LinkTo(target *Event7[T1, T2, T3, T4, T5, T6, T7]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event8 is an event with 8 generic parameters.
@@ -457,7 +457,7 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) LinkTo(target *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) })
+	e.linkTo(target, e.Trigger)
 }
 
 // Event9 is an event with 9 generic parameters.
@@ -508,5 +508,5 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) LinkTo(target *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) {
-	e.linkTo(target, func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9) { e.Trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) })
+	e.linkTo(target, e.Trigger)
 }

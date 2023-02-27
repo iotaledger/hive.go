@@ -52,5 +52,5 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 
 // LinkTo links the event to the given target event (nil unlinks).
 func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*/) LinkTo(target *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end -}}*/) {
-	e.linkTo(target, func( /*{{- typedParams -}}*/ ) { e.Trigger( /*{{- params -}}*/ ) })
+	e.linkTo(target, e.Trigger)
 }
