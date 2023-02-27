@@ -34,14 +34,10 @@ func (e *Event) Trigger() {
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger()
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger() })
+		} else {
+			hook.trigger()
 		}
-
-		hook.trigger()
 
 		return true
 	})
@@ -85,14 +81,10 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1) })
+		} else {
+			hook.trigger(arg1)
 		}
-
-		hook.trigger(arg1)
 
 		return true
 	})
@@ -136,14 +128,10 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2) })
+		} else {
+			hook.trigger(arg1, arg2)
 		}
-
-		hook.trigger(arg1, arg2)
 
 		return true
 	})
@@ -187,14 +175,10 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3) })
+		} else {
+			hook.trigger(arg1, arg2, arg3)
 		}
-
-		hook.trigger(arg1, arg2, arg3)
 
 		return true
 	})
@@ -238,14 +222,10 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4)
 
 		return true
 	})
@@ -289,14 +269,10 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4, arg5)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4, arg5) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4, arg5)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4, arg5)
 
 		return true
 	})
@@ -340,14 +316,10 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 
 		return true
 	})
@@ -391,14 +363,10 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 
 		return true
 	})
@@ -442,14 +410,10 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 
 		return true
 	})
@@ -493,14 +457,10 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) })
+		} else {
+			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
-
-		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 
 		return true
 	})

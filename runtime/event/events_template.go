@@ -37,14 +37,10 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
-			workerPool.Submit(func() {
-				hook.trigger( /*{{- params -}}*/ )
-			})
-
-			return true
+			workerPool.Submit(func() { hook.trigger( /*{{- params -}}*/ ) })
+		} else {
+			hook.trigger( /*{{- params -}}*/ )
 		}
-
-		hook.trigger( /*{{- params -}}*/ )
 
 		return true
 	})
