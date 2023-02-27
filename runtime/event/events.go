@@ -29,8 +29,9 @@ func (e *Event) Trigger() {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc()
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func())()
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc()
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -76,8 +77,9 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1))(arg1)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -123,8 +125,9 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2))(arg1, arg2)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -170,8 +173,9 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3))(arg1, arg2, arg3)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -217,8 +221,9 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4))(arg1, arg2, arg3, arg4)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -264,8 +269,9 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5))(arg1, arg2, arg3, arg4, arg5)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4, arg5)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -311,8 +317,9 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6))(arg1, arg2, arg3, arg4, arg5, arg6)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -358,8 +365,9 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7))(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -405,8 +413,9 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8))(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
@@ -452,8 +461,9 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9))(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {

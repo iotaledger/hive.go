@@ -32,8 +32,9 @@ func (e *Event /*{{- if hasParams}}{{paramCount}}{{"["}}{{types}}{{"]"}}{{end}}*
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc( /*{{- params -}}*/ )
 		}
-		if !IsInterfaceNil(hook.preTriggerFunc) {
-			hook.preTriggerFunc.(func( /*{{- typedParams -}}*/ ))( /*{{- params -}}*/ )
+
+		if hook.preTriggerFunc != nil {
+			hook.preTriggerFunc( /*{{- params -}}*/ )
 		}
 
 		if workerPool := hook.WorkerPool(); workerPool != nil {
