@@ -29,7 +29,6 @@ func (e *Event) Trigger() {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc()
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func())()
 		}
@@ -38,9 +37,11 @@ func (e *Event) Trigger() {
 			workerPool.Submit(func() {
 				hook.trigger()
 			})
-		} else {
-			hook.trigger()
+
+			return true
 		}
+
+		hook.trigger()
 
 		return true
 	})
@@ -79,7 +80,6 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1))(arg1)
 		}
@@ -88,9 +88,11 @@ func (e *Event1[T1]) Trigger(arg1 T1) {
 			workerPool.Submit(func() {
 				hook.trigger(arg1)
 			})
-		} else {
-			hook.trigger(arg1)
+
+			return true
 		}
+
+		hook.trigger(arg1)
 
 		return true
 	})
@@ -129,7 +131,6 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2))(arg1, arg2)
 		}
@@ -138,9 +139,11 @@ func (e *Event2[T1, T2]) Trigger(arg1 T1, arg2 T2) {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2)
 			})
-		} else {
-			hook.trigger(arg1, arg2)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2)
 
 		return true
 	})
@@ -179,7 +182,6 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3))(arg1, arg2, arg3)
 		}
@@ -188,9 +190,11 @@ func (e *Event3[T1, T2, T3]) Trigger(arg1 T1, arg2 T2, arg3 T3) {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3)
 
 		return true
 	})
@@ -229,7 +233,6 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4))(arg1, arg2, arg3, arg4)
 		}
@@ -238,9 +241,11 @@ func (e *Event4[T1, T2, T3, T4]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4) {
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4)
 
 		return true
 	})
@@ -279,7 +284,6 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5))(arg1, arg2, arg3, arg4, arg5)
 		}
@@ -288,9 +292,11 @@ func (e *Event5[T1, T2, T3, T4, T5]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4 T4,
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4, arg5)
 
 		return true
 	})
@@ -329,7 +335,6 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6))(arg1, arg2, arg3, arg4, arg5, arg6)
 		}
@@ -338,9 +343,11 @@ func (e *Event6[T1, T2, T3, T4, T5, T6]) Trigger(arg1 T1, arg2 T2, arg3 T3, arg4
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6)
 
 		return true
 	})
@@ -379,7 +386,6 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7))(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 		}
@@ -388,9 +394,11 @@ func (e *Event7[T1, T2, T3, T4, T5, T6, T7]) Trigger(arg1 T1, arg2 T2, arg3 T3, 
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 
 		return true
 	})
@@ -429,7 +437,6 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8))(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 		}
@@ -438,9 +445,11 @@ func (e *Event8[T1, T2, T3, T4, T5, T6, T7, T8]) Trigger(arg1 T1, arg2 T2, arg3 
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 
 		return true
 	})
@@ -479,7 +488,6 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 		if e.preTriggerFunc != nil {
 			e.preTriggerFunc(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
-
 		if !IsInterfaceNil(hook.preTriggerFunc) {
 			hook.preTriggerFunc.(func(arg1 T1, arg2 T2, arg3 T3, arg4 T4, arg5 T5, arg6 T6, arg7 T7, arg8 T8, arg9 T9))(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 		}
@@ -488,9 +496,11 @@ func (e *Event9[T1, T2, T3, T4, T5, T6, T7, T8, T9]) Trigger(arg1 T1, arg2 T2, a
 			workerPool.Submit(func() {
 				hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 			})
-		} else {
-			hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+
+			return true
 		}
+
+		hook.trigger(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 
 		return true
 	})
