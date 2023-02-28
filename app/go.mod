@@ -1,11 +1,11 @@
 module github.com/iotaledger/hive.go/app
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230216134206-5758aee054c5
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230216133807-1dcef29e3bc2
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230228124143-272c94031cc7
 	github.com/knadh/koanf v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.5.0
@@ -19,20 +19,23 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/ethereum/go-ethereum v1.11.2 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230216124949-dcd0bf545fea // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20230216133508-4294d334c92a // indirect
-	github.com/iotaledger/hive.go/lo v0.0.0-20230216132042-9c5c69b6d86c // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230216132042-9c5c69b6d86c // indirect
+	github.com/iancoleman/orderedmap v0.2.0 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/iotaledger/hive.go/lo v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230220125853-8ead6385152c // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230228124143-272c94031cc7 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/petermattis/goid v0.0.0-20221215004737-a150e88a970d // indirect
+	github.com/petermattis/goid v0.0.0-20230222173705-8ff7bb262a50 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
