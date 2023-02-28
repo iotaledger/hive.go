@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/objectstorage
 
-go 1.19
+go 1.20
 
 require (
 	github.com/cockroachdb/errors v1.9.1

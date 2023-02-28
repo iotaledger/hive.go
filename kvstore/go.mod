@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/kvstore
 
-go 1.19
+go 1.20
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20230228035956-63a8366991b7

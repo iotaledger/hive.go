@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/autopeering
 
-go 1.19
+go 1.20
 
 require (
 	github.com/golang/protobuf v1.5.2
