@@ -12,7 +12,7 @@ import (
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
-// region CausalOrderer ////////////////////////////////////////////////////////////////////////////////////////////////
+// region CausalOrder ////////////////////////////////////////////////////////////////////////////////////////////////
 
 // CausalOrder represents an order where an Entity is ordered after its causal dependencies (parents) have been ordered.
 type CausalOrder[ID slot.IndexedID, Entity OrderedEntity[ID]] struct {

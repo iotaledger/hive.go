@@ -101,12 +101,14 @@ github.com/imkira/go-interpol v1.1.0/go.mod h1:z0h2/2T3XF8kyEPpRgJ3kmNv+C43p+I/C
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7 h1:Pw+qGGwzQZ3mBWWiksutw90TMUFH7VLk9Kz2z3aZERM=
 github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7/go.mod h1:16WGpe7P5mImhARq+/sxejNalr6OyQM1coGyBwM931Q=
+github.com/iotaledger/hive.go/crypto v0.0.0-20230301105203-00589fbd784c h1:dCAHeSorHD0XemOwPfwRk7N8OuojqZsTcay/TUr0vE8=
+github.com/iotaledger/hive.go/crypto v0.0.0-20230301105203-00589fbd784c/go.mod h1:GLV7xmcS1M2tgfjAy6DL4SzP3P034crbaLcy0yPT4ek=
 github.com/iotaledger/hive.go/ds v0.0.0-20230228134549-385c1ca29f1c h1:kf4SIrTHzv6xutIL+aV+lW/talYDuG+7o49jTpmg4I4=
 github.com/iotaledger/hive.go/ds v0.0.0-20230228134549-385c1ca29f1c/go.mod h1:wucITfpyQ6wyyI3lKdyO8CyQv+A/iXSExNKBY51FY54=
 github.com/iotaledger/hive.go/lo v0.0.0-20230228134549-385c1ca29f1c h1:oVX80PjbVn75ylBJbCIhM55pnAGMkQQAnt8IUc9DbrQ=
 github.com/iotaledger/hive.go/lo v0.0.0-20230228134549-385c1ca29f1c/go.mod h1:xHLZI6Rs3M7KjKs91004v2JDH0jTtgOzI9EmmS8SXSk=
-github.com/iotaledger/hive.go/runtime v0.0.0-20230228134549-385c1ca29f1c h1:T9LPzAvsVaiI7bBFzxPbHQfWzWXyJ0xTx3IyJkSP7K4=
-github.com/iotaledger/hive.go/runtime v0.0.0-20230228134549-385c1ca29f1c/go.mod h1:JIpu8/3ns6h7A9kQ6C9XEp7N7tSlSW0sWg/7x/FipwU=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230301102505-bb3564435cae h1:xbMYoVyC5w5If2K71NJ2jVHJJev3Pgi8oyKjR5CVctQ=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230301102505-bb3564435cae/go.mod h1:SL0dwhYSYDZwB7jenM19qbqlIaBzhQvaeGb7lwDiQNQ=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c h1:FsHrsFpj2QFkPGpTDfgvCzMeSX4W47eYcbhFih2KMNM=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c/go.mod h1:lFaUw1t6S6UruTt/90xG75rLsd6al++htb+E92BpjK4=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230228124143-272c94031cc7 h1:1ixaL00IlES27yasU/jcnUdC4N5laLQu8R/SoEp/szw=
