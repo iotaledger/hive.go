@@ -3,14 +3,14 @@ module github.com/iotaledger/hive.go/autopeering
 go 1.20
 
 require (
-	github.com/golang/protobuf v1.5.2
-	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230220131352-f738318ff989
-	github.com/iotaledger/hive.go/kvstore v0.0.0-20230228124143-272c94031cc7
-	github.com/iotaledger/hive.go/lo v0.0.0-20230228124143-272c94031cc7
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230228124143-272c94031cc7
+	github.com/iotaledger/hive.go/crypto v0.0.0-20230301113017-b19730782256
+	github.com/iotaledger/hive.go/kvstore v0.0.0-20230301113714-efbcc23d2e67
+	github.com/iotaledger/hive.go/lo v0.0.0-20230301112504-3613b9cd2d9b
+	github.com/iotaledger/hive.go/logger v0.0.0-20230301115248-757672188242
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230301113321-aa2b093fb297
 	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	google.golang.org/protobuf v1.28.1
 )
@@ -24,10 +24,10 @@ require (
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7 // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20230228124143-272c94031cc7 // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230220125853-8ead6385152c // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230301110003-83a21511a420 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20230301112709-a897a9795294 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230228134549-385c1ca29f1c // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect

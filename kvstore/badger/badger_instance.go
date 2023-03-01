@@ -7,7 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 
-	"github.com/iotaledger/hive.go/core/ioutils"
+	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {

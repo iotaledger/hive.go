@@ -2,6 +2,7 @@ package valuerange
 
 import (
 	"fmt"
+
 	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"

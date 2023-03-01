@@ -8,7 +8,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/generics/model"
+	"github.com/iotaledger/hive.go/core/model"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"

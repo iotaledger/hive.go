@@ -17,7 +17,7 @@ import (
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/app/version"
-	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 

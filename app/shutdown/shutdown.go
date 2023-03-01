@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/core/ioutils"
-	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/ioutils"
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 

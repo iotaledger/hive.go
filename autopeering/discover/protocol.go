@@ -12,14 +12,14 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/autopeering/discover/proto"
+	"github.com/iotaledger/hive.go/autopeering/netutil"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	peerpb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
-	"github.com/iotaledger/hive.go/core/backoff"
-	"github.com/iotaledger/hive.go/core/identity"
-	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/netutil"
+	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/runtime/backoff"
 )
 
 const (

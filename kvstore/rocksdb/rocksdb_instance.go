@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/iotaledger/grocksdb"
-	"github.com/iotaledger/hive.go/core/ioutils"
+	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 // RocksDB holds the underlying grocksdb.DB instance and options.

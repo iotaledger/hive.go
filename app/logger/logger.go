@@ -2,7 +2,7 @@ package logger
 
 import (
 	"github.com/iotaledger/hive.go/app/configuration"
-	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/logger"
 )
 
 // InitGlobalLogger initializes the global logger from the provided config.

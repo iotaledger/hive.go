@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
-	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/crypto/identity"
 )
 
 type Selector interface {
