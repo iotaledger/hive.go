@@ -7,7 +7,7 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/crypto"
+	"github.com/iotaledger/hive.go/crypto"
 )
 
 var (
