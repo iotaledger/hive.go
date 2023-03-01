@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/ioutils"
+	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 // ReadEd25519PrivateKeyFromPEMFile reads an Ed25519 private key from a file with PEM format.
