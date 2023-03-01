@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/subscriptionmanager"
+	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 )
 
 const (
