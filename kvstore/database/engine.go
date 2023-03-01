@@ -95,7 +95,7 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 	dbEngineSpecified := dbEngine != EngineAuto
 
 	// check if the database exists and if it should be created
-	dbExists, err := Exists(dbPath)
+	dbExists, err := ioutils.DirExistsAndIsNotEmpty(dbPath)
 	if err != nil {
 		return EngineUnknown, err
 	}

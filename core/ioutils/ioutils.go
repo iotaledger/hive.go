@@ -222,7 +222,6 @@ func CloseFileAndRename(fileDescriptor *os.File, sourceFilePath string, targetFi
 
 // DirectoryEmpty returns whether the given directory is empty.
 func DirectoryEmpty(dirPath string) (bool, error) {
-
 	// check if the directory exists
 	if _, err := os.Stat(dirPath); err != nil {
 		return false, fmt.Errorf("unable to check directory (%s): %w", dirPath, err)
@@ -251,4 +250,26 @@ func DirectoryEmpty(dirPath string) (bool, error) {
 
 	// directory is empty
 	return true, nil
+}
+
+// DirExistsAndIsNotEmpty checks if the folder exists and is not empty.
+func DirExistsAndIsNotEmpty(path string) (bool, error) {
+	dirExists, isDir, err := PathExists(path)
+	if err != nil {
+		return false, fmt.Errorf("unable to check dir path (%s): %w", path, err)
+	}
+	if !dirExists {
+		return false, nil
+	}
+	if !isDir {
+		return false, fmt.Errorf("given path is a file instead of a directory %s", path)
+	}
+
+	// check if the directory is empty (needed for example in docker environments)
+	dirEmpty, err := DirectoryEmpty(path)
+	if err != nil {
+		return false, fmt.Errorf("unable to check dir (%s): %w", path, err)
+	}
+
+	return !dirEmpty, nil
 }
