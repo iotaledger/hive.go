@@ -4,12 +4,10 @@ go 1.20
 
 require (
 	github.com/cockroachdb/errors v1.9.1
-	github.com/iotaledger/hive.go/crypto v0.0.0-20230301102633-3a0f7cc9bac0
+	github.com/iotaledger/hive.go/ds v0.0.0-20230228134549-385c1ca29f1c
 	github.com/iotaledger/hive.go/lo v0.0.0-20230228134549-385c1ca29f1c
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
-	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 )
 
 require (
@@ -23,7 +21,6 @@ require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
