@@ -8,7 +8,7 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/core/certificate"
+	"github.com/iotaledger/hive.go/crypto/pem"
 )
 
 // LoadOrCreateIdentityPrivateKey loads an existing Ed25519 based identity private key
@@ -30,7 +30,7 @@ func LoadOrCreateIdentityPrivateKey(privKeyFilePath string, identityPrivKey stri
 	switch {
 	case err == nil || os.IsExist(err):
 		// private key already exists, load and return it
-		privKey, err := certificate.ReadEd25519PrivateKeyFromPEMFile(privKeyFilePath)
+		privKey, err := pem.ReadEd25519PrivateKeyFromPEMFile(privKeyFilePath)
 		if err != nil {
 			return nil, false, fmt.Errorf("unable to load Ed25519 private key for peer identity: %w", err)
 		}
@@ -73,7 +73,7 @@ func LoadOrCreateIdentityPrivateKey(privKeyFilePath string, identityPrivKey stri
 			return nil, false, err
 		}
 
-		if err := certificate.WriteEd25519PrivateKeyToPEMFile(privKeyFilePath, privKey); err != nil {
+		if err := pem.WriteEd25519PrivateKeyToPEMFile(privKeyFilePath, privKey); err != nil {
 			return nil, false, fmt.Errorf("unable to store private key file for peer identity: %w", err)
 		}
 
