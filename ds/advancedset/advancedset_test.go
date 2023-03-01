@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/iotaledger/hive.go/serializer/v2/serix"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 func TestAdvancedSet_IsEmpty(t *testing.T) {
