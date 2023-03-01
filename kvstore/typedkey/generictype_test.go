@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/core/slot"
-	"github.com/iotaledger/hive.go/core/types"
+	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 )
 
