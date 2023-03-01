@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/platform"
-	"github.com/iotaledger/hive.go/core/reflect"
+	"github.com/iotaledger/hive.go/objectstorage/platform"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
+	"github.com/iotaledger/hive.go/runtime/reflect"
 )
 
 // region interfaces ///////////////////////////////////////////////////////////////////////////////////////////////////
