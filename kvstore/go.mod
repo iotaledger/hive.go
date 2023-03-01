@@ -3,13 +3,13 @@ module github.com/iotaledger/hive.go/kvstore
 go 1.20
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20230228035956-63a8366991b7
+	github.com/cockroachdb/pebble v0.0.0-20230228172147-e2ebcd7a6565
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7
-	github.com/iotaledger/hive.go/ds v0.0.0-20230301103312-256050629e02
-	github.com/iotaledger/hive.go/lo v0.0.0-20230228134549-385c1ca29f1c
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230301103312-256050629e02
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230301110003-83a21511a420
+	github.com/iotaledger/hive.go/ds v0.0.0-20230301112709-a897a9795294
+	github.com/iotaledger/hive.go/lo v0.0.0-20230301112504-3613b9cd2d9b
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230301113321-aa2b093fb297
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
@@ -34,7 +34,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230228134549-385c1ca29f1c // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

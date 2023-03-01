@@ -16,8 +16,8 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	flag "github.com/spf13/pflag"
 
-	reflectutils "github.com/iotaledger/hive.go/core/reflect"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
+	reflectutils "github.com/iotaledger/hive.go/runtime/reflect"
 )
 
 var (
