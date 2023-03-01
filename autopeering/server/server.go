@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/iotaledger/hive.go/autopeering/netutil"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
-	"github.com/iotaledger/hive.go/core/netutil"
 	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
