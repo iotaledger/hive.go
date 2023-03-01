@@ -11,8 +11,8 @@ import (
 
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	pb "github.com/iotaledger/hive.go/autopeering/server/proto"
-	"github.com/iotaledger/hive.go/core/identity"
 	"github.com/iotaledger/hive.go/core/netutil"
+	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"

@@ -10,7 +10,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
-	"github.com/iotaledger/hive.go/core/identity"
+	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
