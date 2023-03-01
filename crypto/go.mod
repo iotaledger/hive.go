@@ -4,7 +4,9 @@ go 1.20
 
 require (
 	github.com/iotaledger/hive.go/lo v0.0.0-20230228134549-385c1ca29f1c
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230301102505-bb3564435cae
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
+	github.com/libp2p/go-libp2p v0.26.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e
 	github.com/pkg/errors v0.9.1
@@ -16,10 +18,15 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230228124143-272c94031cc7 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/minio/sha256-simd v1.0.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.dedis.ch/fixbuf v1.0.3 // indirect
 	golang.org/x/sys v0.5.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
