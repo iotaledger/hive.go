@@ -4,7 +4,7 @@ option go_package = "github.com/iotaledger/hive.go/autopeering/peer/proto";
 
 package proto;
 
-import "autopeering/peer/service/proto/service.proto";
+import "peer/service/proto/service.proto";
 
 // Minimal encoding of a peer
 message Peer {

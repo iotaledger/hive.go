@@ -3,7 +3,6 @@ module github.com/iotaledger/hive.go/autopeering
 go 1.20
 
 require (
-	github.com/golang/protobuf v1.5.2
 	github.com/iotaledger/hive.go/crypto v0.0.0-20230301113017-b19730782256
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20230301113714-efbcc23d2e67
 	github.com/iotaledger/hive.go/lo v0.0.0-20230301112504-3613b9cd2d9b

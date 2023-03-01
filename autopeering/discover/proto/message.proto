@@ -4,8 +4,8 @@ option go_package = "github.com/iotaledger/hive.go/autopeering/discover/proto";
 
 package proto;
 
-import "autopeering/peer/proto/peer.proto";
-import "autopeering/peer/service/proto/service.proto";
+import "peer/proto/peer.proto";
+import "peer/service/proto/service.proto";
 
 
 message Ping {
