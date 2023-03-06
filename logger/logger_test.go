@@ -93,7 +93,7 @@ func TestNewLogger(t *testing.T) {
 
 	rootLogger, err := NewRootLogger(cfg)
 	require.NoError(t, err)
-	SetGlobalLogger(rootLogger)
+	_ = SetGlobalLogger(rootLogger)
 	defer cleanupGlobalLogger()
 
 	t.Run("info", func(t *testing.T) {
