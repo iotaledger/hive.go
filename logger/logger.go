@@ -64,11 +64,20 @@ func getEncoderConfig(cfg Config) (zapcore.EncoderConfig, error) {
 	encoderConfig := defaultEncoderConfig
 
 	if cfg.EncodingConfig.EncodeTime != "" {
-		var timeEncoder zapcore.TimeEncoder
-		if err := timeEncoder.UnmarshalText([]byte(cfg.EncodingConfig.EncodeTime)); err != nil {
-			return zapcore.EncoderConfig{}, err
+		switch strings.ToLower(cfg.EncodingConfig.EncodeTime) {
+		case "rfc3339nano":
+			encoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
+		case "rfc3339":
+			encoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+		case "iso8601":
+			encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		case "millis":
+			encoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
+		case "nanos":
+			encoderConfig.EncodeTime = zapcore.EpochNanosTimeEncoder
+		default:
+			return zapcore.EncoderConfig{}, fmt.Errorf("unknown TimeEncoder \"%s\"", cfg.EncodingConfig.EncodeTime)
 		}
-		encoderConfig.EncodeTime = timeEncoder
 	}
 
 	return encoderConfig, nil
