@@ -72,6 +72,9 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 				t.evictedEntities[entity.id.alias] = entity
 				t.evictedEntitiesMutex.Unlock()
 			},
+			func(entity *MockedOrderedEntity) (parents []MockedEntityID) {
+				return entity.Parents()
+			},
 			WithReferenceValidator[MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
 				if entity.IsInvalid() {
 					return errors.Errorf("entity %s is invalid", entity.id.alias)

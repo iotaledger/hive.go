@@ -28,6 +28,9 @@ type CausalOrder[ID slot.IndexedID, Entity OrderedEntity[ID]] struct {
 	// evictionCallback contains a function that is called whenever an Entity is evicted from the CausalOrderer.
 	evictionCallback func(entity Entity, reason error)
 
+	// parentsCallback contains a function that returns the parents of an Entity.
+	parentsCallback func(entity Entity) []ID
+
 	// checkReference contains a function that checks if a reference between a child and its parents is valid.
 	checkReference func(child Entity, parent Entity) (err error)
 
@@ -62,6 +65,7 @@ func New[ID slot.IndexedID, Entity OrderedEntity[ID]](
 	isOrdered func(entity Entity) (isOrdered bool),
 	orderedCallback func(entity Entity) (err error),
 	evictionCallback func(entity Entity, reason error),
+	parentsCallback func(entity Entity) []ID,
 	opts ...options.Option[CausalOrder[ID, Entity]],
 ) (newCausalOrder *CausalOrder[ID, Entity]) {
 	return options.Apply(&CausalOrder[ID, Entity]{
@@ -70,6 +74,7 @@ func New[ID slot.IndexedID, Entity OrderedEntity[ID]](
 		isOrdered:               isOrdered,
 		orderedCallback:         orderedCallback,
 		evictionCallback:        evictionCallback,
+		parentsCallback:         parentsCallback,
 		checkReference:          checkReference[ID, Entity],
 		unorderedParentsCounter: memstorage.NewSlotStorage[ID, uint8](),
 		unorderedChildren:       memstorage.NewSlotStorage[ID, []Entity](),
@@ -94,8 +99,10 @@ func (c *CausalOrder[ID, Entity]) EvictUntil(index slot.Index) {
 
 // triggerOrderedIfReady triggers the ordered callback of the given Entity if it's ready.
 func (c *CausalOrder[ID, Entity]) triggerOrderedIfReady(entity Entity) {
-	c.dagMutex.RLock(entity.Parents()...)
-	defer c.dagMutex.RUnlock(entity.Parents()...)
+	parents := c.parentsCallback(entity)
+
+	c.dagMutex.RLock(parents...)
+	defer c.dagMutex.RUnlock(parents...)
 	c.dagMutex.Lock(entity.ID())
 	defer c.dagMutex.Unlock(entity.ID())
 
@@ -119,7 +126,7 @@ func (c *CausalOrder[ID, Entity]) triggerOrderedIfReady(entity Entity) {
 // allParentsOrdered returns true if all parents of the given Entity are ordered.
 func (c *CausalOrder[ID, Entity]) allParentsOrdered(entity Entity) (allParentsOrdered bool) {
 	pendingParents := uint8(0)
-	for _, parentID := range entity.Parents() {
+	for _, parentID := range c.parentsCallback(entity) {
 		parentEntity, exists := c.entityProvider(parentID)
 		if !exists {
 			c.evictionCallback(entity, errors.Errorf("parent %s not found", parentID))
@@ -317,9 +324,6 @@ func WithReferenceValidator[ID slot.IndexedID, Entity OrderedEntity[ID]](referen
 type OrderedEntity[ID slot.IndexedID] interface {
 	// ID returns the ID of the Entity.
 	ID() ID
-
-	// Parents returns the causal parents of the Entity.
-	Parents() []ID
 
 	// comparable embeds the comparable interface.
 	comparable
