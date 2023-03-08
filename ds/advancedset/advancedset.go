@@ -17,8 +17,8 @@ type AdvancedSet[T comparable] struct {
 	orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
 
-// NewAdvancedSet creates a new AdvancedSet with given elements.
-func NewAdvancedSet[T comparable](elements ...T) *AdvancedSet[T] {
+// New creates a new AdvancedSet with given elements.
+func New[T comparable](elements ...T) *AdvancedSet[T] {
 	a := &AdvancedSet[T]{*orderedmap.New[T, types.Empty]()}
 	for _, element := range elements {
 		a.Set(element, types.Void)
@@ -50,7 +50,7 @@ func (t *AdvancedSet[T]) AddAll(elements *AdvancedSet[T]) (added bool) {
 
 // DeleteAll deletes given elements from the set.
 func (t *AdvancedSet[T]) DeleteAll(other *AdvancedSet[T]) (removedElements *AdvancedSet[T]) {
-	removedElements = NewAdvancedSet[T]()
+	removedElements = New[T]()
 	_ = other.ForEach(func(element T) (err error) {
 		if t.Delete(element) {
 			removedElements.Add(element)
@@ -98,7 +98,7 @@ func (t *AdvancedSet[T]) Intersect(other *AdvancedSet[T]) (intersection *Advance
 
 // Filter returns a new set that contains all elements that satisfy the given predicate.
 func (t *AdvancedSet[T]) Filter(predicate func(element T) bool) (filtered *AdvancedSet[T]) {
-	filtered = NewAdvancedSet[T]()
+	filtered = New[T]()
 	_ = t.ForEach(func(element T) (err error) {
 		if predicate(element) {
 			filtered.Add(element)
@@ -132,7 +132,7 @@ func (t *AdvancedSet[T]) Is(element T) bool {
 
 // Clone returns a new set that contains the same elements as the original set.
 func (t *AdvancedSet[T]) Clone() (cloned *AdvancedSet[T]) {
-	cloned = NewAdvancedSet[T]()
+	cloned = New[T]()
 	cloned.AddAll(t)
 
 	return cloned
