@@ -127,7 +127,7 @@ func TestAdvancedSet_Slice(t *testing.T) {
 	setSlice := set.Slice()
 
 	require.Equal(t, set.Size(), len(setSlice), "length should be equal")
-	require.True(t, NewAdvancedSet(setSlice...).Equal(set), "sets should be equal")
+	require.True(t, New(setSlice...).Equal(set), "sets should be equal")
 }
 
 func TestAdvancedSet_Iterator(t *testing.T) {
@@ -175,7 +175,7 @@ func TestAdvancedSet_Encoding(t *testing.T) {
 }
 
 func initAdvancedSet(count int, start int) *AdvancedSet[string] {
-	set := NewAdvancedSet[string]()
+	set := New[string]()
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))
