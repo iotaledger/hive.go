@@ -2,6 +2,8 @@ package shrinkingmap
 
 import (
 	"sync"
+
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // the default options applied to the ShrinkingMap.
@@ -125,7 +127,7 @@ func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
 	s.mutex.RLock()
-	var copiedElements []K
+	copiedElements := make([]K, 0, len(s.m))
 	for k := range s.m {
 		copiedElements = append(copiedElements, k)
 	}
@@ -167,6 +169,22 @@ func (s *ShrinkingMap[K, V]) Pop() (key K, value V, exists bool) {
 	}
 
 	return
+}
+
+// Keys creates a slice of the map keys.
+func (s *ShrinkingMap[K, V]) Keys() []K {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return lo.Keys(s.m)
+}
+
+// Values creates a slice of the map values.
+func (s *ShrinkingMap[K, V]) Values() []V {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return lo.Values(s.m)
 }
 
 // Size returns the number of entries in the map.
@@ -225,6 +243,7 @@ func (s *ShrinkingMap[K, V]) AsMap() (asMap map[K]V) {
 		asMap[k] = v
 		return true
 	})
+
 	return
 }
 

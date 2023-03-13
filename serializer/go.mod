@@ -3,7 +3,7 @@ module github.com/iotaledger/hive.go/serializer/v2
 go 1.20
 
 require (
-	github.com/ethereum/go-ethereum v1.11.2
+	github.com/ethereum/go-ethereum v1.11.4
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
