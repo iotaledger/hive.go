@@ -28,7 +28,7 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
 			fT := t.Field(numField)
 
 			var fV reflect.Value
-			// If the field is a struct or unexported, we have to unsafely obtain a pointer to it
+			// if the field is a struct or unexported, we have to unsafely obtain a pointer to it
 			if fT.Type.Kind() != reflect.Ptr || !fT.IsExported() {
 				fV = reflect.NewAt(fT.Type, unsafe.Pointer(v.Field(numField).UnsafeAddr()))
 			} else {
