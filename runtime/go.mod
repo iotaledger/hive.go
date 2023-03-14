@@ -19,6 +19,7 @@ require (
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.11.4 // indirect
+	github.com/fjl/memsize v0.0.1 // indirect
 	github.com/getsentry/sentry-go v0.19.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
