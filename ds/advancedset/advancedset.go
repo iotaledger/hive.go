@@ -78,11 +78,6 @@ func (t *AdvancedSet[T]) HasAll(other *AdvancedSet[T]) (hasAll bool) {
 	}) == nil
 }
 
-// Equals returns true if the set contains the same elements as the other set.
-func (t *AdvancedSet[T]) Equals(other *AdvancedSet[T]) bool {
-	return t == other || (t != nil && other != nil && t.Size() == other.Size() && t.HasAll(other))
-}
-
 // ForEach iterates through the set and calls the callback for every element.
 func (t *AdvancedSet[T]) ForEach(callback func(element T) (err error)) (err error) {
 	t.OrderedMap.ForEach(func(element T, _ types.Empty) bool {
@@ -117,17 +112,7 @@ func (t *AdvancedSet[T]) Filter(predicate func(element T) bool) (filtered *Advan
 
 // Equal returns true if both sets contain the same elements.
 func (t *AdvancedSet[T]) Equal(other *AdvancedSet[T]) (equal bool) {
-	if other.Size() != t.Size() {
-		return false
-	}
-
-	return other.ForEach(func(element T) (err error) {
-		if !t.Has(element) {
-			return errors.New("abort")
-		}
-
-		return nil
-	}) == nil
+	return t == other || (t != nil && other != nil && t.Size() == other.Size() && t.HasAll(other))
 }
 
 // Is returns true if the given element is the only element in the set.
