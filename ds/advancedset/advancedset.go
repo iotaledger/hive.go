@@ -78,6 +78,11 @@ func (t *AdvancedSet[T]) HasAll(other *AdvancedSet[T]) (hasAll bool) {
 	}) == nil
 }
 
+// Equals returns true if the set contains the same elements as the other set.
+func (t *AdvancedSet[T]) Equals(other *AdvancedSet[T]) bool {
+	return t == other || (t != nil && other != nil && t.Size() == other.Size() && t.HasAll(other))
+}
+
 // ForEach iterates through the set and calls the callback for every element.
 func (t *AdvancedSet[T]) ForEach(callback func(element T) (err error)) (err error) {
 	t.OrderedMap.ForEach(func(element T, _ types.Empty) bool {
