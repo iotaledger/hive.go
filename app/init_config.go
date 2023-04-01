@@ -13,8 +13,8 @@ type PreProvideFunc func(c *dig.Container, application *App, initConf *InitConfi
 // ProvideFunc gets called with a dig.Container.
 type ProvideFunc func(c *dig.Container) error
 
-// IsEnabledFunc gets called to check whether the Plugin is enabled.
-// It returns true if the Plugin is enabled.
+// IsEnabledFunc gets called to check whether the Compoment is enabled.
+// It returns true if the Compoment is enabled.
 type IsEnabledFunc func() bool
 
 // InitFunc gets called as the initialization function of the app.

@@ -13,8 +13,7 @@ var defaultOptions = []Option{
 type Options struct {
 	daemon                 daemon.Daemon
 	initComponent          *InitComponent
-	coreComponents         []*CoreComponent
-	plugins                []*Plugin
+	components             []*Component
 	versionCheckEnabled    bool
 	versionCheckOwner      string
 	versionCheckRepository string
@@ -45,17 +44,10 @@ func WithDaemon(d daemon.Daemon) Option {
 	}
 }
 
-// WithCoreComponents sets the core components.
-func WithCoreComponents(coreComponents ...*CoreComponent) Option {
+// WithComponents sets the components.
+func WithComponents(components ...*Component) Option {
 	return func(args *Options) {
-		args.coreComponents = append(args.coreComponents, coreComponents...)
-	}
-}
-
-// WithPlugins sets the plugins.
-func WithPlugins(plugins ...*Plugin) Option {
-	return func(args *Options) {
-		args.plugins = append(args.plugins, plugins...)
+		args.components = append(args.components, components...)
 	}
 }
 

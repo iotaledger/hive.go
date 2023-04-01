@@ -37,23 +37,20 @@ type ParametersApp struct {
 }
 
 type App struct {
-	appInfo                 *Info
-	enabledPlugins          map[string]struct{}
-	disabledPlugins         map[string]struct{}
-	forceDisabledComponents map[string]struct{}
-	coreComponentsMap       map[string]*CoreComponent
-	coreComponents          []*CoreComponent
-	pluginsMap              map[string]*Plugin
-	plugins                 []*Plugin
-	container               *dig.Container
-	loggerRoot              *logger.Logger
-	logger                  *logger.Logger
-	appFlagSet              *flag.FlagSet
-	appConfig               *configuration.Configuration
-	appParams               *ParametersApp
-	configs                 ConfigurationSets
-	maskedKeys              []string
-	options                 *Options
+	appInfo            *Info
+	enabledComponents  map[string]struct{}
+	disabledComponents map[string]struct{}
+	componentsMap      map[string]*Component
+	components         []*Component
+	container          *dig.Container
+	loggerRoot         *logger.Logger
+	logger             *logger.Logger
+	appFlagSet         *flag.FlagSet
+	appConfig          *configuration.Configuration
+	appParams          *ParametersApp
+	configs            ConfigurationSets
+	maskedKeys         []string
+	options            *Options
 }
 
 func New(name string, version string, optionalOptions ...Option) *App {
@@ -78,21 +75,18 @@ func New(name string, version string, optionalOptions ...Option) *App {
 			Version:             version,
 			LatestGitHubVersion: "",
 		},
-		enabledPlugins:          make(map[string]struct{}),
-		disabledPlugins:         make(map[string]struct{}),
-		forceDisabledComponents: make(map[string]struct{}),
-		coreComponentsMap:       make(map[string]*CoreComponent),
-		coreComponents:          make([]*CoreComponent, 0),
-		pluginsMap:              make(map[string]*Plugin),
-		plugins:                 make([]*Plugin, 0),
-		container:               dig.New(dig.DeferAcyclicVerification()),
-		loggerRoot:              nil,
-		logger:                  nil,
-		appFlagSet:              nil,
-		appConfig:               nil,
-		configs:                 nil,
-		maskedKeys:              make([]string, 0),
-		options:                 appOpts,
+		enabledComponents:  make(map[string]struct{}),
+		disabledComponents: make(map[string]struct{}),
+		componentsMap:      make(map[string]*Component),
+		components:         make([]*Component, 0),
+		container:          dig.New(dig.DeferAcyclicVerification()),
+		loggerRoot:         nil,
+		logger:             nil,
+		appFlagSet:         nil,
+		appConfig:          nil,
+		configs:            nil,
+		maskedKeys:         make([]string, 0),
+		options:            appOpts,
 	}
 
 	// provide the app itself in the container
@@ -109,7 +103,7 @@ func New(name string, version string, optionalOptions ...Option) *App {
 		panic(err)
 	}
 
-	// initialize the core components and plugins
+	// initialize the components
 	a.init()
 
 	return a
@@ -247,14 +241,8 @@ func (a *App) init() {
 
 	collectParameters(a.options.initComponent.Component)
 
-	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
-		collectParameters(coreComponent.Component)
-
-		return true
-	})
-
-	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
-		collectParameters(plugin.Component)
+	forEachComponent(a.options.components, func(component *Component) bool {
+		collectParameters(component)
 
 		return true
 	})
@@ -339,14 +327,14 @@ func (a *App) printAppInfo() {
 func (a *App) printConfig() {
 	a.appConfig.Print(a.maskedKeys)
 
-	enabledPlugins := []string{}
-	for plugin := range a.enabledPlugins {
-		enabledPlugins = append(enabledPlugins, plugin)
+	enabledComponents := []string{}
+	for component := range a.enabledComponents {
+		enabledComponents = append(enabledComponents, component)
 	}
 
-	disabledPlugins := []string{}
-	for plugin := range a.disabledPlugins {
-		disabledPlugins = append(disabledPlugins, plugin)
+	disabledComponents := []string{}
+	for component := range a.disabledComponents {
+		disabledComponents = append(disabledComponents, component)
 	}
 
 	getList := func(a []string) string {
@@ -355,12 +343,12 @@ func (a *App) printConfig() {
 		return "\n   - " + strings.Join(a, "\n   - ")
 	}
 
-	if len(enabledPlugins) > 0 || len(disabledPlugins) > 0 {
-		if len(enabledPlugins) > 0 {
-			fmt.Printf("\nThe following plugins are enabled: %s\n", getList(enabledPlugins))
+	if len(enabledComponents) > 0 || len(disabledComponents) > 0 {
+		if len(enabledComponents) > 0 {
+			fmt.Printf("\nThe following components are enabled: %s\n", getList(enabledComponents))
 		}
-		if len(disabledPlugins) > 0 {
-			fmt.Printf("\nThe following plugins are disabled: %s\n", getList(disabledPlugins))
+		if len(disabledComponents) > 0 {
+			fmt.Printf("\nThe following components are disabled: %s\n", getList(disabledComponents))
 		}
 		fmt.Println()
 	}
@@ -374,20 +362,10 @@ func (a *App) initConfig() {
 		}
 	}
 
-	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
-		if coreComponent.InitConfigPars != nil {
-			if err := coreComponent.InitConfigPars(a.container); err != nil {
-				a.LogPanicf("failed to initialize core component (%s) config parameters: %s", coreComponent.Name, err)
-			}
-		}
-
-		return true
-	})
-
-	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
-		if plugin.InitConfigPars != nil {
-			if err := plugin.InitConfigPars(a.container); err != nil {
-				a.LogPanicf("failed to initialize plugin (%s) config parameters: %s", plugin.Name, err)
+	forEachComponent(a.options.components, func(component *Component) bool {
+		if component.InitConfigPars != nil {
+			if err := component.InitConfigPars(a.container); err != nil {
+				a.LogPanicf("failed to initialize component (%s) config parameters: %s", component.Name, err)
 			}
 		}
 
@@ -405,61 +383,36 @@ func (a *App) preProvide() {
 		}
 	}
 
-	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
-		if coreComponent.PreProvide != nil {
-			if err := coreComponent.PreProvide(a.container, a, initCfg); err != nil {
-				a.LogPanicf("pre-provide core component (%s) failed: %s", coreComponent.Name, err)
+	forEachComponent(a.options.components, func(component *Component) bool {
+		if component.PreProvide != nil {
+			if err := component.PreProvide(a.container, a, initCfg); err != nil {
+				a.LogPanicf("pre-provide component (%s) failed: %s", component.Name, err)
 			}
 		}
 
-		return true
-	})
-
-	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
-		if plugin.PreProvide != nil {
-			if err := plugin.PreProvide(a.container, a, initCfg); err != nil {
-				a.LogPanicf("pre-provide plugin (%s) failed: %s", plugin.Name, err)
-			}
-		}
-
-		if plugin.IsEnabled == nil {
-			a.LogPanicf("pre-provide plugin (%s) failed: plugin does not provide an IsEnabled function", plugin.Name)
+		if component.IsEnabled == nil {
+			a.LogPanicf("pre-provide component (%s) failed: component does not provide an IsEnabled function", component.Name)
 		}
 
 		// Enable / disable Components
-		if plugin.IsEnabled() {
-			a.enabledPlugins[plugin.Name] = struct{}{}
+		if component.IsEnabled() {
+			a.enabledComponents[component.Name] = struct{}{}
 		} else {
-			a.disabledPlugins[plugin.Name] = struct{}{}
+			a.disabledComponents[component.Name] = struct{}{}
 		}
 
 		return true
 	})
-
-	// Force disable Components
-	for _, name := range initCfg.forceDisabledComponents {
-		a.forceDisabledComponents[strings.ToLower(name)] = struct{}{}
-	}
 }
 
 // addComponents stage.
 func (a *App) addComponents() {
-	forEachCoreComponent(a.options.coreComponents, func(coreComponent *CoreComponent) bool {
-		if a.isComponentForceDisabled(coreComponent.Identifier()) {
+	forEachComponent(a.options.components, func(component *Component) bool {
+		if a.IsComponentSkipped(component) {
 			return true
 		}
 
-		a.addCoreComponent(coreComponent)
-
-		return true
-	})
-
-	forEachPlugin(a.options.plugins, func(plugin *Plugin) bool {
-		if a.IsPluginSkipped(plugin) {
-			return true
-		}
-
-		a.addPlugin(plugin)
+		a.addComponent(component)
 
 		return true
 	})
@@ -473,20 +426,10 @@ func (a *App) provide() {
 		}
 	}
 
-	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
-		if coreComponent.Provide != nil {
-			if err := coreComponent.Provide(a.container); err != nil {
-				a.LogPanicf("provide core component (%s) failed: %s", coreComponent.Name, err)
-			}
-		}
-
-		return true
-	})
-
-	a.ForEachPlugin(func(plugin *Plugin) bool {
-		if plugin.Provide != nil {
-			if err := plugin.Provide(a.container); err != nil {
-				a.LogPanicf("provide plugin (%s) failed: %s", plugin.Name, err)
+	a.ForEachComponent(func(component *Component) bool {
+		if component.Provide != nil {
+			if err := component.Provide(a.container); err != nil {
+				a.LogPanicf("provide component (%s) failed: %s", component.Name, err)
 			}
 		}
 
@@ -502,20 +445,10 @@ func (a *App) invoke() {
 		}
 	}
 
-	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
-		if coreComponent.DepsFunc != nil {
-			if err := a.container.Invoke(coreComponent.DepsFunc); err != nil {
-				a.LogPanicf("invoke core component (%s) failed: %s", coreComponent.Name, err)
-			}
-		}
-
-		return true
-	})
-
-	a.ForEachPlugin(func(plugin *Plugin) bool {
-		if plugin.DepsFunc != nil {
-			if err := a.container.Invoke(plugin.DepsFunc); err != nil {
-				a.LogPanicf("invoke plugin (%s) failed: %s", plugin.Name, err)
+	a.ForEachComponent(func(component *Component) bool {
+		if component.DepsFunc != nil {
+			if err := a.container.Invoke(component.DepsFunc); err != nil {
+				a.LogPanicf("invoke component (%s) failed: %s", component.Name, err)
 			}
 		}
 
@@ -525,7 +458,7 @@ func (a *App) invoke() {
 
 // configure stage.
 func (a *App) configure() {
-	a.LogInfo("Loading core components ...")
+	a.LogInfo("Loading components ...")
 
 	if a.options.initComponent.Configure != nil {
 		if err := a.options.initComponent.Configure(); err != nil {
@@ -533,26 +466,13 @@ func (a *App) configure() {
 		}
 	}
 
-	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
-		if coreComponent.Configure != nil {
-			if err := coreComponent.Configure(); err != nil {
-				a.LogPanicf("configure core component (%s) failed: %s", coreComponent.Name, err)
+	a.ForEachComponent(func(component *Component) bool {
+		if component.Configure != nil {
+			if err := component.Configure(); err != nil {
+				a.LogPanicf("configure component (%s) failed: %s", component.Name, err)
 			}
 		}
-		a.LogInfof("Loading core components: %s ... done", coreComponent.Name)
-
-		return true
-	})
-
-	a.LogInfo("Loading plugins ...")
-
-	a.ForEachPlugin(func(plugin *Plugin) bool {
-		if plugin.Configure != nil {
-			if err := plugin.Configure(); err != nil {
-				a.LogPanicf("configure plugin (%s) failed: %s", plugin.Name, err)
-			}
-		}
-		a.LogInfof("Loading plugin: %s ... done", plugin.Name)
+		a.LogInfof("Loading components: %s ... done", component.Name)
 
 		return true
 	})
@@ -601,7 +521,7 @@ func (a *App) initializeVersionCheck() {
 
 // run stage.
 func (a *App) run() {
-	a.LogInfo("Executing core components ...")
+	a.LogInfo("Executing components ...")
 
 	if a.options.initComponent.Run != nil {
 		if err := a.options.initComponent.Run(); err != nil {
@@ -609,26 +529,13 @@ func (a *App) run() {
 		}
 	}
 
-	a.ForEachCoreComponent(func(coreComponent *CoreComponent) bool {
-		if coreComponent.Run != nil {
-			if err := coreComponent.Run(); err != nil {
-				a.LogPanicf("run core component (%s) failed: %s", coreComponent.Name, err)
+	a.ForEachComponent(func(component *Component) bool {
+		if component.Run != nil {
+			if err := component.Run(); err != nil {
+				a.LogPanicf("run component (%s) failed: %s", component.Name, err)
 			}
 		}
-		a.LogInfof("Starting core component: %s ... done", coreComponent.Name)
-
-		return true
-	})
-
-	a.LogInfo("Executing plugins ...")
-
-	a.ForEachPlugin(func(plugin *Plugin) bool {
-		if plugin.Run != nil {
-			if err := plugin.Run(); err != nil {
-				a.LogPanicf("run plugin (%s) failed: %s", plugin.Name, err)
-			}
-		}
-		a.LogInfof("Starting plugin: %s ... done", plugin.Name)
+		a.LogInfof("Starting component: %s ... done", component.Name)
 
 		return true
 	})
@@ -704,90 +611,56 @@ func (a *App) Daemon() daemon.Daemon {
 	return a.options.daemon
 }
 
-func (a *App) addCoreComponent(coreComponent *CoreComponent) {
-	name := coreComponent.Name
+func (a *App) addComponent(component *Component) {
+	name := component.Name
 
-	if _, exists := a.coreComponentsMap[name]; exists {
-		panic("duplicate core component - \"" + name + "\" was defined already")
+	if _, exists := a.componentsMap[name]; exists {
+		panic("duplicate component - \"" + name + "\" was defined already")
 	}
 
-	a.coreComponentsMap[name] = coreComponent
-	a.coreComponents = append(a.coreComponents, coreComponent)
+	a.componentsMap[name] = component
+	a.components = append(a.components, component)
 }
 
-func (a *App) addPlugin(plugin *Plugin) {
-	name := plugin.Name
-
-	if _, exists := a.pluginsMap[name]; exists {
-		panic("duplicate plugin - \"" + name + "\" was defined already")
-	}
-
-	a.pluginsMap[name] = plugin
-	a.plugins = append(a.plugins, plugin)
-}
-
-func (a *App) isPluginEnabled(identifier string) bool {
-	_, exists := a.enabledPlugins[identifier]
+func (a *App) isComponentEnabled(identifier string) bool {
+	_, exists := a.enabledComponents[identifier]
 
 	return exists
 }
 
-func (a *App) isPluginDisabled(identifier string) bool {
-	_, exists := a.disabledPlugins[identifier]
+func (a *App) isComponentDisabled(identifier string) bool {
+	_, exists := a.disabledComponents[identifier]
 
 	return exists
 }
 
-func (a *App) isComponentForceDisabled(identifier string) bool {
-	_, exists := a.forceDisabledComponents[identifier]
-
-	return exists
-}
-
-// IsPluginSkipped returns whether the plugin is loaded or skipped.
-func (a *App) IsPluginSkipped(plugin *Plugin) bool {
-	// list of disabled plugins has the highest priority
-	if a.isPluginDisabled(plugin.Identifier()) || a.isComponentForceDisabled(plugin.Identifier()) {
+// IsComponentSkipped returns whether the component is loaded or skipped.
+func (a *App) IsComponentSkipped(component *Component) bool {
+	// list of disabled components has the highest priority
+	if a.isComponentDisabled(component.Identifier()) {
 		return true
 	}
 
-	// if the plugin was not in the list of disabled plugins, it is only skipped if
-	// the plugin was not enabled and not in the list of enabled plugins.
-	return !plugin.IsEnabled() && !a.isPluginEnabled(plugin.Identifier())
+	// if the component was not in the list of disabled components, it is only skipped if
+	// the component was not enabled and not in the list of enabled components.
+	return !component.IsEnabled() && !a.isComponentEnabled(component.Identifier())
 }
 
-// CoreComponentForEachFunc is used in ForEachCoreComponent.
+// ComponentForEachFunc is used in ForEachComponent.
 // Returning false indicates to stop looping.
-type CoreComponentForEachFunc func(coreComponent *CoreComponent) bool
+type ComponentForEachFunc func(component *Component) bool
 
-func forEachCoreComponent(coreComponents []*CoreComponent, f CoreComponentForEachFunc) {
-	for _, coreComponent := range coreComponents {
-		if !f(coreComponent) {
+func forEachComponent(components []*Component, f ComponentForEachFunc) {
+	for _, component := range components {
+		if !f(component) {
 			break
 		}
 	}
 }
 
-// ForEachCoreComponent calls the given CoreComponentForEachFunc on each loaded core components.
-func (a *App) ForEachCoreComponent(f CoreComponentForEachFunc) {
-	forEachCoreComponent(a.coreComponents, f)
-}
-
-// PluginForEachFunc is used in ForEachPlugin.
-// Returning false indicates to stop looping.
-type PluginForEachFunc func(plugin *Plugin) bool
-
-func forEachPlugin(plugins []*Plugin, f PluginForEachFunc) {
-	for _, plugin := range plugins {
-		if !f(plugin) {
-			break
-		}
-	}
-}
-
-// ForEachPlugin calls the given PluginForEachFunc on each loaded plugin.
-func (a *App) ForEachPlugin(f PluginForEachFunc) {
-	forEachPlugin(a.plugins, f)
+// ForEachComponent calls the given ComponentForEachFunc on each loaded component.
+func (a *App) ForEachComponent(f ComponentForEachFunc) {
+	forEachComponent(a.components, f)
 }
 
 //

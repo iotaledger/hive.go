@@ -15,12 +15,10 @@ import (
 )
 
 func init() {
-	Plugin = &app.Plugin{
-		Component: &app.Component{
-			Name:   "Profiling",
-			Params: params,
-			Run:    run,
-		},
+	Component = &app.Component{
+		Name:   "Profiling",
+		Params: params,
+		Run:    run,
 		IsEnabled: func() bool {
 			return ParamsProfiling.Enabled
 		},
@@ -28,7 +26,7 @@ func init() {
 }
 
 var (
-	Plugin *app.Plugin
+	Component *app.Component
 )
 
 func run() error {
@@ -38,7 +36,7 @@ func run() error {
 	bindAddr := ParamsProfiling.BindAddress
 
 	go func() {
-		Plugin.LogInfof("You can now access the profiling server using: http://%s/debug/pprof/", bindAddr)
+		Component.LogInfof("You can now access the profiling server using: http://%s/debug/pprof/", bindAddr)
 
 		// pprof Server for Debugging
 		server := &http.Server{
@@ -47,7 +45,7 @@ func run() error {
 		}
 
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			Plugin.LogWarnf("Stopped profiling server due to an error (%s)", err)
+			Component.LogWarnf("Stopped profiling server due to an error (%s)", err)
 		}
 	}()
 

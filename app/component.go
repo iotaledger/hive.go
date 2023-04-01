@@ -41,6 +41,8 @@ type Component struct {
 	Configure Callback
 	// Run gets called in the run stage of app initialization (enabled components only).
 	Run Callback
+	// IsEnabled gets called to check whether the component is enabled.
+	IsEnabled IsEnabledFunc
 
 	// The logger instance used in this component.
 	logger     *logger.Logger
@@ -152,16 +154,4 @@ type InitComponent struct {
 	Init InitFunc
 	// The additional configs this InitComponent brings to the app.
 	AdditionalConfigs []*ConfigurationSet
-}
-
-// CoreComponent is a component essential for app operation.
-// It can not be disabled.
-type CoreComponent struct {
-	*Component
-}
-
-type Plugin struct {
-	*Component
-	// IsEnabled gets called to check whether the Plugin is enabled.
-	IsEnabled IsEnabledFunc
 }
