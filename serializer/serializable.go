@@ -337,6 +337,21 @@ func (l LexicalOrdered32ByteArrays) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// LexicalOrdered40ByteArrays are 40 byte arrays ordered in lexical order.
+type LexicalOrdered40ByteArrays [][40]byte
+
+func (l LexicalOrdered40ByteArrays) Len() int {
+	return len(l)
+}
+
+func (l LexicalOrdered40ByteArrays) Less(i, j int) bool {
+	return bytes.Compare(l[i][:], l[j][:]) < 0
+}
+
+func (l LexicalOrdered40ByteArrays) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
 // RemoveDupsAndSortByLexicalOrderArrayOf32Bytes returns a new SliceOfArraysOf32Bytes sorted by lexical order and without duplicates.
 func RemoveDupsAndSortByLexicalOrderArrayOf32Bytes(slice SliceOfArraysOf32Bytes) SliceOfArraysOf32Bytes {
 	seen := make(map[string]struct{})
