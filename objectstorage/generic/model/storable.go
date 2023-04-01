@@ -9,10 +9,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/iotaledger/hive.go/core/model"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
+	"github.com/iotaledger/hive.go/serializer/v2/serix/model"
 )
 
 // Storable is the base type for all storable models. It should be embedded in a wrapper type.

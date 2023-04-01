@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // ComponentParams defines the parameters configuration of a component.
@@ -43,6 +44,8 @@ type Component struct {
 	Run Callback
 	// IsEnabled gets called to check whether the component is enabled.
 	IsEnabled IsEnabledFunc
+
+	WorkerPool *workerpool.WorkerPool
 
 	// The logger instance used in this component.
 	logger     *logger.Logger
