@@ -1,9 +1,11 @@
-package eventticker
+package index
+
+type Index = int64
 
 type IndexedID interface {
 	comparable
 
-	Index() int64
+	Index() Index
 	String() string
 }
 

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/core/index"
 	"github.com/iotaledger/hive.go/core/memstorage"
 	"github.com/iotaledger/hive.go/crypto"
 	"github.com/iotaledger/hive.go/runtime/options"
@@ -13,7 +14,7 @@ import (
 // region EventTicker //////////////////////////////////////////////////////////////////////////////////////////////////
 
 // EventTicker takes care of requesting blocks.
-type EventTicker[T IndexedID] struct {
+type EventTicker[T index.IndexedID] struct {
 	Events *Events[T]
 
 	timedExecutor             *timed.Executor
@@ -29,7 +30,7 @@ type EventTicker[T IndexedID] struct {
 }
 
 // New creates a new block requester.
-func New[T IndexedID](opts ...options.Option[EventTicker[T]]) *EventTicker[T] {
+func New[T index.IndexedID](opts ...options.Option[EventTicker[T]]) *EventTicker[T] {
 	return options.Apply(&EventTicker[T]{
 		Events: NewEvents[T](),
 
@@ -204,14 +205,14 @@ func (r *EventTicker[T]) updateScheduledTickerCount(diff int) {
 // region Options //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // RetryInterval creates an option which sets the retry interval to the given value.
-func RetryInterval[T IndexedID](interval time.Duration) options.Option[EventTicker[T]] {
+func RetryInterval[T index.IndexedID](interval time.Duration) options.Option[EventTicker[T]] {
 	return func(requester *EventTicker[T]) {
 		requester.optsRetryInterval = interval
 	}
 }
 
 // RetryJitter creates an option which sets the retry jitter to the given value.
-func RetryJitter[T IndexedID](retryJitter time.Duration) options.Option[EventTicker[T]] {
+func RetryJitter[T index.IndexedID](retryJitter time.Duration) options.Option[EventTicker[T]] {
 	return func(requester *EventTicker[T]) {
 		requester.optsRetryJitter = retryJitter
 	}
@@ -219,7 +220,7 @@ func RetryJitter[T IndexedID](retryJitter time.Duration) options.Option[EventTic
 
 // MaxRequestThreshold creates an option which defines how often the EventTicker should try to request blocks before
 // canceling the request.
-func MaxRequestThreshold[T IndexedID](maxRequestThreshold int) options.Option[EventTicker[T]] {
+func MaxRequestThreshold[T index.IndexedID](maxRequestThreshold int) options.Option[EventTicker[T]] {
 	return func(requester *EventTicker[T]) {
 		requester.optsMaxRequestThreshold = maxRequestThreshold
 	}
