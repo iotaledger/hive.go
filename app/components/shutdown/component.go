@@ -8,26 +8,25 @@ import (
 )
 
 func init() {
-	CoreComponent = &app.CoreComponent{
-		Component: &app.Component{
-			Name:    "Shutdown",
-			Provide: provide,
-			Params:  params,
-		},
+	Component = &app.Component{
+		Name:      "Shutdown",
+		Provide:   provide,
+		Params:    params,
+		IsEnabled: func() bool { return true },
 	}
 }
 
 var (
-	CoreComponent *app.CoreComponent
+	Component *app.Component
 )
 
 func provide(c *dig.Container) error {
 	// we need to initialize and run the handler outside of the "Provide" function,
 	// otherwise the shutdown handler might not be initialized if
-	// it was not a dependency in another plugin.
+	// it was not a dependency in another component.
 	handler := shutdown.NewShutdownHandler(
-		CoreComponent.Logger(),
-		CoreComponent.Daemon(),
+		Component.Logger(),
+		Component.Daemon(),
 		shutdown.WithStopGracePeriod(ParamsShutdown.StopGracePeriod),
 		shutdown.WithSelfShutdownLogsEnabled(ParamsShutdown.Log.Enabled),
 		shutdown.WithSelfShutdownLogsFilePath(ParamsShutdown.Log.FilePath),
@@ -35,13 +34,13 @@ func provide(c *dig.Container) error {
 
 	// start the handler to be able to catch shutdown signals during the provide stage
 	if err := handler.Run(); err != nil {
-		CoreComponent.LogPanic(err)
+		Component.LogPanic(err)
 	}
 
 	if err := c.Provide(func() *shutdown.ShutdownHandler {
 		return handler
 	}); err != nil {
-		CoreComponent.LogPanic(err)
+		Component.LogPanic(err)
 	}
 
 	return nil

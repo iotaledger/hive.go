@@ -6,8 +6,8 @@ import (
 
 // ParametersProfiling contains the definition of the parameters used by profiling.
 type ParametersProfiling struct {
-	// Enabled defines whether the profiling plugin is enabled.
-	Enabled bool `default:"false" usage:"whether the profiling plugin is enabled"`
+	// Enabled defines whether the profiling component is enabled.
+	Enabled bool `default:"false" usage:"whether the profiling component is enabled"`
 	// the bind address on which the profiler listens on
 	BindAddress string `default:"localhost:6060" usage:"the bind address on which the profiler listens on"`
 }

@@ -131,11 +131,14 @@ func (t *AdvancedSet[T]) Clone() (cloned *AdvancedSet[T]) {
 // Slice returns a slice of all elements in the set.
 func (t *AdvancedSet[T]) Slice() (slice []T) {
 	slice = make([]T, 0)
-	_ = t.ForEach(func(element T) error {
-		slice = append(slice, element)
 
-		return nil
-	})
+	if t != nil {
+		_ = t.ForEach(func(element T) error {
+			slice = append(slice, element)
+
+			return nil
+		})
+	}
 
 	return slice
 }
