@@ -162,7 +162,7 @@ const (
 
 // TypeSettings holds various settings for a particular type.
 // Those settings determine how the object should be serialized/deserialized.
-// There are three way to provide TypeSettings
+// There are three ways to provide TypeSettings
 // 1. Via global registry: API.RegisterTypeSettings().
 // 2. Parse from struct tags.
 // 3. Pass as an option to API.Encode/API.Decode methods.
