@@ -8,7 +8,7 @@ require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20230313073148-33db6277060b
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20230313073148-33db6277060b
 	github.com/iotaledger/hive.go/lo v0.0.0-20230313073148-33db6277060b
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230313073148-33db6277060b
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230406124835-ba08a9535972
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230313073148-33db6277060b
 	github.com/mr-tron/base58 v1.2.0
