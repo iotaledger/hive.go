@@ -224,9 +224,6 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 
 // Encode serializes the "content of the model" to a byte slice.
 func (s Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
-	s.RLock()
-	defer s.RUnlock()
-
 	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 }
 
