@@ -15,7 +15,7 @@ import (
 // region CausalOrder ////////////////////////////////////////////////////////////////////////////////////////////////
 
 // CausalOrder represents an order where an Entity is ordered after its causal dependencies (parents) have been ordered.
-type CausalOrder[ID index.IndexedID, Entity OrderedEntity[ID]] struct {
+type CausalOrder[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]] struct {
 	// entityProvider contains a function that provides the Entity that belongs to a given ID.
 	entityProvider func(id ID) (entity Entity, exists bool)
 
@@ -25,7 +25,7 @@ type CausalOrder[ID index.IndexedID, Entity OrderedEntity[ID]] struct {
 	// orderedCallback contains a function that is called when an Entity is ordered.
 	orderedCallback func(entity Entity) (err error)
 
-	// evictionCallback contains a function that is called whenever an Entity is evicted from the CausalOrderer.
+	// evictionCallback contains a function that is called whenever an Entity is evicted from the CausalOrder.
 	evictionCallback func(entity Entity, reason error)
 
 	// parentsCallback contains a function that returns the parents of an Entity.
@@ -35,19 +35,19 @@ type CausalOrder[ID index.IndexedID, Entity OrderedEntity[ID]] struct {
 	checkReference func(child Entity, parent Entity) (err error)
 
 	// unorderedParentsCounter contains an in-memory storage that keeps track of the unordered parents of an Entity.
-	unorderedParentsCounter *memstorage.IndexedStorage[ID, uint8]
+	unorderedParentsCounter *memstorage.IndexedStorage[I, ID, uint8]
 
 	// unorderedParentsCounterMutex contains a mutex used to synchronize access to the unorderedParentsCounter.
 	unorderedParentsCounterMutex sync.Mutex
 
 	// unorderedChildren contains an in-memory storage of the pending children of an unordered Entity.
-	unorderedChildren *memstorage.IndexedStorage[ID, []Entity]
+	unorderedChildren *memstorage.IndexedStorage[I, ID, []Entity]
 
 	// unorderedChildrenMutex contains a mutex used to synchronize access to the unorderedChildren.
 	unorderedChildrenMutex sync.Mutex
 
 	// lastEvictedIndex contains the last evicted slot.
-	lastEvictedIndex index.Index
+	lastEvictedIndex I
 
 	// evictionMutex contains the local manager used to orchestrate the eviction of old Entities.
 	evictionMutex sync.RWMutex
@@ -58,32 +58,32 @@ type CausalOrder[ID index.IndexedID, Entity OrderedEntity[ID]] struct {
 	workerPool *workerpool.WorkerPool
 }
 
-// New returns a new CausalOrderer instance with the given parameters.
-func New[ID index.IndexedID, Entity OrderedEntity[ID]](
+// New returns a new CausalOrder instance with the given parameters.
+func New[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]](
 	workerPool *workerpool.WorkerPool,
 	entityProvider func(id ID) (entity Entity, exists bool),
 	isOrdered func(entity Entity) (isOrdered bool),
 	orderedCallback func(entity Entity) (err error),
 	evictionCallback func(entity Entity, reason error),
 	parentsCallback func(entity Entity) []ID,
-	opts ...options.Option[CausalOrder[ID, Entity]],
-) (newCausalOrder *CausalOrder[ID, Entity]) {
-	return options.Apply(&CausalOrder[ID, Entity]{
+	opts ...options.Option[CausalOrder[I, ID, Entity]],
+) *CausalOrder[I, ID, Entity] {
+	return options.Apply(&CausalOrder[I, ID, Entity]{
 		workerPool:              workerPool,
 		entityProvider:          entityProvider,
 		isOrdered:               isOrdered,
 		orderedCallback:         orderedCallback,
 		evictionCallback:        evictionCallback,
 		parentsCallback:         parentsCallback,
-		checkReference:          checkReference[ID, Entity],
-		unorderedParentsCounter: memstorage.NewSlotStorage[ID, uint8](),
-		unorderedChildren:       memstorage.NewSlotStorage[ID, []Entity](),
+		checkReference:          checkReference[I, ID, Entity],
+		unorderedParentsCounter: memstorage.NewIndexedStorage[I, ID, uint8](),
+		unorderedChildren:       memstorage.NewIndexedStorage[I, ID, []Entity](),
 		dagMutex:                syncutils.NewDAGMutex[ID](),
 	}, opts)
 }
 
-// Queue adds the given Entity to the CausalOrderer and triggers it when it's ready.
-func (c *CausalOrder[ID, Entity]) Queue(entity Entity) {
+// Queue adds the given Entity to the CausalOrder and triggers it when it's ready.
+func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
 	c.evictionMutex.RLock()
 	defer c.evictionMutex.RUnlock()
 
@@ -91,14 +91,14 @@ func (c *CausalOrder[ID, Entity]) Queue(entity Entity) {
 }
 
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
-func (c *CausalOrder[ID, Entity]) EvictUntil(index index.Index) {
+func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 	for _, evictedEntity := range c.evictUntil(index) {
-		c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %s", index))
+		c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
 	}
 }
 
 // triggerOrderedIfReady triggers the ordered callback of the given Entity if it's ready.
-func (c *CausalOrder[ID, Entity]) triggerOrderedIfReady(entity Entity) {
+func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) {
 	parents := c.parentsCallback(entity)
 
 	c.dagMutex.RLock(parents...)
@@ -124,7 +124,7 @@ func (c *CausalOrder[ID, Entity]) triggerOrderedIfReady(entity Entity) {
 }
 
 // allParentsOrdered returns true if all parents of the given Entity are ordered.
-func (c *CausalOrder[ID, Entity]) allParentsOrdered(entity Entity) (allParentsOrdered bool) {
+func (c *CausalOrder[I, ID, Entity]) allParentsOrdered(entity Entity) (allParentsOrdered bool) {
 	pendingParents := uint8(0)
 	for _, parentID := range c.parentsCallback(entity) {
 		parentEntity, exists := c.entityProvider(parentID)
@@ -155,7 +155,7 @@ func (c *CausalOrder[ID, Entity]) allParentsOrdered(entity Entity) (allParentsOr
 }
 
 // registerUnorderedChild registers the given Entity as a child of the given parent ID.
-func (c *CausalOrder[ID, Entity]) registerUnorderedChild(entityID ID, child Entity) {
+func (c *CausalOrder[I, ID, Entity]) registerUnorderedChild(entityID ID, child Entity) {
 	c.unorderedChildrenMutex.Lock()
 	defer c.unorderedChildrenMutex.Unlock()
 
@@ -165,7 +165,7 @@ func (c *CausalOrder[ID, Entity]) registerUnorderedChild(entityID ID, child Enti
 }
 
 // setUnorderedParentsCounter sets the unordered parents counter of the given Entity to the given value.
-func (c *CausalOrder[ID, Entity]) setUnorderedParentsCounter(entityID ID, unorderedParentsCount uint8) {
+func (c *CausalOrder[I, ID, Entity]) setUnorderedParentsCounter(entityID ID, unorderedParentsCount uint8) {
 	c.unorderedParentsCounterMutex.Lock()
 	defer c.unorderedParentsCounterMutex.Unlock()
 
@@ -174,7 +174,7 @@ func (c *CausalOrder[ID, Entity]) setUnorderedParentsCounter(entityID ID, unorde
 
 // decrementUnorderedParentsCounter decrements the unordered parents counter of the given Entity by 1 and returns the
 // new value.
-func (c *CausalOrder[ID, Entity]) decreaseUnorderedParentsCounter(metadata Entity) (newUnorderedParentsCounter uint8) {
+func (c *CausalOrder[I, ID, Entity]) decreaseUnorderedParentsCounter(metadata Entity) (newUnorderedParentsCounter uint8) {
 	c.unorderedParentsCounterMutex.Lock()
 	defer c.unorderedParentsCounterMutex.Unlock()
 
@@ -193,7 +193,7 @@ func (c *CausalOrder[ID, Entity]) decreaseUnorderedParentsCounter(metadata Entit
 }
 
 // popUnorderedChild pops the children of the given parent ID from the unordered children storage.
-func (c *CausalOrder[ID, Entity]) popUnorderedChildren(entityID ID) (pendingChildren []Entity) {
+func (c *CausalOrder[I, ID, Entity]) popUnorderedChildren(entityID ID) (pendingChildren []Entity) {
 	c.unorderedChildrenMutex.Lock()
 	defer c.unorderedChildrenMutex.Unlock()
 
@@ -211,7 +211,7 @@ func (c *CausalOrder[ID, Entity]) popUnorderedChildren(entityID ID) (pendingChil
 
 // triggerChildIfReady triggers the ordered callback of the given Entity if it's unorderedParentsCounter reaches 0
 // (after decreasing it).
-func (c *CausalOrder[ID, Entity]) triggerChildIfReady(child Entity) {
+func (c *CausalOrder[I, ID, Entity]) triggerChildIfReady(child Entity) {
 	c.dagMutex.Lock(child.ID())
 	defer c.dagMutex.Unlock(child.ID())
 
@@ -221,7 +221,7 @@ func (c *CausalOrder[ID, Entity]) triggerChildIfReady(child Entity) {
 }
 
 // triggerOrderedCallback triggers the ordered callback of the given Entity and propagates .
-func (c *CausalOrder[ID, Entity]) triggerOrderedCallback(entity Entity) (wasTriggered bool) {
+func (c *CausalOrder[I, ID, Entity]) triggerOrderedCallback(entity Entity) (wasTriggered bool) {
 	if err := c.orderedCallback(entity); err != nil {
 		c.evictionCallback(entity, err)
 
@@ -234,7 +234,7 @@ func (c *CausalOrder[ID, Entity]) triggerOrderedCallback(entity Entity) (wasTrig
 }
 
 // propagateOrderToChildren propagates the order of the given Entity to its children.
-func (c *CausalOrder[ID, Entity]) propagateOrderToChildren(id ID) {
+func (c *CausalOrder[I, ID, Entity]) propagateOrderToChildren(id ID) {
 	for _, child := range c.popUnorderedChildren(id) {
 		currentChild := child
 
@@ -248,7 +248,7 @@ func (c *CausalOrder[ID, Entity]) propagateOrderToChildren(id ID) {
 }
 
 // entity returns the Entity with the given ID.
-func (c *CausalOrder[ID, Entity]) entity(blockID ID) (entity Entity) {
+func (c *CausalOrder[I, ID, Entity]) entity(blockID ID) (entity Entity) {
 	entity, exists := c.entityProvider(blockID)
 	if !exists {
 		panic(errors.Errorf("block %s does not exist", blockID))
@@ -258,7 +258,7 @@ func (c *CausalOrder[ID, Entity]) entity(blockID ID) (entity Entity) {
 }
 
 // evictUntil evicts the given slot from the CausalOrder and returns the evicted Entities.
-func (c *CausalOrder[ID, Entity]) evictUntil(index index.Index) (evictedEntities map[ID]Entity) {
+func (c *CausalOrder[I, ID, Entity]) evictUntil(index I) (evictedEntities map[ID]Entity) {
 	c.evictionMutex.Lock()
 	defer c.evictionMutex.Unlock()
 
@@ -280,7 +280,7 @@ func (c *CausalOrder[ID, Entity]) evictUntil(index index.Index) (evictedEntities
 }
 
 // evictEntitiesFromSlot evicts the Entities that belong to the given slot from the CausalOrder.
-func (c *CausalOrder[ID, Entity]) evictEntitiesFromSlot(index index.Index, entityCallback func(id ID)) {
+func (c *CausalOrder[I, ID, Entity]) evictEntitiesFromSlot(index I, entityCallback func(id ID)) {
 	if childrenStorage := c.unorderedChildren.Get(index); childrenStorage != nil {
 		childrenStorage.ForEachKey(func(id ID) bool {
 			entityCallback(id)
@@ -301,7 +301,7 @@ func (c *CausalOrder[ID, Entity]) evictEntitiesFromSlot(index index.Index, entit
 }
 
 // checkReference is the default function that checks if the given reference is valid.
-func checkReference[ID index.IndexedID, Entity OrderedEntity[ID]](entity Entity, parent Entity) (err error) {
+func checkReference[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]](entity Entity, parent Entity) (err error) {
 	return
 }
 
@@ -310,8 +310,8 @@ func checkReference[ID index.IndexedID, Entity OrderedEntity[ID]](entity Entity,
 // region Options //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // WithReferenceValidator is an option that sets the ReferenceValidator of the CausalOrder.
-func WithReferenceValidator[ID index.IndexedID, Entity OrderedEntity[ID]](referenceValidator func(entity Entity, parent Entity) (err error)) options.Option[CausalOrder[ID, Entity]] {
-	return func(causalOrder *CausalOrder[ID, Entity]) {
+func WithReferenceValidator[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]](referenceValidator func(entity Entity, parent Entity) (err error)) options.Option[CausalOrder[I, ID, Entity]] {
+	return func(causalOrder *CausalOrder[I, ID, Entity]) {
 		causalOrder.checkReference = referenceValidator
 	}
 }
@@ -321,7 +321,7 @@ func WithReferenceValidator[ID index.IndexedID, Entity OrderedEntity[ID]](refere
 // region Types ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // OrderedEntity is an interface that represents an Entity that can be causally ordered.
-type OrderedEntity[ID index.IndexedID] interface {
+type OrderedEntity[I index.Type, ID index.IndexedID[I]] interface {
 	// ID returns the ID of the Entity.
 	ID() ID
 

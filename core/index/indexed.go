@@ -1,18 +1,16 @@
 package index
 
-type Index = int64
+type Type interface {
+	~int64
+}
 
-type IndexedID interface {
+type IndexedID[I Type] interface {
 	comparable
 
-	Index() Index
+	Index() I
 	String() string
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region IndexedEntity ////////////////////////////////////////////////////////////////////////////////////////////////
-
-type IndexedEntity[IDType IndexedID] interface {
-	ID() IDType
+type IndexedEntity[I Type, IndexedIDType IndexedID[I]] interface {
+	ID() IndexedIDType
 }
