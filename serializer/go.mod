@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/ethereum/go-ethereum v1.11.4
 	github.com/iancoleman/orderedmap v0.2.0
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230410123404-1f6d86152bfe
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1

@@ -11,6 +11,8 @@ github.com/ethereum/go-ethereum v1.11.4 h1:KG81SnUHXWk8LJB3mBcHg/E2yLvXoiPmRMCIR
 github.com/ethereum/go-ethereum v1.11.4/go.mod h1:it7x0DWnTDMfVFdXcU6Ti4KEFQynLHVRarcSlPr0HBo=
 github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6jq8pNA=
 github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
+github.com/iotaledger/hive.go/constraints v0.0.0-20230410123404-1f6d86152bfe h1:0PvY4KGRMs9BJSEe7rWsKD9Px1EBAH5+o6xDbCNZJ9o=
+github.com/iotaledger/hive.go/constraints v0.0.0-20230410123404-1f6d86152bfe/go.mod h1:bvXXc6quBdERMMKnirr2+iQU4WnTz4KDbdHcusW9Ats=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
