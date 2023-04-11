@@ -25,3 +25,7 @@ objectsdb/
 
 # VScode
 .vscode
+
+# Go
+go.work
+go.work.sum
