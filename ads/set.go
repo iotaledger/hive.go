@@ -7,11 +7,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
 
-	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 )
 
 // Set is a sparse merkle tree based set.
-type Set[K any, KPtr constraints.MarshalablePtr[K]] struct {
+type Set[K any, KPtr serializer.MarshalablePtr[K]] struct {
 	rawKeysStore kvstore.KVStore
 	tree         *smt.SparseMerkleTree
 	root         *typedkey.Bytes
@@ -34,7 +34,7 @@ type Set[K any, KPtr constraints.MarshalablePtr[K]] struct {
 }
 
 // NewSet creates a new sparse merkle tree based set.
-func NewSet[K any, KPtr constraints.MarshalablePtr[K]](store kvstore.KVStore) (newSet *Set[K, KPtr]) {
+func NewSet[K any, KPtr serializer.MarshalablePtr[K]](store kvstore.KVStore) (newSet *Set[K, KPtr]) {
 	newSet = &Set[K, KPtr]{
 		rawKeysStore: lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixRawKeysStorage})),
 		tree: smt.NewSparseMerkleTree(
