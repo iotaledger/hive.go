@@ -4,10 +4,10 @@ go 1.20
 
 require (
 	github.com/celestiaorg/smt v0.3.0
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230313073148-33db6277060b
 	github.com/iotaledger/hive.go/ds v0.0.0-20230313073148-33db6277060b
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20230313073148-33db6277060b
 	github.com/iotaledger/hive.go/lo v0.0.0-20230313073148-33db6277060b
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230411094451-3a6bd8040e05
 	github.com/pkg/errors v0.9.1
 	golang.org/x/crypto v0.7.0
 )
@@ -20,8 +20,8 @@ require (
 	github.com/getsentry/sentry-go v0.19.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230313073148-33db6277060b // indirect
 	github.com/iotaledger/hive.go/runtime v0.0.0-20230313073148-33db6277060b // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230313073148-33db6277060b // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect

@@ -7,21 +7,21 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
 
-	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-type Map[K, V constraints.Serializable, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]] struct {
+type Map[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr serializer.MarshalablePtr[V]] struct {
 	rawKeysStore kvstore.KVStore
 	tree         *smt.SparseMerkleTree
 	root         *typedkey.Bytes
 	mutex        sync.RWMutex
 }
 
-func NewMap[K, V constraints.Serializable, KPtr constraints.MarshalablePtr[K], VPtr constraints.MarshalablePtr[V]](store kvstore.KVStore) (newMap *Map[K, V, KPtr, VPtr]) {
+func NewMap[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr serializer.MarshalablePtr[V]](store kvstore.KVStore) (newMap *Map[K, V, KPtr, VPtr]) {
 	newMap = &Map[K, V, KPtr, VPtr]{
 		rawKeysStore: lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixRawKeysStorage})),
 		tree: smt.NewSparseMerkleTree(
