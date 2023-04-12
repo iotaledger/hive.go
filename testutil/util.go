@@ -1,10 +1,9 @@
 package testutil
 
 import (
+	"bytes"
 	"math/rand"
 	"sort"
-
-	"github.com/iotaledger/hive.go/serializer"
 )
 
 // RandBytes returns length amount random bytes.
@@ -42,10 +41,13 @@ func Rand64ByteArray() [64]byte {
 
 // SortedRand32BytArray returns a count length slice of sorted 32 byte arrays.
 func SortedRand32BytArray(count int) [][32]byte {
-	hashes := make(serializer.LexicalOrdered32ByteArrays, count)
+	hashes := make([][32]byte, count)
 	for i := 0; i < count; i++ {
 		hashes[i] = Rand32ByteArray()
 	}
-	sort.Sort(hashes)
+	sort.Slice(hashes, func(i, j int) bool {
+		return bytes.Compare(hashes[i][:], hashes[j][:]) < 0
+	})
+
 	return hashes
 }
