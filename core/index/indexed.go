@@ -4,6 +4,13 @@ type Type interface {
 	~int64
 }
 
+func Max[I Type](i, o I) I {
+	if i > o {
+		return i
+	}
+	return o
+}
+
 type IndexedID[I Type] interface {
 	comparable
 
