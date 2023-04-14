@@ -20,6 +20,7 @@ import (
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 const (
@@ -399,6 +400,7 @@ func (a *App) addComponents() {
 			return true
 		}
 
+		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
 		a.addComponent(component)
 
 		return true
@@ -517,13 +519,13 @@ func (a *App) run() {
 	}
 
 	a.ForEachComponent(func(component *Component) bool {
+		a.LogInfof("Starting component: %s ...", component.Name)
+		component.WorkerPool.Start()
 		if component.Run != nil {
 			if err := component.Run(); err != nil {
 				a.LogPanicf("run component (%s) failed: %s", component.Name, err)
 			}
 		}
-		a.LogInfof("Starting component: %s ... done", component.Name)
-
 		return true
 	})
 }
@@ -562,6 +564,11 @@ func (a *App) Run() {
 
 	a.LogInfo("Starting background workers ...")
 	a.Daemon().Run()
+
+	a.ForEachComponent(func(component *Component) bool {
+		component.WorkerPool.Shutdown()
+		return true
+	})
 
 	a.LogInfo("Shutdown complete!")
 }

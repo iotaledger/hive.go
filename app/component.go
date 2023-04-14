@@ -9,6 +9,7 @@ import (
 
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // InitFunc gets called as the initialization function of the app.
@@ -58,6 +59,8 @@ type Component struct {
 	Configure Callback
 	// Run gets called in the run stage of app initialization (enabled components only).
 	Run Callback
+	// WorkerPool gets configured and started automatically for each component (enabled components only).
+	WorkerPool *workerpool.WorkerPool
 
 	// The logger instance used in this component.
 	logger     *logger.Logger
