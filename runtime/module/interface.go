@@ -24,6 +24,9 @@ type Interface interface {
 	// HookInitialized registers a callback for the initialized event.
 	HookInitialized(func(), ...event.Option) *event.Hook[func()]
 
+	// Shutdown shuts down the module, should finally call TriggerStopped.
+	Shutdown()
+
 	// TriggerStopped triggers the stopped event.
 	TriggerStopped()
 
