@@ -50,6 +50,8 @@ func (c *Configuration) Set(path string, value interface{}, parser ...koanf.Pars
 }
 
 // SetStruct sets the value of the struct for the key (case-insensitive).
+//
+//nolint:revive
 func (c *Configuration) SetStruct(path string, value interface{}, fieldTag string, parser ...koanf.Parser) error {
 
 	var p koanf.Parser

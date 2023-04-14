@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/pkg/errors"
+	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app"
 )
@@ -18,10 +19,10 @@ func init() {
 	Component = &app.Component{
 		Name:   "Profiling",
 		Params: params,
-		Run:    run,
-		IsEnabled: func() bool {
+		IsEnabled: func(c *dig.Container) bool {
 			return ParamsProfiling.Enabled
 		},
+		Run: run,
 	}
 }
 
