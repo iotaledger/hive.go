@@ -17,16 +17,23 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 	panic(panicMissingRocksDB)
 }
 
-func (r *RocksDB) Flush() error {
-	panic(panicMissingRocksDB)
-}
-
-func (r *RocksDB) Close() error {
+// OpenDBReadOnly opens a new RocksDB instance in read-only mode.
+func OpenDBReadOnly(directory string, options ...Option) (*RocksDB, error) {
 	panic(panicMissingRocksDB)
 }
 
 // New creates a new KVStore with the underlying RocksDB.
 func New(db *RocksDB) kvstore.KVStore {
+	panic(panicMissingRocksDB)
+}
+
+// Flush the database.
+func (r *RocksDB) Flush() error {
+	panic(panicMissingRocksDB)
+}
+
+// Close the database.
+func (r *RocksDB) Close() error {
 	panic(panicMissingRocksDB)
 }
 

@@ -9,10 +9,9 @@ import (
 
 func init() {
 	Component = &app.Component{
-		Name:      "Shutdown",
-		Provide:   provide,
-		Params:    params,
-		IsEnabled: func() bool { return true },
+		Name:    "Shutdown",
+		Provide: provide,
+		Params:  params,
 	}
 }
 

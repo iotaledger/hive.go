@@ -3,16 +3,16 @@ module github.com/iotaledger/hive.go/kvstore
 go 1.20
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20230309163202-51422ae2d449
+	github.com/cockroachdb/pebble v0.0.0-20230412222916-60cfeb46143b
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230313073148-33db6277060b
-	github.com/iotaledger/hive.go/ds v0.0.0-20230313073148-33db6277060b
-	github.com/iotaledger/hive.go/lo v0.0.0-20230313073148-33db6277060b
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230313073148-33db6277060b
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/ds v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/lo v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230411194733-5c1053500317
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230411094451-3a6bd8040e05
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 )
 
 require (
@@ -27,34 +27,34 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ethereum/go-ethereum v1.11.4 // indirect
-	github.com/getsentry/sentry-go v0.19.0 // indirect
+	github.com/ethereum/go-ethereum v1.11.5 // indirect
+	github.com/getsentry/sentry-go v0.20.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.1.0 // indirect
+	github.com/golang/glog v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230313073148-33db6277060b // indirect
-	github.com/klauspost/compress v1.16.0 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230411194733-5c1053500317 // indirect
+	github.com/klauspost/compress v1.16.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
-	github.com/petermattis/goid v0.0.0-20230222173705-8ff7bb262a50 // indirect
+	github.com/petermattis/goid v0.0.0-20230317030725-371a4b8eda08 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
+	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
-	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
+	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/protobuf v1.29.0 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
