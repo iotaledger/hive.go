@@ -64,6 +64,8 @@ func (p *lowerPosflag) ReadBytes() ([]byte, error) {
 }
 
 // Watch is not supported.
+//
+//nolint:revive
 func (p *lowerPosflag) Watch(cb func(event interface{}, err error)) error {
 	return errors.New("posflag provider does not support this method")
 }

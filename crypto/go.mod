@@ -4,10 +4,10 @@ go 1.20
 
 require (
 	github.com/cockroachdb/errors v1.9.1
-	github.com/iotaledger/hive.go/lo v0.0.0-20230411104612-2f6b2cb26cf1
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230411104612-2f6b2cb26cf1
+	github.com/iotaledger/hive.go/lo v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230411194733-5c1053500317
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
-	github.com/libp2p/go-libp2p v0.27.0
+	github.com/libp2p/go-libp2p v0.27.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e
 	github.com/pkg/errors v0.9.1
@@ -21,12 +21,12 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.5 // indirect
 	github.com/getsentry/sentry-go v0.20.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230411104612-2f6b2cb26cf1 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230411194733-5c1053500317 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect

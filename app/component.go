@@ -5,9 +5,27 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/dig"
+
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/logger"
 )
+
+// InitFunc gets called as the initialization function of the app.
+type InitFunc func(application *App) error
+
+// InitConfigParamsFunc gets called with a dig.Container.
+type InitConfigParamsFunc func(c *dig.Container) error
+
+// IsEnabledFunc gets called to check whether the Compoment is enabled.
+// It gets called with a dig.Container and returns true if the Compoment is enabled.
+type IsEnabledFunc func(c *dig.Container) bool
+
+// ProvideFunc gets called with a dig.Container.
+type ProvideFunc func(c *dig.Container) error
+
+// Callback is a function called without any arguments.
+type Callback func() error
 
 // ComponentParams defines the parameters configuration of a component.
 type ComponentParams struct {
@@ -29,20 +47,17 @@ type Component struct {
 	Params *ComponentParams
 	// The function to call to initialize the component dependencies.
 	DepsFunc interface{}
-	// InitConfigPars gets called in the init stage of app initialization.
+	// InitConfigParams gets called in the init stage of app initialization.
 	// This can be used to provide config parameters even if the component is disabled.
-	InitConfigPars InitConfigParsFunc
-	// PreProvide gets called before the provide stage of app initialization.
-	// This can be used to force disable other components before they get initialized.
-	PreProvide PreProvideFunc
+	InitConfigParams InitConfigParamsFunc
+	// IsEnabled gets called to check whether the component is enabled.
+	IsEnabled IsEnabledFunc
 	// Provide gets called in the provide stage of app initialization (enabled components only).
 	Provide ProvideFunc
 	// Configure gets called in the configure stage of app initialization (enabled components only).
 	Configure Callback
 	// Run gets called in the run stage of app initialization (enabled components only).
 	Run Callback
-	// IsEnabled gets called to check whether the component is enabled.
-	IsEnabled IsEnabledFunc
 
 	// The logger instance used in this component.
 	logger     *logger.Logger
