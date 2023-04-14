@@ -372,7 +372,6 @@ func (a *App) initConfig() {
 	}
 
 	forEachComponent(a.options.components, func(component *Component) bool {
-		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
 		if component.InitConfigParams != nil {
 			if err := component.InitConfigParams(a.container); err != nil {
 				a.LogPanicf("failed to initialize component (%s) config parameters: %s", component.Name, err)
@@ -401,6 +400,7 @@ func (a *App) addComponents() {
 			return true
 		}
 
+		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
 		a.addComponent(component)
 
 		return true

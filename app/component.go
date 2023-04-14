@@ -59,7 +59,7 @@ type Component struct {
 	Configure Callback
 	// Run gets called in the run stage of app initialization (enabled components only).
 	Run Callback
-
+	// WorkerPool gets configured and started automatically for each component (enabled components only).
 	WorkerPool *workerpool.WorkerPool
 
 	// The logger instance used in this component.
