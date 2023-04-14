@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/ads"
-	"github.com/iotaledger/hive.go/core/index"
 	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
@@ -16,10 +15,7 @@ import (
 const cacheSize = 1000
 
 // Accounts is a mapping between a collection of identities and their weights.
-type Accounts[I index.Type] struct {
-	// events is a collection of events related to the Weights.
-	events *events[I]
-
+type Accounts struct {
 	weights     *ads.Map[identity.ID, storable.SerializableInt64, *identity.ID, *storable.SerializableInt64]
 	cacheMutex  sync.Mutex
 	totalWeight int64
@@ -27,9 +23,8 @@ type Accounts[I index.Type] struct {
 }
 
 // NewAccounts creates a new Weights instance.
-func NewAccounts[I index.Type](store kvstore.KVStore) *Accounts[I] {
-	newWeights := &Accounts[I]{
-		events:      newEvents[I](),
+func NewAccounts(store kvstore.KVStore) *Accounts {
+	newWeights := &Accounts{
 		weights:     ads.NewMap[identity.ID, storable.SerializableInt64](store),
 		totalWeight: 0,
 	}
@@ -45,12 +40,12 @@ func NewAccounts[I index.Type](store kvstore.KVStore) *Accounts[I] {
 }
 
 // SelectAccounts creates a new WeightedSet instance, that maintains a correct and updated total weight of its members.
-func (w *Accounts[I]) SelectAccounts(members ...identity.ID) (selectedAccounts *SelectedAccounts[I]) {
+func (w *Accounts) SelectAccounts(members ...identity.ID) (selectedAccounts *SelectedAccounts) {
 	return NewSelectedAccounts(w, members...)
 }
 
 // Get returns the weight of the given identity.
-func (w *Accounts[I]) Get(id identity.ID) (weight int64, exists bool) {
+func (w *Accounts) Get(id identity.ID) (weight int64, exists bool) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -60,7 +55,7 @@ func (w *Accounts[I]) Get(id identity.ID) (weight int64, exists bool) {
 }
 
 // Update updates the weight of the given identity.
-func (w *Accounts[I]) Update(id identity.ID, weightDiff int64) {
+func (w *Accounts) Update(id identity.ID, weightDiff int64) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -72,7 +67,7 @@ func (w *Accounts[I]) Update(id identity.ID, weightDiff int64) {
 }
 
 // ForEach iterates over all weights and calls the given callback for each of them.
-func (w *Accounts[I]) ForEach(callback func(id identity.ID, weight int64) bool) (err error) {
+func (w *Accounts) ForEach(callback func(id identity.ID, weight int64) bool) (err error) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -80,7 +75,7 @@ func (w *Accounts[I]) ForEach(callback func(id identity.ID, weight int64) bool) 
 }
 
 // TotalWeight returns the total weight of all identities.
-func (w *Accounts[I]) TotalWeight() (totalWeight int64) {
+func (w *Accounts) TotalWeight() (totalWeight int64) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -88,7 +83,7 @@ func (w *Accounts[I]) TotalWeight() (totalWeight int64) {
 }
 
 // Root returns the root of the merkle tree of the stored weights.
-func (w *Accounts[I]) Root() (root types.Identifier) {
+func (w *Accounts) Root() (root types.Identifier) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -96,7 +91,7 @@ func (w *Accounts[I]) Root() (root types.Identifier) {
 }
 
 // Map returns the weights as a map.
-func (w *Accounts[I]) Map() (weights map[identity.ID]int64, err error) {
+func (w *Accounts) Map() (weights map[identity.ID]int64, err error) {
 	weights = make(map[identity.ID]int64)
 	if err = w.ForEach(func(id identity.ID, weight int64) bool {
 		weights[id] = weight

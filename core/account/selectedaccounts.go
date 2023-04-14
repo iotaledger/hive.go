@@ -3,7 +3,6 @@ package account
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/core/index"
 	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/ds/advancedset"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
@@ -11,15 +10,15 @@ import (
 	"github.com/iotaledger/hive.go/lo"
 )
 
-type SelectedAccounts[I index.Type] struct {
-	Weights          *Accounts[I]
+type SelectedAccounts struct {
+	Weights          *Accounts
 	members          *shrinkingmap.ShrinkingMap[identity.ID, types.Empty]
 	totalWeight      int64
 	totalWeightMutex sync.RWMutex
 }
 
-func NewSelectedAccounts[I index.Type](accounts *Accounts[I], optMembers ...identity.ID) *SelectedAccounts[I] {
-	newWeightedSet := new(SelectedAccounts[I])
+func NewSelectedAccounts(accounts *Accounts, optMembers ...identity.ID) *SelectedAccounts {
+	newWeightedSet := new(SelectedAccounts)
 	newWeightedSet.Weights = accounts
 	newWeightedSet.members = shrinkingmap.New[identity.ID, types.Empty]()
 
@@ -30,7 +29,7 @@ func NewSelectedAccounts[I index.Type](accounts *Accounts[I], optMembers ...iden
 	return newWeightedSet
 }
 
-func (w *SelectedAccounts[I]) Add(id identity.ID) (added bool) {
+func (w *SelectedAccounts) Add(id identity.ID) (added bool) {
 	w.Weights.mutex.RLock()
 	defer w.Weights.mutex.RUnlock()
 
@@ -46,7 +45,7 @@ func (w *SelectedAccounts[I]) Add(id identity.ID) (added bool) {
 	return
 }
 
-func (w *SelectedAccounts[I]) Delete(id identity.ID) (removed bool) {
+func (w *SelectedAccounts) Delete(id identity.ID) (removed bool) {
 	w.Weights.mutex.RLock()
 	defer w.Weights.mutex.RUnlock()
 
@@ -62,7 +61,7 @@ func (w *SelectedAccounts[I]) Delete(id identity.ID) (removed bool) {
 	return
 }
 
-func (w *SelectedAccounts[I]) Get(id identity.ID) (weight int64, exists bool) {
+func (w *SelectedAccounts) Get(id identity.ID) (weight int64, exists bool) {
 	// check if the member is part of the committee, otherwise its weight is 0
 	if !w.members.Has(id) {
 		return 0, false
@@ -75,11 +74,11 @@ func (w *SelectedAccounts[I]) Get(id identity.ID) (weight int64, exists bool) {
 	return 0, true
 }
 
-func (w *SelectedAccounts[I]) Has(id identity.ID) (has bool) {
+func (w *SelectedAccounts) Has(id identity.ID) (has bool) {
 	return w.members.Has(id)
 }
 
-func (w *SelectedAccounts[I]) ForEach(callback func(id identity.ID, weight int64) error) (err error) {
+func (w *SelectedAccounts) ForEach(callback func(id identity.ID, weight int64) error) (err error) {
 	w.members.ForEachKey(func(member identity.ID) bool {
 		if err := callback(member, lo.Return1(w.Weights.Get(member))); err != nil {
 			return false
@@ -91,13 +90,13 @@ func (w *SelectedAccounts[I]) ForEach(callback func(id identity.ID, weight int64
 	return
 }
 
-func (w *SelectedAccounts[I]) TotalWeight() (totalWeight int64) {
+func (w *SelectedAccounts) TotalWeight() (totalWeight int64) {
 	w.totalWeightMutex.RLock()
 	defer w.totalWeightMutex.RUnlock()
 
 	return w.totalWeight
 }
 
-func (w *SelectedAccounts[I]) Members() *advancedset.AdvancedSet[identity.ID] {
+func (w *SelectedAccounts) Members() *advancedset.AdvancedSet[identity.ID] {
 	return advancedset.New(w.members.Keys()...)
 }
