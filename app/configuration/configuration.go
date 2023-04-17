@@ -100,6 +100,7 @@ func (c *Configuration) LoadFile(filePath string) error {
 		return ErrUnknownConfigFormat
 	}
 
+	//nolint:revive
 	if err := c.config.Load(file.Provider(filePath), parser); err != nil {
 		return err
 	}

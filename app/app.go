@@ -17,6 +17,7 @@ import (
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/app/version"
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
@@ -38,20 +39,19 @@ type ParametersApp struct {
 }
 
 type App struct {
-	appInfo            *Info
-	enabledComponents  map[string]struct{}
-	disabledComponents map[string]struct{}
-	componentsMap      map[string]*Component
-	components         []*Component
-	container          *dig.Container
-	loggerRoot         *logger.Logger
-	logger             *logger.Logger
-	appFlagSet         *flag.FlagSet
-	appConfig          *configuration.Configuration
-	appParams          *ParametersApp
-	configs            ConfigurationSets
-	maskedKeys         []string
-	options            *Options
+	appInfo                *Info
+	componentsEnabledState map[string]bool
+	componentsMap          map[string]*Component
+	components             []*Component
+	container              *dig.Container
+	loggerRoot             *logger.Logger
+	logger                 *logger.Logger
+	appFlagSet             *flag.FlagSet
+	appConfig              *configuration.Configuration
+	appParams              *ParametersApp
+	configs                ConfigurationSets
+	maskedKeys             []string
+	options                *Options
 }
 
 func New(name string, version string, optionalOptions ...Option) *App {
@@ -76,18 +76,17 @@ func New(name string, version string, optionalOptions ...Option) *App {
 			Version:             version,
 			LatestGitHubVersion: "",
 		},
-		enabledComponents:  make(map[string]struct{}),
-		disabledComponents: make(map[string]struct{}),
-		componentsMap:      make(map[string]*Component),
-		components:         make([]*Component, 0),
-		container:          dig.New(dig.DeferAcyclicVerification()),
-		loggerRoot:         nil,
-		logger:             nil,
-		appFlagSet:         nil,
-		appConfig:          nil,
-		configs:            nil,
-		maskedKeys:         make([]string, 0),
-		options:            appOpts,
+		componentsEnabledState: make(map[string]bool),
+		componentsMap:          make(map[string]*Component),
+		components:             make([]*Component, 0),
+		container:              dig.New(dig.DeferAcyclicVerification()),
+		loggerRoot:             nil,
+		logger:                 nil,
+		appFlagSet:             nil,
+		appConfig:              nil,
+		configs:                nil,
+		maskedKeys:             make([]string, 0),
+		options:                appOpts,
 	}
 
 	// provide the app itself in the container
@@ -328,14 +327,23 @@ func (a *App) printAppInfo() {
 func (a *App) printConfig() {
 	a.appConfig.Print(a.maskedKeys)
 
-	enabledComponents := []string{}
-	for component := range a.enabledComponents {
-		enabledComponents = append(enabledComponents, component)
-	}
+	componentsByID := lo.KeyBy(a.options.components, func(c *Component) string {
+		return c.Identifier()
+	})
 
+	enabledComponents := []string{}
 	disabledComponents := []string{}
-	for component := range a.disabledComponents {
-		disabledComponents = append(disabledComponents, component)
+	for componentID, enabled := range a.componentsEnabledState {
+		component, exists := componentsByID[componentID]
+		if !exists {
+			continue
+		}
+
+		if enabled {
+			enabledComponents = append(enabledComponents, component.Name)
+		} else {
+			disabledComponents = append(disabledComponents, component.Name)
+		}
 	}
 
 	getList := func(a []string) string {
@@ -357,16 +365,15 @@ func (a *App) printConfig() {
 
 // initConfig stage.
 func (a *App) initConfig() {
-	if a.options.initComponent.InitConfigPars != nil {
-		if err := a.options.initComponent.InitConfigPars(a.container); err != nil {
+	if a.options.initComponent.InitConfigParams != nil {
+		if err := a.options.initComponent.InitConfigParams(a.container); err != nil {
 			a.LogPanicf("failed to initialize init component config parameters: %s", err)
 		}
 	}
 
 	forEachComponent(a.options.components, func(component *Component) bool {
-		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
-		if component.InitConfigPars != nil {
-			if err := component.InitConfigPars(a.container); err != nil {
+		if component.InitConfigParams != nil {
+			if err := component.InitConfigParams(a.container); err != nil {
 				a.LogPanicf("failed to initialize component (%s) config parameters: %s", component.Name, err)
 			}
 		}
@@ -377,31 +384,10 @@ func (a *App) initConfig() {
 
 // preProvide stage.
 func (a *App) preProvide() {
-	initCfg := &InitConfig{}
-
-	if a.options.initComponent.PreProvide != nil {
-		if err := a.options.initComponent.PreProvide(a.container, a, initCfg); err != nil {
-			a.LogPanicf("pre-provide init component failed: %s", err)
-		}
-	}
-
 	forEachComponent(a.options.components, func(component *Component) bool {
-		if component.PreProvide != nil {
-			if err := component.PreProvide(a.container, a, initCfg); err != nil {
-				a.LogPanicf("pre-provide component (%s) failed: %s", component.Name, err)
-			}
-		}
-
-		if component.IsEnabled == nil {
-			a.LogPanicf("pre-provide component (%s) failed: component does not provide an IsEnabled function", component.Name)
-		}
-
 		// Enable / disable Components
-		if component.IsEnabled() {
-			a.enabledComponents[component.Name] = struct{}{}
-		} else {
-			a.disabledComponents[component.Name] = struct{}{}
-		}
+		// If no "IsEnabled" function is given, components are enabled by default.
+		a.componentsEnabledState[component.Identifier()] = component.IsEnabled == nil || component.IsEnabled(a.container)
 
 		return true
 	})
@@ -410,10 +396,11 @@ func (a *App) preProvide() {
 // addComponents stage.
 func (a *App) addComponents() {
 	forEachComponent(a.options.components, func(component *Component) bool {
-		if a.IsComponentSkipped(component) {
+		if !a.IsComponentEnabled(component.Identifier()) {
 			return true
 		}
 
+		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
 		a.addComponent(component)
 
 		return true
@@ -619,38 +606,20 @@ func (a *App) Daemon() daemon.Daemon {
 }
 
 func (a *App) addComponent(component *Component) {
-	name := component.Name
+	identifier := component.Identifier()
 
-	if _, exists := a.componentsMap[name]; exists {
-		panic("duplicate component - \"" + name + "\" was defined already")
+	if _, exists := a.componentsMap[identifier]; exists {
+		panic("duplicate component - \"" + component.Name + "\" was defined already")
 	}
 
-	a.componentsMap[name] = component
+	a.componentsMap[identifier] = component
 	a.components = append(a.components, component)
 }
 
-func (a *App) isComponentEnabled(identifier string) bool {
-	_, exists := a.enabledComponents[identifier]
-
-	return exists
-}
-
-func (a *App) isComponentDisabled(identifier string) bool {
-	_, exists := a.disabledComponents[identifier]
-
-	return exists
-}
-
-// IsComponentSkipped returns whether the component is loaded or skipped.
-func (a *App) IsComponentSkipped(component *Component) bool {
-	// list of disabled components has the highest priority
-	if a.isComponentDisabled(component.Identifier()) {
-		return true
-	}
-
-	// if the component was not in the list of disabled components, it is only skipped if
-	// the component was not enabled and not in the list of enabled components.
-	return !component.IsEnabled() && !a.isComponentEnabled(component.Identifier())
+// IsComponentEnabled returns whether the component is enabled.
+func (a *App) IsComponentEnabled(identifier string) bool {
+	enabled, exists := a.componentsEnabledState[identifier]
+	return exists && enabled
 }
 
 // ComponentForEachFunc is used in ForEachComponent.
