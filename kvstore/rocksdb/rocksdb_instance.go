@@ -67,6 +67,39 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 	}, nil
 }
 
+// OpenDBReadOnly opens a new RocksDB instance in read-only mode.
+func OpenDBReadOnly(directory string, options ...Option) (*RocksDB, error) {
+
+	dbOpts := dbOptions(options)
+
+	opts := grocksdb.NewDefaultOptions()
+	opts.SetCompression(grocksdb.NoCompression)
+	if dbOpts.compression {
+		opts.SetCompression(grocksdb.ZSTDCompression)
+	}
+
+	for _, str := range dbOpts.custom {
+		var err error
+		opts, err = grocksdb.GetOptionsFromString(opts, str)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ro := grocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(dbOpts.fillCache)
+
+	db, err := grocksdb.OpenDbForReadOnly(opts, directory, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RocksDB{
+		db: db,
+		ro: ro,
+	}, nil
+}
+
 func dbOptions(optionalOptions []Option) *Options {
 	result := &Options{
 		compression: false,

@@ -5,19 +5,19 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-type Marshalable[V any, VPtr constraints.MarshalablePtr[V]] struct {
+type Marshalable[V any, VPtr serializer.MarshalablePtr[V]] struct {
 	store kvstore.KVStore
 	key   []byte
 	value V
 	mutex sync.RWMutex
 }
 
-func NewMarshalable[V any, VPtr constraints.MarshalablePtr[V]](store kvstore.KVStore, key []byte) (newMarshalable *Marshalable[V, VPtr]) {
+func NewMarshalable[V any, VPtr serializer.MarshalablePtr[V]](store kvstore.KVStore, key []byte) (newMarshalable *Marshalable[V, VPtr]) {
 	newMarshalable = new(Marshalable[V, VPtr])
 	newMarshalable.store = store
 	newMarshalable.key = key
