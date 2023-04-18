@@ -38,6 +38,16 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Get(key K) (value V, err error) {
 	return *valuePtr, nil
 }
 
+// Has checks whether the given key exists.
+func (t *TypedStore[K, V, KPtr, VPtr]) Has(key K) (has bool, err error) {
+	keyBytes, err := (KPtr)(&key).Bytes()
+	if err != nil {
+		return false, errors.Wrap(err, "failed to encode key")
+	}
+
+	return t.kv.Has(keyBytes)
+}
+
 // Set sets the given key and value.
 func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value V) (err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
