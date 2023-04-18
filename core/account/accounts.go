@@ -6,10 +6,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/ads"
+	"github.com/iotaledger/hive.go/core/storable"
 	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/iota-core/pkg/storage/storable"
 )
 
 const cacheSize = 1000
