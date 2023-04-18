@@ -50,6 +50,9 @@ func (w *Accounts) Get(id identity.ID) (weight int64, exists bool) {
 	defer w.mutex.RUnlock()
 
 	serializedWeight, exists := w.weights.Get(id)
+	if !exists {
+		return 0, false
+	}
 
 	return int64(*serializedWeight), exists
 }
