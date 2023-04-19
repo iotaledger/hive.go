@@ -11,7 +11,7 @@ import (
 )
 
 type SelectedAccounts struct {
-	Weights          *Accounts
+	accounts         *Accounts
 	members          *shrinkingmap.ShrinkingMap[identity.ID, types.Empty]
 	totalWeight      int64
 	totalWeightMutex sync.RWMutex
@@ -19,7 +19,7 @@ type SelectedAccounts struct {
 
 func NewSelectedAccounts(accounts *Accounts, optMembers ...identity.ID) *SelectedAccounts {
 	newWeightedSet := new(SelectedAccounts)
-	newWeightedSet.Weights = accounts
+	newWeightedSet.accounts = accounts
 	newWeightedSet.members = shrinkingmap.New[identity.ID, types.Empty]()
 
 	for _, member := range optMembers {
@@ -30,14 +30,14 @@ func NewSelectedAccounts(accounts *Accounts, optMembers ...identity.ID) *Selecte
 }
 
 func (w *SelectedAccounts) Add(id identity.ID) (added bool) {
-	w.Weights.mutex.RLock()
-	defer w.Weights.mutex.RUnlock()
+	w.accounts.mutex.RLock()
+	defer w.accounts.mutex.RUnlock()
 
 	w.totalWeightMutex.Lock()
 	defer w.totalWeightMutex.Unlock()
 
 	if added = w.members.Set(id, types.Void); added {
-		if weight, exists := w.Weights.Get(id); exists {
+		if weight, exists := w.accounts.Get(id); exists {
 			w.totalWeight += weight
 		}
 	}
@@ -46,14 +46,14 @@ func (w *SelectedAccounts) Add(id identity.ID) (added bool) {
 }
 
 func (w *SelectedAccounts) Delete(id identity.ID) (removed bool) {
-	w.Weights.mutex.RLock()
-	defer w.Weights.mutex.RUnlock()
+	w.accounts.mutex.RLock()
+	defer w.accounts.mutex.RUnlock()
 
 	w.totalWeightMutex.Lock()
 	defer w.totalWeightMutex.Unlock()
 
 	if removed = w.members.Delete(id); removed {
-		if weight, exists := w.Weights.Get(id); exists {
+		if weight, exists := w.accounts.Get(id); exists {
 			w.totalWeight -= weight
 		}
 	}
@@ -67,7 +67,7 @@ func (w *SelectedAccounts) Get(id identity.ID) (weight int64, exists bool) {
 		return 0, false
 	}
 
-	if weight, exists = w.Weights.Get(id); exists {
+	if weight, exists = w.accounts.Get(id); exists {
 		return weight, true
 	}
 
@@ -80,7 +80,7 @@ func (w *SelectedAccounts) Has(id identity.ID) (has bool) {
 
 func (w *SelectedAccounts) ForEach(callback func(id identity.ID, weight int64) error) (err error) {
 	w.members.ForEachKey(func(member identity.ID) bool {
-		if err := callback(member, lo.Return1(w.Weights.Get(member))); err != nil {
+		if err := callback(member, lo.Return1(w.accounts.Get(member))); err != nil {
 			return false
 		}
 
@@ -99,4 +99,15 @@ func (w *SelectedAccounts) TotalWeight() (totalWeight int64) {
 
 func (w *SelectedAccounts) Members() *advancedset.AdvancedSet[identity.ID] {
 	return advancedset.New(w.members.Keys()...)
+}
+
+func (w *SelectedAccounts) SelectAccounts(members ...identity.ID) *SelectedAccounts {
+	var selectedMembers []identity.ID
+	for _, member := range members {
+		if w.members.Has(member) {
+			selectedMembers = append(selectedMembers, member)
+		}
+	}
+
+	return NewSelectedAccounts(w.accounts, selectedMembers...)
 }
