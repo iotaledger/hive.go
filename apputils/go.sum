@@ -135,10 +135,10 @@ github.com/hjson/hjson-go/v4 v4.0.0 h1:wlm6IYYqHjOdXH1gHev4VoXCaW20HdQAGCxdOEEg2
 github.com/hjson/hjson-go/v4 v4.0.0/go.mod h1:KaYt3bTw3zhBjYqnXkYywcYctk0A2nxeEFTse3rH13E=
 github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6jq8pNA=
 github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
-github.com/iotaledger/hive.go/app v0.0.0-20230417083738-41b63759a6b8 h1:QpIAtIvoH0pcGfsNbZcjuoLu8qASVpq5E6ghrOoLhIU=
-github.com/iotaledger/hive.go/app v0.0.0-20230417083738-41b63759a6b8/go.mod h1:IaPRda30NqDF9MVn22DDN8Z/GJUQse8OknIv7PmgRM8=
-github.com/iotaledger/hive.go/runtime v0.0.0-20230417083738-41b63759a6b8 h1:Z5A3SuWQyhA7lkSnXlc8cXrsEIvTMVggdIJKTgyo0Ik=
-github.com/iotaledger/hive.go/runtime v0.0.0-20230417083738-41b63759a6b8/go.mod h1:A1z65KX13xC1KrUuH99WHwSuGnTqq0D64l5P9R1fMbc=
+github.com/iotaledger/hive.go/app v0.0.0-20230417125513-e2e89991217f h1:7KxnUM6z9qjNPJThLCCneQAAtqMDcnfv/nDh78qgFRM=
+github.com/iotaledger/hive.go/app v0.0.0-20230417125513-e2e89991217f/go.mod h1:vMXrLYkkHAqQC8yGLXcB1Adq9s3hPPf8Dv4sfd/koas=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230417125513-e2e89991217f h1:c3PjrBnD26nlUOPlBlF1dS4sv1LN5ndJqfUvWwO9jwQ=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230417125513-e2e89991217f/go.mod h1:kYmuL6D9aDLqLpskEEC+DGKXC/9mx7wtLF0WItRuexs=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/joho/godotenv v1.3.0 h1:Zjp+RcGpHhGlrMbJzXTrZZPrWj+1vfm90La1wgB6Bhc=

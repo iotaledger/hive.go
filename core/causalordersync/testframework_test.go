@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/core/slot"
 	"github.com/iotaledger/hive.go/runtime/debug"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
@@ -28,7 +27,7 @@ type TestFramework struct {
 	evictedEntitiesMutex sync.RWMutex
 
 	Workers *workerpool.Group
-	*CausalOrder[MockedEntityID, *MockedOrderedEntity]
+	*CausalOrder[int64, MockedEntityID, *MockedOrderedEntity]
 }
 
 // NewTestFramework is the constructor of the TestFramework.
@@ -75,7 +74,7 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 			func(entity *MockedOrderedEntity) (parents []MockedEntityID) {
 				return entity.Parents()
 			},
-			WithReferenceValidator[MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
+			WithReferenceValidator[int64, MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
 				if entity.IsInvalid() {
 					return errors.Errorf("entity %s is invalid", entity.id.alias)
 				}
@@ -84,11 +83,11 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 					return errors.Errorf("parent %s of entity %s is invalid", parent.id.alias, entity.id.alias)
 				}
 
-				return checkReference[MockedEntityID](entity, parent)
+				return checkReference[int64, MockedEntityID](entity, parent)
 			}),
 		)
 
-		t.CreateEntity("Genesis", WithOrdered(true), WithSlot(0))
+		t.CreateEntity("Genesis", WithOrdered(true), WithIndex(0))
 	})
 }
 
@@ -144,8 +143,8 @@ func (t *TestFramework) EntityIDs(aliases ...string) (entityIDs []MockedEntityID
 	return
 }
 
-// EvictSlot evicts all Entities that are older than the given slot.
-func (t *TestFramework) EvictSlot(index slot.Index) {
+// EvictIndex evicts all Entities that are older than the given slot.
+func (t *TestFramework) EvictIndex(index int64) {
 	t.CausalOrder.EvictUntil(index)
 }
 
@@ -184,7 +183,7 @@ func (t *TestFramework) AssertEvicted(aliases ...string) {
 // MockedEntityID is a mocked EntityID.
 type MockedEntityID struct {
 	id    int
-	index slot.Index
+	index int64
 	alias string
 }
 
@@ -197,7 +196,7 @@ func NewMockedEntityID(id int) MockedEntityID {
 }
 
 // Index returns the slot.Index of the Entity.
-func (m MockedEntityID) Index() slot.Index {
+func (m MockedEntityID) Index() int64 {
 	return m.index
 }
 
@@ -312,8 +311,8 @@ func WithInvalid(invalid bool) options.Option[MockedOrderedEntity] {
 	}
 }
 
-// WithSlot is an option that sets the slot of the Entity.
-func WithSlot(index slot.Index) options.Option[MockedOrderedEntity] {
+// WithIndex is an option that sets the slot of the Entity.
+func WithIndex(index int64) options.Option[MockedOrderedEntity] {
 	return func(entity *MockedOrderedEntity) {
 		entity.id.index = index
 	}

@@ -13,11 +13,11 @@ func TestCausalOrder_Queue(t *testing.T) {
 	workers := workerpool.NewGroup(t.Name())
 	tf := NewTestFramework(t, workers)
 
-	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithSlot(1))
-	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithSlot(1))
-	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithSlot(1))
-	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithSlot(1))
-	tf.CreateEntity("E", WithParents(tf.EntityIDs("C", "D")), WithSlot(1))
+	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithIndex(1))
+	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithIndex(1))
+	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithIndex(1))
+	tf.CreateEntity("E", WithParents(tf.EntityIDs("C", "D")), WithIndex(1))
 
 	tf.Queue(tf.Entity("A"))
 	workers.WaitChildren()
@@ -48,14 +48,14 @@ func TestCausalOrder_Queue(t *testing.T) {
 func TestCausalOrder_EvictSlot(t *testing.T) {
 	workers := workerpool.NewGroup(t.Name())
 	tf := NewTestFramework(t, workers)
-	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithSlot(1))
-	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithSlot(1))
-	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithSlot(1))
-	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithSlot(1))
-	tf.CreateEntity("E", WithParents(tf.EntityIDs("C", "D")), WithSlot(1))
-	tf.CreateEntity("F", WithParents(tf.EntityIDs("Genesis")), WithSlot(1))
-	tf.CreateEntity("G", WithParents(tf.EntityIDs("F")), WithSlot(1))
-	tf.CreateEntity("H", WithParents(tf.EntityIDs("G")), WithSlot(2))
+	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithIndex(1))
+	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithIndex(1))
+	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithIndex(1))
+	tf.CreateEntity("E", WithParents(tf.EntityIDs("C", "D")), WithIndex(1))
+	tf.CreateEntity("F", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("G", WithParents(tf.EntityIDs("F")), WithIndex(1))
+	tf.CreateEntity("H", WithParents(tf.EntityIDs("G")), WithIndex(2))
 
 	tf.Queue(tf.Entity("A"))
 	workers.WaitChildren()
@@ -87,7 +87,7 @@ func TestCausalOrder_EvictSlot(t *testing.T) {
 	tf.AssertOrdered("A", "B", "C", "D", "E")
 	tf.AssertEvicted()
 
-	tf.EvictSlot(1)
+	tf.EvictIndex(1)
 	workers.WaitChildren()
 	tf.AssertOrdered("A", "B", "C", "D", "E")
 	tf.AssertEvicted("F", "G")
@@ -107,9 +107,9 @@ func TestCausalOrder_EvictSlot(t *testing.T) {
 func TestCausalOrder_UnexpectedCases(t *testing.T) {
 	workers := workerpool.NewGroup(t.Name())
 	tf := NewTestFramework(t, workers)
-	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithSlot(1))
-	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithSlot(1))
-	tf.CreateEntity("C", WithParents(tf.EntityIDs("A")), WithSlot(1))
+	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithIndex(1))
+	tf.CreateEntity("C", WithParents(tf.EntityIDs("A")), WithIndex(1))
 	tf.Queue(tf.Entity("C"))
 
 	// test queueing an entity with non-existing parents
@@ -127,5 +127,5 @@ func TestCausalOrder_UnexpectedCases(t *testing.T) {
 		tf.AssertOrdered()
 		tf.AssertEvicted("B")
 	}()
-	tf.EvictSlot(1)
+	tf.EvictIndex(1)
 }

@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/cockroachdb/errors v1.9.1
-	github.com/iotaledger/hive.go/lo v0.0.0-20230417083738-41b63759a6b8
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230417083738-41b63759a6b8
+	github.com/iotaledger/hive.go/lo v0.0.0-20230417125513-e2e89991217f
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230417125513-e2e89991217f
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230228134549-385c1ca29f1c
 	github.com/libp2p/go-libp2p v0.27.1
 	github.com/mr-tron/base58 v1.2.0
@@ -26,7 +26,7 @@ require (
 	github.com/getsentry/sentry-go v0.20.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230417083738-41b63759a6b8 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230417125513-e2e89991217f // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
