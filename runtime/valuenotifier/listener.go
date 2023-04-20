@@ -106,6 +106,7 @@ func newListener(channel chan struct{}, deregister func()) *Listener {
 	}
 }
 
+// Deregister the listener to clean up memory in case it was not de-registered yet.
 func (l *Listener) Deregister() {
 	if !l.deregistered.Swap(true) {
 		close(l.deregisteredChan)
@@ -120,6 +121,9 @@ func (l *Listener) Wait(ctx context.Context) error {
 		return ErrListenerDeregistered
 	}
 
+	// always de-register to clean up memory in case it was not de-registered yet.
+	defer l.Deregister()
+
 	// we wait either until the channel got closed or the context is done
 	select {
 	case <-l.channel:
@@ -127,7 +131,6 @@ func (l *Listener) Wait(ctx context.Context) error {
 	case <-l.deregisteredChan:
 		return ErrListenerDeregistered
 	case <-ctx.Done():
-		l.deregister()
 		return ctx.Err()
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 	"github.com/iotaledger/hive.go/serializer/v2/serix/model"
 )
@@ -27,7 +28,7 @@ type Storable[IDType, OuterModelType any, OuterModelPtrType model.PtrType[OuterM
 	cacheBytes bool
 	bytesMutex *sync.RWMutex
 
-	*sync.RWMutex
+	*syncutils.RWMutexFake
 	*objectstorage.StorableObjectFlags
 }
 
@@ -61,7 +62,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 	s.idMutex = new(sync.RWMutex)
 	s.bytesMutex = new(sync.RWMutex)
 	s.bytes = new([]byte)
-	s.RWMutex = new(sync.RWMutex)
+	s.RWMutexFake = new(syncutils.RWMutexFake)
 	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
 
 	s.Persist()
@@ -223,9 +224,6 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Ob
 
 // Encode serializes the "content of the model" to a byte slice.
 func (s Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) Encode() ([]byte, error) {
-	s.RLock()
-	defer s.RUnlock()
-
 	return serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 }
 
