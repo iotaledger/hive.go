@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	github.com/cockroachdb/errors v1.9.1
-	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20230301113714-efbcc23d2e67
 	github.com/iotaledger/hive.go/ds v0.0.0-20230417083738-41b63759a6b8
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20230417083738-41b63759a6b8
 	github.com/iotaledger/hive.go/lo v0.0.0-20230417083738-41b63759a6b8
