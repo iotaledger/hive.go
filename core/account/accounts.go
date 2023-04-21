@@ -7,45 +7,48 @@ import (
 
 	"github.com/iotaledger/hive.go/ads"
 	"github.com/iotaledger/hive.go/core/storable"
-	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-const cacheSize = 1000
+type AccountIDType interface {
+	comparable
+	serializer.Byter
+}
 
 // Accounts is a mapping between a collection of identities and their weights.
-type Accounts struct {
-	weights     *ads.Map[identity.ID, storable.SerializableInt64, *identity.ID, *storable.SerializableInt64]
+type Accounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
+	weights     *ads.Map[AccountID, storable.SerializableInt64, AccountIDPtr, *storable.SerializableInt64]
 	cacheMutex  sync.Mutex
 	totalWeight int64
 	mutex       sync.RWMutex
 }
 
 // NewAccounts creates a new Weights instance.
-func NewAccounts(store kvstore.KVStore) *Accounts {
-	newWeights := &Accounts{
-		weights:     ads.NewMap[identity.ID, storable.SerializableInt64](store),
+func NewAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](store kvstore.KVStore) *Accounts[A, APtr] {
+	newAccounts := &Accounts[A, APtr]{
+		weights:     ads.NewMap[A, storable.SerializableInt64, APtr](store),
 		totalWeight: 0,
 	}
 
-	if err := newWeights.weights.Stream(func(_ identity.ID, value *storable.SerializableInt64) bool {
-		newWeights.totalWeight += int64(*value)
+	if err := newAccounts.weights.Stream(func(_ A, value *storable.SerializableInt64) bool {
+		newAccounts.totalWeight += int64(*value)
 		return true
 	}); err != nil {
 		return nil
 	}
 
-	return newWeights
+	return newAccounts
 }
 
 // SelectAccounts creates a new WeightedSet instance, that maintains a correct and updated total weight of its members.
-func (w *Accounts) SelectAccounts(members ...identity.ID) (selectedAccounts *SelectedAccounts) {
+func (w *Accounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) (selectedAccounts *SelectedAccounts[AccountID, AccountIDPtr]) {
 	return NewSelectedAccounts(w, members...)
 }
 
 // Get returns the weight of the given identity.
-func (w *Accounts) Get(id identity.ID) (weight int64, exists bool) {
+func (w *Accounts[AccountID, AccountIDPtr]) Get(id AccountID) (weight int64, exists bool) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -58,7 +61,7 @@ func (w *Accounts) Get(id identity.ID) (weight int64, exists bool) {
 }
 
 // Update updates the weight of the given identity.
-func (w *Accounts) Update(id identity.ID, weightDiff int64) {
+func (w *Accounts[AccountID, AccountIDPtr]) Update(id AccountID, weightDiff int64) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -70,15 +73,15 @@ func (w *Accounts) Update(id identity.ID, weightDiff int64) {
 }
 
 // ForEach iterates over all weights and calls the given callback for each of them.
-func (w *Accounts) ForEach(callback func(id identity.ID, weight int64) bool) (err error) {
+func (w *Accounts[AccountID, AccountIDPtr]) ForEach(callback func(id AccountID, weight int64) bool) (err error) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
-	return w.weights.Stream(func(id identity.ID, weight *storable.SerializableInt64) bool { return callback(id, int64(*weight)) })
+	return w.weights.Stream(func(id AccountID, weight *storable.SerializableInt64) bool { return callback(id, int64(*weight)) })
 }
 
 // TotalWeight returns the total weight of all identities.
-func (w *Accounts) TotalWeight() (totalWeight int64) {
+func (w *Accounts[AccountID, AccountIDPtr]) TotalWeight() (totalWeight int64) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -86,7 +89,7 @@ func (w *Accounts) TotalWeight() (totalWeight int64) {
 }
 
 // Root returns the root of the merkle tree of the stored weights.
-func (w *Accounts) Root() (root types.Identifier) {
+func (w *Accounts[AccountID, AccountIDPtr]) Root() (root types.Identifier) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
@@ -94,9 +97,9 @@ func (w *Accounts) Root() (root types.Identifier) {
 }
 
 // Map returns the weights as a map.
-func (w *Accounts) Map() (weights map[identity.ID]int64, err error) {
-	weights = make(map[identity.ID]int64)
-	if err = w.ForEach(func(id identity.ID, weight int64) bool {
+func (w *Accounts[AccountID, AccountIDPtr]) Map() (weights map[AccountID]int64, err error) {
+	weights = make(map[AccountID]int64)
+	if err = w.ForEach(func(id AccountID, weight int64) bool {
 		weights[id] = weight
 		return true
 	}); err != nil {

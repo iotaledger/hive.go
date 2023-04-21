@@ -3,24 +3,24 @@ package account
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/crypto/identity"
 	"github.com/iotaledger/hive.go/ds/advancedset"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-type SelectedAccounts struct {
-	accounts         *Accounts
-	members          *shrinkingmap.ShrinkingMap[identity.ID, types.Empty]
+type SelectedAccounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
+	accounts         *Accounts[AccountID, AccountIDPtr]
+	members          *shrinkingmap.ShrinkingMap[AccountID, types.Empty]
 	totalWeight      int64
 	totalWeightMutex sync.RWMutex
 }
 
-func NewSelectedAccounts(accounts *Accounts, optMembers ...identity.ID) *SelectedAccounts {
-	newWeightedSet := new(SelectedAccounts)
+func NewSelectedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SelectedAccounts[A, APtr] {
+	newWeightedSet := new(SelectedAccounts[A, APtr])
 	newWeightedSet.accounts = accounts
-	newWeightedSet.members = shrinkingmap.New[identity.ID, types.Empty]()
+	newWeightedSet.members = shrinkingmap.New[A, types.Empty]()
 
 	for _, member := range optMembers {
 		newWeightedSet.Add(member)
@@ -29,7 +29,7 @@ func NewSelectedAccounts(accounts *Accounts, optMembers ...identity.ID) *Selecte
 	return newWeightedSet
 }
 
-func (w *SelectedAccounts) Add(id identity.ID) (added bool) {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Add(id AccountID) (added bool) {
 	w.accounts.mutex.RLock()
 	defer w.accounts.mutex.RUnlock()
 
@@ -45,7 +45,7 @@ func (w *SelectedAccounts) Add(id identity.ID) (added bool) {
 	return
 }
 
-func (w *SelectedAccounts) Delete(id identity.ID) (removed bool) {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) (removed bool) {
 	w.accounts.mutex.RLock()
 	defer w.accounts.mutex.RUnlock()
 
@@ -61,7 +61,7 @@ func (w *SelectedAccounts) Delete(id identity.ID) (removed bool) {
 	return
 }
 
-func (w *SelectedAccounts) Get(id identity.ID) (weight int64, exists bool) {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Get(id AccountID) (weight int64, exists bool) {
 	// check if the member is part of the committee, otherwise its weight is 0
 	if !w.members.Has(id) {
 		return 0, false
@@ -74,12 +74,12 @@ func (w *SelectedAccounts) Get(id identity.ID) (weight int64, exists bool) {
 	return 0, true
 }
 
-func (w *SelectedAccounts) Has(id identity.ID) (has bool) {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Has(id AccountID) (has bool) {
 	return w.members.Has(id)
 }
 
-func (w *SelectedAccounts) ForEach(callback func(id identity.ID, weight int64) error) (err error) {
-	w.members.ForEachKey(func(member identity.ID) bool {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) ForEach(callback func(id AccountID, weight int64) error) (err error) {
+	w.members.ForEachKey(func(member AccountID) bool {
 		if err := callback(member, lo.Return1(w.accounts.Get(member))); err != nil {
 			return false
 		}
@@ -90,19 +90,19 @@ func (w *SelectedAccounts) ForEach(callback func(id identity.ID, weight int64) e
 	return
 }
 
-func (w *SelectedAccounts) TotalWeight() (totalWeight int64) {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) TotalWeight() (totalWeight int64) {
 	w.totalWeightMutex.RLock()
 	defer w.totalWeightMutex.RUnlock()
 
 	return w.totalWeight
 }
 
-func (w *SelectedAccounts) Members() *advancedset.AdvancedSet[identity.ID] {
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Members() *advancedset.AdvancedSet[AccountID] {
 	return advancedset.New(w.members.Keys()...)
 }
 
-func (w *SelectedAccounts) SelectAccounts(members ...identity.ID) *SelectedAccounts {
-	var selectedMembers []identity.ID
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) *SelectedAccounts[AccountID, AccountIDPtr] {
+	var selectedMembers []AccountID
 	for _, member := range members {
 		if w.members.Has(member) {
 			selectedMembers = append(selectedMembers, member)
