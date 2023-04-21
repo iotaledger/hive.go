@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/cockroachdb/errors"
 
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
+	"github.com/iotaledger/hive.go/runtime/syncutils"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 	"github.com/iotaledger/hive.go/serializer/v2/serix/model"
@@ -22,7 +22,7 @@ type StorableReferenceWithMetadata[OuterModelType any, OuterModelPtrType model.R
 	targetID TargetIDType
 	M        InnerModelType
 
-	*sync.RWMutex
+	*syncutils.RWMutexFake
 	*objectstorage.StorableObjectFlags
 }
 
@@ -48,7 +48,7 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 // Init initializes the storable reference model after it has been restored from it's serialized version.
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) Init() {
 	s.StorableObjectFlags = new(objectstorage.StorableObjectFlags)
-	s.RWMutex = new(sync.RWMutex)
+	s.RWMutexFake = new(syncutils.RWMutexFake)
 
 	s.Persist()
 }

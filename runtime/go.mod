@@ -4,10 +4,10 @@ go 1.20
 
 require (
 	github.com/fjl/memsize v0.0.1
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230411194733-5c1053500317
-	github.com/iotaledger/hive.go/ds v0.0.0-20230411194733-5c1053500317
-	github.com/iotaledger/hive.go/lo v0.0.0-20230411194733-5c1053500317
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230417125513-e2e89991217f
+	github.com/iotaledger/hive.go/ds v0.0.0-20230417125513-e2e89991217f
+	github.com/iotaledger/hive.go/lo v0.0.0-20230417125513-e2e89991217f
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230417125513-e2e89991217f
 	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/pkg/errors v0.9.1
 	github.com/sasha-s/go-deadlock v0.3.1

@@ -5,10 +5,10 @@ go 1.20
 require (
 	github.com/cockroachdb/errors v1.9.1
 	github.com/emirpasic/gods v1.18.1
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230411194733-5c1053500317
-	github.com/iotaledger/hive.go/lo v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230417125513-e2e89991217f
+	github.com/iotaledger/hive.go/lo v0.0.0-20230417125513-e2e89991217f
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230220125853-8ead6385152c
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230417125513-e2e89991217f
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.2

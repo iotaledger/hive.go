@@ -144,7 +144,7 @@ func (s *ShrinkingMap[K, V]) ForEachKey(callback func(K) bool) {
 // Returning false from this function indicates to abort the iteration.
 func (s *ShrinkingMap[K, V]) ForEach(callback func(K, V) bool) {
 	s.mutex.RLock()
-	copiedElements := make(map[K]V)
+	copiedElements := make(map[K]V, len(s.m))
 	for k, v := range s.m {
 		copiedElements[k] = v
 	}
@@ -238,11 +238,12 @@ func (s *ShrinkingMap[K, V]) delete(key K) (deleted bool) {
 
 // AsMap returns the shrinking map as a regular map.
 func (s *ShrinkingMap[K, V]) AsMap() (asMap map[K]V) {
-	asMap = make(map[K]V)
-	s.ForEach(func(k K, v V) bool {
+	s.mutex.RLock()
+	asMap = make(map[K]V, len(s.m))
+	for k, v := range s.m {
 		asMap[k] = v
-		return true
-	})
+	}
+	s.mutex.RUnlock()
 
 	return
 }

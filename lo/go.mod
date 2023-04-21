@@ -3,7 +3,7 @@ module github.com/iotaledger/hive.go/lo
 go 1.20
 
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230411194733-5c1053500317
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230417125513-e2e89991217f
 	github.com/stretchr/testify v1.8.1
 )
 
