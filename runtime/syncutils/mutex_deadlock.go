@@ -4,14 +4,16 @@
 package syncutils
 
 import (
+	"fmt"
 	"time"
 
-	deadlock "github.com/sasha-s/go-deadlock"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type Mutex = deadlock.Mutex
 type RWMutex = deadlock.RWMutex
 
 func init() {
+	fmt.Println(">>>> use deadlock mutex")
 	deadlock.Opts.DeadlockTimeout = time.Duration(20 * time.Second)
 }
