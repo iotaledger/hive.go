@@ -3,12 +3,10 @@
 
 package syncutils
 
-import (
-	"github.com/iotaledger/hive.go/runtime/syncutils"
-)
+import "fmt"
 
-type Mutex = syncutils.RWMutexFake
-type RWMutex = syncutils.RWMutexFake
+type Mutex = RWMutexFake
+type RWMutex = RWMutexFake
 
 func init() {
 	fmt.Println(">>>> use fake mutex")
