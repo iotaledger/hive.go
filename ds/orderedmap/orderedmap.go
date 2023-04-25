@@ -118,6 +118,10 @@ func (o *OrderedMap[K, V]) Set(key K, newValue V) (previousValue V, previousValu
 // ForEach iterates through the orderedMap and calls the consumer function for every element.
 // The iteration can be aborted by returning false in the consumer.
 func (o *OrderedMap[K, V]) ForEach(consumer func(key K, value V) bool) bool {
+	if o == nil {
+		return true
+	}
+
 	o.mutex.RLock()
 	currentEntry := o.head
 	o.mutex.RUnlock()
@@ -138,6 +142,10 @@ func (o *OrderedMap[K, V]) ForEach(consumer func(key K, value V) bool) bool {
 // ForEachReverse iterates through the orderedMap in reverse order and calls the consumer function for every element.
 // The iteration can be aborted by returning false in the consumer.
 func (o *OrderedMap[K, V]) ForEachReverse(consumer func(key K, value V) bool) bool {
+	if o == nil {
+		return true
+	}
+
 	o.mutex.RLock()
 	currentEntry := o.tail
 	o.mutex.RUnlock()
@@ -201,10 +209,19 @@ func (o *OrderedMap[K, V]) Delete(key K) bool {
 
 // Size returns the size of the orderedMap.
 func (o *OrderedMap[K, V]) Size() int {
+	if o == nil {
+		return 0
+	}
+
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
 	return o.size
+}
+
+// IsEmpty returns a boolean value indicating whether the map empty.
+func (o *OrderedMap[K, V]) IsEmpty() bool {
+	return o.Size() == 0
 }
 
 // Clone returns a copy of the orderedMap.
