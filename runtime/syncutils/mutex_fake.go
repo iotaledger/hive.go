@@ -1,5 +1,4 @@
 //go:build fakemutex
-// +build fakemutex
 
 package syncutils
 
