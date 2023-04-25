@@ -221,14 +221,7 @@ func (o *OrderedMap[K, V]) Size() int {
 
 // IsEmpty returns a boolean value indicating whether the map empty.
 func (o *OrderedMap[K, V]) IsEmpty() bool {
-	if o == nil {
-		return true
-	}
-
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-
-	return o.size == 0
+	return o.Size() == 0
 }
 
 // Clone returns a copy of the orderedMap.
