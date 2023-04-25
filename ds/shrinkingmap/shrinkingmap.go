@@ -113,6 +113,17 @@ func (s *ShrinkingMap[K, V]) GetOrCreate(key K, defaultValueFunc func() V) (valu
 	return value, true
 }
 
+// Compute computes the new value for a given key and stores it in the map.
+func (s *ShrinkingMap[K, V]) Compute(key K, updateFunc func(currentValue V, exists bool) V) (updatedValue V) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	currentValue, exists := s.m[key]
+	s.m[key] = updateFunc(currentValue, exists)
+
+	return s.m[key]
+}
+
 // Has returns if an entry with the given key exists.
 func (s *ShrinkingMap[K, V]) Has(key K) (has bool) {
 	s.mutex.RLock()
