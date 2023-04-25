@@ -200,6 +200,7 @@ func (s *ShrinkingMap[K, V]) IsEmpty() (empty bool) {
 	return s.Size() == 0
 }
 
+// DeleteAndReturn removes the entry with the given key, and returns the deleted value (if it existed).
 func (s *ShrinkingMap[K, V]) DeleteAndReturn(key K) (value V, deleted bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
