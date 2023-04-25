@@ -1,6 +1,8 @@
 package syncutils
 
-import "sync"
+import (
+	"sync"
+)
 
 type RWMutexFake struct {
 	sync.RWMutex
