@@ -202,11 +202,11 @@ func (s *ShrinkingMap[K, V]) IsEmpty() (empty bool) {
 
 // Delete removes the entry with the given key, and possibly
 // shrinks the map if the shrinking conditions have been reached.
-func (s *ShrinkingMap[K, V]) Delete(key K, optionalCondition ...func() bool) (deleted bool) {
+func (s *ShrinkingMap[K, V]) Delete(key K, optCondition ...func() bool) (deleted bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if len(optionalCondition) > 0 && !optionalCondition[0]() {
+	if len(optCondition) > 0 && !optCondition[0]() {
 		return false
 	}
 
