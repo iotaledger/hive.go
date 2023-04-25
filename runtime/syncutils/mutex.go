@@ -1,4 +1,4 @@
-//go:build !deadlock && !fake
+//go:build !deadlock && !fakemutex
 
 package syncutils
 
