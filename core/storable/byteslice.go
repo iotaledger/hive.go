@@ -12,17 +12,17 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
-const SliceOffsetAuto = ^int(0)
+const SliceOffsetAuto = ^uint64(0)
 
 type ByteSlice struct {
 	fileHandle  *os.File
-	startOffset int
-	entrySize   int
+	startOffset uint64
+	entrySize   uint64
 
 	sync.RWMutex
 }
 
-func NewByteSlice(fileName string, entrySize int, opts ...options.Option[ByteSlice]) (indexedFile *ByteSlice, err error) {
+func NewByteSlice(fileName string, entrySize uint64, opts ...options.Option[ByteSlice]) (indexedFile *ByteSlice, err error) {
 	return options.Apply(new(ByteSlice), opts, func(i *ByteSlice) {
 		if i.fileHandle, err = os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0o666); err != nil {
 			err = errors.Wrap(err, "failed to open file")
@@ -38,15 +38,15 @@ func NewByteSlice(fileName string, entrySize int, opts ...options.Option[ByteSli
 	}), err
 }
 
-func (b *ByteSlice) EntrySize() int {
+func (b *ByteSlice) EntrySize() uint64 {
 	return b.entrySize
 }
 
-func (b *ByteSlice) Set(index int, entry []byte) (err error) {
+func (b *ByteSlice) Set(index uint64, entry []byte) (err error) {
 	b.Lock()
 	defer b.Unlock()
 
-	if len(entry) != b.entrySize {
+	if uint64(len(entry)) != b.entrySize {
 		return errors.Wrapf(err, "entry has wrong length %d vs %d", len(entry), b.entrySize)
 	}
 
@@ -70,7 +70,7 @@ func (b *ByteSlice) Set(index int, entry []byte) (err error) {
 	return b.fileHandle.Sync()
 }
 
-func (b *ByteSlice) Get(index int) (entry []byte, err error) {
+func (b *ByteSlice) Get(index uint64) (entry []byte, err error) {
 	relativeIndex := index - b.startOffset
 	if relativeIndex < 0 {
 		return nil, errors.Errorf("index %d is out of bounds", index)
@@ -104,12 +104,12 @@ func (b *ByteSlice) readHeader() (err error) {
 	}
 
 	if b.startOffset != 0 && b.startOffset != SliceOffsetAuto {
-		if int(startOffset) != b.startOffset {
+		if startOffset != b.startOffset {
 			return errors.Errorf("start offset %d does not match existing offset %d in file", b.startOffset, startOffset)
 		}
 	}
 
-	b.startOffset = int(startOffset)
+	b.startOffset = startOffset
 
 	return nil
 }
@@ -134,7 +134,7 @@ func (b *ByteSlice) writeHeader() (err error) {
 	return b.fileHandle.Sync()
 }
 
-func WithOffset(offset int) options.Option[ByteSlice] {
+func WithOffset(offset uint64) options.Option[ByteSlice] {
 	return func(s *ByteSlice) {
 		s.startOffset = offset
 	}

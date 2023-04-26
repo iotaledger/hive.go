@@ -11,7 +11,7 @@ type Slice[A any, B serializer.MarshalablePtr[A]] struct {
 	byteSlice *ByteSlice
 }
 
-func NewSlice[A any, B serializer.MarshalablePtr[A]](fileName string, entrySize int, opts ...options.Option[ByteSlice]) (indexedFile *Slice[A, B], err error) {
+func NewSlice[A any, B serializer.MarshalablePtr[A]](fileName string, entrySize uint64, opts ...options.Option[ByteSlice]) (indexedFile *Slice[A, B], err error) {
 	byteSlice, err := NewByteSlice(fileName, entrySize, opts...)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func NewSlice[A any, B serializer.MarshalablePtr[A]](fileName string, entrySize 
 	}, nil
 }
 
-func (s *Slice[A, B]) Set(index int, entry B) (err error) {
+func (s *Slice[A, B]) Set(index uint64, entry B) (err error) {
 	serializedEntry, err := entry.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize entry")
@@ -31,7 +31,7 @@ func (s *Slice[A, B]) Set(index int, entry B) (err error) {
 	return s.byteSlice.Set(index, serializedEntry)
 }
 
-func (s *Slice[A, B]) Get(index int) (entry B, err error) {
+func (s *Slice[A, B]) Get(index uint64) (entry B, err error) {
 	entryBytes, err := s.byteSlice.Get(index)
 	if err != nil {
 		return entry, err
