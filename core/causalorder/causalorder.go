@@ -1,6 +1,7 @@
 package causalorder
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -93,7 +94,12 @@ func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
 func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 	for _, evictedEntity := range c.evictUntil(index) {
-		c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
+		//TODO: this entities should not still be inside the causalorder
+		if !c.isOrdered(evictedEntity) {
+			c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
+		} else {
+			fmt.Println("Warning: Evicted an already ordered entity that should have been removed already from the causalorder", evictedEntity.ID())
+		}
 	}
 }
 
