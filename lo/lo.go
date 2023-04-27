@@ -24,6 +24,29 @@ func Map[SourceType any, TargetType any](source []SourceType, mapper func(Source
 	return target
 }
 
+// Flatten takes a slice of slices and returns a flattened slice.
+//
+// Given a slice of slices `slices`, flatten iterates over each slice in `slices`,
+// and appends its elements to a new slice `result`. The resulting slice is then
+// returned. If `slices` is empty, flatten returns an empty slice.
+//
+// Example:
+//
+//	slices := [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
+//	flattened := lo.Flatten(slices)
+//	// flattened is [1 2 3 4 5 6 7 8 9]
+//
+// Note that the input slice `slices` is not modified by this function.
+func Flatten[V any](slices [][]V) []V {
+	var result []V
+
+	for _, slice := range slices {
+		result = append(result, slice...)
+	}
+
+	return result
+}
+
 // Reduce reduces collection to a value which is the accumulated result of running each element in collection
 // through accumulator, where each successive invocation is supplied the return value of the previous.
 func Reduce[T any, R any](collection []T, accumulator func(R, T) R, initial R) R {
