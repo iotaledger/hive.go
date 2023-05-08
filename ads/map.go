@@ -70,10 +70,6 @@ func (m *Map[K, V, KPtr, VPtr]) Set(key K, value VPtr) {
 
 // Delete removes the key from the map.
 func (m *Map[K, V, KPtr, VPtr]) Delete(key K) (deleted bool) {
-	if m == nil {
-		return
-	}
-
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -159,10 +155,6 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 
 // has returns true if the key is in the map.
 func (m *Map[K, V, KPtr, VPtr]) has(keyBytes []byte) (has bool) {
-	if m == nil {
-		return false
-	}
-
 	has, err := m.tree.Has(keyBytes)
 	if err != nil {
 		if errors.Is(err, kvstore.ErrKeyNotFound) {

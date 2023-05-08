@@ -55,10 +55,6 @@ func NewSet[K any, KPtr serializer.MarshalablePtr[K]](store kvstore.KVStore) (ne
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
 func (s *Set[K, KPtr]) Root() (root types.Identifier) {
-	if s == nil {
-		return types.Identifier{}
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -69,10 +65,6 @@ func (s *Set[K, KPtr]) Root() (root types.Identifier) {
 
 // Add adds the key to the set.
 func (s *Set[K, KPtr]) Add(key K) {
-	if s == nil {
-		panic("cannot add to nil set")
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -91,10 +83,6 @@ func (s *Set[K, KPtr]) Add(key K) {
 
 // Delete removes the key from the set.
 func (s *Set[K, KPtr]) Delete(key K) (deleted bool) {
-	if s == nil {
-		return
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -123,10 +111,6 @@ func (s *Set[K, KPtr]) Has(key K) (has bool) {
 
 // Stream iterates over the set and calls the callback for each element.
 func (s *Set[K, KPtr]) Stream(callback func(key K) bool) (err error) {
-	if s == nil {
-		return nil
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -147,19 +131,11 @@ func (s *Set[K, KPtr]) Stream(callback func(key K) bool) (err error) {
 
 // Size returns the number of elements in the set.
 func (s *Set[K, KPtr]) Size() (size int) {
-	if s == nil {
-		return 0
-	}
-
 	return int(s.size.Get())
 }
 
 // has returns true if the key is in the set.
 func (s *Set[K, KPtr]) has(key []byte) (has bool) {
-	if s == nil {
-		return false
-	}
-
 	has, err := s.tree.Has(key)
 	if err != nil {
 		if errors.Is(err, kvstore.ErrKeyNotFound) {
