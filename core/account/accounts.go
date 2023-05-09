@@ -60,16 +60,19 @@ func (w *Accounts[AccountID, AccountIDPtr]) Get(id AccountID) (weight int64, exi
 	return int64(*serializedWeight), exists
 }
 
-// Update updates the weight of the given identity.
-func (w *Accounts[AccountID, AccountIDPtr]) Update(id AccountID, weightDiff int64) {
+// Set sets the weight of the given identity.
+func (w *Accounts[AccountID, AccountIDPtr]) Set(id AccountID, weight int64) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	newWeight := storable.SerializableInt64(weightDiff)
-	oldWeight, _ := w.weights.Get(id)
-	w.weights.Set(id, newWeight.Add(oldWeight))
+	oldWeight, exists := w.weights.Get(id)
+	if exists {
+		w.totalWeight -= int64(*oldWeight)
+	}
 
-	w.totalWeight += weightDiff
+	newWeight := storable.SerializableInt64(weight)
+	w.weights.Set(id, &newWeight)
+	w.totalWeight += weight
 }
 
 // ForEach iterates over all weights and calls the given callback for each of them.
