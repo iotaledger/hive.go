@@ -11,7 +11,7 @@ SUBMODULES=$(find . -name "go.mod" -printf '%h\n' | sed -e 's/^\.\///' | sort)
 
 for submodule in $SUBMODULES
 do
-    cd "$submodule"
+    pushd "$submodule"
     echo "updating ${submodule}..."
     hivemodules=$(grep '^\sgithub.com/iotaledger/hive.go' go.mod | awk '{print $1}')
     for hivemodule in $hivemodules; do
@@ -20,5 +20,5 @@ do
     done
     go mod tidy
     
-    cd ..
+    popd
 done
