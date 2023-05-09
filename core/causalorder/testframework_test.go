@@ -27,7 +27,7 @@ type TestFramework struct {
 	evictedEntitiesMutex sync.RWMutex
 
 	Workers *workerpool.Group
-	*CausalOrder[int64, MockedEntityID, *MockedOrderedEntity]
+	*CausalOrder[uint64, MockedEntityID, *MockedOrderedEntity]
 }
 
 // NewTestFramework is the constructor of the TestFramework.
@@ -74,7 +74,7 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 			func(entity *MockedOrderedEntity) (parents []MockedEntityID) {
 				return entity.Parents()
 			},
-			WithReferenceValidator[int64, MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
+			WithReferenceValidator[uint64, MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
 				if entity.IsInvalid() {
 					return errors.Errorf("entity %s is invalid", entity.id.alias)
 				}
@@ -83,7 +83,7 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 					return errors.Errorf("parent %s of entity %s is invalid", parent.id.alias, entity.id.alias)
 				}
 
-				return checkReference[int64, MockedEntityID](entity, parent)
+				return checkReference[uint64, MockedEntityID](entity, parent)
 			}),
 		)
 
@@ -144,7 +144,7 @@ func (t *TestFramework) EntityIDs(aliases ...string) (entityIDs []MockedEntityID
 }
 
 // EvictIndex evicts all Entities that are older than the given slot.
-func (t *TestFramework) EvictIndex(index int64) {
+func (t *TestFramework) EvictIndex(index uint64) {
 	t.CausalOrder.EvictUntil(index)
 }
 
@@ -183,7 +183,7 @@ func (t *TestFramework) AssertEvicted(aliases ...string) {
 // MockedEntityID is a mocked EntityID.
 type MockedEntityID struct {
 	id    int
-	index int64
+	index uint64
 	alias string
 }
 
@@ -196,7 +196,7 @@ func NewMockedEntityID(id int) MockedEntityID {
 }
 
 // Index returns the slot.Index of the Entity.
-func (m MockedEntityID) Index() int64 {
+func (m MockedEntityID) Index() uint64 {
 	return m.index
 }
 
@@ -312,7 +312,7 @@ func WithInvalid(invalid bool) options.Option[MockedOrderedEntity] {
 }
 
 // WithIndex is an option that sets the slot of the Entity.
-func WithIndex(index int64) options.Option[MockedOrderedEntity] {
+func WithIndex(index uint64) options.Option[MockedOrderedEntity] {
 	return func(entity *MockedOrderedEntity) {
 		entity.id.index = index
 	}
