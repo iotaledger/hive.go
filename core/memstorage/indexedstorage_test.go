@@ -5,19 +5,20 @@ import (
 
 	"github.com/iotaledger/hive.go/core/memstorage"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
-	iotago "github.com/iotaledger/iota.go/v4"
 	"github.com/stretchr/testify/require"
 )
 
+type index uint64
+
 func TestIndexedStorage(t *testing.T) {
 	// Create a new IndexedStorage.
-	storage := memstorage.NewIndexedStorage[iotago.SlotIndex, string, int]()
+	storage := memstorage.NewIndexedStorage[index, string, int]()
 
 	// Test Get on a non-existent index without creating it.
-	require.Nil(t, storage.Get(iotago.SlotIndex(1)))
+	require.Nil(t, storage.Get(index(1)))
 
 	// Test Get on a non-existent index while creating it.
-	subStorage := storage.Get(iotago.SlotIndex(1), true)
+	subStorage := storage.Get(index(1), true)
 	require.NotNil(t, subStorage)
 
 	// Add some values to the latestMilestoneStorage.
@@ -31,7 +32,7 @@ func TestIndexedStorage(t *testing.T) {
 
 	// Test ForEach.
 	count := 0
-	storage.ForEach(func(index iotago.SlotIndex, store *shrinkingmap.ShrinkingMap[string, int]) {
+	storage.ForEach(func(index index, store *shrinkingmap.ShrinkingMap[string, int]) {
 		count += store.Size()
 	})
 	require.Equal(t, 2, count)
