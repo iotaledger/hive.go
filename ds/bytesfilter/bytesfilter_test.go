@@ -1,7 +1,9 @@
-package bytesfilter
+package bytesfilter_test
 
 import (
 	"testing"
+
+	"github.com/iotaledger/hive.go/ds/bytesfilter"
 )
 
 func BenchmarkAdd(b *testing.B) {
@@ -24,8 +26,8 @@ func BenchmarkContains(b *testing.B) {
 	}
 }
 
-func setupTest(filterSize int, byteArraySize int) (*BytesFilter, []byte) {
-	filter := New(filterSize)
+func setupTest(filterSize int, byteArraySize int) (*bytesfilter.BytesFilter, []byte) {
+	filter := bytesfilter.New(filterSize)
 
 	for j := 0; j < filterSize; j++ {
 		byteArray := make([]byte, byteArraySize)
