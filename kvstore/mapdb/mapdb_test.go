@@ -1,4 +1,4 @@
-package mapdb
+package mapdb_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/kvstore"
+	"github.com/iotaledger/hive.go/kvstore/mapdb"
 )
 
 var testEntries = []*struct {
@@ -20,7 +21,7 @@ var testEntries = []*struct {
 }
 
 func TestMapDB_Get(t *testing.T) {
-	store := NewMapDB()
+	store := mapdb.NewMapDB()
 	for _, entry := range testEntries {
 		err := store.Set(entry.Key, entry.Value)
 		require.NoError(t, err)
@@ -38,7 +39,7 @@ func TestMapDB_Get(t *testing.T) {
 }
 
 func TestMapDB_Iterate(t *testing.T) {
-	store := NewMapDB()
+	store := mapdb.NewMapDB()
 	for _, entry := range testEntries {
 		err := store.Set(entry.Key, entry.Value)
 		require.NoError(t, err)
@@ -59,8 +60,44 @@ func TestMapDB_Iterate(t *testing.T) {
 	assert.Equal(t, len(testEntries), i)
 }
 
+func TestMapDB_Batched(t *testing.T) {
+	store := mapdb.NewMapDB()
+	batched, err := store.Batched()
+	require.NoError(t, err)
+
+	for _, entry := range testEntries {
+		err := batched.Set(entry.Key, entry.Value)
+		require.NoError(t, err)
+	}
+
+	err = batched.Commit()
+	require.NoError(t, err)
+
+	for _, entry := range testEntries {
+		exists, err := store.Has(entry.Key)
+		require.NoError(t, err)
+		require.True(t, exists)
+	}
+
+	batched.Cancel()
+
+	err = batched.Set([]byte("e"), []byte("valueE"))
+	require.NoError(t, err)
+	err = batched.Delete(testEntries[0].Key)
+	require.NoError(t, err)
+	err = batched.Commit()
+	require.NoError(t, err)
+
+	exists, err := store.Has([]byte("e"))
+	require.NoError(t, err)
+	require.True(t, exists)
+	exists, err = store.Has(testEntries[0].Key)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
 func TestMapDB_IterateDirection(t *testing.T) {
-	store := NewMapDB()
+	store := mapdb.NewMapDB()
 	for _, entry := range testEntries {
 		err := store.Set(entry.Key, entry.Value)
 		require.NoError(t, err)
@@ -98,7 +135,7 @@ func TestMapDB_IterateDirection(t *testing.T) {
 }
 
 func TestMapDB_Realm(t *testing.T) {
-	store := NewMapDB()
+	store := mapdb.NewMapDB()
 	realm := kvstore.Realm("realm")
 	realmStore, err := store.WithRealm(realm)
 	require.NoError(t, err)
@@ -132,7 +169,7 @@ func TestMapDB_Realm(t *testing.T) {
 }
 
 func TestMapDB_Clear(t *testing.T) {
-	store := NewMapDB()
+	store := mapdb.NewMapDB()
 	require.EqualValues(t, 0, countKeys(t, store))
 
 	for _, entry := range testEntries {
