@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/iotaledger/hive.go/lo"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/lo"
 )
 
 func Test_Map(t *testing.T) {
@@ -143,6 +144,9 @@ func Test_PanicOnErr(t *testing.T) {
 }
 
 func Test_Max(t *testing.T) {
+	maxValueIntOnlyNegative := lo.Max(-10, -1, -154, -61, -51, -65, -16, -51, -6, -516, -1, -65, -465, -465, -1)
+	require.Equal(t, -1, maxValueIntOnlyNegative, "should correctly select maximum value")
+
 	maxValueInt := lo.Max(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65, -465, -465, -1, 0)
 
 	require.Equal(t, 516, maxValueInt, "should correctly select maximum value")
@@ -157,8 +161,10 @@ func Test_Max(t *testing.T) {
 }
 
 func Test_Min(t *testing.T) {
-	maxValueInt := lo.Min(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65, -465, -465, -1, 0)
+	minValueIntOnlyPositive := lo.Min(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65)
+	require.Equal(t, 1, minValueIntOnlyPositive, "should correctly select minimum value")
 
+	maxValueInt := lo.Min(10, 1, 154, 61, 51, 65, 16, 51, 6, 516, 1, 65, -465, -465, -1, 0)
 	require.Equal(t, -465, maxValueInt, "should correctly select minimum value")
 
 	maxValueFloat := lo.Min(1.0, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.0, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0)
