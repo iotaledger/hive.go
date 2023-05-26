@@ -1,8 +1,10 @@
 package causalorder
 
 import (
+	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -171,6 +173,54 @@ func TestCausalOrder_QueueParallel(t *testing.T) {
 	tf.AssertEvicted("C", "D", "E")
 }
 
+func TestCausalOrder_QueueParallelMassive(t *testing.T) {
+	var rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var wg sync.WaitGroup
+
+	workers := workerpool.NewGroup(t.Name())
+	tf := NewTestFramework(t, workers)
+
+	// generate bunch of IDs
+	count := 10000
+	aliases := make([]string, count)
+	seen := make(map[string]bool)
+
+	for i := 0; i < count; i++ {
+		id := randSeq(10)
+		if _, exist := seen[id]; exist {
+			i--
+			continue
+		}
+		seen[id] = true
+		aliases[i] = id
+	}
+	require.Equal(t, count, len(aliases))
+
+	tf.CreateEntity(aliases[0], WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	for i := 1; i < count; i++ {
+		numParents := i % 20
+		parents := make([]string, 0)
+		for j := 0; j < numParents; j++ {
+			p := rand.Intn(i)
+			parents = append(parents, aliases[p])
+		}
+		tf.CreateEntity(aliases[i], WithParents(tf.EntityIDs(parents...)), WithIndex(1))
+	}
+
+	wg.Add(count)
+	for _, alias := range aliases {
+		go func(alias string) {
+			tf.Queue(tf.Entity(alias))
+			wg.Done()
+		}(alias)
+	}
+
+	wg.Wait()
+	workers.WaitChildren()
+
+	tf.AssertOrdered(aliases...)
+}
+
 func TestCausalOrder_EvictParallel(t *testing.T) {
 	workers := workerpool.NewGroup(t.Name())
 	tf := NewTestFramework(t, workers)
@@ -211,4 +261,13 @@ func TestCausalOrder_EvictParallel(t *testing.T) {
 	wg.Wait()
 
 	tf.AssertEvicted("C", "D", "E")
+}
+
+func randSeq(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
