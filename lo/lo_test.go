@@ -73,6 +73,7 @@ func Test_Keys(t *testing.T) {
 
 	result := lo.Keys(collection)
 
+	require.Equal(t, len(collection), len(result))
 	require.Contains(t, result, 1, "should get the keys")
 	require.Contains(t, result, 2, "should get the keys")
 	require.Contains(t, result, 3, "should get the keys")
@@ -83,6 +84,7 @@ func Test_Values(t *testing.T) {
 
 	result := lo.Values(collection)
 
+	require.Equal(t, len(collection), len(result))
 	require.Contains(t, result, 10, "should get the values")
 	require.Contains(t, result, 20, "should get the values")
 	require.Contains(t, result, 30, "should get the values")
@@ -119,7 +121,7 @@ func Test_Bind(t *testing.T) {
 
 	boundF := lo.Bind(10, f)
 
-	require.Equal(t, 200, boundF(20), "should correcly add 10")
+	require.Equal(t, 200, boundF(20), "should correctly time 10")
 }
 
 func Test_PanicOnErr(t *testing.T) {
@@ -180,4 +182,29 @@ func Test_Sum(t *testing.T) {
 	maxValueInt := lo.Sum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
 	require.Equal(t, 55, maxValueInt, "should correctly sum values")
+}
+
+func Test_MergeMaps(t *testing.T) {
+	base := map[int]int{
+		1: 2,
+		2: 3,
+		3: 4,
+		4: 5,
+	}
+
+	updated := map[int]int{
+		1: 3,
+		3: 5,
+		5: 7,
+	}
+
+	result := lo.MergeMaps(base, updated)
+
+	require.EqualValues(t, map[int]int{
+		1: 3,
+		2: 3,
+		3: 5,
+		4: 5,
+		5: 7,
+	}, result)
 }
