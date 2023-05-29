@@ -1,4 +1,4 @@
-package orderedmap
+package orderedmap_test
 
 import (
 	"fmt"
@@ -7,13 +7,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 func TestOrderedMap_Size(t *testing.T) {
-	orderedMap := New[int, int]()
+	orderedMap := orderedmap.New[int, int]()
 
 	require.Equal(t, 0, orderedMap.Size())
+	require.True(t, orderedMap.IsEmpty())
 
 	orderedMap.Set(1, 1)
 
@@ -23,6 +25,7 @@ func TestOrderedMap_Size(t *testing.T) {
 	orderedMap.Set(2, 1)
 
 	require.Equal(t, 3, orderedMap.Size())
+	require.False(t, orderedMap.IsEmpty())
 
 	orderedMap.Set(2, 2)
 
@@ -31,20 +34,30 @@ func TestOrderedMap_Size(t *testing.T) {
 	orderedMap.Delete(2)
 
 	require.Equal(t, 2, orderedMap.Size())
+
+	clone := orderedMap.Clone()
+	require.EqualValues(t, orderedMap, clone)
+
+	clone.Clear()
+	require.True(t, clone.IsEmpty())
+	require.False(t, orderedMap.IsEmpty())
 }
 
 func TestNew(t *testing.T) {
-	orderedMap := New[int, int]()
+	orderedMap := orderedmap.New[int, int]()
 	require.NotNil(t, orderedMap)
 
 	require.Equal(t, 0, orderedMap.Size())
 
-	require.Nil(t, orderedMap.head)
-	require.Nil(t, orderedMap.tail)
+	_, _, exists := orderedMap.Head()
+	require.False(t, exists)
+
+	_, _, exists = orderedMap.Tail()
+	require.False(t, exists)
 }
 
 func TestSetGetDelete(t *testing.T) {
-	orderedMap := New[string, string]()
+	orderedMap := orderedmap.New[string, string]()
 	require.NotNil(t, orderedMap)
 
 	// when adding the first new key,value pair, we must return false
@@ -57,8 +70,16 @@ func TestSetGetDelete(t *testing.T) {
 	require.True(t, ok)
 
 	// head and tail should NOT be nil and match and size should be 1
-	require.NotNil(t, orderedMap.head)
-	require.Same(t, orderedMap.head, orderedMap.tail)
+	k, v, exists := orderedMap.Head()
+	require.True(t, exists)
+	require.Equal(t, "key", k)
+	require.Equal(t, "value", v)
+
+	k, v, exists = orderedMap.Tail()
+	require.True(t, exists)
+	require.Equal(t, "key", k)
+	require.Equal(t, "value", v)
+
 	require.Equal(t, 1, orderedMap.Size())
 
 	// when adding the same key,value pair must return true
@@ -83,8 +104,11 @@ func TestSetGetDelete(t *testing.T) {
 	require.Equal(t, 0, orderedMap.Size())
 
 	// if we delete the only element, head and tail should be both nil
-	require.Nil(t, orderedMap.head)
-	require.Same(t, orderedMap.head, orderedMap.tail)
+	_, _, exists = orderedMap.Head()
+	require.False(t, exists)
+
+	_, _, exists = orderedMap.Tail()
+	require.False(t, exists)
 
 	// when deleting a NON existing element, we must get false
 	deleted = orderedMap.Delete("key")
@@ -92,18 +116,14 @@ func TestSetGetDelete(t *testing.T) {
 }
 
 func TestForEach(t *testing.T) {
-	orderedMap := New[string, int]()
+	orderedMap := orderedmap.New[string, int]()
 	require.NotNil(t, orderedMap)
 
-	testElements := []Element[string, int]{
-		{key: "one", value: 1},
-		{key: "two", value: 2},
-		{key: "three", value: 3},
-	}
+	keys := []string{"one", "two", "three"}
+	values := []int{1, 2, 3}
 
-	for _, element := range testElements {
-		_, previousValueExisted := orderedMap.Set(element.key, element.value)
-		require.False(t, previousValueExisted)
+	for i := 0; i < len(keys); i++ {
+		orderedMap.Set(keys[i], values[i])
 	}
 
 	// test that all elements are positive via ForEach
@@ -116,17 +136,34 @@ func TestForEach(t *testing.T) {
 		return value < 0
 	})
 	require.False(t, testNegative)
+
+	j := len(keys) - 1
+	revKeys := make([]string, len(keys))
+	revValues := make([]int, len(keys))
+	orderedMap.ForEachReverse(func(key string, value int) bool {
+		revKeys[j] = key
+		revValues[j] = value
+		j--
+
+		return true
+	})
+
+	require.ElementsMatch(t, keys, revKeys)
+	require.ElementsMatch(t, values, revValues)
 }
 
 func TestConcurrencySafe(t *testing.T) {
-	orderedMap := New[string, int]()
+	orderedMap := orderedmap.New[string, int]()
 	require.NotNil(t, orderedMap)
 
+	count := 100
+	keys := make([]string, count)
+	values := make([]int, count)
+
 	// initialize a slice of 100 elements
-	set := make([]Element[string, int], 100)
 	for i := 0; i < 100; i++ {
-		element := Element[string, int]{key: fmt.Sprintf("%d", i), value: i}
-		set[i] = element
+		keys[i] = fmt.Sprintf("%d", i)
+		values[i] = i
 	}
 
 	// let 10 workers fill the orderedMap
@@ -137,8 +174,7 @@ func TestConcurrencySafe(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < 100; i++ {
-				ele := set[i]
-				orderedMap.Set(ele.key, ele.value)
+				orderedMap.Set(keys[i], values[i])
 			}
 		}()
 	}
@@ -147,8 +183,8 @@ func TestConcurrencySafe(t *testing.T) {
 	// check that all the elements consumed from the set
 	// have been stored in the orderedMap and its size matches
 	for i := 0; i < 100; i++ {
-		value, ok := orderedMap.Get(set[i].key)
-		require.Equal(t, set[i].value, value)
+		value, ok := orderedMap.Get(keys[i])
+		require.Equal(t, values[i], value)
 		require.True(t, ok)
 	}
 	require.Equal(t, 100, orderedMap.Size())
@@ -159,8 +195,7 @@ func TestConcurrencySafe(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < 100; i++ {
-				ele := set[i]
-				orderedMap.Delete(ele.key)
+				orderedMap.Delete(keys[i])
 			}
 		}()
 	}
@@ -172,7 +207,7 @@ func TestConcurrencySafe(t *testing.T) {
 func TestSerialization(t *testing.T) {
 	serix.DefaultAPI.RegisterTypeSettings("", serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte))
 
-	orderedMap := New[string, uint8]()
+	orderedMap := orderedmap.New[string, uint8]()
 
 	orderedMap.Set("a", 0)
 	orderedMap.Set("b", 1)
@@ -181,7 +216,7 @@ func TestSerialization(t *testing.T) {
 	bytes, err := orderedMap.Encode()
 	require.NoError(t, err)
 
-	decoded := new(OrderedMap[string, uint8])
+	decoded := new(orderedmap.OrderedMap[string, uint8])
 	bytesRead, err := decoded.Decode(bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), bytesRead)
