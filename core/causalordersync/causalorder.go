@@ -84,6 +84,9 @@ func New[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]](
 
 // Queue adds the given Entity to the CausalOrderer and triggers it when it's ready.
 func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
+	c.evictionMutex.RLock()
+	defer c.evictionMutex.RUnlock()
+
 	for _, childToCheck := range c.triggerOrderedIfReady(entity) {
 		c.triggerChildIfReady(childToCheck)
 	}
@@ -92,19 +95,14 @@ func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
 func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 	for _, evictedEntity := range c.evictUntil(index) {
-		c.dagMutex.Lock(evictedEntity.ID())
-		defer c.dagMutex.Unlock(evictedEntity.ID())
-
 		c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
 	}
 }
 
 // triggerOrderedIfReady triggers the ordered callback of the given Entity if it's ready.
 func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) []Entity {
-	parents := c.parentsCallback(entity)
 
-	c.evictionMutex.RLock()
-	defer c.evictionMutex.RUnlock()
+	parents := c.parentsCallback(entity)
 	c.dagMutex.RLock(parents...)
 	defer c.dagMutex.RUnlock(parents...)
 	c.dagMutex.Lock(entity.ID())

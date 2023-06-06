@@ -85,19 +85,16 @@ func New[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID]](
 
 // Queue adds the given Entity to the CausalOrder and triggers it when it's ready.
 func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
-	newOrdered := c.triggerOrderedIfReady(entity)
-	if newOrdered {
-		c.triggerOrderedCallback(entity)
-	}
+	c.evictionMutex.RLock()
+	defer c.evictionMutex.RUnlock()
+
+	c.triggerOrderedIfReady(entity)
 }
 
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
 func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 	for _, evictedEntity := range c.evictUntil(index) {
 		//TODO: this entities should not still be inside the causalorder
-		c.dagMutex.Lock(evictedEntity.ID())
-		defer c.dagMutex.Unlock(evictedEntity.ID())
-
 		if !c.isOrdered(evictedEntity) {
 			c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
 		} else {
@@ -107,31 +104,29 @@ func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 }
 
 // triggerOrderedIfReady triggers the ordered callback of the given Entity if it's ready.
-func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) (newOrdered bool) {
+func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) {
 	parents := c.parentsCallback(entity)
 
-	c.evictionMutex.RLock()
-	defer c.evictionMutex.RUnlock()
 	c.dagMutex.RLock(parents...)
 	defer c.dagMutex.RUnlock(parents...)
 	c.dagMutex.Lock(entity.ID())
 	defer c.dagMutex.Unlock(entity.ID())
 
 	if c.isOrdered(entity) {
-		return false
+		return
 	}
 
 	if c.lastEvictedIndex >= entity.ID().Index() {
 		c.evictionCallback(entity, errors.Errorf("entity %s below max evicted slot", entity.ID()))
 
-		return false
+		return
 	}
 
 	if !c.allParentsOrdered(entity) {
-		return false
+		return
 	}
 
-	return true
+	c.triggerOrderedCallback(entity)
 }
 
 // allParentsOrdered returns true if all parents of the given Entity are ordered.
@@ -223,28 +218,21 @@ func (c *CausalOrder[I, ID, Entity]) popUnorderedChildren(entityID ID) (pendingC
 // triggerChildIfReady triggers the ordered callback of the given Entity if it's unorderedParentsCounter reaches 0
 // (after decreasing it).
 func (c *CausalOrder[I, ID, Entity]) triggerChildIfReady(child Entity) {
-	c.dagMutex.RLock(child.ID())
+	c.dagMutex.Lock(child.ID())
+	defer c.dagMutex.Unlock(child.ID())
 
 	if !c.isOrdered(child) && c.decreaseUnorderedParentsCounter(child) == 0 {
-		c.dagMutex.RUnlock(child.ID())
 		c.triggerOrderedCallback(child)
-
-		return
 	}
-
-	c.dagMutex.RUnlock(child.ID())
 }
 
 // triggerOrderedCallback triggers the ordered callback of the given Entity and propagates .
 func (c *CausalOrder[I, ID, Entity]) triggerOrderedCallback(entity Entity) (wasTriggered bool) {
-	c.dagMutex.Lock(entity.ID())
 	if err := c.orderedCallback(entity); err != nil {
 		c.evictionCallback(entity, err)
-		c.dagMutex.Unlock(entity.ID())
 
 		return
 	}
-	c.dagMutex.Unlock(entity.ID())
 
 	c.propagateOrderToChildren(entity.ID())
 
@@ -257,6 +245,9 @@ func (c *CausalOrder[I, ID, Entity]) propagateOrderToChildren(id ID) {
 		currentChild := child
 
 		c.workerPool.Submit(func() {
+			c.evictionMutex.RLock()
+			defer c.evictionMutex.RUnlock()
+
 			c.triggerChildIfReady(currentChild)
 		})
 	}
