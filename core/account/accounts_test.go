@@ -5,69 +5,59 @@ import (
 
 	"github.com/iotaledger/hive.go/core/account"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/iota.go/v4/tpkg"
 	"github.com/stretchr/testify/require"
 )
 
-// Define a test struct to hold test data.
-type accountTestCase struct {
-	id          testID
-	weight      int64
-	expectedGet int64
-	expectedMap map[testID]int64
-}
-
-func getTestCases() []accountTestCase {
-	return []accountTestCase{
-		{
-			id:          testID([]byte{1}),
-			weight:      0,
-			expectedGet: 0,
-			expectedMap: map[testID]int64{
-				testID([]byte{1}): 0,
-			},
-		},
-		{
-			id:          testID([]byte{2}),
-			weight:      10,
-			expectedGet: 10,
-			expectedMap: map[testID]int64{
-				testID([]byte{1}): 0,
-				testID([]byte{2}): 10,
-			},
-		},
-	}
-}
-
-// Define a test function to test the Account type.
-func TestAccount(t *testing.T) {
+func TestAccounts(t *testing.T) {
 	store := mapdb.NewMapDB()
-
-	// Define your test data.
-	testCases := getTestCases()
-
-	// Create a new Accounts instance.
 	accounts := account.NewAccounts[testID](store)
+	issuers, totalWeight := generateAccounts()
 
-	// Loop over each test case and run the tests.
-	for _, tc := range testCases {
-		// Set the account weight.
-		accounts.Set(tc.id, tc.weight)
-
-		// Test the Get() function.
-		weight, exists := accounts.Get(tc.id)
-		require.Truef(t, exists, "account %v not exist", tc.id)
-		require.Equal(t, tc.weight, weight, "account weight does not match from Get")
-
-		// Test the Map() function.
-		actualMap, err := accounts.Map()
-		require.NoError(t, err, "Map() returned an error")
-
-		for id, weight := range tc.expectedMap {
-			actualWeight, ok := actualMap[id]
-			require.True(t, ok, "account not exists from Map()")
-			require.Equal(t, weight, actualWeight, "account weight is different from Map()")
-		}
+	// Add accounts
+	for id, weight := range issuers {
+		accounts.Set(id, weight)
 	}
+
+	// Test Map
+	wMap, err := accounts.Map()
+	require.NoError(t, err)
+	require.EqualValues(t, issuers, wMap)
+	require.Equal(t, totalWeight, accounts.TotalWeight())
+
+	// update issuer's weight
+	issuerIDs := lo.Keys(wMap)
+	oldWeight, exist := accounts.Get(issuerIDs[0])
+	require.True(t, exist)
+
+	newWeight := int64(20)
+	accounts.Set(issuerIDs[0], newWeight)
+	w, exist := accounts.Get(issuerIDs[0])
+	require.True(t, exist)
+	require.Equal(t, newWeight, w)
+	require.Equal(t, totalWeight-oldWeight+newWeight, accounts.TotalWeight())
+
+	// Get a non existed account
+	_, exist = accounts.Get(testID([]byte{tpkg.RandByte()}))
+	require.False(t, exist)
+
+	// Test Selected Accounts, get 1 issuer
+	selected := accounts.SelectAccounts(issuerIDs[0])
+	require.Equal(t, newWeight, selected.TotalWeight())
+	require.Equal(t, 1, selected.Members().Size())
+
+	// Test Selected Accounts, get all issuers
+	selected = accounts.SelectAccounts(issuerIDs...)
+	require.Equal(t, accounts.TotalWeight(), selected.TotalWeight())
+	require.Equal(t, len(issuerIDs), selected.Members().Size())
+
+	root := accounts.Root()
+
+	// load from existing store
+	accounts1 := account.NewAccounts[testID](store)
+	require.Equal(t, root, accounts1.Root())
+	require.Equal(t, accounts.TotalWeight(), accounts1.TotalWeight())
 }
 
 type testID [1]byte
@@ -79,4 +69,23 @@ func (t testID) Bytes() ([]byte, error) {
 func (t *testID) FromBytes(b []byte) (int, error) {
 	copy(t[:], b)
 	return len(t), nil
+}
+
+func generateAccounts() (map[testID]int64, int64) {
+	seenIDs := make(map[testID]bool)
+	issuers := make(map[testID]int64)
+	var totalWeight int64
+
+	for i := 0; i < 10; i++ {
+		id := testID([]byte{tpkg.RandByte()})
+		if _, exist := seenIDs[id]; exist {
+			i--
+			continue
+		}
+		issuers[id] = int64(i)
+		totalWeight += int64(i)
+		seenIDs[id] = true
+	}
+
+	return issuers, totalWeight
 }
