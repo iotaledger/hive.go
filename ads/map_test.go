@@ -5,65 +5,103 @@ import (
 
 	"github.com/iotaledger/hive.go/ads"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newMap := ads.NewMap[testKey, testValue](store)
-
+	keys := []testKey{testKey([]byte{'a'}), testKey([]byte{'b'})}
+	values := []testValue{testValueFromString("test value"), testValueFromString("test value 1")}
 	// Test setting and getting a value
-	key := testKey([]byte{'a'})
-	value := testValueFromString("test value")
-	newMap.Set(key, &value)
-	exist := newMap.Has(key)
-	assert.True(t, exist)
-	gotValue, exists := newMap.Get(key)
-	assert.True(t, exists)
-	assert.ElementsMatch(t, value, *gotValue)
+	for i, k := range keys {
+		newMap.Set(k, &values[i])
+	}
+
+	for i, k := range keys {
+		exist := newMap.Has(k)
+		require.True(t, exist)
+		gotValue, exists := newMap.Get(k)
+		require.True(t, exists)
+		require.ElementsMatch(t, values[i], *gotValue)
+	}
 
 	// Test setting a value to empty, which should panic
-	assert.Panics(t, func() { newMap.Set(key, &testValue{}) })
+	require.Panics(t, func() { newMap.Set(keys[0], &testValue{}) })
+
+	// Test getting a non-existing key
+	gotValue, exists := newMap.Get(testKey([]byte{'c'}))
+	require.False(t, exists)
+	require.Nil(t, gotValue)
+
+	// overwrite the value of keys[0]
+	newValue := testValueFromString("test")
+	newMap.Set(keys[0], &newValue)
+	gotValue, exists = newMap.Get(keys[0])
+	require.True(t, exists)
+	require.ElementsMatch(t, newValue, *gotValue)
+
+	// get the root of having 2 keys
+	oldRoot := newMap.Root()
 
 	// Test deleting a key
-	assert.True(t, newMap.Delete(key))
-	exist = newMap.Has(key)
-	assert.False(t, exist)
-	_, exists = newMap.Get(key)
-	assert.False(t, exists)
+	require.True(t, newMap.Delete(keys[0]))
+	exists = newMap.Has(keys[0])
+	require.False(t, exists)
+	_, exists = newMap.Get(keys[0])
+	require.False(t, exists)
+
+	// The root now should be different
+	require.NotEqualValues(t, oldRoot, newMap.Root())
 
 	// Test deleting a non-existent key
-	assert.False(t, newMap.Delete(key))
+	require.False(t, newMap.Delete(keys[0]))
+
+	// The root should be same if loading the same store to map
+	newMap1 := ads.NewMap[testKey, testValue](store)
+	require.EqualValues(t, newMap.Root(), newMap1.Root())
 }
 
 func TestStreamMap(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newMap := ads.NewMap[testKey, testValue](store)
 
-	key1 := testKey([]byte{'b'})
-	key2 := testKey([]byte{'c'})
-	value1 := testValueFromString("test value 1")
-	value2 := testValueFromString("test value 2")
-	newMap.Set(key1, &value1)
-	newMap.Set(key2, &value2)
+	kvMap := map[testKey]testValue{
+		testKey([]byte{'b'}): testValueFromString("test value 1"),
+		testKey([]byte{'c'}): testValueFromString("test value 2"),
+	}
+	for k, v := range kvMap {
+		newMap.Set(k, &v)
+	}
 
-	seen := make(map[testKey]bool)
+	seen := make(map[testKey]testValue)
 	err := newMap.Stream(func(key testKey, value *testValue) bool {
-		seen[key] = true
-		if key == key1 {
-			assert.ElementsMatch(t, value1, *value)
-		} else if key == key2 {
-			assert.ElementsMatch(t, value2, *value)
-		} else {
-			t.Fail()
-			return false
-		}
+		seen[key] = *value
 		return true
 	})
-	assert.NoError(t, err)
-	assert.True(t, seen[key1])
-	assert.True(t, seen[key2])
-	assert.Equal(t, 2, len(seen))
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(seen))
+	for k, v := range seen {
+		expectedV, has := kvMap[k]
+		require.True(t, has)
+		require.ElementsMatch(t, expectedV, v)
+	}
+
+	// consume function returns false, only 1 element is visited.
+	seenKV := make(map[testKey]testValue)
+	err = newMap.Stream(func(key testKey, value *testValue) bool {
+		seenKV[key] = *value
+
+		return false
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(seenKV))
+	for k, v := range seenKV {
+		expectedV, has := kvMap[k]
+		require.True(t, has)
+		require.ElementsMatch(t, expectedV, v)
+	}
 }
 
 type testKey [1]byte
