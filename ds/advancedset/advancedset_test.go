@@ -91,6 +91,18 @@ func TestAdvancedSet_ForEach(t *testing.T) {
 	require.Equal(t, 0, expectedElements.Size(), "wrong size")
 }
 
+func TestAdvancedSet_RangeAndString(t *testing.T) {
+	set := initAdvancedSet(3, 0)
+
+	expectedElements := initAdvancedSet(3, 0)
+	require.Equal(t, 3, expectedElements.Size(), "wrong size")
+
+	str := set.String()
+	set.Range(func(element string) {
+		require.Contains(t, str, element)
+	})
+}
+
 func TestAdvancedSet_Intersect(t *testing.T) {
 	set := initAdvancedSet(5, 0)
 	set2 := initAdvancedSet(5, 3)
