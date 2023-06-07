@@ -12,8 +12,8 @@ import (
 
 func TestRandomMap_Basics(t *testing.T) {
 	testMap := randommap.New[string, string]()
-	// key and value are the same for the sake of the test
 	keysAndValues := []string{"a", "b", "c", "d"}
+
 	// fill randomMap
 	for _, keyValue := range keysAndValues {
 		testMap.Set(keyValue, keyValue)
@@ -30,9 +30,23 @@ func TestRandomMap_Basics(t *testing.T) {
 		require.Equal(t, keysAndValues[index], result)
 	}
 
+	key, exists := testMap.RandomKey()
+	require.True(t, exists)
+	require.Contains(t, keysAndValues, key)
+	entry, exists := testMap.RandomEntry()
+	require.True(t, exists)
+	require.Contains(t, keysAndValues, entry)
+
 	value, deleted := testMap.Delete(keysAndValues[0])
 	require.Truef(t, deleted, "%s deleted failed", value)
 	require.Equal(t, len(keysAndValues)-1, testMap.Size())
+
+	// update existing key value
+	testMap.Set(keysAndValues[1], "x")
+	require.Equal(t, len(keysAndValues)-1, testMap.Size())
+	result, exists := testMap.Get(keysAndValues[1])
+	require.Truef(t, exists, "get %s from randommap failed", value)
+	require.Equal(t, "x", result)
 
 }
 
