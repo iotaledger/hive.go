@@ -25,6 +25,12 @@ func TestIndexedStorage(t *testing.T) {
 	subStorage.Set("tx1", 1)
 	subStorage.Set("tx2", 2)
 
+	// Get an existing storage and check if values are correct.
+	subStorage1 := storage.Get(index(1))
+	require.NotNil(t, subStorage1)
+	require.ElementsMatch(t, subStorage.Keys(), subStorage1.Keys())
+	require.ElementsMatch(t, subStorage.Values(), subStorage1.Values())
+
 	// Test that Get returns the correct value.
 	v, exists := subStorage.Get("tx1")
 	require.Equal(t, 1, v)
