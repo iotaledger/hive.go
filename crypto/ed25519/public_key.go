@@ -1,13 +1,15 @@
 package ed25519
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 
 	"github.com/mr-tron/base58"
-	"github.com/oasisprotocol/ed25519"
 	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
+	iotago "github.com/iotaledger/iota.go/v4"
 )
 
 // PublicKey is the type of Ed25519 public keys.
@@ -28,6 +30,13 @@ func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err error) {
 	consumedBytes, err = (&result).FromBytes(bytes)
 	return
+}
+
+// PublicKeysFromBlockIssuerKeys converts BlockIssuerKeys into a []PublicKey.
+func PublicKeysFromBlockIssuerKeys(blockIssuerKeys iotago.BlockIssuerKeys) (result []PublicKey) {
+	return lo.Map(blockIssuerKeys, func(key ed25519.PublicKey) PublicKey {
+		return PublicKey(key)
+	})
 }
 
 // RecoverKey makes sure that key and signature have the correct length
