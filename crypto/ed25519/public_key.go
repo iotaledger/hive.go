@@ -125,3 +125,11 @@ func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+
+// ToEd25519 returns the public key as native crypto/ed25519.PublicKey.
+func (publicKey PublicKey) ToEd25519() ed25519.PublicKey {
+	nativePubKey := make(ed25519.PublicKey, PublicKeySize)
+	copy(nativePubKey[:], publicKey[:])
+
+	return nativePubKey
+}
