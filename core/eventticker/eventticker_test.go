@@ -2,13 +2,13 @@ package eventticker_test
 
 import (
 	"encoding/binary"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/iotaledger/hive.go/core/eventticker"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/iota.go/v4/tpkg"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +20,7 @@ func TestEventTicker(t *testing.T) {
 	)
 
 	// Add ticker for slot 1
-	id := newtestID(index(1), tpkg.RandByte())
+	id := newtestID(index(1), randByte())
 	eventTicker.StartTicker(id)
 
 	has := eventTicker.HasTicker(id)
@@ -37,8 +37,8 @@ func TestEventTicker(t *testing.T) {
 	require.Equalf(t, 0, eventTicker.QueueSize(), "EventTicker.QueueSize() returned %d, expected 0", eventTicker.QueueSize())
 
 	// Add new tickers for slot 1 and 2
-	id1 := newtestID(index(1), tpkg.RandByte())
-	id2 := newtestID(index(2), tpkg.RandByte())
+	id1 := newtestID(index(1), randByte())
+	id2 := newtestID(index(2), randByte())
 	eventTicker.StartTickers([]testID{id1, id2})
 
 	require.Equalf(t, 2, eventTicker.QueueSize(), "EventTicker.QueueSize() returned %d, expected 2", eventTicker.QueueSize())
@@ -84,7 +84,7 @@ func TestRescheduleTicker(t *testing.T) {
 	var startTime time.Time
 	counter := 0
 	done := make(chan struct{})
-	id := newtestID(index(1), tpkg.RandByte())
+	id := newtestID(index(1), randByte())
 
 	unhook := lo.Batch(
 		eventTicker.Events.TickerStarted.Hook(func(ti testID) {
@@ -137,7 +137,7 @@ func TestRescheduleMultipleTicker(t *testing.T) {
 
 	tickers := make(map[testID]*info)
 	for i := 1; i <= 5; i++ {
-		id := newtestID(index(i), tpkg.RandByte())
+		id := newtestID(index(i), randByte())
 		tickers[id] = &info{}
 	}
 
@@ -186,7 +186,7 @@ func TestNonExistedTicker(t *testing.T) {
 		eventticker.RetryJitter[index, testID](time.Duration(time.Millisecond)),
 	)
 
-	id2 := newtestID(index(2), tpkg.RandByte())
+	id2 := newtestID(index(2), randByte())
 	eventTicker.StartTicker(id2)
 
 	// Test HasTicker with non-existed ticker ID
@@ -230,3 +230,7 @@ func (t testID) String() string {
 }
 
 type index uint64
+
+func randByte() byte {
+	return byte(rand.Intn(256))
+}

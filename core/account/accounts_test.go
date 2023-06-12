@@ -1,12 +1,12 @@
 package account_test
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/iotaledger/hive.go/core/account"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/iota.go/v4/tpkg"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +39,7 @@ func TestAccounts(t *testing.T) {
 	require.Equal(t, totalWeight-oldWeight+newWeight, accounts.TotalWeight())
 
 	// Get a non existed account
-	_, exist = accounts.Get(testID([]byte{tpkg.RandByte()}))
+	_, exist = accounts.Get(testID([]byte{randByte()}))
 	require.False(t, exist)
 
 	// Test Selected Accounts, get 1 issuer
@@ -77,7 +77,7 @@ func generateAccounts() (map[testID]int64, int64) {
 	var totalWeight int64
 
 	for i := 0; i < 10; i++ {
-		id := testID([]byte{tpkg.RandByte()})
+		id := testID([]byte{randByte()})
 		if _, exist := seenIDs[id]; exist {
 			i--
 			continue
@@ -88,4 +88,8 @@ func generateAccounts() (map[testID]int64, int64) {
 	}
 
 	return issuers, totalWeight
+}
+
+func randByte() byte {
+	return byte(rand.Intn(256))
 }
