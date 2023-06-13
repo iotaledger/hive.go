@@ -9,7 +9,6 @@ import (
 
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
-	iotago "github.com/iotaledger/iota.go/v4"
 )
 
 // PublicKey is the type of Ed25519 public keys.
@@ -32,9 +31,9 @@ func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err 
 	return
 }
 
-// PublicKeysFromBlockIssuerKeys converts BlockIssuerKeys into a []PublicKey.
-func PublicKeysFromBlockIssuerKeys(blockIssuerKeys iotago.BlockIssuerKeys) (result []PublicKey) {
-	return lo.Map(blockIssuerKeys, func(key ed25519.PublicKey) PublicKey {
+// NativeToPublicKeys converts crypto/ed25519 native public keys into a []PublicKey.
+func NativeToPublicKeys(nativePubKeys []ed25519.PublicKey) (result []PublicKey) {
+	return lo.Map(nativePubKeys, func(key ed25519.PublicKey) PublicKey {
 		return PublicKey(key)
 	})
 }
