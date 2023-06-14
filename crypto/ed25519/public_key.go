@@ -51,7 +51,7 @@ func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 
 		return
 	}
-	if !ed25519.Verify(key, data, sig) {
+	if !Verify(key, data, sig) {
 		err = errors.New("invalid signature")
 
 		return
@@ -73,7 +73,7 @@ func ParsePublicKey(marshalUtil *marshalutil.MarshalUtil) (PublicKey, error) {
 
 // VerifySignature reports whether signature is a valid signature of message by publicKey.
 func (publicKey PublicKey) VerifySignature(data []byte, signature Signature) bool {
-	return ed25519.Verify(publicKey[:], data, signature[:])
+	return Verify(publicKey[:], data, signature[:])
 }
 
 // FromBytes initialized the PublicKey from the given bytes.

@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/crypto
 go 1.20
 
 require (
+	filippo.io/edwards25519 v1.0.0
 	github.com/cockroachdb/errors v1.9.1
 	github.com/iotaledger/hive.go/lo v0.0.0-20230509131601-fb70d1a6cc57
 	github.com/iotaledger/hive.go/runtime v0.0.0-20230509131601-fb70d1a6cc57
