@@ -1,9 +1,9 @@
 package ed25519
 
 import (
+	"crypto/ed25519"
 	"testing"
 
-	"github.com/oasisprotocol/ed25519"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/lo"
