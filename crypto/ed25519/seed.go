@@ -1,12 +1,12 @@
 package ed25519
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/binary"
 
 	"github.com/mr-tron/base58"
-	"github.com/oasisprotocol/ed25519"
 	"golang.org/x/crypto/blake2b"
 )
 

@@ -10,7 +10,6 @@ require (
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230509131601-fb70d1a6cc57
 	github.com/libp2p/go-libp2p v0.27.3
 	github.com/mr-tron/base58 v1.2.0
-	github.com/oasisprotocol/ed25519 v0.0.0-20210505154701-76d8c688d86e
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.2
 	go.dedis.ch/kyber/v3 v3.1.0
