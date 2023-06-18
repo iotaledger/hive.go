@@ -31,6 +31,20 @@ func TestEventAlreadyTriggered(t *testing.T) {
 	require.True(t, triggered, "event should be triggered immediately")
 }
 
+func TestEventUnsubscribe(t *testing.T) {
+	event := NewEvent()
+
+	triggered := false
+	unsubscribe := event.OnTrigger(func() {
+		triggered = true
+	})
+
+	unsubscribe()
+	event.Trigger()
+
+	require.False(t, triggered, "event should be triggered immediately")
+}
+
 func TestEvent1Trigger(t *testing.T) {
 	event := NewEvent1[int]()
 
@@ -58,4 +72,20 @@ func TestEvent1AlreadyTriggered(t *testing.T) {
 	})
 
 	require.True(t, triggered, "event should be triggered immediately")
+}
+
+func TestEvent1Unsubscribe(t *testing.T) {
+	event := NewEvent1[int]()
+
+	triggered := false
+	unsubscribe := event.OnTrigger(func(val int) {
+		require.Equal(t, 5, val, "event should be triggered with correct value")
+
+		triggered = true
+	})
+
+	unsubscribe()
+	event.Trigger(5)
+
+	require.False(t, triggered, "event should be triggered immediately")
 }
