@@ -2,6 +2,8 @@ package promise
 
 import (
 	"sync"
+
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
 // region Event
@@ -9,8 +11,11 @@ import (
 // Event is an event that can be triggered exactly once. Consumers that register themselves after the event was
 // triggered, will be called immediately.
 type Event struct {
-	// callbacks is a slice of callbacks that will be called when the event is triggered.
-	callbacks []func()
+	// callbacks contains the callbacks that will be called when the event is triggered.
+	callbacks *shrinkingmap.ShrinkingMap[uniqueID, func()]
+
+	// callbackIDs is a counter for the callback IDs.
+	callbackIDs uniqueID
 
 	// mutex is used to synchronize access to the callbacks.
 	mutex sync.RWMutex
@@ -19,22 +24,24 @@ type Event struct {
 // NewEvent creates a new Event with 0 generic parameters.
 func NewEvent() *Event {
 	return &Event{
-		callbacks: make([]func(), 0),
+		callbacks: shrinkingmap.New[uniqueID, func()](),
 	}
 }
 
 // Trigger triggers the event. If the event was already triggered, this method does nothing.
-func (f *Event) Trigger() (wasTriggered bool) {
-	for _, callback := range func() (callbacks []func()) {
-		f.mutex.Lock()
-		defer f.mutex.Unlock()
+func (e *Event) Trigger() (wasTriggered bool) {
+	for _, callback := range func() []func() {
+		e.mutex.Lock()
+		defer e.mutex.Unlock()
 
-		callbacks = f.callbacks
-		if wasTriggered = callbacks != nil; wasTriggered {
-			f.callbacks = nil
+		callbacks := e.callbacks
+		if wasTriggered = callbacks != nil; !wasTriggered {
+			return nil
 		}
 
-		return callbacks
+		e.callbacks = nil
+
+		return callbacks.Values()
 	}() {
 		callback()
 	}
@@ -44,29 +51,43 @@ func (f *Event) Trigger() (wasTriggered bool) {
 
 // OnTrigger registers a callback that will be called when the event is triggered. If the event was already triggered,
 // the callback will be called immediately.
-func (f *Event) OnTrigger(callback func()) {
-	if !func() (callbackRegistered bool) {
-		f.mutex.Lock()
-		defer f.mutex.Unlock()
+func (e *Event) OnTrigger(callback func()) (unsubscribe func()) {
+	registerCallback := func() (unsubscribe func(), subscribed bool) {
+		e.mutex.Lock()
+		defer e.mutex.Unlock()
 
-		if f.callbacks == nil {
-			return false
+		if e.callbacks == nil {
+			return void, false
 		}
 
-		f.callbacks = append(f.callbacks, callback)
+		callbackID := e.callbackIDs.Next()
 
-		return true
-	}() {
+		e.callbacks.Set(callbackID, callback)
+
+		return func() {
+			e.mutex.Lock()
+			defer e.mutex.Unlock()
+
+			if e.callbacks != nil {
+				e.callbacks.Delete(callbackID)
+			}
+		}, true
+	}
+
+	unsubscribe, subscribed := registerCallback()
+	if !subscribed {
 		callback()
 	}
+
+	return unsubscribe
 }
 
 // WasTriggered returns true if the event was already triggered.
-func (f *Event) WasTriggered() bool {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+func (e *Event) WasTriggered() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
 
-	return f.callbacks == nil
+	return e.callbacks == nil
 }
 
 // endregion
@@ -76,8 +97,11 @@ func (f *Event) WasTriggered() bool {
 // Event1 is an event with a single parameter that can be triggered exactly once. Consumers that register themselves
 // after the event was triggered, will be called immediately.
 type Event1[T any] struct {
-	// callbacks is a slice of callbacks that will be called when the event is triggered.
-	callbacks []func(T)
+	// callbacks contains the callbacks that will be called when the event is triggered.
+	callbacks *shrinkingmap.ShrinkingMap[uniqueID, func(T)]
+
+	// callbackIDs is a counter for the callback IDs.
+	callbackIDs uniqueID
 
 	// value is the value that was passed to the Trigger method.
 	value *T
@@ -89,52 +113,71 @@ type Event1[T any] struct {
 // NewEvent1 creates a new event with 1 generic parameter.
 func NewEvent1[T any]() *Event1[T] {
 	return &Event1[T]{
-		callbacks: make([]func(T), 0),
+		callbacks: shrinkingmap.New[uniqueID, func(T)](),
 	}
 }
 
 // Trigger triggers the event. If the event was already triggered, this method does nothing.
-func (f *Event1[T]) Trigger(arg T) {
-	for _, callback := range func() (callbacks []func(T)) {
-		f.mutex.Lock()
-		defer f.mutex.Unlock()
+func (e *Event1[T]) Trigger(arg T) (wasTriggered bool) {
+	for _, callback := range func() []func(T) {
+		e.mutex.Lock()
+		defer e.mutex.Unlock()
 
-		if callbacks = f.callbacks; callbacks != nil {
-			f.callbacks = nil
-			f.value = &arg
+		callbacks := e.callbacks
+		if wasTriggered = callbacks != nil; !wasTriggered {
+			return nil
 		}
 
-		return callbacks
+		e.callbacks = nil
+		e.value = &arg
+
+		return callbacks.Values()
 	}() {
 		callback(arg)
 	}
+
+	return
 }
 
 // OnTrigger registers a callback that will be called when the event is triggered. If the event was already triggered,
 // the callback will be called immediately.
-func (f *Event1[T]) OnTrigger(callback func(T)) {
-	if !func() (callbackRegistered bool) {
-		f.mutex.Lock()
-		defer f.mutex.Unlock()
+func (e *Event1[T]) OnTrigger(callback func(T)) (unsubscribe func()) {
+	registerCallback := func() (unsubscribe func(), subscribed bool) {
+		e.mutex.Lock()
+		defer e.mutex.Unlock()
 
-		if f.callbacks == nil {
-			return false
+		if e.callbacks == nil {
+			return void, false
 		}
 
-		f.callbacks = append(f.callbacks, callback)
+		callbackID := e.callbackIDs.Next()
 
-		return true
-	}() {
-		callback(*f.value)
+		e.callbacks.Set(callbackID, callback)
+
+		return func() {
+			e.mutex.Lock()
+			defer e.mutex.Unlock()
+
+			if e.callbacks != nil {
+				e.callbacks.Delete(callbackID)
+			}
+		}, true
 	}
+
+	unsubscribe, subscribed := registerCallback()
+	if !subscribed {
+		callback(*e.value)
+	}
+
+	return unsubscribe
 }
 
 // WasTriggered returns true if the event was already triggered.
-func (f *Event1[T]) WasTriggered() bool {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+func (e *Event1[T]) WasTriggered() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
 
-	return f.callbacks == nil
+	return e.callbacks == nil
 }
 
 // endregion
