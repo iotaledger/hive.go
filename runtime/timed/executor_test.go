@@ -32,7 +32,6 @@ func TestTimedExecutor_MemLeak(t *testing.T) {
 func TestTimedExecutor(t *testing.T) {
 	const workerCount = 4
 	const elementsCount = 10
-
 	timedExecutor := NewExecutor(workerCount)
 	defer timedExecutor.Shutdown()
 
@@ -40,15 +39,15 @@ func TestTimedExecutor(t *testing.T) {
 
 	// prepare a list of functions to schedule
 	elements := make(map[time.Time]func())
-	var expected, actual []int
+	expected := uint64(10)
+	var actual uint64
 	now := time.Now().Add(5 * time.Second)
 
 	for i := 0; i < elementsCount; i++ {
 		i := i // ensure closure context
 		elements[now.Add(time.Duration(i)*time.Second)] = func() {
-			actual = append(actual, i)
+			atomic.AddUint64(&actual, 1)
 		}
-		expected = append(expected, i)
 	}
 
 	// insert functions to timedExecutor
@@ -56,7 +55,6 @@ func TestTimedExecutor(t *testing.T) {
 		timedExecutor.ExecuteAt(f, et)
 	}
 
-	assert.Eventually(t, func() bool { return len(actual) == len(expected) }, 30*time.Second, 100*time.Millisecond)
+	assert.Eventually(t, func() bool { return atomic.LoadUint64(&actual) == expected }, 30*time.Second, 100*time.Millisecond)
 	assert.Equal(t, 0, timedExecutor.Size())
-	assert.ElementsMatch(t, expected, actual)
 }

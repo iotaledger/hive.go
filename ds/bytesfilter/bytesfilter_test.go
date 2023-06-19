@@ -1,8 +1,63 @@
-package bytesfilter
+package bytesfilter_test
 
 import (
+	"math/rand"
 	"testing"
+
+	"github.com/iotaledger/hive.go/ds/bytesfilter"
+	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/stretchr/testify/require"
 )
+
+func TestBytesFilter(t *testing.T) {
+	filter := bytesfilter.New(2)
+
+	data := randBytes(20)
+	id, added := filter.Add(data)
+	require.True(t, added)
+
+	exists := filter.Contains(data)
+	require.True(t, exists)
+	exists = filter.ContainsIdentifier(id)
+	require.True(t, exists)
+
+	// add new identifier
+	randData := rand32ByteArray()
+	randID := types.NewIdentifier(randData[:])
+	added = filter.AddIdentifier(randID)
+	require.True(t, added)
+	exists = filter.ContainsIdentifier(randID)
+	require.True(t, exists)
+	exists = filter.Contains(randData[:])
+	require.True(t, exists)
+
+	// add existing identifier
+	added = filter.AddIdentifier(randID)
+	require.False(t, added)
+
+	// add existing bytes
+	id1, added := filter.Add(data)
+	require.False(t, added)
+	require.ElementsMatch(t, id, id1)
+
+	tmpID := rand32ByteArray()
+	exists = filter.ContainsIdentifier(types.NewIdentifier(tmpID[:]))
+	require.False(t, exists)
+
+	data3 := randBytes(20)
+	id3, added := filter.Add(data3)
+	require.True(t, added)
+	exists = filter.Contains(data3)
+	require.True(t, exists)
+	exists = filter.ContainsIdentifier(id3)
+	require.True(t, exists)
+
+	// the first element should be removed
+	exists = filter.Contains(data)
+	require.False(t, exists)
+	exists = filter.ContainsIdentifier(id)
+	require.False(t, exists)
+}
 
 func BenchmarkAdd(b *testing.B) {
 	filter, bytesFilter := setupTest(15000, 1604)
@@ -24,8 +79,8 @@ func BenchmarkContains(b *testing.B) {
 	}
 }
 
-func setupTest(filterSize int, byteArraySize int) (*BytesFilter, []byte) {
-	filter := New(filterSize)
+func setupTest(filterSize int, byteArraySize int) (*bytesfilter.BytesFilter, []byte) {
+	filter := bytesfilter.New(filterSize)
 
 	for j := 0; j < filterSize; j++ {
 		byteArray := make([]byte, byteArraySize)
@@ -44,4 +99,19 @@ func setupTest(filterSize int, byteArraySize int) (*BytesFilter, []byte) {
 	}
 
 	return filter, byteArray
+}
+
+func randBytes(length int) []byte {
+	var b []byte
+	for i := 0; i < length; i++ {
+		b = append(b, byte(rand.Intn(127)))
+	}
+	return b
+}
+
+func rand32ByteArray() [32]byte {
+	var h [32]byte
+	b := randBytes(32)
+	copy(h[:], b)
+	return h
 }

@@ -87,9 +87,11 @@ func (w *Walker[T]) WalkStopped() bool {
 	return w.walkStopped
 }
 
-// Reset removes all queued elements.
+// Reset removes all queued elements and reset walkStopped.
 func (w *Walker[T]) Reset() {
 	w.stack.Init()
+	w.pushedElements.Clear()
+	w.walkStopped = false
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

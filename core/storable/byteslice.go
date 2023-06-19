@@ -47,7 +47,7 @@ func (b *ByteSlice) Set(index uint64, entry []byte) (err error) {
 	defer b.Unlock()
 
 	if uint64(len(entry)) != b.entrySize {
-		return errors.Wrapf(err, "entry has wrong length %d vs %d", len(entry), b.entrySize)
+		return errors.Errorf("entry has wrong length %d vs %d", len(entry), b.entrySize)
 	}
 
 	if b.startOffset == SliceOffsetAuto {

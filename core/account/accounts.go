@@ -20,7 +20,6 @@ type AccountIDType interface {
 // Accounts is a mapping between a collection of identities and their weights.
 type Accounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
 	weights     *ads.Map[AccountID, storable.SerializableInt64, AccountIDPtr, *storable.SerializableInt64]
-	cacheMutex  sync.Mutex
 	totalWeight int64
 	mutex       sync.RWMutex
 }

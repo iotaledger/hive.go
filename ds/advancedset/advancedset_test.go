@@ -1,4 +1,4 @@
-package advancedset
+package advancedset_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ds/advancedset"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
@@ -90,6 +91,18 @@ func TestAdvancedSet_ForEach(t *testing.T) {
 	require.Equal(t, 0, expectedElements.Size(), "wrong size")
 }
 
+func TestAdvancedSet_RangeAndString(t *testing.T) {
+	set := initAdvancedSet(3, 0)
+
+	expectedElements := initAdvancedSet(3, 0)
+	require.Equal(t, 3, expectedElements.Size(), "wrong size")
+
+	str := set.String()
+	set.Range(func(element string) {
+		require.Contains(t, str, element)
+	})
+}
+
 func TestAdvancedSet_Intersect(t *testing.T) {
 	set := initAdvancedSet(5, 0)
 	set2 := initAdvancedSet(5, 3)
@@ -127,7 +140,7 @@ func TestAdvancedSet_Slice(t *testing.T) {
 	setSlice := set.Slice()
 
 	require.Equal(t, set.Size(), len(setSlice), "length should be equal")
-	require.True(t, New(setSlice...).Equal(set), "sets should be equal")
+	require.True(t, advancedset.New(setSlice...).Equal(set), "sets should be equal")
 }
 
 func TestAdvancedSet_Iterator(t *testing.T) {
@@ -166,7 +179,7 @@ func TestAdvancedSet_Encoding(t *testing.T) {
 	bytes, err := set.Encode()
 	require.NoError(t, err)
 
-	decoded := new(AdvancedSet[string])
+	decoded := new(advancedset.AdvancedSet[string])
 	consumed, err := decoded.Decode(bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), consumed)
@@ -174,8 +187,8 @@ func TestAdvancedSet_Encoding(t *testing.T) {
 	require.Equal(t, set, decoded)
 }
 
-func initAdvancedSet(count int, start int) *AdvancedSet[string] {
-	set := New[string]()
+func initAdvancedSet(count int, start int) *advancedset.AdvancedSet[string] {
+	set := advancedset.New[string]()
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))

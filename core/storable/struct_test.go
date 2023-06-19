@@ -18,12 +18,34 @@ func TestStruct(t *testing.T) {
 
 	settings := NewSettings(filePath)
 	require.Equal(t, uint64(123), settings.Number)
+	require.Equal(t, filePath, settings.FilePath())
 
 	settings.Number = 3
-	require.NoError(t, settings.ToFile())
+	size, err := settings.Size()
+	require.Error(t, err)
+	require.Equal(t, int64(0), size)
 
+	require.NoError(t, settings.ToFile())
+	size, err = settings.Size()
+	require.NoError(t, err)
+
+	// write to another file path
+	filePath1 := filepath.Join(t.TempDir(), "node1.settings")
+	require.NoError(t, settings.ToFile(filePath1))
+
+	// restore from file path
 	restoredSettings := NewSettings(filePath)
 	require.Equal(t, settings.Number, restoredSettings.Number)
+	restoredSize, err := restoredSettings.Size()
+	require.NoError(t, err)
+	require.Equal(t, size, restoredSize)
+
+	// restore from file path 1
+	restoredSettings1 := NewSettings(filePath1)
+	require.Equal(t, settings.Number, restoredSettings1.Number)
+	restoredSize1, err := restoredSettings.Size()
+	require.NoError(t, err)
+	require.Equal(t, size, restoredSize1)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

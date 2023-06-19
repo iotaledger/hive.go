@@ -1,7 +1,10 @@
 package causalorder
 
 import (
+	"math/rand"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -128,4 +131,143 @@ func TestCausalOrder_UnexpectedCases(t *testing.T) {
 		tf.AssertEvicted("B")
 	}()
 	tf.EvictIndex(1)
+}
+
+func TestCausalOrder_QueueParallel(t *testing.T) {
+	workers := workerpool.NewGroup(t.Name())
+	tf := NewTestFramework(t, workers)
+	var wg sync.WaitGroup
+
+	aliases := map[string]bool{
+		"A": true,
+		"B": true,
+		"C": false,
+		"D": true,
+		"E": true,
+	}
+
+	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithIndex(1))
+	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithIndex(1))
+	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithIndex(1))
+	tf.CreateEntity("E", WithParents(tf.EntityIDs("D")), WithIndex(2))
+
+	for alias, queue := range aliases {
+		wg.Add(1)
+		go func(alias string, queue bool) {
+			if queue {
+				tf.Queue(tf.Entity(alias))
+			}
+			wg.Done()
+		}(alias, queue)
+	}
+
+	wg.Wait()
+	workers.WaitChildren()
+	tf.EvictIndex(1)
+	tf.AssertOrdered("A", "B")
+	tf.AssertEvicted("C", "D")
+
+	tf.EvictUntil(2)
+	tf.AssertOrdered("A", "B")
+	tf.AssertEvicted("C", "D", "E")
+}
+
+func TestCausalOrder_QueueParallelMassive(t *testing.T) {
+	var rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var wg sync.WaitGroup
+
+	workers := workerpool.NewGroup(t.Name())
+	tf := NewTestFramework(t, workers)
+
+	// generate bunch of IDs
+	count := 10000
+	aliases := make([]string, count)
+	seen := make(map[string]bool)
+
+	for i := 0; i < count; i++ {
+		id := randSeq(10)
+		if _, exist := seen[id]; exist {
+			i--
+			continue
+		}
+		seen[id] = true
+		aliases[i] = id
+	}
+	require.Equal(t, count, len(aliases))
+
+	tf.CreateEntity(aliases[0], WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	for i := 1; i < count; i++ {
+		numParents := i % 20
+		parents := make([]string, 0)
+		for j := 0; j < numParents; j++ {
+			p := rand.Intn(i)
+			parents = append(parents, aliases[p])
+		}
+		tf.CreateEntity(aliases[i], WithParents(tf.EntityIDs(parents...)), WithIndex(1))
+	}
+
+	wg.Add(count)
+	for _, alias := range aliases {
+		go func(alias string) {
+			tf.Queue(tf.Entity(alias))
+			wg.Done()
+		}(alias)
+	}
+
+	wg.Wait()
+	workers.WaitChildren()
+
+	tf.AssertOrdered(aliases...)
+}
+
+func TestCausalOrder_EvictParallel(t *testing.T) {
+	workers := workerpool.NewGroup(t.Name())
+	tf := NewTestFramework(t, workers)
+	var wg sync.WaitGroup
+
+	tf.CreateEntity("A", WithParents(tf.EntityIDs("Genesis")), WithIndex(1))
+	tf.CreateEntity("B", WithParents(tf.EntityIDs("A")), WithIndex(1))
+	tf.CreateEntity("C", WithParents(tf.EntityIDs("A", "B")), WithIndex(1))
+	tf.CreateEntity("D", WithParents(tf.EntityIDs("C", "B")), WithIndex(1))
+	tf.CreateEntity("E", WithParents(tf.EntityIDs("D")), WithIndex(2))
+
+	wg.Wait()
+	tf.Queue(tf.Entity("A"))
+	workers.WaitChildren()
+	tf.AssertOrdered("A")
+
+	tf.Queue(tf.Entity("D"))
+	workers.WaitChildren()
+	tf.AssertOrdered("A")
+
+	tf.Queue(tf.Entity("E"))
+	workers.WaitChildren()
+	tf.AssertOrdered("A")
+
+	tf.Queue(tf.Entity("B"))
+	workers.WaitChildren()
+	tf.AssertOrdered("A", "B")
+	tf.AssertEvicted()
+
+	// tf.EvictUntil(2)
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(tf *TestFramework, index uint64) {
+			tf.EvictUntil(index)
+			wg.Done()
+		}(tf, uint64(i))
+	}
+	wg.Wait()
+
+	tf.AssertEvicted("C", "D", "E")
+}
+
+func randSeq(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

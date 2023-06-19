@@ -160,3 +160,54 @@ func TestStarvingMutexParallel(t *testing.T) {
 		assert.Equal(t, 0, mutex.pendingWriters)
 	}
 }
+
+func TestStarvingMutexParallelWithLock(t *testing.T) {
+	const count = 100
+	mutex := NewStarvingMutex()
+
+	// RLock
+	{
+		var wg sync.WaitGroup
+		wg.Add(count)
+		for i := 0; i < count; i++ {
+			go func() {
+				mutex.RLock()
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		assert.Equal(t, false, mutex.writerActive)
+		assert.Equal(t, count, mutex.readersActive)
+		assert.Equal(t, 0, mutex.pendingWriters)
+	}
+
+	// RUnlock / Lock
+	{
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			mutex.Lock()
+			wg.Done()
+		}()
+
+		wg.Add(count)
+		for i := 0; i < count; i++ {
+			go func() {
+				mutex.RUnlock()
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		assert.Equal(t, true, mutex.writerActive)
+		assert.Equal(t, 0, mutex.readersActive)
+		assert.Equal(t, 0, mutex.pendingWriters)
+	}
+
+	// Unlock
+	mutex.Unlock()
+	assert.Equal(t, false, mutex.writerActive)
+	assert.Equal(t, 0, mutex.readersActive)
+	assert.Equal(t, 0, mutex.pendingWriters)
+}

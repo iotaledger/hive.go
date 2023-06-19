@@ -80,7 +80,7 @@ func (w *SelectedAccounts[AccountID, AccountIDPtr]) Has(id AccountID) (has bool)
 
 func (w *SelectedAccounts[AccountID, AccountIDPtr]) ForEach(callback func(id AccountID, weight int64) error) (err error) {
 	w.members.ForEachKey(func(member AccountID) bool {
-		if err := callback(member, lo.Return1(w.accounts.Get(member))); err != nil {
+		if err = callback(member, lo.Return1(w.accounts.Get(member))); err != nil {
 			return false
 		}
 
