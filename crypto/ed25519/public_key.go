@@ -1,12 +1,13 @@
 package ed25519
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 
 	"github.com/mr-tron/base58"
-	"github.com/oasisprotocol/ed25519"
 	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
@@ -30,6 +31,13 @@ func PublicKeyFromBytes(bytes []byte) (result PublicKey, consumedBytes int, err 
 	return
 }
 
+// NativeToPublicKeys converts crypto/ed25519 native public keys into a []PublicKey.
+func NativeToPublicKeys(nativePubKeys []ed25519.PublicKey) (result []PublicKey) {
+	return lo.Map(nativePubKeys, func(key ed25519.PublicKey) PublicKey {
+		return PublicKey(key)
+	})
+}
+
 // RecoverKey makes sure that key and signature have the correct length
 // and verifies whether sig is a valid signature of data by pub.
 func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
@@ -43,7 +51,7 @@ func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 
 		return
 	}
-	if !ed25519.Verify(key, data, sig) {
+	if !Verify(key, data, sig) {
 		err = errors.New("invalid signature")
 
 		return
@@ -65,7 +73,7 @@ func ParsePublicKey(marshalUtil *marshalutil.MarshalUtil) (PublicKey, error) {
 
 // VerifySignature reports whether signature is a valid signature of message by publicKey.
 func (publicKey PublicKey) VerifySignature(data []byte, signature Signature) bool {
-	return ed25519.Verify(publicKey[:], data, signature[:])
+	return Verify(publicKey[:], data, signature[:])
 }
 
 // FromBytes initialized the PublicKey from the given bytes.
@@ -115,4 +123,12 @@ func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 	*publicKey = pk
 
 	return nil
+}
+
+// ToEd25519 returns the public key as native crypto/ed25519.PublicKey.
+func (publicKey PublicKey) ToEd25519() ed25519.PublicKey {
+	nativePubKey := make(ed25519.PublicKey, PublicKeySize)
+	copy(nativePubKey[:], publicKey[:])
+
+	return nativePubKey
 }

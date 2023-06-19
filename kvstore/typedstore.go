@@ -102,3 +102,11 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix KeyPrefix, callback func(k
 
 	return
 }
+
+func (t *TypedStore[K, V, KPtr, VPtr]) DeletePrefix(prefix KeyPrefix) error {
+	return t.kv.DeletePrefix(prefix)
+}
+
+func (t *TypedStore[K, V, KPtr, VPtr]) Clear() error {
+	return t.kv.Clear()
+}

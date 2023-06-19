@@ -3,20 +3,20 @@ package module
 import (
 	"sync"
 
-	"github.com/iotaledger/hive.go/runtime/event"
+	"github.com/iotaledger/hive.go/runtime/promise"
 )
 
 // Module is a trait that exposes a lifecycle related API, that can be used to create a modular architecture where
 // different modules can listen and wait for each other to reach certain states.
 type Module struct {
 	// constructed is triggered when the module was constructed.
-	constructed *event.Event
+	constructed *promise.Event
 
 	// initialized is triggered when the module was initialized.
-	initialized *event.Event
+	initialized *promise.Event
 
 	// stopped is triggered when the module was stopped.
-	stopped *event.Event
+	stopped *promise.Event
 
 	// initOnce is used to ensure that the init function is only called once.
 	initOnce sync.Once
@@ -37,10 +37,10 @@ func (m *Module) WasConstructed() bool {
 }
 
 // HookConstructed registers a callback for the constructed event.
-func (m *Module) HookConstructed(callback func(), opts ...event.Option) *event.Hook[func()] {
+func (m *Module) HookConstructed(callback func()) (unsubscribe func()) {
 	m.initOnce.Do(m.init)
 
-	return m.constructed.Hook(callback, opts...)
+	return m.constructed.OnTrigger(callback)
 }
 
 // TriggerInitialized triggers the initialized event.
@@ -58,10 +58,10 @@ func (m *Module) WasInitialized() bool {
 }
 
 // HookInitialized registers a callback for the initialized event.
-func (m *Module) HookInitialized(callback func(), opts ...event.Option) *event.Hook[func()] {
+func (m *Module) HookInitialized(callback func()) (unsubscribe func()) {
 	m.initOnce.Do(m.init)
 
-	return m.initialized.Hook(callback, opts...)
+	return m.initialized.OnTrigger(callback)
 }
 
 // TriggerStopped triggers the stopped event.
@@ -79,15 +79,15 @@ func (m *Module) WasStopped() bool {
 }
 
 // HookStopped registers a callback for the stopped event.
-func (m *Module) HookStopped(callback func(), opts ...event.Option) *event.Hook[func()] {
+func (m *Module) HookStopped(callback func()) (unsubscribe func()) {
 	m.initOnce.Do(m.init)
 
-	return m.stopped.Hook(callback, opts...)
+	return m.stopped.OnTrigger(callback)
 }
 
 // init initializes the module.
 func (m *Module) init() {
-	m.constructed = event.New(event.WithMaxTriggerCount(1))
-	m.initialized = event.New(event.WithMaxTriggerCount(1))
-	m.stopped = event.New(event.WithMaxTriggerCount(1))
+	m.constructed = promise.NewEvent()
+	m.initialized = promise.NewEvent()
+	m.stopped = promise.NewEvent()
 }
