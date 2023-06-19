@@ -1,9 +1,5 @@
 package module
 
-import (
-	"github.com/iotaledger/hive.go/runtime/event"
-)
-
 // Interface defines the interface of a module.
 type Interface interface {
 	// TriggerConstructed triggers the constructed event.
@@ -13,7 +9,7 @@ type Interface interface {
 	WasConstructed() bool
 
 	// HookConstructed registers a callback for the constructed event.
-	HookConstructed(func(), ...event.Option) *event.Hook[func()]
+	HookConstructed(func()) (unsubscribe func())
 
 	// TriggerInitialized triggers the initialized event.
 	TriggerInitialized()
@@ -22,7 +18,7 @@ type Interface interface {
 	WasInitialized() bool
 
 	// HookInitialized registers a callback for the initialized event.
-	HookInitialized(func(), ...event.Option) *event.Hook[func()]
+	HookInitialized(func()) (unsubscribe func())
 
 	// TriggerStopped triggers the stopped event.
 	TriggerStopped()
@@ -31,5 +27,5 @@ type Interface interface {
 	WasStopped() bool
 
 	// HookStopped registers a callback for the stopped event.
-	HookStopped(func(), ...event.Option) *event.Hook[func()]
+	HookStopped(func()) (unsubscribe func())
 }
