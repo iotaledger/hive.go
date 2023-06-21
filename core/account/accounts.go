@@ -41,7 +41,7 @@ func NewAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](store kvsto
 	return newAccounts
 }
 
-// SelectAccounts creates a new WeightedSet instance, that maintains a correct and updated total weight of its members.
+// SelectAccounts creates a new SelectedAccounts instance, that maintains the seats of the given members.
 func (w *Accounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) (selectedAccounts *SelectedAccounts[AccountID, AccountIDPtr]) {
 	return NewSelectedAccounts(w, members...)
 }

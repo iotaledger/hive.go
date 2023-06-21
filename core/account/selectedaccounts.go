@@ -1,113 +1,65 @@
 package account
 
 import (
-	"sync"
+	"fmt"
 
 	"github.com/iotaledger/hive.go/ds/advancedset"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
-	"github.com/iotaledger/hive.go/ds/types"
-	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
+type SeatIndex int
+
 type SelectedAccounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
-	accounts         *Accounts[AccountID, AccountIDPtr]
-	members          *shrinkingmap.ShrinkingMap[AccountID, types.Empty]
-	totalWeight      int64
-	totalWeightMutex sync.RWMutex
+	accounts       *Accounts[AccountID, AccountIDPtr]
+	seatsByAccount *shrinkingmap.ShrinkingMap[AccountID, SeatIndex]
+	accountsBySeat *shrinkingmap.ShrinkingMap[SeatIndex, AccountID]
 }
 
 func NewSelectedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SelectedAccounts[A, APtr] {
 	newWeightedSet := new(SelectedAccounts[A, APtr])
 	newWeightedSet.accounts = accounts
-	newWeightedSet.members = shrinkingmap.New[A, types.Empty]()
+	newWeightedSet.seatsByAccount = shrinkingmap.New[A, SeatIndex]()
+	newWeightedSet.accountsBySeat = shrinkingmap.New[SeatIndex, A]()
 
-	for _, member := range optMembers {
-		newWeightedSet.Add(member)
+	for i, member := range optMembers {
+		newWeightedSet.seatsByAccount.Set(member, SeatIndex(i))
+		newWeightedSet.accountsBySeat.Set(SeatIndex(i), member)
 	}
 
 	return newWeightedSet
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Add(id AccountID) (added bool) {
-	w.accounts.mutex.RLock()
-	defer w.accounts.mutex.RUnlock()
-
-	w.totalWeightMutex.Lock()
-	defer w.totalWeightMutex.Unlock()
-
-	if added = w.members.Set(id, types.Void); added {
-		if weight, exists := w.accounts.Get(id); exists {
-			w.totalWeight += weight
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) {
+	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
+		if oldSeat != seat {
+			panic(fmt.Sprintf("account already selected with a different seat: %d vs %d", oldSeat, seat))
 		}
 	}
 
-	return
+	w.seatsByAccount.Set(id, seat)
+	w.accountsBySeat.Set(seat, id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) (removed bool) {
-	w.accounts.mutex.RLock()
-	defer w.accounts.mutex.RUnlock()
-
-	w.totalWeightMutex.Lock()
-	defer w.totalWeightMutex.Unlock()
-
-	if removed = w.members.Delete(id); removed {
-		if weight, exists := w.accounts.Get(id); exists {
-			w.totalWeight -= weight
-		}
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) {
+	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
+		w.seatsByAccount.Delete(id)
+		w.accountsBySeat.Delete(oldSeat)
 	}
-
-	return
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Get(id AccountID) (weight int64, exists bool) {
-	// check if the member is part of the committee, otherwise its weight is 0
-	if !w.members.Has(id) {
-		return 0, false
-	}
-
-	if weight, exists = w.accounts.Get(id); exists {
-		return weight, true
-	}
-
-	return 0, true
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) GetSeat(id AccountID) (seat SeatIndex, exists bool) {
+	return w.seatsByAccount.Get(id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Has(id AccountID) (has bool) {
-	return w.members.Has(id)
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) HasAccount(id AccountID) (has bool) {
+	return w.seatsByAccount.Has(id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) ForEach(callback func(id AccountID, weight int64) error) (err error) {
-	w.members.ForEachKey(func(member AccountID) bool {
-		if err = callback(member, lo.Return1(w.accounts.Get(member))); err != nil {
-			return false
-		}
-
-		return true
-	})
-
-	return
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) SeatCount() int {
+	return w.accountsBySeat.Size()
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) TotalWeight() (totalWeight int64) {
-	w.totalWeightMutex.RLock()
-	defer w.totalWeightMutex.RUnlock()
-
-	return w.totalWeight
-}
-
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Members() *advancedset.AdvancedSet[AccountID] {
-	return advancedset.New(w.members.Keys()...)
-}
-
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) *SelectedAccounts[AccountID, AccountIDPtr] {
-	var selectedMembers []AccountID
-	for _, member := range members {
-		if w.members.Has(member) {
-			selectedMembers = append(selectedMembers, member)
-		}
-	}
-
-	return NewSelectedAccounts(w.accounts, selectedMembers...)
+func (w *SelectedAccounts[AccountID, AccountIDPtr]) Accounts() *advancedset.AdvancedSet[AccountID] {
+	return advancedset.New(w.seatsByAccount.Keys()...)
 }
