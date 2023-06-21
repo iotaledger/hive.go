@@ -10,14 +10,14 @@ import (
 
 type SeatIndex int
 
-type SelectedAccounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
+type SeatedAccounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
 	accounts       *Accounts[AccountID, AccountIDPtr]
 	seatsByAccount *shrinkingmap.ShrinkingMap[AccountID, SeatIndex]
 	accountsBySeat *shrinkingmap.ShrinkingMap[SeatIndex, AccountID]
 }
 
-func NewSelectedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SelectedAccounts[A, APtr] {
-	newWeightedSet := new(SelectedAccounts[A, APtr])
+func NewSeatedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SeatedAccounts[A, APtr] {
+	newWeightedSet := new(SeatedAccounts[A, APtr])
 	newWeightedSet.accounts = accounts
 	newWeightedSet.seatsByAccount = shrinkingmap.New[A, SeatIndex]()
 	newWeightedSet.accountsBySeat = shrinkingmap.New[SeatIndex, A]()
@@ -30,7 +30,7 @@ func NewSelectedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](acc
 	return newWeightedSet
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) {
 	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
 		if oldSeat != seat {
 			panic(fmt.Sprintf("account already selected with a different seat: %d vs %d", oldSeat, seat))
@@ -41,25 +41,29 @@ func (w *SelectedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id Accou
 	w.accountsBySeat.Set(seat, id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) bool {
 	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
 		w.seatsByAccount.Delete(id)
 		w.accountsBySeat.Delete(oldSeat)
+
+		return true
 	}
+
+	return false
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) GetSeat(id AccountID) (seat SeatIndex, exists bool) {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) GetSeat(id AccountID) (seat SeatIndex, exists bool) {
 	return w.seatsByAccount.Get(id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) HasAccount(id AccountID) (has bool) {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) HasAccount(id AccountID) (has bool) {
 	return w.seatsByAccount.Has(id)
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) SeatCount() int {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) SeatCount() int {
 	return w.accountsBySeat.Size()
 }
 
-func (w *SelectedAccounts[AccountID, AccountIDPtr]) Accounts() *advancedset.AdvancedSet[AccountID] {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) Accounts() *advancedset.AdvancedSet[AccountID] {
 	return advancedset.New(w.seatsByAccount.Keys()...)
 }
