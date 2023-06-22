@@ -1,8 +1,6 @@
 package account
 
 import (
-	"fmt"
-
 	"github.com/iotaledger/hive.go/ds/advancedset"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -30,15 +28,21 @@ func NewSeatedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accou
 	return newWeightedSet
 }
 
-func (w *SeatedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) {
+func (w *SeatedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) bool {
+	if _, exists := w.accounts.Get(id); !exists {
+		return false
+	}
+
 	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
 		if oldSeat != seat {
-			panic(fmt.Sprintf("account already selected with a different seat: %d vs %d", oldSeat, seat))
+			return false
 		}
 	}
 
 	w.seatsByAccount.Set(id, seat)
 	w.accountsBySeat.Set(seat, id)
+
+	return true
 }
 
 func (w *SeatedAccounts[AccountID, AccountIDPtr]) Delete(id AccountID) bool {
