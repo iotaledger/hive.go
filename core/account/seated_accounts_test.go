@@ -49,6 +49,10 @@ func TestSelectedAccounts(t *testing.T) {
 	require.True(t, removed)
 	require.Equal(t, 2, seatedAccounts.SeatCount())
 
+	// Try to get the deleted account
+	_, exists := seatedAccounts.GetSeat(account1)
+	require.False(t, exists)
+
 	// Test the "Get" method
 	seat, exists := seatedAccounts.GetSeat(account2)
 	require.True(t, exists)

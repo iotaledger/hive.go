@@ -29,10 +29,12 @@ func NewSeatedAccounts[A IDType, APtr serializer.MarshalablePtr[A]](accounts *Ac
 }
 
 func (w *SeatedAccounts[AccountID, AccountIDPtr]) Set(seat SeatIndex, id AccountID) bool {
+	// Check if the account exists.
 	if _, exists := w.accounts.Get(id); !exists {
 		return false
 	}
 
+	// Check if the account already has a seat.
 	if oldSeat, exists := w.seatsByAccount.Get(id); exists {
 		if oldSeat != seat {
 			return false
