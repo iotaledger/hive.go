@@ -55,7 +55,7 @@ func TestSelectedAccounts(t *testing.T) {
 	require.Equal(t, account.SeatIndex(3), seat)
 
 	// Test the "Get" method with account that's not in accounts.
-	seat, exists = seatedAccounts.GetSeat(account4)
+	_, exists = seatedAccounts.GetSeat(account4)
 	require.False(t, exists)
 
 	// Test the "Has" method

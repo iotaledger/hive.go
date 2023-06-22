@@ -8,13 +8,13 @@ import (
 
 type SeatIndex int
 
-type SeatedAccounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
+type SeatedAccounts[AccountID IDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
 	accounts       *Accounts[AccountID, AccountIDPtr]
 	seatsByAccount *shrinkingmap.ShrinkingMap[AccountID, SeatIndex]
 	accountsBySeat *shrinkingmap.ShrinkingMap[SeatIndex, AccountID]
 }
 
-func NewSeatedAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SeatedAccounts[A, APtr] {
+func NewSeatedAccounts[A IDType, APtr serializer.MarshalablePtr[A]](accounts *Accounts[A, APtr], optMembers ...A) *SeatedAccounts[A, APtr] {
 	newWeightedSet := new(SeatedAccounts[A, APtr])
 	newWeightedSet.accounts = accounts
 	newWeightedSet.seatsByAccount = shrinkingmap.New[A, SeatIndex]()
