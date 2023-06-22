@@ -12,20 +12,20 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-type AccountIDType interface {
+type IDType interface {
 	comparable
 	serializer.Byter
 }
 
 // Accounts is a mapping between a collection of identities and their weights.
-type Accounts[AccountID AccountIDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
+type Accounts[AccountID IDType, AccountIDPtr serializer.MarshalablePtr[AccountID]] struct {
 	weights     *ads.Map[AccountID, storable.SerializableInt64, AccountIDPtr, *storable.SerializableInt64]
 	totalWeight int64
 	mutex       sync.RWMutex
 }
 
 // NewAccounts creates a new Weights instance.
-func NewAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](store kvstore.KVStore) *Accounts[A, APtr] {
+func NewAccounts[A IDType, APtr serializer.MarshalablePtr[A]](store kvstore.KVStore) *Accounts[A, APtr] {
 	newAccounts := &Accounts[A, APtr]{
 		weights:     ads.NewMap[A, storable.SerializableInt64, APtr](store),
 		totalWeight: 0,
@@ -41,9 +41,9 @@ func NewAccounts[A AccountIDType, APtr serializer.MarshalablePtr[A]](store kvsto
 	return newAccounts
 }
 
-// SelectAccounts creates a new WeightedSet instance, that maintains a correct and updated total weight of its members.
-func (w *Accounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) (selectedAccounts *SelectedAccounts[AccountID, AccountIDPtr]) {
-	return NewSelectedAccounts(w, members...)
+// SelectAccounts creates a new SeatedAccounts instance, that maintains the seats of the given members.
+func (w *Accounts[AccountID, AccountIDPtr]) SelectAccounts(members ...AccountID) (selectedAccounts *SeatedAccounts[AccountID, AccountIDPtr]) {
+	return NewSeatedAccounts(w, members...)
 }
 
 // Get returns the weight of the given identity.
