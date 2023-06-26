@@ -39,6 +39,10 @@ func NewMap[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr seria
 	return
 }
 
+func (m *Map[K, V, KPtr, VPtr]) IsNew() bool {
+	return len(m.root.Get()) == 0
+}
+
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
 func (m *Map[K, V, KPtr, VPtr]) Root() (root types.Identifier) {
 	m.mutex.RLock()

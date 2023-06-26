@@ -53,6 +53,10 @@ func NewSet[K any, KPtr serializer.MarshalablePtr[K]](store kvstore.KVStore) (ne
 	return
 }
 
+func (s *Set[K, KPtr]) IsNew() bool {
+	return len(s.root.Get()) == 0
+}
+
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
 func (s *Set[K, KPtr]) Root() (root types.Identifier) {
 	s.mutex.Lock()
