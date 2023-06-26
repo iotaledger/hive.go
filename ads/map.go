@@ -147,7 +147,7 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 
 		return callback(*kPtr, valuePtr)
 	}); iterationErr != nil {
-		err = errors.Wrapf(iterationErr, "failed to iterate over raw keys")
+		err = errors.Wrap(iterationErr, "failed to iterate over raw keys")
 	}
 
 	return

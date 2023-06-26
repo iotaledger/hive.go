@@ -123,7 +123,7 @@ func (s *Set[K, KPtr]) Stream(callback func(key K) bool) (err error) {
 
 		return callback(*kPtr)
 	}); iterationErr != nil {
-		err = errors.Wrapf(iterationErr, "failed to iterate over set members")
+		err = errors.Wrap(iterationErr, "failed to iterate over set members")
 	}
 
 	return

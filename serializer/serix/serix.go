@@ -509,11 +509,11 @@ func (api *API) RegisterValidators(obj any, bytesValidatorFn func(context.Contex
 	}
 	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse bytesValidatorFn")
+		return errors.Wrap(err, "failed to parse bytesValidatorFn")
 	}
 	syntacticValidatorValue, err := parseValidatorFunc(syntacticValidatorFn)
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse syntacticValidatorFn")
+		return errors.Wrap(err, "failed to parse syntacticValidatorFn")
 	}
 	vldtrs := validators{}
 	if bytesValidatorValue.IsValid() {
