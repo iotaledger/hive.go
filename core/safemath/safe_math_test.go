@@ -7,6 +7,52 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	benchmarkResult  uint64
+	ibenchmarkResult int64
+	// Pick large numbers that are not a multiple of two and which when multiplied, fit in an int64.
+	testFactor1 = (1 << 16) - 1
+	testFactor2 = (1 << 15) - 1
+)
+
+func BenchmarkMultiplicationSafeMul(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res, _ := SafeMul(uint64(testFactor1), uint64(testFactor2))
+		benchmarkResult = res
+	}
+}
+
+func BenchmarkMultiplicationSafeMulUint64(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res, _ := SafeMulUint64(uint64(testFactor1), uint64(testFactor2))
+		benchmarkResult = res
+	}
+}
+
+func BenchmarkMultiplicationSafeMulInt64(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res, _ := SafeMulInt64(int64(testFactor1), int64(testFactor2))
+		ibenchmarkResult = res
+	}
+}
+
+// This simply benchmarks raw uint64 multiplication so we can check how much slower
+// the safe functions are in comparison.
+func BenchmarkMultiplication(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res := uint64(testFactor1) * uint64(testFactor2)
+		benchmarkResult = res
+	}
+}
+
 func TestSafeMathAddUint8(t *testing.T) {
 	var err error
 	var ures uint8
@@ -140,22 +186,31 @@ func TestSafeMathSubInt8(t *testing.T) {
 	require.ErrorIs(t, err, ErrIntegerOverflow)
 }
 
-func TestSafeMathMulUint8(t *testing.T) {
-	var err error
-	var ures uint8
+func TestSafeMathMulUint64(t *testing.T) {
+	type safeMulFunc func(x, y uint64) (uint64, error)
 
-	ures, err = SafeMul(uint8(5), uint8(5))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint8(25))
+	safeMulFuncs := []safeMulFunc{
+		SafeMul[uint64],
+		SafeMulUint64,
+	}
 
-	_, err = SafeMul(uint8(100), uint8(3))
-	require.ErrorIs(t, err, ErrIntegerOverflow)
+	for _, fn := range safeMulFuncs {
+		var err error
+		var ures uint64
 
-	_, err = SafeMul(math.MaxUint8, uint8(2))
-	require.ErrorIs(t, err, ErrIntegerOverflow)
+		ures, err = fn(uint64(5), uint64(5))
+		require.NoError(t, err)
+		require.Equal(t, uint64(25), ures)
 
-	_, err = SafeMul(uint8(51), uint8(10))
-	require.ErrorIs(t, err, ErrIntegerOverflow)
+		_, err = fn(math.MaxUint64, uint64(2))
+		require.ErrorIs(t, err, ErrIntegerOverflow)
+
+		_, err = fn(uint64(2), math.MaxUint64)
+		require.ErrorIs(t, err, ErrIntegerOverflow)
+
+		_, err = fn(uint64(math.MaxUint64), uint64(math.MaxUint64))
+		require.ErrorIs(t, err, ErrIntegerOverflow)
+	}
 }
 
 func TestSafeMathMulInt8(t *testing.T) {
@@ -196,3 +251,70 @@ func TestSafeMathDiv(t *testing.T) {
 	require.ErrorIs(t, err, ErrIntegerDivisionByZero)
 }
 
+func TestSafeMathMulInt64(t *testing.T) {
+	var err error
+	var ires int64
+
+	ires, err = SafeMulInt64(int64(-5), int64(0))
+	require.NoError(t, err)
+	require.Equal(t, int64(0), ires)
+
+	ires, err = SafeMulInt64(int64(0), int64(-5))
+	require.NoError(t, err)
+	require.Equal(t, int64(0), ires)
+
+	ires, err = SafeMulInt64(int64(-1), int64(-5))
+	require.NoError(t, err)
+	require.Equal(t, int64(5), ires)
+
+	ires, err = SafeMulInt64(int64(-5), int64(1))
+	require.NoError(t, err)
+	require.Equal(t, int64(-5), ires)
+
+	ires, err = SafeMulInt64(int64(5), int64(5))
+	require.NoError(t, err)
+	require.Equal(t, ires, int64(25))
+
+	ires, err = SafeMulInt64(int64(5), int64(-5))
+	require.NoError(t, err)
+	require.Equal(t, int64(-25), ires)
+
+	ires, err = SafeMulInt64(int64(-5), int64(-5))
+	require.NoError(t, err)
+	require.Equal(t, int64(25), ires)
+
+	ires, err = SafeMulInt64(int64(5), int64(5))
+	require.NoError(t, err)
+	require.Equal(t, int64(25), ires)
+
+	ires, err = SafeMulInt64(int64(math.MinInt64)/2, 2)
+	require.NoError(t, err)
+	require.Equal(t, int64(math.MinInt64), ires)
+
+	ires, err = SafeMulInt64(int64(math.MaxInt64-1)/2, 2)
+	require.NoError(t, err)
+	require.Equal(t, int64(math.MaxInt64-1), ires)
+
+	_, err = SafeMulInt64(math.MinInt64, int64(2))
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	_, err = SafeMulInt64(math.MaxInt64, int64(2))
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	_, err = SafeMulInt64(int64(math.MaxInt64), math.MaxInt64)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	_, err = SafeMulInt64(int64(math.MinInt64), math.MaxInt64)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	_, err = SafeMulInt64(int64(math.MinInt64), math.MinInt64)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	// The result of this computation would be 3 larger than MaxInt64.
+	_, err = SafeMulInt64(int64(math.MaxInt64/2)+1, 2)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	// The result of this computation would be 2 smaller than MinInt64.
+	_, err = SafeMulInt64(int64(math.MinInt64/2)-1, 2)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+}
