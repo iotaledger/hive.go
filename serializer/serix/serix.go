@@ -412,16 +412,8 @@ func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) 
 // Use the options list opts to customize the deserialization behavior.
 func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...Option) (int, error) {
 	value := reflect.ValueOf(obj)
-	if !value.IsValid() {
-		return 0, errors.New("invalid value for destination")
-	}
-	if value.Kind() != reflect.Ptr {
-		return 0, errors.Errorf(
-			"can't decode, the destination object must be a pointer, got: %T(%s)", obj, value.Kind(),
-		)
-	}
-	if value.IsNil() {
-		return 0, errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
+	if err := checkDecodeDestination(obj, value); err != nil {
+		return 0, err
 	}
 	value = value.Elem()
 	opt := &options{}
@@ -663,7 +655,6 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 		ts, ok = api.typeSettingsRegistry[objType]
-
 		return ts, ok
 	}
 

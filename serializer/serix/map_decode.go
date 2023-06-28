@@ -68,6 +68,15 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			return api.mapDecodeStruct(ctx, mapVal, elemValue, elemType, ts, opts)
 		}
 
+		if elemType.Kind() == reflect.Interface {
+			if value.IsNil() {
+				value.Set(reflect.New(elemType))
+			}
+			elemValue := value.Elem()
+
+			return api.mapDecodeInterface(ctx, mapVal, elemValue, elemType, ts, opts)
+		}
+
 		if elemType.Kind() == reflect.Array {
 			if value.IsNil() {
 				value.Set(reflect.New(elemType))
