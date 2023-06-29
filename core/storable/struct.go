@@ -5,7 +5,8 @@ import (
 	"os"
 
 	"github.com/natefinch/atomic"
-	"github.com/pkg/errors"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // Struct contains logic that can be embedded in other structs to make them persist-able to disk.
@@ -39,11 +40,11 @@ func (s *Struct[A, B]) FromFile(fileName ...string) (err error) {
 
 	readBytes, err := os.ReadFile(filePath)
 	if err != nil {
-		return errors.Errorf("failed to read file %s: %s", filePath, err)
+		return ierrors.Wrapf(err, "failed to read file %s", filePath)
 	}
 
 	if _, err = s.object.FromBytes(readBytes); err != nil {
-		return errors.Errorf("failed to deserialize object stored in file %s: %s", filePath, err)
+		return ierrors.Wrapf(err, "failed to deserialize object stored in file %s", filePath)
 	}
 
 	return nil
@@ -53,7 +54,7 @@ func (s *Struct[A, B]) FromFile(fileName ...string) (err error) {
 func (s *Struct[A, B]) ToFile(fileName ...string) (err error) {
 	bytesToWrite, err := s.object.Bytes()
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize object")
+		return ierrors.Wrap(err, "failed to serialize object")
 	}
 
 	if len(fileName) != 0 {

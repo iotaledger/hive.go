@@ -17,7 +17,7 @@ import (
 	// an extended version of this package repackaged as an importable module.
 	"filippo.io/edwards25519"
 
-	"github.com/pkg/errors"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	ErrNotEnoughBytes = errors.New("not enough bytes")
+	ErrNotEnoughBytes = ierrors.New("not enough bytes")
 )
 
 // Verify reports whether sig is a valid signature of message by publicKey.

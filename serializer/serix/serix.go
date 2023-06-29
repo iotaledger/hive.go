@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/iancoleman/orderedmap"
-	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -364,7 +364,7 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 func (api *API) Encode(ctx context.Context, obj interface{}, opts ...Option) ([]byte, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
-		return nil, errors.New("invalid value for destination")
+		return nil, ierrors.New("invalid value for destination")
 	}
 	opt := &options{}
 	for _, o := range opts {
@@ -390,7 +390,7 @@ func (api *API) JSONEncode(ctx context.Context, obj any, opts ...Option) ([]byte
 func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) (*orderedmap.OrderedMap, error) {
 	value := reflect.ValueOf(obj)
 	if !value.IsValid() {
-		return nil, errors.New("invalid value for destination")
+		return nil, ierrors.New("invalid value for destination")
 	}
 	opt := &options{}
 	for _, o := range opts {
@@ -453,15 +453,15 @@ func (api *API) MapDecode(ctx context.Context, m map[string]any, obj interface{}
 
 func checkDecodeDestination(obj any, value reflect.Value) error {
 	if !value.IsValid() {
-		return errors.New("invalid value for destination")
+		return ierrors.New("invalid value for destination")
 	}
 	if value.Kind() != reflect.Ptr {
-		return errors.Errorf(
+		return ierrors.Errorf(
 			"can't decode, the destination object must be a pointer, got: %T(%s)", obj, value.Kind(),
 		)
 	}
 	if value.IsNil() {
-		return errors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
+		return ierrors.Errorf("can't decode, the destination object %T must be a non-nil pointer", obj)
 	}
 
 	return nil
@@ -497,26 +497,26 @@ func checkDecodeDestination(obj any, value reflect.Value) error {
 func (api *API) RegisterValidators(obj any, bytesValidatorFn func(context.Context, []byte) error, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return errors.New("'obj' is a nil interface, it needs to be a valid type")
+		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
 	}
 	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse bytesValidatorFn")
+		return ierrors.Wrap(err, "failed to parse bytesValidatorFn")
 	}
 	syntacticValidatorValue, err := parseValidatorFunc(syntacticValidatorFn)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse syntacticValidatorFn")
+		return ierrors.Wrap(err, "failed to parse syntacticValidatorFn")
 	}
 	vldtrs := validators{}
 	if bytesValidatorValue.IsValid() {
 		if err := checkBytesValidatorSignature(bytesValidatorValue); err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 		vldtrs.bytesValidator = bytesValidatorValue
 	}
 	if syntacticValidatorValue.IsValid() {
 		if err := checkSyntacticValidatorSignature(objType, syntacticValidatorValue); err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 		vldtrs.syntacticValidator = syntacticValidatorValue
 	}
@@ -536,24 +536,24 @@ func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 		return reflect.Value{}, nil
 	}
 	if funcValue.Kind() != reflect.Func {
-		return reflect.Value{}, errors.Errorf(
+		return reflect.Value{}, ierrors.Errorf(
 			"validator must be a function, got %T(%s)", validatorFn, funcValue.Kind(),
 		)
 	}
 	funcType := funcValue.Type()
 	if funcType.NumIn() != 2 {
-		return reflect.Value{}, errors.Errorf("validator func must have two arguments")
+		return reflect.Value{}, ierrors.New("validator func must have two arguments")
 	}
 	firstArgType := funcType.In(0)
 	if firstArgType != ctxType {
-		return reflect.Value{}, errors.Errorf("validator func's first argument must be context")
+		return reflect.Value{}, ierrors.New("validator func's first argument must be context")
 	}
 	if funcType.NumOut() != 1 {
-		return reflect.Value{}, errors.Errorf("validator func must have one return value, got %d", funcType.NumOut())
+		return reflect.Value{}, ierrors.Errorf("validator func must have one return value, got %d", funcType.NumOut())
 	}
 	returnType := funcType.Out(0)
 	if returnType != errorType {
-		return reflect.Value{}, errors.Errorf("validator func must have 'error' return type, got %s", returnType)
+		return reflect.Value{}, ierrors.Errorf("validator func must have 'error' return type, got %s", returnType)
 	}
 
 	return funcValue, nil
@@ -563,7 +563,7 @@ func checkBytesValidatorSignature(funcValue reflect.Value) error {
 	funcType := funcValue.Type()
 	argumentType := funcType.In(1)
 	if argumentType != bytesType {
-		return errors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
+		return ierrors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
 	}
 
 	return nil
@@ -573,7 +573,7 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 	funcType := funcValue.Type()
 	argumentType := funcType.In(1)
 	if argumentType != objectType {
-		return errors.Errorf(
+		return ierrors.Errorf(
 			"syntacticValidatorFn's argument must have the same type as the object it was registered for, "+
 				"objectType=%s, argumentType=%s",
 			objectType, argumentType,
@@ -597,7 +597,7 @@ func (api *API) callBytesValidator(ctx context.Context, valueType reflect.Type, 
 		if err, _ := bytesValidator.Call(
 			[]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(bytes)},
 		)[0].Interface().(error); err != nil {
-			return errors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
+			return ierrors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
 		}
 	}
 
@@ -619,7 +619,7 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 		if err, _ := syntacticValidator.Call(
 			[]reflect.Value{reflect.ValueOf(ctx), value},
 		)[0].Interface().(error); err != nil {
-			return errors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
+			return ierrors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
 		}
 	}
 
@@ -636,7 +636,7 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return errors.New("'obj' is a nil interface, it's need to be a valid type")
+		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
 	}
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
@@ -672,14 +672,14 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
 	ptrType := reflect.TypeOf(iType)
 	if ptrType == nil {
-		return errors.New("'iType' is a nil interface, it needs to be a pointer to an interface")
+		return ierrors.New("'iType' is a nil interface, it needs to be a pointer to an interface")
 	}
 	if ptrType.Kind() != reflect.Ptr {
-		return errors.Errorf("'iType' parameter must be a pointer, got %s", ptrType.Kind())
+		return ierrors.Errorf("'iType' parameter must be a pointer, got %s", ptrType.Kind())
 	}
 	iTypeReflect := ptrType.Elem()
 	if iTypeReflect.Kind() != reflect.Interface {
-		return errors.Errorf(
+		return ierrors.Errorf(
 			"'iType' pointer must contain an interface, got %s", iTypeReflect.Kind())
 	}
 	if len(objs) == 0 {
@@ -698,14 +698,14 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 		objType := reflect.TypeOf(obj)
 		objTypeDenotation, objCode, err := api.getTypeDenotationAndObjectCode(objType)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get type denotation for object %T", obj)
+			return ierrors.Wrapf(err, "failed to get type denotation for object %T", obj)
 		}
 		if i == 0 {
 			iRegistry.typeDenotation = objTypeDenotation
 		} else if iRegistry.typeDenotation != objTypeDenotation {
 			firstObj := objs[0]
 
-			return errors.Errorf(
+			return ierrors.Errorf(
 				"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
 				firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
 			)
@@ -723,7 +723,7 @@ func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{})
 func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
 	ts, exists := api.getTypeSettings(objType)
 	if !exists {
-		return 0, 0, errors.Errorf(
+		return 0, 0, ierrors.Errorf(
 			"no type settings was found for object %s"+
 				"you must register object with its type settings first",
 			objType,
@@ -731,14 +731,14 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 	}
 	objectType := ts.ObjectType()
 	if objectType == nil {
-		return 0, 0, errors.Errorf(
+		return 0, 0, ierrors.Errorf(
 			"type settings for object %s doesn't contain object code",
 			objType,
 		)
 	}
 	objTypeDenotation, objectCode, err := getTypeDenotationAndCode(objectType)
 	if err != nil {
-		return 0, 0, errors.WithStack(err)
+		return 0, 0, ierrors.WithStack(err)
 	}
 
 	return objTypeDenotation, objectCode, nil
@@ -747,7 +747,7 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotationType, uint32, error) {
 	objCodeType := reflect.TypeOf(objectType)
 	if objCodeType == nil {
-		return 0, 0, errors.New("can't detect type denotation type: object code is nil interface")
+		return 0, 0, ierrors.New("can't detect type denotation type: object code is nil interface")
 	}
 	var code uint32
 	var objTypeDenotation serializer.TypeDenotationType
@@ -759,7 +759,7 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 		objTypeDenotation = serializer.TypeDenotationByte
 		code = uint32(objectType.(uint8))
 	default:
-		return 0, 0, errors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
+		return 0, 0, ierrors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
 			objCodeType, objCodeType.Kind())
 	}
 
@@ -815,27 +815,27 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 		}
 		tSettings, err := parseStructTag(tag)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
+			return nil, ierrors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
 		}
 		if _, exists := seenPositions[tSettings.position]; exists {
-			return nil, errors.Errorf("struct field with duplicated position number %d", tSettings.position)
+			return nil, ierrors.Errorf("struct field with duplicated position number %d", tSettings.position)
 		}
 		seenPositions[tSettings.position] = struct{}{}
 		if tSettings.isOptional {
 			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
-				return nil, errors.Errorf(
+				return nil, ierrors.Errorf(
 					"struct field %s is invalid: "+
 						"'optional' setting can only be used with pointers or interfaces, got %s",
 					field.Name, field.Type.Kind())
 			}
 			if isEmbeddedStruct {
-				return nil, errors.Errorf(
+				return nil, ierrors.Errorf(
 					"struct field %s is invalid: 'optional' setting can't be used with embedded structs",
 					field.Name)
 			}
 		}
 		if tSettings.nest && isUnexported {
-			return nil, errors.Errorf(
+			return nil, ierrors.Errorf(
 				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
 				field.Name)
 		}
@@ -862,13 +862,13 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 
 func parseStructTag(tag string) (tagSettings, error) {
 	if tag == "" {
-		return tagSettings{}, errors.New("struct tag is empty")
+		return tagSettings{}, ierrors.New("struct tag is empty")
 	}
 	parts := strings.Split(tag, ",")
 	positionPart := parts[0]
 	position, err := strconv.Atoi(positionPart)
 	if err != nil {
-		return tagSettings{}, errors.Wrap(err, "failed to parse position number from the first part of the tag")
+		return tagSettings{}, ierrors.Wrap(err, "failed to parse position number from the first part of the tag")
 	}
 	settings := tagSettings{}
 	settings.position = position
@@ -876,7 +876,7 @@ func parseStructTag(tag string) (tagSettings, error) {
 	seenParts := map[string]struct{}{}
 	for _, currentPart := range parts {
 		if _, ok := seenParts[currentPart]; ok {
-			return tagSettings{}, errors.Errorf("duplicated tag part: %s", currentPart)
+			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
 		}
 		keyValue := strings.Split(currentPart, "=")
 		partName := keyValue[0]
@@ -889,38 +889,38 @@ func parseStructTag(tag string) (tagSettings, error) {
 			settings.omitEmpty = true
 		case "mapKey":
 			if len(keyValue) != 2 {
-				return tagSettings{}, errors.Errorf("incorrect mapKey tag format: %s", currentPart)
+				return tagSettings{}, ierrors.Errorf("incorrect mapKey tag format: %s", currentPart)
 			}
 			settings.ts = settings.ts.WithMapKey(keyValue[1])
 		case "minLen":
 			if len(keyValue) != 2 {
-				return tagSettings{}, errors.Errorf("incorrect minLen tag format: %s", currentPart)
+				return tagSettings{}, ierrors.Errorf("incorrect minLen tag format: %s", currentPart)
 			}
 			minLen, err := strconv.ParseUint(keyValue[1], 10, 64)
 			if err != nil {
-				return tagSettings{}, errors.Wrapf(err, "failed to parse minLen %s", currentPart)
+				return tagSettings{}, ierrors.Wrapf(err, "failed to parse minLen %s", currentPart)
 			}
 			settings.ts = settings.ts.WithMinLen(uint(minLen))
 		case "maxLen":
 			if len(keyValue) != 2 {
-				return tagSettings{}, errors.Errorf("incorrect maxLen tag format: %s", currentPart)
+				return tagSettings{}, ierrors.Errorf("incorrect maxLen tag format: %s", currentPart)
 			}
 			maxLen, err := strconv.ParseUint(keyValue[1], 10, 64)
 			if err != nil {
-				return tagSettings{}, errors.Wrapf(err, "failed to parse maxLen %s", currentPart)
+				return tagSettings{}, ierrors.Wrapf(err, "failed to parse maxLen %s", currentPart)
 			}
 			settings.ts = settings.ts.WithMaxLen(uint(maxLen))
 		case "lengthPrefixType":
 			if len(keyValue) != 2 {
-				return tagSettings{}, errors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
+				return tagSettings{}, ierrors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
 			}
 			lengthPrefixType, err := parseLengthPrefixType(keyValue[1])
 			if err != nil {
-				return tagSettings{}, errors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
+				return tagSettings{}, ierrors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
 			}
 			settings.ts = settings.ts.WithLengthPrefixType(lengthPrefixType)
 		default:
-			return tagSettings{}, errors.Errorf("unknown tag part: %s", currentPart)
+			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
 		}
 		seenParts[partName] = struct{}{}
 	}
@@ -937,7 +937,7 @@ func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
 	case "uint32":
 		return LengthPrefixTypeAsUint32, nil
 	default:
-		return LengthPrefixTypeAsByte, errors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+		return LengthPrefixTypeAsByte, ierrors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
 	}
 }
 

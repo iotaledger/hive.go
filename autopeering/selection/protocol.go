@@ -2,8 +2,6 @@ package selection
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -16,6 +14,7 @@ import (
 	pb "github.com/iotaledger/hive.go/autopeering/selection/proto"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/backoff"
 )
@@ -143,7 +142,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MPeeringRequest:
 		m := new(pb.PeeringRequest)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		if p.validatePeeringRequest(fromAddr, from.ID(), m) {
 			p.handlePeeringRequest(s, from.ID(), data, m)
@@ -153,7 +152,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MPeeringResponse:
 		m := new(pb.PeeringResponse)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		p.validatePeeringResponse(s, fromAddr, from.ID(), m)
 		// PeeringResponse messages are handled in the handleReply function of the validation
@@ -162,7 +161,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MPeeringDrop:
 		m := new(pb.PeeringDrop)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		if p.validatePeeringDrop(fromAddr, m) {
 			p.handlePeeringDrop(from.ID())
@@ -211,7 +210,7 @@ func (p *Protocol) PeeringRequest(to *peer.Peer, salt *salt.Salt) (bool, error) 
 	err := backoff.Retry(retryPolicy, func() error {
 		p.logSend(toAddr, req)
 		err := <-p.Protocol.SendExpectingReply(toAddr, to.ID(), data, pb.MPeeringResponse, callback)
-		if err != nil && !errors.Is(err, server.ErrTimeout) {
+		if err != nil && !ierrors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
 

@@ -1,7 +1,6 @@
 package parameter
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,10 +8,11 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/app/configuration"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 var (
-	ErrUnknownEntryType = errors.New("unknown entry type")
+	ErrUnknownEntryType = ierrors.New("unknown entry type")
 )
 
 //nolint:revive // better be explicit here

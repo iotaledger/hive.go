@@ -7,8 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
@@ -106,7 +105,7 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) St
 // IDFromBytes deserializes an ID from a byte slice.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) IDFromBytes(bytes []byte) (err error) {
 	if _, err = serix.DefaultAPI.Decode(context.Background(), bytes, s.id); err != nil {
-		return errors.Errorf("failed to read IF from bytes: %w", err)
+		return ierrors.Wrap(err, "failed to read IF from bytes")
 	}
 
 	return
@@ -116,10 +115,10 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) ID
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	outerInstance := new(OuterModelType)
 	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation()); err != nil {
-		return consumedBytes, errors.Errorf("could not deserialize model: %w", err)
+		return consumedBytes, ierrors.Wrap(err, "could not deserialize model")
 	}
 	if len(bytes) != consumedBytes {
-		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), ErrParseBytesFailed)
+		return consumedBytes, ierrors.Wrapf(ErrParseBytesFailed, "consumed bytes %d not equal total bytes %d", consumedBytes, len(bytes))
 	}
 
 	s.Init()
@@ -179,11 +178,11 @@ func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) In
 // FromObjectStorage deserializes a model from the object storage.
 func (s *Storable[IDType, OuterModelType, OuterModelPtrType, InnerModelType]) FromObjectStorage(key, data []byte) (err error) {
 	if _, err = s.FromBytes(data); err != nil {
-		return errors.Errorf("failed to decode Model: %w", err)
+		return ierrors.Wrap(err, "failed to decode Model")
 	}
 
 	if err = s.IDFromBytes(key); err != nil {
-		return errors.Errorf("failed to decode ID: %w", err)
+		return ierrors.Wrap(err, "failed to decode ID")
 	}
 
 	return nil

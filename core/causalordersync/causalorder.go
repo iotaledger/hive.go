@@ -3,10 +3,9 @@ package causalordersync
 import (
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/iotaledger/hive.go/core/index"
 	"github.com/iotaledger/hive.go/core/memstorage"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
@@ -95,7 +94,7 @@ func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
 func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
 	for _, evictedEntity := range c.evictUntil(index) {
-		c.evictionCallback(evictedEntity, errors.Errorf("entity evicted from %d", index))
+		c.evictionCallback(evictedEntity, ierrors.Errorf("entity evicted from %d", index))
 	}
 }
 
@@ -113,7 +112,7 @@ func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) []Enti
 	}
 
 	if c.lastEvictedIndex >= entity.ID().Index() {
-		c.evictionCallback(entity, errors.Errorf("entity %s below max evicted slot", entity.ID()))
+		c.evictionCallback(entity, ierrors.Errorf("entity %s below max evicted slot", entity.ID()))
 
 		return nil
 	}
@@ -132,7 +131,7 @@ func (c *CausalOrder[I, ID, Entity]) allParentsOrdered(entity Entity) (allParent
 	for _, parentID := range c.parentsCallback(entity) {
 		parentEntity, exists := c.entityProvider(parentID)
 		if !exists {
-			c.evictionCallback(entity, errors.Errorf("parent %s not found", parentID))
+			c.evictionCallback(entity, ierrors.Errorf("parent %s not found", parentID))
 
 			return
 		}
@@ -242,7 +241,7 @@ func (c *CausalOrder[I, ID, Entity]) triggerOrderedCallback(entity Entity) []Ent
 func (c *CausalOrder[I, ID, Entity]) entity(blockID ID) (entity Entity) {
 	entity, exists := c.entityProvider(blockID)
 	if !exists {
-		panic(errors.Errorf("block %s does not exist", blockID))
+		panic(ierrors.Errorf("block %s does not exist", blockID))
 	}
 
 	return entity

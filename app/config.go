@@ -7,6 +7,7 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/app/configuration"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 type ConfigurationSets []*ConfigurationSet
@@ -83,21 +84,21 @@ func loadConfigurations(configFilesFlagSet *flag.FlagSet, configurationSets []*C
 	for _, configSet := range configurationSets {
 		configPathFlag := configFilesFlagSet.Lookup(configSet.filePathFlagName)
 		if configPathFlag == nil {
-			return fmt.Errorf("loading %s config file failed: config path flag not found", configSet.configName)
+			return ierrors.Errorf("loading %s config file failed: config path flag not found", configSet.configName)
 		}
 
 		if configSet.loadOnlyIfFlagDefined {
 			if configuration.HasFlag(flag.CommandLine, configSet.filePathFlagName) {
 				// config file is only loaded if the flag was specified
 				if err := configSet.config.LoadFile(configPathFlag.Value.String()); err != nil {
-					return fmt.Errorf("loading %s config file failed: %w", configSet.configName, err)
+					return ierrors.Wrapf(err, "loading %s config file failed", configSet.configName)
 				}
 			}
 		} else {
 			if err := configSet.config.LoadFile(configPathFlag.Value.String()); err != nil {
 				if configuration.HasFlag(flag.CommandLine, configSet.filePathFlagName) || !os.IsNotExist(err) {
 					// if a file was explicitly specified or the default file exists but couldn't be parsed, raise the error
-					return fmt.Errorf("loading %s config file failed: %w", configSet.configName, err)
+					return ierrors.Wrapf(err, "loading %s config file failed", configSet.configName)
 				}
 				fmt.Printf("No %s config file found via '%s'. Loading default settings.\n", configSet.configName, configPathFlag.Value.String())
 			}

@@ -5,9 +5,8 @@ import (
 	"strings"
 	"text/template"
 
-	"golang.org/x/xerrors"
-
 	"github.com/iotaledger/hive.go/codegen"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -65,7 +64,7 @@ func (v *Variadic) GenerateContent() (string, error) {
 	for ; v.currentParamCount <= v.maxParamCount; v.currentParamCount++ {
 		generatedContent, err := v.Template.GenerateContent()
 		if err != nil {
-			return "", xerrors.Errorf("failed to generate variadic %d: %w", v.currentParamCount, err)
+			return "", ierrors.Wrapf(err, "failed to generate variadic %d", v.currentParamCount)
 		}
 
 		variadicInstances = append(variadicInstances, generatedContent)

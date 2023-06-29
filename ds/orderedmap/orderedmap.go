@@ -4,8 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"golang.org/x/xerrors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -94,6 +93,7 @@ func (o *OrderedMap[K, V]) Set(key K, newValue V) (previousValue V, previousValu
 	if oldValue, oldValueExists := o.dictionary[key]; oldValueExists {
 		previousValue = oldValue.value
 		oldValue.value = newValue
+
 		return previousValue, true
 	}
 
@@ -241,28 +241,28 @@ func (o *OrderedMap[K, V]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
 	seri.WriteNum(uint32(o.Size()), func(err error) error {
-		return xerrors.Errorf("failed to write OrderedMap size to serializer: %w", err)
+		return ierrors.Wrap(err, "failed to write OrderedMap size to serializer")
 	})
 
 	o.ForEach(func(key K, val V) bool {
 		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), key)
 		if err != nil {
 			seri.AbortIf(func(_ error) error {
-				return xerrors.Errorf("failed to encode OrderedMap key: %w", err)
+				return ierrors.Wrap(err, "failed to encode OrderedMap key")
 			})
 		}
 		seri.WriteBytes(keyBytes, func(err error) error {
-			return xerrors.Errorf("failed to write OrderedMap key to serializer: %w", err)
+			return ierrors.Wrap(err, "failed to write OrderedMap key to serializer")
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), val)
 		if err != nil {
 			seri.AbortIf(func(_ error) error {
-				return xerrors.Errorf("failed to serialize OrderedMap value: %w", err)
+				return ierrors.Wrap(err, "failed to serialize OrderedMap value")
 			})
 		}
 		seri.WriteBytes(valBytes, func(err error) error {
-			return xerrors.Errorf("failed to write OrderedMap value to serializer: %w", err)
+			return ierrors.Wrap(err, "failed to write OrderedMap value to serializer")
 		})
 
 		return true

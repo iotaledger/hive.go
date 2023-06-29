@@ -1,11 +1,11 @@
 package lo_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -126,7 +126,7 @@ func Test_Bind(t *testing.T) {
 
 func Test_PanicOnErr(t *testing.T) {
 	fPanic := func() (int, error) {
-		return 0, fmt.Errorf("error")
+		return 0, ierrors.New("error")
 	}
 
 	fPanicCall := func() {

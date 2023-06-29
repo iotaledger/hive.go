@@ -2,22 +2,20 @@ package daemon
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"sync"
 	"sync/atomic"
 
-	"golang.org/x/xerrors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
 // Errors for the daemon package.
 var (
-	ErrDaemonAlreadyStopped                 = errors.New("daemon was already stopped")
-	ErrDuplicateBackgroundWorker            = errors.New("duplicate background worker")
-	ErrExistingBackgroundWorkerStillRunning = errors.New("existing background worker is still running")
+	ErrDaemonAlreadyStopped                 = ierrors.New("daemon was already stopped")
+	ErrDuplicateBackgroundWorker            = ierrors.New("duplicate background worker")
+	ErrExistingBackgroundWorkerStillRunning = ierrors.New("existing background worker is still running")
 )
 
 // functions kept for backwards compatibility.
@@ -195,11 +193,11 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 	exWorker, workerExistsAlready := d.workers[name]
 	if workerExistsAlready {
 		if !d.running.Load() {
-			return xerrors.Errorf("tried to overwrite existing background worker (%s): %w", name, ErrDuplicateBackgroundWorker)
+			return ierrors.Wrapf(ErrDuplicateBackgroundWorker, "tried to overwrite existing background worker (%s)", name)
 		}
 
 		if exWorker.running.Load() {
-			return xerrors.Errorf("%w: %s is still running", ErrExistingBackgroundWorkerStillRunning, name)
+			return ierrors.Wrapf(ErrExistingBackgroundWorkerStillRunning, "%s is still running", name)
 		}
 
 		// remove the existing worker from the shutdown order

@@ -1,11 +1,12 @@
 package serix
 
 import (
-	"errors"
 	"math/big"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // EncodeHex encodes the bytes string to a hex string. It always adds the 0x prefix if bytes are not empty.
@@ -21,7 +22,7 @@ func EncodeHex(b []byte) string {
 func DecodeHex(s string) ([]byte, error) {
 	b, err := hexutil.Decode(s)
 	if err != nil {
-		if errors.Is(err, hexutil.ErrEmptyString) {
+		if ierrors.Is(err, hexutil.ErrEmptyString) {
 			return []byte{}, nil
 		}
 

@@ -1,8 +1,7 @@
 package kvstore
 
 import (
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -22,17 +21,17 @@ func NewTypedStore[K, V any, KPtr serializer.MarshalablePtr[K], VPtr serializer.
 func (t *TypedStore[K, V, KPtr, VPtr]) Get(key K) (value V, err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
-		return value, errors.Wrap(err, "failed to encode key")
+		return value, ierrors.Wrap(err, "failed to encode key")
 	}
 
 	valueBytes, err := t.kv.Get(keyBytes)
 	if err != nil {
-		return value, errors.Wrap(err, "failed to retrieve from KV store")
+		return value, ierrors.Wrap(err, "failed to retrieve from KV store")
 	}
 
 	var valuePtr VPtr = new(V)
 	if _, err = valuePtr.FromBytes(valueBytes); err != nil {
-		return value, errors.Wrap(err, "failed to decode value")
+		return value, ierrors.Wrap(err, "failed to decode value")
 	}
 
 	return *valuePtr, nil
@@ -42,7 +41,7 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Get(key K) (value V, err error) {
 func (t *TypedStore[K, V, KPtr, VPtr]) Has(key K) (has bool, err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
-		return false, errors.Wrap(err, "failed to encode key")
+		return false, ierrors.Wrap(err, "failed to encode key")
 	}
 
 	return t.kv.Has(keyBytes)
@@ -52,17 +51,17 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Has(key K) (has bool, err error) {
 func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value V) (err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
-		return errors.Wrap(err, "failed to encode key")
+		return ierrors.Wrap(err, "failed to encode key")
 	}
 
 	valueBytes, err := (VPtr)(&value).Bytes()
 	if err != nil {
-		return errors.Wrap(err, "failed to encode value")
+		return ierrors.Wrap(err, "failed to encode value")
 	}
 
 	err = t.kv.Set(keyBytes, valueBytes)
 	if err != nil {
-		return errors.Wrap(err, "failed to store in KV store")
+		return ierrors.Wrap(err, "failed to store in KV store")
 	}
 
 	return nil
@@ -72,12 +71,12 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Set(key K, value V) (err error) {
 func (t *TypedStore[K, V, KPtr, VPtr]) Delete(key K) (err error) {
 	keyBytes, err := (KPtr)(&key).Bytes()
 	if err != nil {
-		return errors.Wrap(err, "failed to encode key")
+		return ierrors.Wrap(err, "failed to encode key")
 	}
 
 	err = t.kv.Delete(keyBytes)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete entry from KV store")
+		return ierrors.Wrap(err, "failed to delete entry from KV store")
 	}
 
 	return nil
@@ -97,7 +96,7 @@ func (t *TypedStore[K, V, KPtr, VPtr]) Iterate(prefix KeyPrefix, callback func(k
 
 		return callback(*keyDecoded, *valueDecoded)
 	}, direction...); iterationErr != nil {
-		return errors.Wrap(iterationErr, "failed to iterate over KV store")
+		return ierrors.Wrap(iterationErr, "failed to iterate over KV store")
 	}
 
 	return

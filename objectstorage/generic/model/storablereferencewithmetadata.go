@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/cockroachdb/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
@@ -83,10 +82,10 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 	outerInstance := new(OuterModelType)
 
 	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, outerInstance, serix.WithValidation()); err != nil {
-		return consumedBytes, errors.Errorf("could not deserialize reference: %w", err)
+		return consumedBytes, ierrors.Wrap(err, "could not deserialize reference")
 	}
 	if len(bytes) != consumedBytes {
-		return consumedBytes, errors.Errorf("consumed bytes %d not equal total bytes %d: %w", consumedBytes, len(bytes), ErrParseBytesFailed)
+		return consumedBytes, ierrors.Wrapf(ErrParseBytesFailed, "consumed bytes %d not equal total bytes %d", consumedBytes, len(bytes))
 	}
 
 	s.Init()
@@ -111,7 +110,7 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 // FromObjectStorage deserializes a model from the object storage.
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) FromObjectStorage(key, value []byte) (err error) {
 	if _, err = s.Decode(byteutils.ConcatBytes(key, value)); err != nil {
-		return errors.Errorf("failed to decode storable reference: %w", err)
+		return ierrors.Wrap(err, "failed to decode storable reference")
 	}
 
 	return nil
@@ -121,12 +120,12 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) ObjectStorageKey() (key []byte) {
 	sourceIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.SourceID, serix.WithValidation())
 	if err != nil {
-		panic(errors.Errorf("could not encode source id: %w", err))
+		panic(ierrors.Wrap(err, "could not encode source id"))
 	}
 
 	targetIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.TargetID, serix.WithValidation())
 	if err != nil {
-		panic(errors.Errorf("could not encode target id: %w", err))
+		panic(ierrors.Wrap(err, "could not encode target id"))
 	}
 
 	return byteutils.ConcatBytes(sourceIDBytes, targetIDBytes)
@@ -139,7 +138,7 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 
 	modelBytes, err := serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 	if err != nil {
-		panic(errors.Errorf("could not encode model: %w", err))
+		panic(ierrors.Wrap(err, "could not encode model"))
 	}
 
 	return modelBytes
@@ -157,12 +156,12 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 func (s StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceIDType, TargetIDType, InnerModelType]) Encode() ([]byte, error) {
 	sourceIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.SourceID, serix.WithValidation())
 	if err != nil {
-		return nil, errors.Errorf("could not encode source id: %w", err)
+		return nil, ierrors.Wrap(err, "could not encode source id")
 	}
 
 	targetIDBytes, err := serix.DefaultAPI.Encode(context.Background(), s.TargetID, serix.WithValidation())
 	if err != nil {
-		return nil, errors.Errorf("could not encode target id: %w", err)
+		return nil, ierrors.Wrap(err, "could not encode target id")
 	}
 
 	s.RLock()
@@ -170,7 +169,7 @@ func (s StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, SourceI
 
 	modelBytes, err := serix.DefaultAPI.Encode(context.Background(), s.M, serix.WithValidation())
 	if err != nil {
-		return nil, errors.Errorf("could not encode model: %w", err)
+		return nil, ierrors.Wrap(err, "could not encode model")
 	}
 
 	return byteutils.ConcatBytes(sourceIDBytes, targetIDBytes, modelBytes), nil
@@ -182,17 +181,17 @@ func (s *StorableReferenceWithMetadata[OuterModelType, OuterModelPtrType, Source
 
 	consumedSourceIDBytes, err := serix.DefaultAPI.Decode(context.Background(), b, &s.sourceID, serix.WithValidation())
 	if err != nil {
-		return 0, errors.Errorf("could not decode source id: %w", err)
+		return 0, ierrors.Wrap(err, "could not decode source id")
 	}
 
 	consumedTargetIDBytes, err := serix.DefaultAPI.Decode(context.Background(), b[consumedSourceIDBytes:], &s.targetID, serix.WithValidation())
 	if err != nil {
-		return 0, errors.Errorf("could not decode target id: %w", err)
+		return 0, ierrors.Wrap(err, "could not decode target id")
 	}
 
 	consumedModelIDBytes, err := serix.DefaultAPI.Decode(context.Background(), b[consumedSourceIDBytes+consumedTargetIDBytes:], &s.M, serix.WithValidation())
 	if err != nil {
-		return 0, errors.Errorf("could not decode model: %w", err)
+		return 0, ierrors.Wrap(err, "could not decode model")
 	}
 
 	return consumedSourceIDBytes + consumedTargetIDBytes + consumedModelIDBytes, nil

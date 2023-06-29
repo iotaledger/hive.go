@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 var (
-	ErrMergedContextCanceled = errors.New("merged context canceled")
+	ErrMergedContextCanceled = ierrors.New("merged context canceled")
 )
 
 // mergedContext is a merged context based on two contexts.

@@ -1,8 +1,6 @@
 package marshalutil
 
-import (
-	"fmt"
-)
+import "github.com/iotaledger/hive.go/ierrors"
 
 // MarshalUtil is a utility for reading/writing from/to a byte buffer that internally manages the offsets automatically.
 type MarshalUtil struct {
@@ -40,10 +38,10 @@ func New(args ...interface{}) *MarshalUtil {
 				size:  len(param),
 			}
 		default:
-			panic(fmt.Errorf("illegal argument type %T in marshalutil.New(...)", param))
+			panic(ierrors.Errorf("illegal argument type %T in marshalutil.New(...)", param))
 		}
 	default:
-		panic(fmt.Errorf("illegal argument count %d in marshalutil.New(...)", argsCount))
+		panic(ierrors.Errorf("illegal argument count %d in marshalutil.New(...)", argsCount))
 	}
 }
 
@@ -117,7 +115,7 @@ func (util *MarshalUtil) checkReadCapacity(length int) (readEndOffset int, err e
 	readEndOffset = util.readOffset + length
 
 	if readEndOffset > util.size {
-		err = fmt.Errorf("tried to read %d bytes from %d bytes input", readEndOffset, util.size)
+		err = ierrors.Errorf("tried to read %d bytes from %d bytes input", readEndOffset, util.size)
 	}
 
 	return

@@ -2,13 +2,13 @@ package salt
 
 import (
 	"crypto/rand"
-	"fmt"
 	"sync"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/autopeering/salt/proto"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // SaltByteSize specifies the number of bytes used for the salt.
@@ -65,7 +65,7 @@ func (s *Salt) ToProto() *pb.Salt {
 // FromProto decodes a given proto buffer Salt message (in) and returns the corresponding Salt.
 func FromProto(in *pb.Salt) (*Salt, error) {
 	if l := len(in.GetBytes()); l != SaltByteSize {
-		return nil, fmt.Errorf("invalid salt length: %d, need %d", l, SaltByteSize)
+		return nil, ierrors.Errorf("invalid salt length: %d, need %d", l, SaltByteSize)
 	}
 	out := &Salt{
 		bytes:          in.GetBytes(),

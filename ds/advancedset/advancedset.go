@@ -1,7 +1,6 @@
 package advancedset
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ds/walker"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -79,7 +79,7 @@ func (t *AdvancedSet[T]) HasAll(other *AdvancedSet[T]) (hasAll bool) {
 
 	return other.ForEach(func(element T) error {
 		if !t.Has(element) {
-			return errors.New("element not found")
+			return ierrors.New("element not found")
 		}
 
 		return nil

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
@@ -746,7 +746,7 @@ func TestConcurrency(t *testing.T) {
 		cachedObject.Consume(func(object objectstorage.StorableObject) {
 			// test if the changes of the 2nd goroutine are visible
 			if object.(*testObject).get() != 3 {
-				t.Error(errors.New("the modifications of the 2nd goroutine should be visible"))
+				t.Error(ierrors.New("the modifications of the 2nd goroutine should be visible"))
 			}
 		})
 	}()
@@ -865,7 +865,7 @@ func TestEvictionBug(t *testing.T) {
 	for i := testCount - 1; i >= 0; i-- {
 		cachedObject := objects.Load([]byte(fmt.Sprintf("%v", i)))
 		if cachedObject.Get().(*testObject).value != count*2 {
-			t.Error(fmt.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count*2))
+			t.Error(ierrors.Errorf("Object %d: the modifications should be visible %d!=%d", i, cachedObject.Get().(*testObject).value, count*2))
 
 			return
 		}

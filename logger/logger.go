@@ -1,8 +1,6 @@
 package logger
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -10,6 +8,8 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // The Logger uses the sugared logger.
@@ -35,7 +35,7 @@ const (
 )
 
 // ErrGlobalLoggerAlreadyInitialized is returned when InitGlobalLogger is called more than once.
-var ErrGlobalLoggerAlreadyInitialized = errors.New("global logger already initialized")
+var ErrGlobalLoggerAlreadyInitialized = ierrors.New("global logger already initialized")
 
 var (
 	level = zap.NewAtomicLevel()
@@ -76,7 +76,7 @@ func getEncoderConfig(cfg Config) (zapcore.EncoderConfig, error) {
 		case "nanos":
 			encoderConfig.EncodeTime = zapcore.EpochNanosTimeEncoder
 		default:
-			return zapcore.EncoderConfig{}, fmt.Errorf("unknown TimeEncoder \"%s\"", cfg.EncodingConfig.EncodeTime)
+			return zapcore.EncoderConfig{}, ierrors.Errorf("unknown TimeEncoder \"%s\"", cfg.EncodingConfig.EncodeTime)
 		}
 	}
 
@@ -96,7 +96,7 @@ func NewRootLogger(cfg Config) (*Logger, error) {
 
 	encoderConfig, err := getEncoderConfig(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load encoder config: %w", err)
+		return nil, ierrors.Wrap(err, "failed to load encoder config")
 	}
 
 	enc, err := newEncoder(cfg.Encoding, encoderConfig)
@@ -171,7 +171,7 @@ func newEncoder(name string, cfg zapcore.EncoderConfig) (zapcore.Encoder, error)
 		return zapcore.NewJSONEncoder(cfg), nil
 	}
 
-	return nil, fmt.Errorf("no encoder registered for name %q", name)
+	return nil, ierrors.Errorf("no encoder registered for name %q", name)
 }
 
 func buildOptions(cfg Config) []zap.Option {

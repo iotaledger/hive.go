@@ -2,13 +2,12 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
-	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/autopeering/peer/service/proto"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // Record defines the mapping between a service ID and its tuple TypePort
@@ -82,7 +81,7 @@ func (s *Record) String() string {
 func FromProto(in *pb.ServiceMap) (*Record, error) {
 	m := in.GetMap()
 	if m == nil {
-		return nil, errors.New("service map is nil")
+		return nil, ierrors.New("service map is nil")
 	}
 
 	services := New()
@@ -124,7 +123,7 @@ type endpointJSON struct {
 func (s *Record) UnmarshalJSON(b []byte) error {
 	m := map[string]endpointJSON{}
 	if err := json.Unmarshal(b, &m); err != nil {
-		return xerrors.Errorf("failed to parse services map: %w", err)
+		return ierrors.Wrap(err, "failed to parse services map")
 	}
 	services := New()
 	for service, addr := range m {

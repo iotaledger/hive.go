@@ -3,7 +3,6 @@ package serix_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -373,7 +373,7 @@ func (cs *CustomSerializable) Decode(b []byte) (int, error) {
 
 type ObjectForSyntacticValidation struct{}
 
-var errSyntacticValidation = errors.New("syntactic validation failed")
+var errSyntacticValidation = ierrors.New("syntactic validation failed")
 
 func SyntacticValidation(ctx context.Context, obj ObjectForSyntacticValidation) error {
 	return errSyntacticValidation
@@ -381,7 +381,7 @@ func SyntacticValidation(ctx context.Context, obj ObjectForSyntacticValidation) 
 
 type ObjectForBytesValidation struct{}
 
-var errBytesValidation = errors.New("bytes validation failed")
+var errBytesValidation = ierrors.New("bytes validation failed")
 
 func BytesValidation(ctx context.Context, b []byte) error {
 	return errBytesValidation

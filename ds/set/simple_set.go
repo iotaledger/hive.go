@@ -3,9 +3,8 @@ package set
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -76,18 +75,18 @@ func (s *simpleSet[T]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
 	seri.WriteNum(uint32(s.Size()), func(err error) error {
-		return errors.Wrap(err, "failed to write set size to serializer")
+		return ierrors.Wrap(err, "failed to write set size to serializer")
 	})
 
 	s.ForEach(func(elem T) {
 		bytes, err := serix.DefaultAPI.Encode(context.Background(), elem)
 		if err != nil {
 			seri.AbortIf(func(_ error) error {
-				return errors.Wrap(err, "failed to serialize element of a set")
+				return ierrors.Wrap(err, "failed to serialize element of a set")
 			})
 		}
 		seri.WriteBytes(bytes, func(err error) error {
-			return errors.Wrap(err, "failed to write elem to serializer")
+			return ierrors.Wrap(err, "failed to write elem to serializer")
 		})
 	})
 

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // Serializable is something which knows how to serialize/deserialize itself from/into bytes
@@ -134,10 +136,10 @@ type ArrayRules struct {
 // CheckBounds checks whether the given count violates the array bounds.
 func (ar *ArrayRules) CheckBounds(count uint) error {
 	if ar.Min != 0 && count < ar.Min {
-		return fmt.Errorf("%w: min is %d but count is %d", ErrArrayValidationMinElementsNotReached, ar.Min, count)
+		return ierrors.Wrapf(ErrArrayValidationMinElementsNotReached, "min is %d but count is %d", ar.Min, count)
 	}
 	if ar.Max != 0 && count > ar.Max {
-		return fmt.Errorf("%w: max is %d but count is %d", ErrArrayValidationMaxElementsExceeded, ar.Max, count)
+		return ierrors.Wrapf(ErrArrayValidationMaxElementsExceeded, "max is %d but count is %d", ar.Max, count)
 	}
 
 	return nil
@@ -163,7 +165,7 @@ func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 		}
 		k := string(next)
 		if j, has := set[k]; has {
-			return fmt.Errorf("%w: element %d and %d are duplicates", ErrArrayValidationViolatesUniqueness, j, index)
+			return ierrors.Wrapf(ErrArrayValidationViolatesUniqueness, "element %d and %d are duplicates", j, index)
 		}
 		set[k] = index
 
@@ -183,7 +185,7 @@ func (ar *ArrayRules) LexicalOrderValidator() ElementValidationFunc {
 			prev = next
 			prevIndex = index
 		case bytes.Compare(prev, next) > 0:
-			return fmt.Errorf("%w: element %d should have been before element %d", ErrArrayValidationOrderViolatesLexicalOrder, index, prevIndex)
+			return ierrors.Wrapf(ErrArrayValidationOrderViolatesLexicalOrder, "element %d should have been before element %d", index, prevIndex)
 		default:
 			prev = next
 			prevIndex = index
@@ -216,10 +218,10 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 		}
 		switch bytes.Compare(prev, next) {
 		case 1:
-			return fmt.Errorf("%w: element %d should have been before element %d", ErrArrayValidationOrderViolatesLexicalOrder, index, prevIndex)
+			return ierrors.Wrapf(ErrArrayValidationOrderViolatesLexicalOrder, "element %d should have been before element %d", index, prevIndex)
 		case 0:
 			// dup
-			return fmt.Errorf("%w: element %d and %d are duplicates", ErrArrayValidationViolatesUniqueness, index, prevIndex)
+			return ierrors.Wrapf(ErrArrayValidationViolatesUniqueness, "element %d and %d are duplicates", index, prevIndex)
 		}
 		prevIndex = index
 		if ar.UniquenessSliceFunc != nil {
@@ -243,12 +245,12 @@ func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotation
 		switch typeDenotation {
 		case TypeDenotationUint32:
 			if len(next) < UInt32ByteSize {
-				return fmt.Errorf("%w: not enough bytes to check type uniquness in array", ErrInvalidBytes)
+				return ierrors.Wrap(ErrInvalidBytes, "not enough bytes to check type uniquness in array")
 			}
 			key = binary.LittleEndian.Uint32(next)
 		case TypeDenotationByte:
 			if len(next) < OneByte {
-				return fmt.Errorf("%w: not enough bytes to check type uniquness in array", ErrInvalidBytes)
+				return ierrors.Wrap(ErrInvalidBytes, "not enough bytes to check type uniquness in array")
 			}
 			key = uint32(next[0])
 		default:
@@ -256,7 +258,7 @@ func (ar *ArrayRules) AtMostOneOfEachTypeValidator(typeDenotation TypeDenotation
 		}
 		prevIndex, has := seen[key]
 		if has {
-			return fmt.Errorf("%w: element %d and %d have the same type", ErrArrayValidationViolatesTypeUniqueness, index, prevIndex)
+			return ierrors.Wrapf(ErrArrayValidationViolatesTypeUniqueness, "element %d and %d have the same type", index, prevIndex)
 		}
 		seen[key] = index
 

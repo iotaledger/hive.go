@@ -1,13 +1,13 @@
 package pebble
 
 import (
-	"errors"
 	"sync"
 	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
@@ -141,7 +141,7 @@ func (s *pebbleStore) Get(key kvstore.Key) (kvstore.Value, error) {
 	val, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
 
 	if err != nil {
-		if errors.Is(err, pebble.ErrNotFound) {
+		if ierrors.Is(err, pebble.ErrNotFound) {
 			return nil, kvstore.ErrKeyNotFound
 		}
 
@@ -171,7 +171,7 @@ func (s *pebbleStore) Has(key kvstore.Key) (bool, error) {
 	}
 
 	_, closer, err := s.instance.Get(byteutils.ConcatBytes(s.dbPrefix, key))
-	if errors.Is(err, pebble.ErrNotFound) {
+	if ierrors.Is(err, pebble.ErrNotFound) {
 		return false, nil
 	}
 

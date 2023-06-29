@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/runtime/timeutil"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/runtime/timeutil"
 )
 
 func TestSleepCompleted(t *testing.T) {

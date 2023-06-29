@@ -17,6 +17,7 @@ import (
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/app/version"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
@@ -253,7 +254,7 @@ func (a *App) init() {
 	// the init hook function could modify the startup behavior (e.g. to display tools)
 	if a.options.initComponent.Init != nil {
 		if err := a.options.initComponent.Init(a); err != nil {
-			panic(fmt.Errorf("unable to initialize app: %w", err))
+			panic(ierrors.Wrap(err, "unable to initialize app"))
 		}
 	}
 

@@ -3,8 +3,7 @@ package typedkey
 import (
 	"sync"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -47,7 +46,7 @@ func (m *Marshalable[V, VPtr]) Set(value V) {
 func (m *Marshalable[V, VPtr]) load() (loadedValue V) {
 	valueBytes, err := m.store.Get(m.key)
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKeyNotFound) {
+		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			return
 		}
 

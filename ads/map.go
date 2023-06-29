@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"github.com/celestiaorg/smt"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
@@ -106,7 +106,7 @@ func (m *Map[K, V, KPtr, VPtr]) Get(key K) (value VPtr, exists bool) {
 
 	valueBytes, err := m.tree.Get(lo.PanicOnErr(key.Bytes()))
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKeyNotFound) {
+		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil, false
 		}
 
@@ -133,25 +133,25 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 	if iterationErr := m.rawKeysStore.Iterate([]byte{}, func(key kvstore.Key, _ kvstore.Value) bool {
 		value, valueErr := m.tree.Get(key)
 		if valueErr != nil {
-			err = errors.Wrapf(valueErr, "failed to get value for key %s", key)
+			err = ierrors.Wrapf(valueErr, "failed to get value for key %s", key)
 			return false
 		}
 
 		var kPtr KPtr = new(K)
 		if _, keyErr := kPtr.FromBytes(key); keyErr != nil {
-			err = errors.Wrapf(keyErr, "failed to deserialize key %s", key)
+			err = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
 			return false
 		}
 
 		var valuePtr VPtr = new(V)
 		if _, valueErr := valuePtr.FromBytes(value); valueErr != nil {
-			err = errors.Wrapf(valueErr, "failed to deserialize value %s", value)
+			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", value)
 			return false
 		}
 
 		return callback(*kPtr, valuePtr)
 	}); iterationErr != nil {
-		err = errors.Wrap(iterationErr, "failed to iterate over raw keys")
+		err = ierrors.Wrap(iterationErr, "failed to iterate over raw keys")
 	}
 
 	return
@@ -161,7 +161,7 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 func (m *Map[K, V, KPtr, VPtr]) has(keyBytes []byte) (has bool) {
 	has, err := m.tree.Has(keyBytes)
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKeyNotFound) {
+		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			return false
 		}
 

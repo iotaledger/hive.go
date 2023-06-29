@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/iotaledger/hive.go/runtime/ioutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 func TestPathExists(t *testing.T) {

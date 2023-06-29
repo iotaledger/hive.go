@@ -2,8 +2,8 @@ package bls
 
 import (
 	"github.com/mr-tron/base58"
-	"golang.org/x/xerrors"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
@@ -17,7 +17,7 @@ type Signature [SignatureSize]byte
 func SignatureFromBytes(bytes []byte) (signature Signature, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if signature, err = SignatureFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse Signature from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse Signature from MarshalUtil")
 
 		return
 	}
@@ -30,13 +30,13 @@ func SignatureFromBytes(bytes []byte) (signature Signature, consumedBytes int, e
 func SignatureFromBase58EncodedString(base58EncodedString string) (signature Signature, err error) {
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
-		err = xerrors.Errorf("error while decoding base58 encoded Signature (%v): %w", err, ErrBase58DecodeFailed)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Signature (%v)", err)
 
 		return
 	}
 
 	if signature, _, err = SignatureFromBytes(bytes); err != nil {
-		err = xerrors.Errorf("failed to parse Signature from bytes: %w", err)
+		err = ierrors.Wrap(err, "failed to parse Signature from bytes")
 
 		return
 	}
@@ -48,7 +48,7 @@ func SignatureFromBase58EncodedString(base58EncodedString string) (signature Sig
 func SignatureFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signature Signature, err error) {
 	signatureBytes, err := marshalUtil.ReadBytes(SignatureSize)
 	if err != nil {
-		err = xerrors.Errorf("failed to read signature bytes (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read signature bytes (%v)", err)
 
 		return
 	}
@@ -95,7 +95,7 @@ func NewSignatureWithPublicKey(publicKey PublicKey, signature Signature) Signatu
 func SignatureWithPublicKeyFromBytes(bytes []byte) (signatureWithPublicKey SignatureWithPublicKey, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if signatureWithPublicKey, err = SignatureWithPublicKeyFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse SignatureWithPublicKey from MarshalUtil")
 
 		return
 	}
@@ -108,13 +108,13 @@ func SignatureWithPublicKeyFromBytes(bytes []byte) (signatureWithPublicKey Signa
 func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
-		err = xerrors.Errorf("error while decoding base58 encoded SignatureWithPublicKey (%v): %w", err, ErrBase58DecodeFailed)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded SignatureWithPublicKey (%v)", err)
 
 		return
 	}
 
 	if signatureWithPublicKey, _, err = SignatureWithPublicKeyFromBytes(bytes); err != nil {
-		err = xerrors.Errorf("failed to parse SignatureWithPublicKey from bytes: %w", err)
+		err = ierrors.Wrap(err, "failed to parse SignatureWithPublicKey from bytes")
 
 		return
 	}
@@ -125,13 +125,13 @@ func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (
 // SignatureWithPublicKeyFromMarshalUtil unmarshals a SignatureWithPublicKey using a MarshalUtil (for easier unmarshalling).
 func SignatureWithPublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	if signatureWithPublicKey.PublicKey, err = PublicKeyFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse PublicKey from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse PublicKey from MarshalUtil")
 
 		return
 	}
 
 	if signatureWithPublicKey.Signature, err = SignatureFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse Signature from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse Signature from MarshalUtil")
 
 		return
 	}

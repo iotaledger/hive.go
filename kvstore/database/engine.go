@@ -1,13 +1,11 @@
 package database
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
@@ -24,7 +22,7 @@ const (
 )
 
 var (
-	ErrEngineMismatch = errors.New("database engine mismatch")
+	ErrEngineMismatch = ierrors.New("database engine mismatch")
 )
 
 type databaseInfo struct {
@@ -63,7 +61,7 @@ func EngineAllowed(dbEngine Engine, allowedEngines []Engine) (Engine, error) {
 		}
 	}
 
-	return EngineUnknown, fmt.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, getSupportedEnginesString(allowedEngines))
+	return EngineUnknown, ierrors.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, getSupportedEnginesString(allowedEngines))
 }
 
 // EngineFromStringAllowed parses an engine from a string and checks if the database engine is allowed.
@@ -85,7 +83,7 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 
 	switch dbEngine {
 	case EngineUnknown:
-		return EngineUnknown, errors.New("the database engine must not be EngineUnknown")
+		return EngineUnknown, ierrors.New("the database engine must not be EngineUnknown")
 
 	case EngineMapDB:
 		// no need to create or access a "database info file" in case of mapdb (in-memory)
@@ -102,11 +100,11 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 
 	if !dbExists {
 		if !createDatabaseIfNotExists {
-			return EngineUnknown, fmt.Errorf("database not found (%s)", dbPath)
+			return EngineUnknown, ierrors.Errorf("database not found (%s)", dbPath)
 		}
 
 		if createDatabaseIfNotExists && !dbEngineSpecified {
-			return EngineUnknown, errors.New("the database engine must be specified if the database should be newly created")
+			return EngineUnknown, ierrors.New("the database engine must be specified if the database should be newly created")
 		}
 	}
 
@@ -117,11 +115,11 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 	_, err = os.Stat(dbInfoFilePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return EngineUnknown, fmt.Errorf("unable to check database info file (%s): %w", dbInfoFilePath, err)
+			return EngineUnknown, ierrors.Wrapf(err, "unable to check database info file (%s)", dbInfoFilePath)
 		}
 
 		if !dbEngineSpecified {
-			return EngineUnknown, fmt.Errorf("database info file not found (%s)", dbInfoFilePath)
+			return EngineUnknown, ierrors.Errorf("database info file not found (%s)", dbInfoFilePath)
 		}
 
 		// if the dbInfo file does not exist and the dbEngine is given, create the dbInfo file.
@@ -152,7 +150,7 @@ func LoadEngineFromFile(path string, allowedEngines []Engine) (Engine, error) {
 	var info databaseInfo
 
 	if err := ioutils.ReadTOMLFromFile(path, &info); err != nil {
-		return "", fmt.Errorf("unable to read database info file: %w", err)
+		return "", ierrors.Wrap(err, "unable to read database info file")
 	}
 
 	return EngineFromStringAllowed(info.Engine, allowedEngines)
@@ -163,7 +161,7 @@ func storeDatabaseInfoToFile(filePath string, engine Engine) error {
 	dirPath := filepath.Dir(filePath)
 
 	if err := ioutils.CreateDirectory(dirPath, 0700); err != nil {
-		return fmt.Errorf("could not create database dir '%s': %w", dirPath, err)
+		return ierrors.Wrapf(err, "could not create database dir '%s'", dirPath)
 	}
 
 	info := &databaseInfo{

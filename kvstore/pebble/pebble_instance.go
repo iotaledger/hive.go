@@ -1,17 +1,16 @@
 package pebble
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/pebble"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 func CreateDB(directory string, optionalOptions ...*pebble.Options) (*pebble.DB, error) {
 
 	if err := ioutils.CreateDirectory(directory, 0700); err != nil {
-		return nil, fmt.Errorf("could not create directory: %w", err)
+		return nil, ierrors.Wrapf(err, "could not create directory '%s'", directory)
 	}
 
 	var opts *pebble.Options
@@ -24,7 +23,7 @@ func CreateDB(directory string, optionalOptions ...*pebble.Options) (*pebble.DB,
 
 	db, err := pebble.Open(directory, opts)
 	if err != nil {
-		return nil, fmt.Errorf("could not open new DB: %w", err)
+		return nil, ierrors.Wrapf(err, "could not open new DB '%s'", directory)
 	}
 
 	return db, nil

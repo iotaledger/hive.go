@@ -4,12 +4,13 @@ package ioutils
 import (
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // PathExists returns whether the given file or directory exists.
@@ -35,7 +36,7 @@ func CreateDirectory(dir string, perm os.FileMode) error {
 
 	if exists {
 		if !isDir {
-			return fmt.Errorf("given path is a file instead of a directory %s", dir)
+			return ierrors.Errorf("given path is a file instead of a directory %s", dir)
 		}
 
 		return nil
@@ -128,15 +129,15 @@ func WriteJSONToFile(filename string, data interface{}, perm os.FileMode) (err e
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("unable to marshal data to JSON: %w", err)
+		return ierrors.Wrap(err, "unable to marshal data to JSON")
 	}
 
 	if _, err := f.Write(jsonData); err != nil {
-		return fmt.Errorf("unable to write JSON data to %s: %w", filename, err)
+		return ierrors.Wrapf(err, "unable to write JSON data to %s", filename)
 	}
 
 	if err := f.Sync(); err != nil {
-		return fmt.Errorf("unable to fsync file content to %s: %w", filename, err)
+		return ierrors.Wrapf(err, "unable to fsync file content to %s", filename)
 	}
 
 	return nil
@@ -173,21 +174,21 @@ func WriteTOMLToFile(filename string, data interface{}, perm os.FileMode, header
 
 	tomlData, err := toml.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("unable to marshal data to TOML: %w", err)
+		return ierrors.Wrap(err, "unable to marshal data to TOML")
 	}
 
 	if len(header) > 0 {
 		if _, err := f.Write([]byte(header[0] + "\n")); err != nil {
-			return fmt.Errorf("unable to write header to %s: %w", filename, err)
+			return ierrors.Wrapf(err, "unable to write header to %s", filename)
 		}
 	}
 
 	if _, err := f.Write(tomlData); err != nil {
-		return fmt.Errorf("unable to write TOML data to %s: %w", filename, err)
+		return ierrors.Wrapf(err, "unable to write TOML data to %s", filename)
 	}
 
 	if err := f.Sync(); err != nil {
-		return fmt.Errorf("unable to fsync file content to %s: %w", filename, err)
+		return ierrors.Wrapf(err, "unable to fsync file content to %s", filename)
 	}
 
 	return nil
@@ -211,10 +212,10 @@ func CreateTempFile(filePath string) (*os.File, string, error) {
 // CloseFileAndRename closes the file descriptor and renames the file.
 func CloseFileAndRename(fileDescriptor *os.File, sourceFilePath string, targetFilePath string) error {
 	if err := fileDescriptor.Close(); err != nil {
-		return fmt.Errorf("unable to close file: %w", err)
+		return ierrors.Wrap(err, "unable to close file")
 	}
 	if err := os.Rename(sourceFilePath, targetFilePath); err != nil {
-		return fmt.Errorf("unable to rename file: %w", err)
+		return ierrors.Wrap(err, "unable to rename file")
 	}
 
 	return nil
@@ -224,7 +225,7 @@ func CloseFileAndRename(fileDescriptor *os.File, sourceFilePath string, targetFi
 func DirectoryEmpty(dirPath string) (bool, error) {
 	// check if the directory exists
 	if _, err := os.Stat(dirPath); err != nil {
-		return false, fmt.Errorf("unable to check directory (%s): %w", dirPath, err)
+		return false, ierrors.Wrapf(err, "unable to check directory (%s)", dirPath)
 	}
 
 	// check if the directory is empty
@@ -241,7 +242,7 @@ func DirectoryEmpty(dirPath string) (bool, error) {
 		return os.ErrExist
 	}); err != nil {
 		if !os.IsExist(err) {
-			return false, fmt.Errorf("unable to check directory (%s): %w", dirPath, err)
+			return false, ierrors.Wrapf(err, "unable to check directory (%s)", dirPath)
 		}
 
 		// directory is not empty
@@ -256,19 +257,19 @@ func DirectoryEmpty(dirPath string) (bool, error) {
 func DirExistsAndIsNotEmpty(path string) (bool, error) {
 	dirExists, isDir, err := PathExists(path)
 	if err != nil {
-		return false, fmt.Errorf("unable to check dir path (%s): %w", path, err)
+		return false, ierrors.Wrapf(err, "unable to check dir path (%s)", path)
 	}
 	if !dirExists {
 		return false, nil
 	}
 	if !isDir {
-		return false, fmt.Errorf("given path is a file instead of a directory %s", path)
+		return false, ierrors.Errorf("given path is a file instead of a directory %s", path)
 	}
 
 	// check if the directory is empty (needed for example in docker environments)
 	dirEmpty, err := DirectoryEmpty(path)
 	if err != nil {
-		return false, fmt.Errorf("unable to check dir (%s): %w", path, err)
+		return false, ierrors.Wrapf(err, "unable to check dir (%s)", path)
 	}
 
 	return !dirEmpty, nil

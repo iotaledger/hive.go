@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
@@ -119,10 +119,10 @@ func (t *testObject) FromObjectStorage(key, value []byte) (err error) {
 func (t *testObject) FromBytes(bytes []byte) (err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if t.key, err = marshalUtil.ReadUint64(); err != nil {
-		return errors.Errorf("failed to read key from MarshalUtil: %w", err)
+		return ierrors.Wrap(err, "failed to read key from MarshalUtil")
 	}
 	if t.value, err = marshalUtil.ReadUint64(); err != nil {
-		return errors.Errorf("failed to read value from MarshalUtil: %w", err)
+		return ierrors.Wrap(err, "failed to read value from MarshalUtil")
 	}
 
 	return nil

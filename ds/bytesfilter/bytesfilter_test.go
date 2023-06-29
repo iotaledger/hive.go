@@ -4,9 +4,10 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/ds/bytesfilter"
 	"github.com/iotaledger/hive.go/ds/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBytesFilter(t *testing.T) {

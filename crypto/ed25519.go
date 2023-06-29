@@ -4,11 +4,11 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 
-	"github.com/pkg/errors"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 var (
-	ErrInvalidKeyLength = errors.New("invalid key length")
+	ErrInvalidKeyLength = ierrors.New("invalid key length")
 )
 
 // ParseEd25519PublicKeyFromString parses an ed25519 public key from a string.

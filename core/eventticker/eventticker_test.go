@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iotaledger/hive.go/core/eventticker"
-	"github.com/iotaledger/hive.go/lo"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/core/eventticker"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 func TestEventTicker(t *testing.T) {

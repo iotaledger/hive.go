@@ -2,8 +2,6 @@ package discover
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -18,6 +16,7 @@ import (
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/autopeering/server"
 	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/backoff"
 )
@@ -154,7 +153,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MPing:
 		m := new(pb.Ping)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		if p.validatePing(fromAddr, m) {
 			p.handlePing(s, fromAddr, from, m, data)
@@ -164,7 +163,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MPong:
 		m := new(pb.Pong)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		if p.validatePong(s, fromAddr, from.ID(), m) {
 			p.handlePong(fromAddr, from, m)
@@ -174,7 +173,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MDiscoveryRequest:
 		m := new(pb.DiscoveryRequest)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		if p.validateDiscoveryRequest(fromAddr, from.ID(), m) {
 			p.handleDiscoveryRequest(s, from.ID(), data)
@@ -184,7 +183,7 @@ func (p *Protocol) HandleMessage(s *server.Server, fromAddr *net.UDPAddr, from *
 	case pb.MDiscoveryResponse:
 		m := new(pb.DiscoveryResponse)
 		if err := proto.Unmarshal(data[1:], m); err != nil {
-			return true, fmt.Errorf("invalid message: %w", err)
+			return true, ierrors.Wrap(err, "invalid message")
 		}
 		p.validateDiscoveryResponse(s, fromAddr, from.ID(), m)
 		// DiscoveryResponse messages are handled in the handleReply function of the validation
@@ -215,7 +214,7 @@ func (p *Protocol) localAddr() *net.UDPAddr {
 func (p *Protocol) Ping(to *peer.Peer) error {
 	return backoff.Retry(retryPolicy, func() error {
 		err := <-p.sendPing(to.Address(), to.ID())
-		if err != nil && !errors.Is(err, server.ErrTimeout) {
+		if err != nil && !ierrors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
 
@@ -288,7 +287,7 @@ func (p *Protocol) DiscoveryRequest(to *peer.Peer) ([]*peer.Peer, error) {
 	err := backoff.Retry(retryPolicy, func() error {
 		p.logSend(to.Address(), req)
 		err := <-p.Protocol.SendExpectingReply(to.Address(), to.ID(), data, pb.MDiscoveryResponse, callback)
-		if err != nil && !errors.Is(err, server.ErrTimeout) {
+		if err != nil && !ierrors.Is(err, server.ErrTimeout) {
 			return backoff.Permanent(err)
 		}
 

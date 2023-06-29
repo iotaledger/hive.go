@@ -4,7 +4,6 @@ package serix_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blake2b"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
@@ -41,7 +41,7 @@ func (s serializableStruct) EncodeJSON() (any, error) {
 func (s *serializableStruct) DecodeJSON(val any) error {
 	serialized, ok := val.(string)
 	if !ok {
-		return errors.New("incorrect type")
+		return ierrors.New("incorrect type")
 	}
 
 	parts := strings.Split(serialized, ":")

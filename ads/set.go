@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"github.com/celestiaorg/smt"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
@@ -121,13 +121,13 @@ func (s *Set[K, KPtr]) Stream(callback func(key K) bool) (err error) {
 	if iterationErr := s.rawKeysStore.Iterate([]byte{}, func(key kvstore.Key, _ kvstore.Value) bool {
 		var kPtr KPtr = new(K)
 		if _, keyErr := kPtr.FromBytes(key); keyErr != nil {
-			err = errors.Wrapf(keyErr, "failed to deserialize key %s", key)
+			err = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
 			return false
 		}
 
 		return callback(*kPtr)
 	}); iterationErr != nil {
-		err = errors.Wrap(iterationErr, "failed to iterate over set members")
+		err = ierrors.Wrap(iterationErr, "failed to iterate over set members")
 	}
 
 	return
@@ -142,7 +142,7 @@ func (s *Set[K, KPtr]) Size() (size int) {
 func (s *Set[K, KPtr]) has(key []byte) (has bool) {
 	has, err := s.tree.Has(key)
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKeyNotFound) {
+		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			return false
 		}
 

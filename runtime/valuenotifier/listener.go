@@ -2,11 +2,11 @@ package valuenotifier
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 type Notifier[T comparable] struct {
@@ -87,7 +87,7 @@ func (v *Notifier[T]) Notify(value T) {
 }
 
 var (
-	ErrListenerDeregistered = errors.New("listener was deregistered")
+	ErrListenerDeregistered = ierrors.New("listener was deregistered")
 )
 
 type Listener struct {

@@ -5,17 +5,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 var (
-	errInvalidData = errors.New("invalid data received")
+	errInvalidData = ierrors.New("invalid data received")
 )
 
 // IsIPv4 returns true if ip is an IPv4 address.
@@ -40,25 +40,25 @@ func GetPublicIP(ctx context.Context, preferIPv6 bool) (net.IP, error) {
 	// construct request
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("unable to build http request: %w", err)
+		return nil, ierrors.Wrap(err, "unable to build http request")
 	}
 
 	// make the request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("get failed: %w", err)
+		return nil, ierrors.Wrap(err, "get failed")
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read failed: %w", err)
+		return nil, ierrors.Wrap(err, "read failed")
 	}
 
 	// the body only consists of the ip address
 	ip := net.ParseIP(string(body))
 	if ip == nil {
-		return nil, fmt.Errorf("not an IP: %s", body)
+		return nil, ierrors.Errorf("not an IP: %s", body)
 	}
 
 	return ip, nil
@@ -80,35 +80,35 @@ func IsTemporaryError(err error) bool {
 func CheckUDP(local, remote *net.UDPAddr, checkAddress bool, checkPort bool) error {
 	conn, err := net.ListenUDP("udp", local)
 	if err != nil {
-		return fmt.Errorf("listen failed: %w", err)
+		return ierrors.Wrap(err, "listen failed")
 	}
 	defer conn.Close()
 
 	nonce := generateNonce()
 	_, err = conn.WriteTo(nonce, remote)
 	if err != nil {
-		return fmt.Errorf("write failed: %w", err)
+		return ierrors.Wrap(err, "write failed")
 	}
 
 	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if err != nil {
-		return fmt.Errorf("set timeout failed: %w", err)
+		return ierrors.Wrap(err, "set timeout failed")
 	}
 
 	p := make([]byte, len(nonce)+1)
 	n, from, err := conn.ReadFrom(p)
 	if err != nil {
-		return fmt.Errorf("read failed: %w", err)
+		return ierrors.Wrap(err, "read failed")
 	}
 	if n != len(nonce) || !bytes.Equal(p[:n], nonce) {
 		return errInvalidData
 	}
 	udpAddr := from.(*net.UDPAddr)
 	if checkAddress && !udpAddr.IP.Equal(remote.IP) {
-		return fmt.Errorf("IP changed: %s", udpAddr.IP)
+		return ierrors.Errorf("IP changed: %s", udpAddr.IP)
 	}
 	if checkPort && udpAddr.Port != remote.Port {
-		return fmt.Errorf("port changed: %d", udpAddr.Port)
+		return ierrors.Errorf("port changed: %d", udpAddr.Port)
 	}
 
 	return nil

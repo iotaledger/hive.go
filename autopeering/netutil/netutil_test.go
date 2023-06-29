@@ -3,13 +3,14 @@ package netutil
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func TestIsIPv4(t *testing.T) {
@@ -44,7 +45,7 @@ func TestIsTemporaryError(t *testing.T) {
 		out bool
 	}{
 		{nil, false},
-		{errors.New("errorString"), false},
+		{ierrors.New("errorString"), false},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v", tt.in), func(t *testing.T) {

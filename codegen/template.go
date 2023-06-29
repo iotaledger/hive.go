@@ -7,8 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"golang.org/x/xerrors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -40,12 +39,12 @@ func NewTemplate(mappings template.FuncMap) *Template {
 func (t *Template) Parse(fileName string) error {
 	readFile, err := os.ReadFile(fileName)
 	if err != nil {
-		return xerrors.Errorf("could not read file %s: %w", fileName, err)
+		return ierrors.Wrapf(err, "could not read file %s", fileName)
 	}
 
 	splitTemplate := strings.Split(string(readFile), "//go:generate")
 	if len(splitTemplate) != 2 {
-		return xerrors.Errorf("could not find go:generate directive in %s", fileName)
+		return ierrors.Errorf("could not find go:generate directive in %s", fileName)
 	}
 
 	t.header = strings.TrimSpace(strings.ReplaceAll(splitTemplate[0], "//go:build ignore", ""))
@@ -59,7 +58,7 @@ func (t *Template) Parse(fileName string) error {
 func (t *Template) Generate(fileName string, optGenerator ...func() (string, error)) error {
 	generatedContent, err := lo.First(optGenerator, t.GenerateContent)()
 	if err != nil {
-		return xerrors.Errorf("could not generate content: %w", err)
+		return ierrors.Wrap(err, "could not generate content")
 	}
 
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
@@ -76,12 +75,12 @@ func (t *Template) GenerateContent() (string, error) {
 
 	tmpl, err := template.New("template").Funcs(t.mappings).Parse(string(content))
 	if err != nil {
-		return "", xerrors.Errorf("could not parse template: %w", err)
+		return "", ierrors.Wrap(err, "could not parse template")
 	}
 
 	buffer := new(bytes.Buffer)
 	if err := tmpl.Execute(buffer, nil); err != nil {
-		return "", xerrors.Errorf("could not execute template: %w", err)
+		return "", ierrors.Wrap(err, "could not execute template")
 	}
 
 	return buffer.String(), nil

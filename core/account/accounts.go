@@ -3,11 +3,10 @@ package account
 import (
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"github.com/iotaledger/hive.go/ads"
 	"github.com/iotaledger/hive.go/core/storable"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -105,7 +104,7 @@ func (w *Accounts[AccountID, AccountIDPtr]) Map() (weights map[AccountID]int64, 
 		weights[id] = weight
 		return true
 	}); err != nil {
-		return nil, errors.Wrap(err, "failed to export weights")
+		return nil, ierrors.Wrap(err, "failed to export weights")
 	}
 
 	return weights, nil

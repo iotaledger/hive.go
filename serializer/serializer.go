@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 type (
@@ -238,7 +240,7 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 	switch lenType {
 	case SeriLengthPrefixTypeAsByte:
 		if l > math.MaxUint8 {
-			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint8))
+			s.err = errProducer(ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint8))
 
 			return
 		}
@@ -249,7 +251,7 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 		}
 	case SeriLengthPrefixTypeAsUint16:
 		if l > math.MaxUint16 {
-			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint16))
+			s.err = errProducer(ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint16))
 
 			return
 		}
@@ -260,7 +262,7 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 		}
 	case SeriLengthPrefixTypeAsUint32:
 		if l > math.MaxUint32 {
-			s.err = errProducer(fmt.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint32))
+			s.err = errProducer(ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint32))
 
 			return
 		}
@@ -283,12 +285,12 @@ func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefi
 	sliceLen := len(data)
 	switch {
 	case maxLen > 0 && sliceLen > maxLen:
-		s.err = errProducer(fmt.Errorf("%w: slice (len %d) exceeds max length of %d ", ErrSliceLengthTooLong, sliceLen, maxLen))
+		s.err = errProducer(ierrors.Wrapf(ErrSliceLengthTooLong, "slice (len %d) exceeds max length of %d ", sliceLen, maxLen))
 
 		return s
 
 	case minLen > 0 && sliceLen < minLen:
-		s.err = errProducer(fmt.Errorf("%w: slice (len %d) is less than min length of %d ", ErrSliceLengthTooShort, sliceLen, maxLen))
+		s.err = errProducer(ierrors.Wrapf(ErrSliceLengthTooShort, "slice (len %d) is less than min length of %d ", sliceLen, maxLen))
 
 		return s
 	}
@@ -496,7 +498,7 @@ func (s *Serializer) WritePayload(payload Serializable, deSeriMode DeSerializati
 
 	payloadBytes, err := payload.Serialize(deSeriMode, deSeriCtx)
 	if err != nil {
-		s.err = errProducer(fmt.Errorf("unable to serialize payload: %w", err))
+		s.err = errProducer(ierrors.Wrap(err, "unable to serialize payload"))
 
 		return s
 	}
@@ -525,7 +527,7 @@ func (s *Serializer) WritePayloadLength(length int, errProducer ErrProducer) *Se
 
 func (s *Serializer) writePayloadLength(length int) error {
 	if err := binary.Write(&s.buf, binary.LittleEndian, uint32(length)); err != nil {
-		return fmt.Errorf("unable to serialize payload length: %w", err)
+		return ierrors.Wrap(err, "unable to serialize payload length")
 	}
 
 	return nil
@@ -540,12 +542,12 @@ func (s *Serializer) WriteString(str string, lenType SeriLengthPrefixType, errPr
 	strLen := len(str)
 	switch {
 	case maxLen > 0 && strLen > maxLen:
-		s.err = errProducer(fmt.Errorf("%w: string (len %d) exceeds max length of %d ", ErrStringTooLong, strLen, maxLen))
+		s.err = errProducer(ierrors.Wrapf(ErrStringTooLong, "string (len %d) exceeds max length of %d ", strLen, maxLen))
 
 		return s
 
 	case minLen > 0 && strLen < minLen:
-		s.err = errProducer(fmt.Errorf("%w: string (len %d) is less than min length of %d", ErrStringTooShort, strLen, minLen))
+		s.err = errProducer(ierrors.Wrapf(ErrStringTooShort, "string (len %d) is less than min length of %d", strLen, minLen))
 
 		return s
 	}
@@ -810,9 +812,9 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 
 	switch {
 	case maxLen > 0 && sliceLength > maxLen:
-		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, max allowed %d ", ErrDeserializationLengthInvalid, sliceLength, maxLen))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "denoted %d bytes, max allowed %d ", sliceLength, maxLen))
 	case minLen > 0 && sliceLength < minLen:
-		d.err = errProducer(fmt.Errorf("%w: denoted %d bytes, min required %d ", ErrDeserializationLengthInvalid, sliceLength, minLen))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "denoted %d bytes, min required %d ", sliceLength, minLen))
 	}
 
 	if sliceLength == 0 {
@@ -1203,7 +1205,7 @@ func (d *Deserializer) ReadSliceOfObjects(
 
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
 		if !arrayRules.MustOccur.Subset(seenTypes) {
-			d.err = errProducer(fmt.Errorf("%w: should %v, has %v", ErrArrayValidationTypesNotOccurred, arrayRules.MustOccur, seenTypes))
+			d.err = errProducer(ierrors.Wrapf(ErrArrayValidationTypesNotOccurred, "should %v, has %v", arrayRules.MustOccur, seenTypes))
 
 			return d
 		}
@@ -1318,7 +1320,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 // ReadPayloadLength reads the payload length from the deserializer.
 func (d *Deserializer) ReadPayloadLength() (uint32, error) {
 	if len(d.src[d.offset:]) < PayloadLengthByteSize {
-		return 0, fmt.Errorf("%w: data is smaller than payload length denotation", ErrDeserializationNotEnoughData)
+		return 0, ierrors.Wrap(ErrDeserializationNotEnoughData, "data is smaller than payload length denotation")
 	}
 
 	payloadLength := binary.LittleEndian.Uint32(d.src[d.offset:])
@@ -1346,11 +1348,11 @@ func (d *Deserializer) ReadPayload(s interface{}, deSeriMode DeSerializationMode
 
 	switch {
 	case len(d.src[d.offset:]) < MinPayloadByteSize:
-		d.err = errProducer(fmt.Errorf("%w: payload data is smaller than min. required length %d", ErrDeserializationNotEnoughData, MinPayloadByteSize))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationNotEnoughData, "payload data is smaller than min. required length %d", MinPayloadByteSize))
 
 		return d
 	case len(d.src[d.offset:]) < int(payloadLength):
-		d.err = errProducer(fmt.Errorf("%w: payload length denotes more bytes than are available", ErrDeserializationNotEnoughData))
+		d.err = errProducer(ierrors.Wrap(ErrDeserializationNotEnoughData, "payload length denotes more bytes than are available"))
 
 		return d
 	}
@@ -1370,7 +1372,7 @@ func (d *Deserializer) ReadPayload(s interface{}, deSeriMode DeSerializationMode
 	}
 
 	if payloadBytesConsumed != int(payloadLength) {
-		d.err = errProducer(fmt.Errorf("%w: denoted payload length (%d) doesn't equal the size of deserialized payload (%d)", ErrInvalidBytes, payloadLength, payloadBytesConsumed))
+		d.err = errProducer(ierrors.Wrapf(ErrInvalidBytes, "denoted payload length (%d) doesn't equal the size of deserialized payload (%d)", payloadLength, payloadBytesConsumed))
 
 		return d
 	}
@@ -1410,13 +1412,13 @@ func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errPr
 
 	switch {
 	case maxLen > 0 && strLen > maxLen:
-		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but max %d is allowed", ErrDeserializationLengthInvalid, strLen, maxLen))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "string defined to be of %d bytes length but max %d is allowed", strLen, maxLen))
 	case minLen > 0 && strLen < minLen:
-		d.err = errProducer(fmt.Errorf("%w: string defined to be of %d bytes length but min %d is required", ErrDeserializationLengthInvalid, strLen, minLen))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "string defined to be of %d bytes length but min %d is required", strLen, minLen))
 	}
 
 	if len(d.src[d.offset:]) < strLen {
-		d.err = errProducer(fmt.Errorf("%w: data is smaller than (%d) denoted string length of %d", ErrDeserializationNotEnoughData, len(d.src[d.offset:]), strLen))
+		d.err = errProducer(ierrors.Wrapf(ErrDeserializationNotEnoughData, "data is smaller than (%d) denoted string length of %d", len(d.src[d.offset:]), strLen))
 
 		return d
 	}

@@ -4,9 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
-
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
 	"github.com/iotaledger/hive.go/runtime/event"
@@ -992,7 +991,7 @@ func (objectStorage *ObjectStorage) LoadObjectFromStore(key []byte) StorableObje
 	var marshaledData []byte
 	value, err := objectStorage.options.store.Get(key)
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKeyNotFound) {
+		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			return nil
 		}
 
@@ -1012,7 +1011,7 @@ func (objectStorage *ObjectStorage) DeleteEntryFromStore(key []byte) {
 	}
 
 	if err := objectStorage.options.store.Delete(key); err != nil {
-		if !errors.Is(err, kvstore.ErrKeyNotFound) {
+		if !ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
 	}
@@ -1051,7 +1050,7 @@ func (objectStorage *ObjectStorage) ObjectExistsInStore(key []byte) bool {
 
 	has, err := objectStorage.options.store.Has(key)
 	if err != nil {
-		if !errors.Is(err, kvstore.ErrKeyNotFound) {
+		if !ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
 	}

@@ -1,11 +1,12 @@
 package iputils
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func IsIPv6(ip net.IP) bool {
@@ -90,8 +91,8 @@ func (ra *OriginAddress) String() string {
 	return fmt.Sprintf("%s:%d", ra.Addr, ra.Port)
 }
 
-var ErrOriginAddrInvalidAddrChunk = errors.New("invalid address chunk in origin address")
-var ErrOriginAddrInvalidPort = errors.New("invalid port in origin address")
+var ErrOriginAddrInvalidAddrChunk = ierrors.New("invalid address chunk in origin address")
+var ErrOriginAddrInvalidPort = ierrors.New("invalid port in origin address")
 
 func ParseOriginAddress(s string) (*OriginAddress, error) {
 	addressChunks := strings.Split(s, ":")
@@ -109,8 +110,8 @@ func ParseOriginAddress(s string) (*OriginAddress, error) {
 	return &OriginAddress{Addr: addr, Port: port}, nil
 }
 
-var ErrInvalidIPAddressOrHost = errors.New("invalid IP address or hostname")
-var ErrNoIPAddressesFound = errors.New("could not resolve any IP address")
+var ErrInvalidIPAddressOrHost = ierrors.New("invalid IP address or hostname")
+var ErrNoIPAddressesFound = ierrors.New("could not resolve any IP address")
 
 // GetIPAddressesFromHost returns all resolvable IP addresses (*IPAddresses) from a host.
 // If it is an IP address this IP address will be returned as *IPAddresses.
@@ -142,11 +143,11 @@ func GetIPAddressesFromHost(hostname string) (*IPAddresses, error) {
 	// If it's no IP addr, resolve them
 	ipAddr, err := net.LookupHost(hostname)
 	if err != nil {
-		return nil, fmt.Errorf("%w: couldn't lookup IPs for %s", err, hostname)
+		return nil, ierrors.Wrapf(err, "couldn't lookup IPs for %s", hostname)
 	}
 
 	if len(ipAddr) == 0 {
-		return nil, fmt.Errorf("no IPs found for %s", hostname)
+		return nil, ierrors.Errorf("no IPs found for %s", hostname)
 	}
 
 	for _, addr := range ipAddr {

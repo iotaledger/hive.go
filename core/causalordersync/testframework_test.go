@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/debug"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
@@ -76,11 +76,11 @@ func NewTestFramework(test *testing.T, workers *workerpool.Group, opts ...option
 			},
 			WithReferenceValidator[uint64, MockedEntityID](func(entity, parent *MockedOrderedEntity) (err error) {
 				if entity.IsInvalid() {
-					return errors.Errorf("entity %s is invalid", entity.id.alias)
+					return ierrors.Errorf("entity %s is invalid", entity.id.alias)
 				}
 
 				if parent.IsInvalid() {
-					return errors.Errorf("parent %s of entity %s is invalid", parent.id.alias, entity.id.alias)
+					return ierrors.Errorf("parent %s of entity %s is invalid", parent.id.alias, entity.id.alias)
 				}
 
 				return checkReference[uint64, MockedEntityID](entity, parent)

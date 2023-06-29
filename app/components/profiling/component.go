@@ -2,17 +2,15 @@ package profiling
 
 import (
 	"net/http"
-	"time"
-
-	// import pprof.
 	//nolint:gosec // ToDo: register handlers ourselves.
 	_ "net/http/pprof"
 	"runtime"
+	"time"
 
-	"github.com/pkg/errors"
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func init() {
@@ -45,7 +43,7 @@ func run() error {
 			ReadHeaderTimeout: 3 * time.Second,
 		}
 
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.ListenAndServe(); err != nil && !ierrors.Is(err, http.ErrServerClosed) {
 			Component.LogWarnf("Stopped profiling server due to an error (%s)", err)
 		}
 	}()

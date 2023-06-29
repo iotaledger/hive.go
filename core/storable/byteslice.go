@@ -6,8 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -25,14 +24,14 @@ type ByteSlice struct {
 func NewByteSlice(fileName string, entrySize uint64, opts ...options.Option[ByteSlice]) (indexedFile *ByteSlice, err error) {
 	return options.Apply(new(ByteSlice), opts, func(i *ByteSlice) {
 		if i.fileHandle, err = os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0o666); err != nil {
-			err = errors.Wrap(err, "failed to open file")
+			err = ierrors.Wrap(err, "failed to open file")
 			return
 		}
 
 		i.entrySize = entrySize
 
 		if err = i.readHeader(); err != nil {
-			err = errors.Wrap(err, "failed to read header")
+			err = ierrors.Wrap(err, "failed to read header")
 			return
 		}
 	}), err
@@ -47,24 +46,24 @@ func (b *ByteSlice) Set(index uint64, entry []byte) (err error) {
 	defer b.Unlock()
 
 	if uint64(len(entry)) != b.entrySize {
-		return errors.Errorf("entry has wrong length %d vs %d", len(entry), b.entrySize)
+		return ierrors.Errorf("entry has wrong length %d vs %d", len(entry), b.entrySize)
 	}
 
 	if b.startOffset == SliceOffsetAuto {
 		b.startOffset = index
 
 		if err = b.writeHeader(); err != nil {
-			return errors.Wrap(err, "failed to write header")
+			return ierrors.Wrap(err, "failed to write header")
 		}
 	}
 
 	relativeIndex := index - b.startOffset
 	if relativeIndex < 0 {
-		return errors.Errorf("index %d is out of bounds", index)
+		return ierrors.Errorf("index %d is out of bounds", index)
 	}
 
 	if _, err = b.fileHandle.WriteAt(entry, int64(8+relativeIndex*b.entrySize)); err != nil {
-		return errors.Wrap(err, "failed to write entry")
+		return ierrors.Wrap(err, "failed to write entry")
 	}
 
 	return b.fileHandle.Sync()
@@ -73,12 +72,12 @@ func (b *ByteSlice) Set(index uint64, entry []byte) (err error) {
 func (b *ByteSlice) Get(index uint64) (entry []byte, err error) {
 	relativeIndex := index - b.startOffset
 	if relativeIndex < 0 {
-		return nil, errors.Errorf("index %d is out of bounds", index)
+		return nil, ierrors.Errorf("index %d is out of bounds", index)
 	}
 
 	entryBytes := make([]byte, b.entrySize)
 	if _, err = b.fileHandle.ReadAt(entryBytes, int64(8+relativeIndex*b.entrySize)); err != nil {
-		return nil, errors.Wrap(err, "failed to read entry")
+		return nil, ierrors.Wrap(err, "failed to read entry")
 	}
 
 	return entryBytes, nil
@@ -91,21 +90,21 @@ func (b *ByteSlice) Close() (err error) {
 func (b *ByteSlice) readHeader() (err error) {
 	startOffsetBytes := make([]byte, 8)
 	if _, err = b.fileHandle.ReadAt(startOffsetBytes, 0); err != nil {
-		if errors.Is(err, io.EOF) {
+		if ierrors.Is(err, io.EOF) {
 			return nil
 		}
 
-		return errors.Wrap(err, "failed to read start offset")
+		return ierrors.Wrap(err, "failed to read start offset")
 	}
 
 	var startOffset uint64
 	if _, err = serix.DefaultAPI.Decode(context.Background(), startOffsetBytes, &startOffset); err != nil {
-		return errors.Wrap(err, "failed to decode start offset")
+		return ierrors.Wrap(err, "failed to decode start offset")
 	}
 
 	if b.startOffset != 0 && b.startOffset != SliceOffsetAuto {
 		if startOffset != b.startOffset {
-			return errors.Errorf("start offset %d does not match existing offset %d in file", b.startOffset, startOffset)
+			return ierrors.Errorf("start offset %d does not match existing offset %d in file", b.startOffset, startOffset)
 		}
 	}
 
@@ -117,18 +116,18 @@ func (b *ByteSlice) readHeader() (err error) {
 func (b *ByteSlice) writeHeader() (err error) {
 	startOffsetBytes, err := serix.DefaultAPI.Encode(context.Background(), uint64(b.startOffset))
 	if err != nil {
-		return errors.Wrap(err, "failed to encode startOffset")
+		return ierrors.Wrap(err, "failed to encode startOffset")
 	}
 
 	entrySizeBytes, err := serix.DefaultAPI.Encode(context.Background(), uint64(b.entrySize))
 	if err != nil {
-		return errors.Wrap(err, "failed to encode entrySize")
+		return ierrors.Wrap(err, "failed to encode entrySize")
 	}
 
 	if _, err = b.fileHandle.WriteAt(startOffsetBytes, 0); err != nil {
-		return errors.Wrap(err, "failed to write startOffset")
+		return ierrors.Wrap(err, "failed to write startOffset")
 	} else if _, err = b.fileHandle.WriteAt(entrySizeBytes, 8); err != nil {
-		return errors.Wrap(err, "failed to write entrySize")
+		return ierrors.Wrap(err, "failed to write entrySize")
 	}
 
 	return b.fileHandle.Sync()

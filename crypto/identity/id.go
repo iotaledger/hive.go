@@ -4,15 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"math/rand"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/mr-tron/base58"
-	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
@@ -20,7 +18,7 @@ import (
 
 var (
 	// ErrParseBytesFailed is returned if information can not be parsed from a sequence of bytes.
-	ErrParseBytesFailed = errors.New("failed to parse bytes")
+	ErrParseBytesFailed = ierrors.New("failed to parse bytes")
 )
 
 // IDLength defines the length of an ID.
@@ -38,7 +36,7 @@ func NewID(key ed25519.PublicKey) ID {
 func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) {
 	idBytes, err := marshalUtil.ReadBytes(IDLength)
 	if err != nil {
-		err = xerrors.Errorf("failed to parse ID (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse ID (%v)", err)
 
 		return
 	}
@@ -56,7 +54,7 @@ func (id ID) Bytes() ([]byte, error) {
 // FromBytes decodes ID from bytes.
 func (id *ID) FromBytes(bytes []byte) (consumedBytes int, err error) {
 	if consumedBytes, err = serix.DefaultAPI.Decode(context.Background(), bytes, id); err != nil {
-		return consumedBytes, errors.Errorf("failed to decode node identity from bytes: %w", err)
+		return consumedBytes, ierrors.Wrap(err, "failed to decode node identity from bytes")
 	}
 
 	return
@@ -80,7 +78,7 @@ func (id ID) EncodeBase58() string {
 func DecodeIDBase58(s string) (ID, error) {
 	b, err := base58.Decode(s)
 	if err != nil {
-		return ID{}, errors.Wrap(err, "failed to decode ID from base58 string")
+		return ID{}, ierrors.Wrap(err, "failed to decode ID from base58 string")
 	}
 	var id ID
 	copy(id[:], b)
@@ -96,7 +94,7 @@ func ParseID(s string) (ID, error) {
 		return id, err
 	}
 	if len(b) != len(ID{}) {
-		return id, fmt.Errorf("invalid length: need %d hex chars", hex.EncodedLen(len(ID{})))
+		return id, ierrors.Errorf("invalid length: need %d hex chars", hex.EncodedLen(len(ID{})))
 	}
 	copy(id[:], b)
 

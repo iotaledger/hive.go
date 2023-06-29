@@ -3,9 +3,8 @@
 package rocksdb
 
 import (
-	"fmt"
-
 	"github.com/iotaledger/grocksdb"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
@@ -21,7 +20,7 @@ type RocksDB struct {
 func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 	if err := ioutils.CreateDirectory(directory, 0700); err != nil {
-		return nil, fmt.Errorf("could not create directory: %w", err)
+		return nil, ierrors.Wrapf(err, "could not create directory '%s'", directory)
 	}
 
 	dbOpts := dbOptions(options)
@@ -41,7 +40,7 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 		var err error
 		opts, err = grocksdb.GetOptionsFromString(opts, str)
 		if err != nil {
-			return nil, err
+			return nil, ierrors.Wrapf(err, "could not get options from string '%s'", str)
 		}
 	}
 
@@ -56,7 +55,7 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 	db, err := grocksdb.OpenDb(opts, directory)
 	if err != nil {
-		return nil, err
+		return nil, ierrors.Wrapf(err, "could not open new DB '%s'", directory)
 	}
 
 	return &RocksDB{

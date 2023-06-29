@@ -6,8 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -15,7 +14,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 	valueType := value.Type()
 	if opts.validation {
 		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
-			return 0, errors.Wrap(err, "pre-deserialization validation failed")
+			return 0, ierrors.Wrap(err, "pre-deserialization validation failed")
 		}
 	}
 	var deserializable Deserializable
@@ -41,17 +40,17 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if objectType := ts.ObjectType(); objectType != nil {
 			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
 			if err != nil {
-				return 0, errors.WithStack(err)
+				return 0, ierrors.WithStack(err)
 			}
 
 			deserializer := serializer.NewDeserializer(b)
 			deserializer.CheckTypePrefix(objectCode, typeDen, func(err error) error {
-				return errors.Wrap(err, "failed to check object type")
+				return ierrors.Wrap(err, "failed to check object type")
 			})
 			b = deserializer.RemainingBytes()
 			prefixBytesRead, err := deserializer.Done()
 			if err != nil {
-				return 0, errors.WithStack(err)
+				return 0, ierrors.WithStack(err)
 			}
 			bytesRead += prefixBytesRead
 		}
@@ -60,18 +59,18 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		bytesDecoded, err := deserializable.Decode(b)
 		bytesRead += bytesDecoded
 		if err != nil {
-			return 0, errors.Wrap(err, "object failed to deserialize itself")
+			return 0, ierrors.Wrap(err, "object failed to deserialize itself")
 		}
 	} else {
 		var err error
 		bytesRead, err = api.decodeBasedOnType(ctx, b, value, valueType, ts, opts)
 		if err != nil {
-			return 0, errors.WithStack(err)
+			return 0, ierrors.WithStack(err)
 		}
 	}
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return 0, errors.Wrap(err, "post-deserialization validation failed")
+			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
 		}
 	}
 
@@ -88,7 +87,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			addrValue := value.Addr()
 			deseri := serializer.NewDeserializer(b)
 			deseri.ReadUint256(addrValue.Interface().(**big.Int), func(err error) error {
-				return errors.Wrap(err, "failed to read big.Int from deserializer")
+				return ierrors.Wrap(err, "failed to read big.Int from deserializer")
 			})
 
 			return deseri.Done()
@@ -115,7 +114,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		if sliceValueType.AssignableTo(bytesType) {
 			deseri := serializer.NewDeserializer(b)
 			deseri.ReadBytesInPlace(sliceValue.Bytes(), func(err error) error {
-				return errors.Wrap(err, "failed to ready array of bytes from the deserializer")
+				return ierrors.Wrap(err, "failed to ready array of bytes from the deserializer")
 			})
 			fillArrayFromSlice(value, sliceValue)
 
@@ -128,7 +127,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 	case reflect.String:
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
-			return 0, errors.Errorf("can't deserialize 'string' type: no LengthPrefixType was provided")
+			return 0, ierrors.New("can't deserialize 'string' type: no LengthPrefixType was provided")
 		}
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
@@ -138,7 +137,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			addrValue.Interface().(*string),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return errors.Wrap(err, "failed to read string value from the deserializer")
+				return ierrors.Wrap(err, "failed to read string value from the deserializer")
 			}, minLen, maxLen)
 
 		return deseri.Done()
@@ -148,7 +147,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*bool)(nil)))
 		deseri.ReadBool(addrValue.Interface().(*bool), func(err error) error {
-			return errors.Wrap(err, "failed to read bool value from the deserializer")
+			return ierrors.Wrap(err, "failed to read bool value from the deserializer")
 		})
 
 		return deseri.Done()
@@ -161,14 +160,14 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		_, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
 		addrValue = addrValue.Convert(addrTypeToConvert)
 		deseri.ReadNum(addrValue.Interface(), func(err error) error {
-			return errors.Wrap(err, "failed to read number value from the serializer")
+			return ierrors.Wrap(err, "failed to read number value from the serializer")
 		})
 
 		return deseri.Done()
 	default:
 	}
 
-	return 0, errors.Errorf("can't decode: unsupported type %s", valueType)
+	return 0, ierrors.Errorf("can't decode: unsupported type %s", valueType)
 }
 
 func (api *API) decodeInterface(
@@ -176,21 +175,21 @@ func (api *API) decodeInterface(
 ) (int, error) {
 	iObjects := api.getInterfaceObjects(valueType)
 	if iObjects == nil {
-		return 0, errors.Errorf("interface %s hasn't been registered", valueType)
+		return 0, ierrors.Errorf("interface %s hasn't been registered", valueType)
 	}
 	d := serializer.NewDeserializer(b)
 	objectCode, err := d.GetObjectType(iObjects.typeDenotation)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, ierrors.WithStack(err)
 	}
 	objectType := iObjects.fromCodeToType[objectCode]
 	if objectType == nil {
-		return 0, errors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+		return 0, ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
 	}
 	objectValue := reflect.New(objectType).Elem()
 	bytesRead, err := api.decode(ctx, b, objectValue, ts, opts)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, ierrors.WithStack(err)
 	}
 	value.Set(objectValue)
 
@@ -203,7 +202,7 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		deseri.ReadTime(addrValue.Interface().(*time.Time), func(err error) error {
-			return errors.Wrap(err, "failed to read time from the deserializer")
+			return ierrors.Wrap(err, "failed to read time from the deserializer")
 		})
 
 		return deseri.Done()
@@ -212,14 +211,14 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 	if objectType := ts.ObjectType(); objectType != nil {
 		typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
 		if err != nil {
-			return 0, errors.WithStack(err)
+			return 0, ierrors.WithStack(err)
 		}
 		deseri.CheckTypePrefix(objectCode, typeDen, func(err error) error {
-			return errors.Wrap(err, "failed to check object type")
+			return ierrors.Wrap(err, "failed to check object type")
 		})
 	}
 	if err := api.decodeStructFields(ctx, deseri, value, valueType, opts); err != nil {
-		return 0, errors.WithStack(err)
+		return 0, ierrors.WithStack(err)
 	}
 
 	return deseri.Done()
@@ -230,7 +229,7 @@ func (api *API) decodeStructFields(
 ) error {
 	structFields, err := api.parseStructType(valueType)
 	if err != nil {
-		return errors.Wrapf(err, "can't parse struct type %s", valueType)
+		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
 	if len(structFields) == 0 {
 		return nil
@@ -243,7 +242,7 @@ func (api *API) decodeStructFields(
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
 					if sField.isUnexported {
-						return errors.Errorf(
+						return ierrors.Errorf(
 							"embedded field %s is a nil pointer, can't initialize because it's unexported",
 							sField.name,
 						)
@@ -254,7 +253,7 @@ func (api *API) decodeStructFields(
 				fieldType = fieldType.Elem()
 			}
 			if err := api.decodeStructFields(ctx, deseri, fieldValue, fieldType, opts); err != nil {
-				return errors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
+				return ierrors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
 			}
 
 			continue
@@ -263,7 +262,7 @@ func (api *API) decodeStructFields(
 		if sField.settings.isOptional {
 			payloadLength, err := deseri.ReadPayloadLength()
 			if err != nil {
-				return errors.Wrap(err, "can't read payload length from the deserializer")
+				return ierrors.Wrap(err, "can't read payload length from the deserializer")
 			}
 			if payloadLength == 0 {
 				continue
@@ -271,10 +270,10 @@ func (api *API) decodeStructFields(
 
 			bytesRead, err = api.decode(ctx, deseri.RemainingBytes(), fieldValue, sField.settings.ts, opts)
 			if err != nil {
-				return errors.Wrapf(err, "failed to deserialize optional struct field %s", sField.name)
+				return ierrors.Wrapf(err, "failed to deserialize optional struct field %s", sField.name)
 			}
 			if bytesRead != int(payloadLength) {
-				return errors.Wrapf(
+				return ierrors.Wrapf(
 					err,
 					"optional object length isn't equal to the amount of bytes read; length=%d, bytesRead=%d",
 					payloadLength, bytesRead,
@@ -283,11 +282,11 @@ func (api *API) decodeStructFields(
 		} else {
 			bytesRead, err = api.decode(ctx, deseri.RemainingBytes(), fieldValue, sField.settings.ts, opts)
 			if err != nil {
-				return errors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
+				return ierrors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
 			}
 		}
 		deseri.Skip(bytesRead, func(err error) error {
-			return errors.Wrap(err, "failed to skip amount of bytes read for the struct field")
+			return ierrors.Wrap(err, "failed to skip amount of bytes read for the struct field")
 		})
 	}
 
@@ -299,7 +298,7 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 	if valueType.AssignableTo(bytesType) {
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
-			return 0, errors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
+			return 0, ierrors.Errorf("no LengthPrefixType was provided for slice type %s", valueType)
 		}
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
@@ -309,7 +308,7 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 			addrValue.Interface().(*[]byte),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return errors.Wrap(err, "failed to read bytes from the deserializer")
+				return ierrors.Wrap(err, "failed to read bytes from the deserializer")
 			}, minLen, maxLen)
 
 		return deseri.Done()
@@ -318,7 +317,7 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		bytesRead, err = api.decode(ctx, b, elemValue, TypeSettings{}, opts)
 		if err != nil {
-			return 0, errors.WithStack(err)
+			return 0, ierrors.WithStack(err)
 		}
 		value.Set(reflect.Append(value, elemValue))
 
@@ -338,7 +337,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, opts)
 		if err != nil {
-			return 0, errors.WithStack(err)
+			return 0, ierrors.WithStack(err)
 		}
 		value.SetMapIndex(keyValue, elemValue)
 
@@ -352,7 +351,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeFunc, valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	lengthPrefixType, set := ts.LengthPrefixType()
 	if !set {
-		return 0, errors.Errorf("no LengthPrefixType was provided for type %s", valueType)
+		return 0, ierrors.Errorf("no LengthPrefixType was provided for type %s", valueType)
 	}
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
@@ -367,7 +366,7 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 		serializer.SeriLengthPrefixType(lengthPrefixType),
 		serializerArrayRulesPtr,
 		func(err error) error {
-			return errors.Wrapf(err, "failed to read sequence of objects %s from the deserialized", valueType)
+			return ierrors.Wrapf(err, "failed to read sequence of objects %s from the deserialized", valueType)
 		})
 
 	return deseri.Done()
@@ -376,12 +375,12 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
 	keyBytesRead, err := api.decode(ctx, b, key, TypeSettings{}, opts)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to decode map key of type %s", key.Type())
+		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
 	}
 	b = b[keyBytesRead:]
 	elemBytesRead, err := api.decode(ctx, b, val, TypeSettings{}, opts)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to decode map element of type %s", val.Type())
+		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
 	}
 
 	return keyBytesRead + elemBytesRead, nil

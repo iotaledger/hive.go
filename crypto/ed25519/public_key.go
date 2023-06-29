@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/mr-tron/base58"
-	"github.com/pkg/errors"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
@@ -18,7 +18,7 @@ type PublicKey [PublicKeySize]byte
 func PublicKeyFromString(s string) (publicKey PublicKey, err error) {
 	b, err := base58.Decode(s)
 	if err != nil {
-		return publicKey, errors.Wrapf(err, "failed to parse public key %s from base58 string", s)
+		return publicKey, ierrors.Wrapf(err, "failed to parse public key %s from base58 string", s)
 	}
 	publicKey, _, err = PublicKeyFromBytes(b)
 
@@ -42,17 +42,17 @@ func NativeToPublicKeys(nativePubKeys []ed25519.PublicKey) (result []PublicKey) 
 // and verifies whether sig is a valid signature of data by pub.
 func RecoverKey(key, data, sig []byte) (result PublicKey, err error) {
 	if l := len(key); l != PublicKeySize {
-		err = errors.Errorf("invalid key length: %d, need %d", l, PublicKeySize)
+		err = ierrors.Errorf("invalid key length: %d, need %d", l, PublicKeySize)
 
 		return
 	}
 	if l := len(sig); l != SignatureSize {
-		err = errors.Errorf("invalid signature length: %d, need %d", l, SignatureSize)
+		err = ierrors.Errorf("invalid signature length: %d, need %d", l, SignatureSize)
 
 		return
 	}
 	if !Verify(key, data, sig) {
-		err = errors.New("invalid signature")
+		err = ierrors.New("invalid signature")
 
 		return
 	}
@@ -118,7 +118,7 @@ func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
 	}
 	pk, err := PublicKeyFromString(s)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse public key from JSON")
+		return ierrors.Wrap(err, "failed to parse public key from JSON")
 	}
 	*publicKey = pk
 

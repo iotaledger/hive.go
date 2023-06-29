@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/emirpasic/gods/trees/redblacktree"
-	"golang.org/x/xerrors"
 
 	"github.com/iotaledger/hive.go/constraints"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
@@ -278,32 +278,32 @@ func (t ThresholdMap[K, V]) Encode() ([]byte, error) {
 	seri := serializer.NewSerializer()
 
 	seri.WriteBool(bool(t.mode), func(err error) error {
-		return xerrors.Errorf("failed to write mode: %w", err)
+		return ierrors.Wrap(err, "failed to write mode")
 	})
 
 	seri.WriteNum(uint32(t.tree.Size()), func(err error) error {
-		return xerrors.Errorf("failed to write ThresholdMap size to serializer: %w", err)
+		return ierrors.Wrap(err, "failed to write ThresholdMap size to serializer")
 	})
 
 	t.ForEach(func(elem *Element[K, V]) bool {
 		keyBytes, err := serix.DefaultAPI.Encode(context.Background(), elem.Key())
 		if err != nil {
 			seri.AbortIf(func(_ error) error {
-				return xerrors.Errorf("failed to encode ThresholdMap key: %w", err)
+				return ierrors.Wrap(err, "failed to encode ThresholdMap key")
 			})
 		}
 		seri.WriteBytes(keyBytes, func(err error) error {
-			return xerrors.Errorf("failed to write ThresholdMap key to serializer: %w", err)
+			return ierrors.Wrap(err, "failed to write ThresholdMap key to serializer")
 		})
 
 		valBytes, err := serix.DefaultAPI.Encode(context.Background(), elem.Value())
 		if err != nil {
 			seri.AbortIf(func(_ error) error {
-				return xerrors.Errorf("failed to serialize ThresholdMap value: %w", err)
+				return ierrors.Wrap(err, "failed to serialize ThresholdMap value")
 			})
 		}
 		seri.WriteBytes(valBytes, func(err error) error {
-			return xerrors.Errorf("failed to write ThresholdMap value to serializer", err)
+			return ierrors.Wrap(err, "failed to write ThresholdMap value to serializer")
 		})
 
 		return true
@@ -317,7 +317,7 @@ func (t *ThresholdMap[K, V]) Decode(b []byte) (bytesRead int, err error) {
 	var mode Mode
 	bytesRead, err = serix.DefaultAPI.Decode(context.Background(), b, &mode, serix.WithValidation())
 	if err != nil {
-		return bytesRead, xerrors.Errorf("failed to decode mode: %w", err)
+		return bytesRead, ierrors.Wrap(err, "failed to decode mode")
 	}
 
 	t.Init(mode)
