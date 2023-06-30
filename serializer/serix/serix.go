@@ -628,7 +628,7 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 
 // RegisterTypeSettings registers settings for a particular type obj.
 // It's better to provide obj as a value, not a pointer,
-// that way serix will be able to get the type settings for both values and pointers during Encode/Decode via dereferencing
+// that way serix will be able to get the type settings for both values and pointers during Encode/Decode via de-referencing
 // The settings provided via registration are considered global and default ones,
 // they can be overridden by type settings parsed from struct tags
 // or by type settings provided via option to the Encode/Decode methods.

@@ -11,18 +11,31 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-type Map[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr serializer.MarshalablePtr[V]] struct {
+type ObjectToBytes[O any] func(O) ([]byte, error)
+type BytesToObject[O any] func([]byte) (object O, consumed int, err error)
+
+type Map[K, V any] struct {
 	rawKeysStore kvstore.KVStore
 	tree         *smt.SparseMerkleTree
 	root         *typedkey.Bytes
 	mutex        sync.RWMutex
+
+	kToBytes ObjectToBytes[K]
+	bytesToK BytesToObject[K]
+	vToBytes ObjectToBytes[V]
+	bytesToV BytesToObject[V]
 }
 
-func NewMap[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr serializer.MarshalablePtr[V]](store kvstore.KVStore) (newMap *Map[K, V, KPtr, VPtr]) {
-	newMap = &Map[K, V, KPtr, VPtr]{
+func NewMap[K, V any](
+	store kvstore.KVStore,
+	kToBytes ObjectToBytes[K],
+	bytesToK BytesToObject[K],
+	vToBytes ObjectToBytes[V],
+	bytesToV BytesToObject[V],
+) (newMap *Map[K, V]) {
+	newMap = &Map[K, V]{
 		rawKeysStore: lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixRawKeysStorage})),
 		tree: smt.NewSparseMerkleTree(
 			lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixSMTKeysStorage})),
@@ -30,6 +43,11 @@ func NewMap[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr seria
 			lo.PanicOnErr(blake2b.New256(nil)),
 		),
 		root: typedkey.NewBytes(store, PrefixRootKey),
+
+		kToBytes: kToBytes,
+		bytesToK: bytesToK,
+		vToBytes: vToBytes,
+		bytesToV: bytesToV,
 	}
 
 	if root := newMap.root.Get(); len(root) != 0 {
@@ -39,12 +57,12 @@ func NewMap[K, V serializer.Byter, KPtr serializer.MarshalablePtr[K], VPtr seria
 	return
 }
 
-func (m *Map[K, V, KPtr, VPtr]) IsNew() bool {
+func (m *Map[K, V]) IsNew() bool {
 	return len(m.root.Get()) == 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
-func (m *Map[K, V, KPtr, VPtr]) Root() (root types.Identifier) {
+func (m *Map[K, V]) Root() (root types.Identifier) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -54,16 +72,16 @@ func (m *Map[K, V, KPtr, VPtr]) Root() (root types.Identifier) {
 }
 
 // Set sets the output to unspent outputs set.
-func (m *Map[K, V, KPtr, VPtr]) Set(key K, value VPtr) {
+func (m *Map[K, V]) Set(key K, value V) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	valueBytes := lo.PanicOnErr(value.Bytes())
+	valueBytes := lo.PanicOnErr(m.vToBytes(value))
 	if len(valueBytes) == 0 {
 		panic("value cannot be empty")
 	}
 
-	keyBytes := lo.PanicOnErr(key.Bytes())
+	keyBytes := lo.PanicOnErr(m.kToBytes(key))
 
 	m.root.Set(lo.PanicOnErr(m.tree.Update(keyBytes, valueBytes)))
 
@@ -73,11 +91,11 @@ func (m *Map[K, V, KPtr, VPtr]) Set(key K, value VPtr) {
 }
 
 // Delete removes the key from the map.
-func (m *Map[K, V, KPtr, VPtr]) Delete(key K) (deleted bool) {
+func (m *Map[K, V]) Delete(key K) (deleted bool) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes := lo.PanicOnErr(key.Bytes())
+	keyBytes := lo.PanicOnErr(m.kToBytes(key))
 	if deleted = m.has(keyBytes); !deleted {
 		return
 	}
@@ -92,41 +110,44 @@ func (m *Map[K, V, KPtr, VPtr]) Delete(key K) (deleted bool) {
 }
 
 // Has returns true if the key is in the set.
-func (m *Map[K, V, KPtr, VPtr]) Has(key K) (has bool) {
+func (m *Map[K, V]) Has(key K) (has bool) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	return m.has(lo.PanicOnErr(key.Bytes()))
+	return m.has(lo.PanicOnErr(m.kToBytes(key)))
 }
 
 // Get returns the value for the given key.
-func (m *Map[K, V, KPtr, VPtr]) Get(key K) (value VPtr, exists bool) {
+func (m *Map[K, V]) Get(key K) (value V, exists bool) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	valueBytes, err := m.tree.Get(lo.PanicOnErr(key.Bytes()))
+	valueBytes, err := m.tree.Get(lo.PanicOnErr(m.kToBytes(key)))
 	if err != nil {
 		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
-			return nil, false
+			return value, false
 		}
 
 		panic(err)
 	}
 
 	if len(valueBytes) == 0 {
-		return nil, false
+		return value, false
 	}
 
-	value = new(V)
-	if lo.PanicOnErr(value.FromBytes(valueBytes)) != len(valueBytes) {
+	v, consumed, err := m.bytesToV(valueBytes)
+	if err != nil {
+		panic(err)
+	}
+	if consumed != len(valueBytes) {
 		panic("failed to parse entire value")
 	}
 
-	return value, true
+	return v, true
 }
 
 // Stream streams all the keys and values.
-func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (err error) {
+func (m *Map[K, V]) Stream(callback func(key K, value V) bool) (err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -137,19 +158,19 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 			return false
 		}
 
-		var kPtr KPtr = new(K)
-		if _, keyErr := kPtr.FromBytes(key); keyErr != nil {
+		k, _, keyErr := m.bytesToK(key)
+		if keyErr != nil {
 			err = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
 			return false
 		}
 
-		var valuePtr VPtr = new(V)
-		if _, valueErr := valuePtr.FromBytes(value); valueErr != nil {
+		v, _, valueErr := m.bytesToV(value)
+		if valueErr != nil {
 			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", value)
 			return false
 		}
 
-		return callback(*kPtr, valuePtr)
+		return callback(k, v)
 	}); iterationErr != nil {
 		err = ierrors.Wrap(iterationErr, "failed to iterate over raw keys")
 	}
@@ -158,7 +179,7 @@ func (m *Map[K, V, KPtr, VPtr]) Stream(callback func(key K, value VPtr) bool) (e
 }
 
 // has returns true if the key is in the map.
-func (m *Map[K, V, KPtr, VPtr]) has(keyBytes []byte) (has bool) {
+func (m *Map[K, V]) has(keyBytes []byte) (has bool) {
 	has, err := m.tree.Has(keyBytes)
 	if err != nil {
 		if ierrors.Is(err, kvstore.ErrKeyNotFound) {

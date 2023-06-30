@@ -190,6 +190,10 @@ func PanicOnErr[T any](result T, err error) T {
 	return result
 }
 
+func DropCount[T any](result T, _ int, err error) (T, error) {
+	return result, err
+}
+
 // Max returns the maximum value of the collection.
 func Max[T constraints.Ordered](collection ...T) T {
 	var maxElem T

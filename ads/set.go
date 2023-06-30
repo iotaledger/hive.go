@@ -11,7 +11,6 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 const (
@@ -25,25 +24,34 @@ const (
 )
 
 // Set is a sparse merkle tree based set.
-type Set[K any, KPtr serializer.MarshalablePtr[K]] struct {
+type Set[K any] struct {
 	rawKeysStore kvstore.KVStore
 	tree         *smt.SparseMerkleTree
 	root         *typedkey.Bytes
 	size         *typedkey.Number[uint64]
 	mutex        sync.Mutex
+
+	kToBytes ObjectToBytes[K]
+	bytesToK BytesToObject[K]
 }
 
 // NewSet creates a new sparse merkle tree based set.
-func NewSet[K any, KPtr serializer.MarshalablePtr[K]](store kvstore.KVStore) (newSet *Set[K, KPtr]) {
-	newSet = &Set[K, KPtr]{
+func NewSet[K any](
+	store kvstore.KVStore,
+	kToBytes ObjectToBytes[K],
+	bytesToK BytesToObject[K],
+) (newSet *Set[K]) {
+	newSet = &Set[K]{
 		rawKeysStore: lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixRawKeysStorage})),
 		tree: smt.NewSparseMerkleTree(
 			lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixSMTKeysStorage})),
 			lo.PanicOnErr(store.WithExtendedRealm([]byte{PrefixSMTValuesStorage})),
 			lo.PanicOnErr(blake2b.New256(nil)),
 		),
-		root: typedkey.NewBytes(store, PrefixRootKey),
-		size: typedkey.NewNumber[uint64](store, PrefixSizeKey),
+		root:     typedkey.NewBytes(store, PrefixRootKey),
+		size:     typedkey.NewNumber[uint64](store, PrefixSizeKey),
+		kToBytes: kToBytes,
+		bytesToK: bytesToK,
 	}
 
 	if root := newSet.root.Get(); len(root) != 0 {
@@ -53,12 +61,12 @@ func NewSet[K any, KPtr serializer.MarshalablePtr[K]](store kvstore.KVStore) (ne
 	return
 }
 
-func (s *Set[K, KPtr]) IsNew() bool {
+func (s *Set[K]) IsNew() bool {
 	return len(s.root.Get()) == 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
-func (s *Set[K, KPtr]) Root() (root types.Identifier) {
+func (s *Set[K]) Root() (root types.Identifier) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -68,11 +76,11 @@ func (s *Set[K, KPtr]) Root() (root types.Identifier) {
 }
 
 // Add adds the key to the set.
-func (s *Set[K, KPtr]) Add(key K) {
+func (s *Set[K]) Add(key K) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	keyBytes := lo.PanicOnErr(KPtr(&key).Bytes())
+	keyBytes := lo.PanicOnErr(s.kToBytes(key))
 	if s.has(keyBytes) {
 		return
 	}
@@ -86,11 +94,11 @@ func (s *Set[K, KPtr]) Add(key K) {
 }
 
 // Delete removes the key from the set.
-func (s *Set[K, KPtr]) Delete(key K) (deleted bool) {
+func (s *Set[K]) Delete(key K) (deleted bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	keyBytes := lo.PanicOnErr(KPtr(&key).Bytes())
+	keyBytes := lo.PanicOnErr(s.kToBytes(key))
 	if deleted = s.has(keyBytes); !deleted {
 		return
 	}
@@ -106,40 +114,41 @@ func (s *Set[K, KPtr]) Delete(key K) (deleted bool) {
 }
 
 // Has returns true if the key is in the set.
-func (s *Set[K, KPtr]) Has(key K) (has bool) {
+func (s *Set[K]) Has(key K) (has bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return s.has(lo.PanicOnErr(KPtr(&key).Bytes()))
+	return s.has(lo.PanicOnErr(s.kToBytes(key)))
 }
 
 // Stream iterates over the set and calls the callback for each element.
-func (s *Set[K, KPtr]) Stream(callback func(key K) bool) (err error) {
+func (s *Set[K]) Stream(callback func(key K) bool) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	var innerErr error
 	if iterationErr := s.rawKeysStore.Iterate([]byte{}, func(key kvstore.Key, _ kvstore.Value) bool {
-		var kPtr KPtr = new(K)
-		if _, keyErr := kPtr.FromBytes(key); keyErr != nil {
-			err = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
+		k, _, keyErr := s.bytesToK(key)
+		if keyErr != nil {
+			innerErr = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
 			return false
 		}
 
-		return callback(*kPtr)
+		return callback(k)
 	}); iterationErr != nil {
-		err = ierrors.Wrap(iterationErr, "failed to iterate over set members")
+		return ierrors.Wrap(iterationErr, "failed to iterate over set members")
 	}
 
-	return
+	return innerErr
 }
 
 // Size returns the number of elements in the set.
-func (s *Set[K, KPtr]) Size() (size int) {
+func (s *Set[K]) Size() (size int) {
 	return int(s.size.Get())
 }
 
 // has returns true if the key is in the set.
-func (s *Set[K, KPtr]) has(key []byte) (has bool) {
+func (s *Set[K]) has(key []byte) (has bool) {
 	has, err := s.tree.Has(key)
 	if err != nil {
 		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
