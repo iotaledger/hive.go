@@ -6,12 +6,12 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20230627193317-c807f60529a3
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230629182909-fdeb6fc1f475
-	github.com/iotaledger/hive.go/ds v0.0.0-20230629182909-fdeb6fc1f475
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20230629182909-fdeb6fc1f475
-	github.com/iotaledger/hive.go/lo v0.0.0-20230629182909-fdeb6fc1f475
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230629182909-fdeb6fc1f475
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230629182909-fdeb6fc1f475
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230630091739-ffba86d339c0
+	github.com/iotaledger/hive.go/ds v0.0.0-20230630091739-ffba86d339c0
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20230630091739-ffba86d339c0
+	github.com/iotaledger/hive.go/lo v0.0.0-20230630091739-ffba86d339c0
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230630091739-ffba86d339c0
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230630091739-ffba86d339c0
 	github.com/stretchr/testify v1.8.4
 )
 
@@ -35,7 +35,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230629182909-fdeb6fc1f475 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230630091739-ffba86d339c0 // indirect
 	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
