@@ -4,9 +4,10 @@ import (
 	"crypto/rand"
 	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func init() {
@@ -15,7 +16,7 @@ func init() {
 
 var (
 	// ErrBase58DecodeFailed is returned if a base58 encoded string can not be decoded.
-	ErrBase58DecodeFailed = errors.New("failed to decode base58 encoded string")
+	ErrBase58DecodeFailed = ierrors.New("failed to decode base58 encoded string")
 )
 
 // region Identifier ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,11 +40,11 @@ func (t *Identifier) FromRandomness() (err error) {
 func (t *Identifier) FromBase58(base58String string) (err error) {
 	decodedBytes, err := base58.Decode(base58String)
 	if err != nil {
-		return errors.Errorf("error while decoding base58 encoded Identifier (%v): %w", err, ErrBase58DecodeFailed)
+		return ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Identifier (%v)", err)
 	}
 
 	if _, err = t.Decode(decodedBytes); err != nil {
-		return errors.Errorf("failed to parse Identifier from bytes: %w", err)
+		return ierrors.Wrap(err, "failed to parse Identifier from bytes")
 	}
 
 	return nil
@@ -81,7 +82,7 @@ func (t Identifier) UnregisterAlias() {
 // Decode decodes the Identifier from a sequence of bytes.
 func (t *Identifier) Decode(data []byte) (consumed int, err error) {
 	if len(data) < IdentifierLength {
-		return 0, errors.New("not enough data to decode Identifier")
+		return 0, ierrors.New("not enough data to decode Identifier")
 	}
 	copy(t[:], data[:IdentifierLength])
 

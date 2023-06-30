@@ -1,8 +1,7 @@
 package storable
 
 import (
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -25,7 +24,7 @@ func NewSlice[A any, B serializer.MarshalablePtr[A]](fileName string, entrySize 
 func (s *Slice[A, B]) Set(index uint64, entry B) (err error) {
 	serializedEntry, err := entry.Bytes()
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize entry")
+		return ierrors.Wrap(err, "failed to serialize entry")
 	}
 
 	return s.byteSlice.Set(index, serializedEntry)
@@ -39,7 +38,7 @@ func (s *Slice[A, B]) Get(index uint64) (entry B, err error) {
 
 	var newEntry B = new(A)
 	if _, err = newEntry.FromBytes(entryBytes); err != nil {
-		return entry, errors.Wrap(err, "failed to deserialize entry")
+		return entry, ierrors.Wrap(err, "failed to deserialize entry")
 	}
 	entry = newEntry
 

@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
@@ -73,7 +73,7 @@ func (s *badgerStore) getIterFuncs(it *badger.Iterator, keyPrefix []byte, iterDi
 			// we need to search the first item after the prefix
 			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
 			if prefixUpperBound == nil {
-				return nil, nil, nil, errors.New("no upper bound for prefix")
+				return nil, nil, nil, ierrors.New("no upper bound for prefix")
 			}
 			startFunc = func() {
 				it.Seek(prefixUpperBound)
@@ -183,7 +183,7 @@ func (s *badgerStore) Get(key kvstore.Key) (kvstore.Value, error) {
 
 		return err
 	})
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	if ierrors.Is(err, badger.ErrKeyNotFound) {
 		return nil, kvstore.ErrKeyNotFound
 	}
 
@@ -211,7 +211,7 @@ func (s *badgerStore) Has(key kvstore.Key) (bool, error) {
 		return err
 	})
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if ierrors.Is(err, badger.ErrKeyNotFound) {
 			return false, nil
 		}
 
@@ -229,7 +229,7 @@ func (s *badgerStore) Delete(key kvstore.Key) error {
 	err := s.instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete(byteutils.ConcatBytes(s.dbPrefix, key))
 	})
-	if err != nil && errors.Is(err, badger.ErrKeyNotFound) {
+	if err != nil && ierrors.Is(err, badger.ErrKeyNotFound) {
 		return kvstore.ErrKeyNotFound
 	}
 

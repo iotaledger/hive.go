@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,15 +15,16 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	flag "github.com/spf13/pflag"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 	reflectutils "github.com/iotaledger/hive.go/runtime/reflect"
 )
 
 var (
 	// ErrConfigDoesNotExist is returned if the config file is unknown.
-	ErrConfigDoesNotExist = errors.New("config does not exist")
+	ErrConfigDoesNotExist = ierrors.New("config does not exist")
 	// ErrUnknownConfigFormat is returned if the format of the config file is unknown.
-	ErrUnknownConfigFormat = errors.New("unknown config file format")
+	ErrUnknownConfigFormat = ierrors.New("unknown config file format")
 )
 
 // Configuration holds config parameters from several sources (file, env vars, flags).
@@ -87,7 +87,7 @@ func (c *Configuration) LoadFile(filePath string) error {
 		return os.ErrNotExist
 	}
 	if isDir {
-		return fmt.Errorf("given path is a directory instead of a file %s", filePath)
+		return ierrors.Errorf("given path is a directory instead of a file %s", filePath)
 	}
 
 	var parser koanf.Parser
@@ -151,12 +151,12 @@ func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSetti
 
 	data, err := parser.Marshal(settings)
 	if err != nil {
-		return fmt.Errorf("unable to marshal config file: %w", err)
+		return ierrors.Wrap(err, "unable to marshal config file")
 	}
 
 	//nolint:gosec // access rights
 	if err := os.WriteFile(filePath, data, perm); err != nil {
-		return fmt.Errorf("unable to save config file: %w", err)
+		return ierrors.Wrap(err, "unable to save config file")
 	}
 
 	return nil

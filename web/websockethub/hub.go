@@ -2,19 +2,19 @@ package websockethub
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"sync/atomic"
 
 	"nhooyr.io/websocket"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/event"
 )
 
 var (
-	ErrWebsocketServerUnavailable = errors.New("websocket server unavailable")
-	ErrClientDisconnected         = errors.New("client was disconnected")
+	ErrWebsocketServerUnavailable = ierrors.New("websocket server unavailable")
+	ErrClientDisconnected         = ierrors.New("client was disconnected")
 )
 
 type ClientConnectionEvent struct {

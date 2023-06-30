@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v2"
-	"github.com/pkg/errors"
 
 	"github.com/iotaledger/hive.go/autopeering/mana"
 	"github.com/iotaledger/hive.go/autopeering/peer"
 	"github.com/iotaledger/hive.go/autopeering/salt"
 	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
@@ -175,13 +175,13 @@ func (m *manager) blockNeighbor(id identity.ID, ttl ...time.Duration) {
 }
 
 func (m *manager) unblockNeighbor(id identity.ID) {
-	if err := m.blocklist.Remove(id.EncodeBase58()); err != nil && !errors.Is(err, ttlcache.ErrNotFound) {
+	if err := m.blocklist.Remove(id.EncodeBase58()); err != nil && !ierrors.Is(err, ttlcache.ErrNotFound) {
 		m.log.Warnw("Failed to remove neighbor from blocklist cache", "err", err)
 	}
 
 	// we need to remove the neighbor from the skiplist as well,
 	// because they are added to the skiplist at first connection attempt if they were blocked.
-	if err := m.skiplist.Remove(id.EncodeBase58()); err != nil && !errors.Is(err, ttlcache.ErrNotFound) {
+	if err := m.skiplist.Remove(id.EncodeBase58()); err != nil && !ierrors.Is(err, ttlcache.ErrNotFound) {
 		m.log.Warnw("Failed to remove neighbor from skiplist cache", "err", err)
 	}
 }
@@ -541,7 +541,7 @@ func (m *manager) triggerPeeringEvent(isOut bool, p *peer.Peer, status bool) {
 
 func (m *manager) isInBlocklist(id identity.ID) bool {
 	if _, err := m.blocklist.Get(id.EncodeBase58()); err != nil {
-		if !errors.Is(err, ttlcache.ErrNotFound) {
+		if !ierrors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from blocklist cache",
 				"peerId", id)
 		}
@@ -554,7 +554,7 @@ func (m *manager) isInBlocklist(id identity.ID) bool {
 
 func (m *manager) isInSkiplist(id identity.ID) bool {
 	if _, err := m.skiplist.Get(id.EncodeBase58()); err != nil {
-		if !errors.Is(err, ttlcache.ErrNotFound) {
+		if !ierrors.Is(err, ttlcache.ErrNotFound) {
 			m.log.Warnw("Failed to retrieve record for peer from skiplist cache",
 				"peerId", id)
 		}

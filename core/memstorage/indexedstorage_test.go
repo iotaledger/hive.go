@@ -3,9 +3,10 @@ package memstorage_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/core/memstorage"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
-	"github.com/stretchr/testify/require"
 )
 
 type index uint64

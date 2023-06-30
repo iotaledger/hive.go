@@ -1,10 +1,10 @@
 package syncutils
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // DAGMutex is a multi-entity reader/writer mutual exclusion lock that allows for starvation.
@@ -140,7 +140,7 @@ func (d *DAGMutex[T]) unregisterMutex(id T) (mutex *StarvingMutex) {
 
 	mutex, mutexExists := d.mutexes.Get(id)
 	if !mutexExists {
-		panic(fmt.Errorf("called Unlock or RUnlock too often for entity with %v", id))
+		panic(ierrors.Errorf("called Unlock or RUnlock too often for entity with %v", id))
 	}
 	count, _ := d.consumerCounter.Get(id)
 	d.consumerCounter.Set(id, count-1)

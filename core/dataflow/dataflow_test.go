@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func Benchmark(b *testing.B) {
@@ -19,7 +20,7 @@ func Benchmark(b *testing.B) {
 	}
 
 	z := func(param int, next Next[int]) error {
-		return errors.Errorf("FAILED")
+		return ierrors.New("FAILED")
 	}
 
 	dataFlow1 := New[int](x, y, z)
@@ -41,7 +42,7 @@ func Test(t *testing.T) {
 	}
 
 	z := func(param int, next Next[int]) error {
-		return errors.Errorf("FAILED")
+		return ierrors.New("FAILED")
 	}
 
 	result := 0

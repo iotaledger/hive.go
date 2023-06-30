@@ -2,8 +2,9 @@ package kvstore
 
 import (
 	"encoding/binary"
-	"errors"
 	"sync"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // Sequence represents a simple integer sequence backed by a KVStore.
@@ -72,7 +73,7 @@ func (seq *Sequence) Release() error {
 func (seq *Sequence) update() error {
 	value, err := seq.store.Get(seq.key)
 	switch {
-	case errors.Is(err, ErrKeyNotFound):
+	case ierrors.Is(err, ErrKeyNotFound):
 		seq.next = 0
 	case err != nil:
 		return err

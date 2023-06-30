@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/iotaledger/hive.go/core/storable"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/core/storable"
 )
 
 func TestByteSlice(t *testing.T) {

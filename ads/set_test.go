@@ -3,9 +3,10 @@ package ads_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/iotaledger/hive.go/ads"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSet(t *testing.T) {

@@ -3,13 +3,13 @@ package peer
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"math/rand"
 	"net"
 	"time"
 
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/lo"
 )
@@ -196,7 +196,7 @@ func (db *DB) expireNodes() error {
 // LocalPrivateKey returns the private key stored in the database or creates a new one.
 func (db *DB) LocalPrivateKey() (privateKey ed25519.PrivateKey, err error) {
 	value, err := db.store.Get(localFieldKey(dbLocalKey))
-	if errors.Is(err, kvstore.ErrKeyNotFound) {
+	if ierrors.Is(err, kvstore.ErrKeyNotFound) {
 		key, genErr := ed25519.GeneratePrivateKey()
 		if genErr == nil {
 			err = db.UpdateLocalPrivateKey(key)

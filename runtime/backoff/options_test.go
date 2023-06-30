@@ -2,12 +2,13 @@ package backoff
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func TestMaxRetries(t *testing.T) {
@@ -21,7 +22,7 @@ func TestMaxRetries(t *testing.T) {
 
 		return errTest
 	})
-	assert.True(t, errors.Is(err, errTest))
+	assert.True(t, ierrors.Is(err, errTest))
 	assert.EqualValues(t, retries+1, count)
 }
 
@@ -37,7 +38,7 @@ func TestMaxRetriesNew(t *testing.T) {
 
 			return errTest
 		})
-		assert.True(t, errors.Is(err, errTest))
+		assert.True(t, ierrors.Is(err, errTest))
 		assert.EqualValues(t, retries+1, count)
 	}
 }
@@ -59,7 +60,7 @@ func TestMaxRetriesParallel(t *testing.T) {
 
 			return errTest
 		})
-		assert.True(t, errors.Is(err, errTest))
+		assert.True(t, ierrors.Is(err, errTest))
 		assert.EqualValues(t, retries+1, count)
 	}
 
@@ -107,7 +108,7 @@ func TestTimeout(t *testing.T) {
 
 		return errTest
 	})
-	assert.True(t, errors.Is(err, errTest))
+	assert.True(t, ierrors.Is(err, errTest))
 	assert.GreaterOrEqual(t, time.Now().UnixNano(), timeout.UnixNano())
 }
 
@@ -121,7 +122,7 @@ func TestCancel(t *testing.T) {
 		err := Retry(p, func() error {
 			return errTest
 		})
-		assert.True(t, errors.Is(err, errTest))
+		assert.True(t, ierrors.Is(err, errTest))
 		stopped <- struct{}{}
 	}()
 	time.Sleep(10 * time.Millisecond)

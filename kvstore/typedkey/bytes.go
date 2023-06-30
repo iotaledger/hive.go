@@ -3,8 +3,7 @@ package typedkey
 import (
 	"sync"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 )
 
@@ -54,7 +53,7 @@ func (b *Bytes) Set(value []byte) {
 
 func (b *Bytes) load() (loadedValue []byte) {
 	loadedValue, err := b.store.Get(b.key)
-	if err != nil && !errors.Is(err, kvstore.ErrKeyNotFound) {
+	if err != nil && !ierrors.Is(err, kvstore.ErrKeyNotFound) {
 		panic(err)
 	}
 

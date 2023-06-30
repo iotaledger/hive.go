@@ -2,7 +2,6 @@
 package serializer_test
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	ErrUnknownDummyType = errors.New("unknown example type")
+	ErrUnknownDummyType = ierrors.New("unknown example type")
 
 	dummyTypeArrayRules = &serializer.ArrayRules{
 		Guards: serializer.SerializableGuard{

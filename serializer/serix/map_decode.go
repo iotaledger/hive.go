@@ -2,13 +2,12 @@ package serix
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strconv"
 	"time"
 	"unicode/utf8"
 
-	"github.com/pkg/errors"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, ts TypeSettings, opts *options) (err error) {
@@ -28,11 +27,11 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 	if deserializable != nil {
 		err = deserializable.DecodeJSON(mapVal)
 		if err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 	} else {
 		if err = api.mapDecodeBasedOnType(ctx, mapVal, value, value.Type(), ts, opts); err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 	}
 	return nil
@@ -47,11 +46,11 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		if valueType == bigIntPtrType {
 			bigIntHexStr, ok := mapVal.(string)
 			if !ok {
-				return fmt.Errorf("non string value in map when decoding a big.Int, got %T instead", mapVal)
+				return ierrors.Errorf("non string value in map when decoding a big.Int, got %T instead", mapVal)
 			}
 			bigInt, err := DecodeUint256(bigIntHexStr)
 			if err != nil {
-				return errors.Wrap(err, "failed to read big.Int from map")
+				return ierrors.Wrap(err, "failed to read big.Int from map")
 			}
 			value.Addr().Elem().Set(reflect.ValueOf(bigInt))
 
@@ -86,7 +85,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			if sliceValueType.AssignableTo(bytesType) {
 				innerTS, ok := api.getTypeSettings(valueType)
 				if !ok {
-					return errors.Errorf("missing type settings for interface %s", valueType)
+					return ierrors.Errorf("missing type settings for interface %s", valueType)
 				}
 
 				mapKey := mapSliceArrayDefaultKey
@@ -97,7 +96,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
 				byteSlice, err := DecodeHex(fieldValStr)
 				if err != nil {
-					return errors.Wrap(err, "failed to read byte slice from map")
+					return ierrors.Wrap(err, "failed to read byte slice from map")
 				}
 				copy(sliceValue.Bytes(), byteSlice)
 				fillArrayFromSlice(value.Elem(), sliceValue)
@@ -120,7 +119,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		if sliceValueType.AssignableTo(bytesType) {
 			byteSlice, err := DecodeHex(mapVal.(string))
 			if err != nil {
-				return errors.Wrap(err, "failed to read byte slice from map")
+				return ierrors.Wrap(err, "failed to read byte slice from map")
 			}
 			copy(sliceValue.Bytes(), byteSlice)
 			fillArrayFromSlice(value, sliceValue)
@@ -134,7 +133,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	case reflect.String:
 		str, ok := mapVal.(string)
 		if !ok {
-			return fmt.Errorf("non string value for string field")
+			return ierrors.New("non string value for string field")
 		}
 		if !utf8.ValidString(str) {
 			return ErrNonUTF8String
@@ -161,7 +160,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	default:
 	}
 
-	return errors.Errorf("can't map decode: unsupported type %s", valueType)
+	return ierrors.Errorf("can't map decode: unsupported type %s", valueType)
 }
 
 // num parse func returns a num or an error.
@@ -178,7 +177,7 @@ func float64NumParser(v float64, ty reflect.Kind, signed bool) numParseFunc {
 			case reflect.Int32:
 				return int32(v), nil
 			default:
-				return nil, errors.Errorf("can not map decode kind %s to signed integer", ty)
+				return nil, ierrors.Errorf("can not map decode kind %s to signed integer", ty)
 			}
 		}
 		switch ty {
@@ -189,7 +188,7 @@ func float64NumParser(v float64, ty reflect.Kind, signed bool) numParseFunc {
 		case reflect.Uint32:
 			return uint32(v), nil
 		default:
-			return nil, errors.Errorf("can not map decode kind %s to unsigned integer", ty)
+			return nil, ierrors.Errorf("can not map decode kind %s to unsigned integer", ty)
 		}
 	}
 }
@@ -238,28 +237,28 @@ func (api *API) mapDecodeInterface(
 ) error {
 	iObjects := api.getInterfaceObjects(valueType)
 	if iObjects == nil {
-		return errors.Errorf("interface %s hasn't been registered", valueType)
+		return ierrors.Errorf("interface %s hasn't been registered", valueType)
 	}
 
 	m, ok := mapVal.(map[string]any)
 	if !ok {
-		return errors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
+		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
 	}
 
 	objectCodeAny, has := m[mapTypeKeyName]
 	if !has {
-		return errors.Errorf("no object type defined in map for interface %s", valueType)
+		return ierrors.Errorf("no object type defined in map for interface %s", valueType)
 	}
 	objectCode := uint32(objectCodeAny.(float64))
 
 	objectType := iObjects.fromCodeToType[objectCode]
 	if objectType == nil {
-		return errors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+		return ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
 	}
 
 	objectValue := reflect.New(objectType).Elem()
 	if err := api.mapDecode(ctx, m, objectValue, ts, opts); err != nil {
-		return errors.WithStack(err)
+		return ierrors.WithStack(err)
 	}
 	value.Set(objectValue)
 
@@ -272,7 +271,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 		strVal := mapVal.(string)
 		parsedTime, err := time.Parse(time.RFC3339Nano, strVal)
 		if err != nil {
-			return fmt.Errorf("unable to parse time %s map value: %w", strVal, err)
+			return ierrors.Wrapf(err, "unable to parse time %s map value", strVal)
 		}
 		value.Set(reflect.ValueOf(parsedTime))
 
@@ -281,25 +280,25 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 
 	m, ok := mapVal.(map[string]any)
 	if !ok {
-		return errors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
+		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
 	}
 
 	if objectType := ts.ObjectType(); objectType != nil {
 		_, objectCode, err := getTypeDenotationAndCode(objectType)
 		if err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 		mapObjectCode, has := m[mapTypeKeyName]
 		if !has {
-			return errors.Wrap(err, "missing type key in struct")
+			return ierrors.Wrap(err, "missing type key in struct")
 		}
 		if uint32(mapObjectCode.(float64)) != objectCode {
-			return errors.Errorf("map type key (%d) not equal registered object code (%d)", mapObjectCode, objectCode)
+			return ierrors.Errorf("map type key (%d) not equal registered object code (%d)", mapObjectCode, objectCode)
 		}
 	}
 
 	if err := api.mapDecodeStructFields(ctx, m, value, valueType, opts); err != nil {
-		return errors.WithStack(err)
+		return ierrors.WithStack(err)
 	}
 
 	return nil
@@ -310,7 +309,7 @@ func (api *API) mapDecodeStructFields(
 ) error {
 	structFields, err := api.parseStructType(valueType)
 	if err != nil {
-		return errors.Wrapf(err, "can't parse struct type %s", valueType)
+		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
 	if len(structFields) == 0 {
 		return nil
@@ -323,7 +322,7 @@ func (api *API) mapDecodeStructFields(
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
 					if sField.isUnexported {
-						return errors.Errorf(
+						return ierrors.Errorf(
 							"embedded field %s is a nil pointer, can't initialize because it's unexported",
 							sField.name,
 						)
@@ -334,7 +333,7 @@ func (api *API) mapDecodeStructFields(
 				fieldType = fieldType.Elem()
 			}
 			if err := api.mapDecodeStructFields(ctx, m, fieldValue, fieldType, opts); err != nil {
-				return errors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
+				return ierrors.Wrapf(err, "can't deserialize embedded struct %s", sField.name)
 			}
 
 			continue
@@ -351,11 +350,11 @@ func (api *API) mapDecodeStructFields(
 				continue
 			}
 
-			return errors.Wrapf(err, "missing map entry for field %s", sField.name)
+			return ierrors.Wrapf(err, "missing map entry for field %s", sField.name)
 		}
 
 		if err := api.mapDecode(ctx, mapVal, fieldValue, sField.settings.ts, opts); err != nil {
-			return errors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
+			return ierrors.Wrapf(err, "failed to deserialize struct field %s", sField.name)
 		}
 	}
 
@@ -368,7 +367,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		fieldValStr := mapVal.(string)
 		byteSlice, err := DecodeHex(fieldValStr)
 		if err != nil {
-			return errors.Wrap(err, "failed to read byte slice from map")
+			return ierrors.Wrap(err, "failed to read byte slice from map")
 		}
 
 		addrValue := value.Addr().Convert(reflect.TypeOf((*[]byte)(nil)))
@@ -381,7 +380,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 	for i := 0; i < refVal.Len(); i++ {
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		if err := api.mapDecode(ctx, refVal.Index(i).Interface(), elemValue, TypeSettings{}, opts); err != nil {
-			return errors.WithStack(err)
+			return ierrors.WithStack(err)
 		}
 		value.Set(reflect.Append(value, elemValue))
 	}
@@ -393,7 +392,7 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 	valueType reflect.Type, opts *options) error {
 	m, ok := mapVal.(map[string]any)
 	if !ok {
-		return errors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
+		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
 	}
 
 	if value.IsNil() {
@@ -405,11 +404,11 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		val := reflect.New(valueType.Elem()).Elem()
 
 		if err := api.mapDecode(ctx, k, key, TypeSettings{}, opts); err != nil {
-			return errors.Wrapf(err, "failed to map decode map key of type %s", key.Type())
+			return ierrors.Wrapf(err, "failed to map decode map key of type %s", key.Type())
 		}
 
 		if err := api.mapDecode(ctx, v, val, TypeSettings{}, opts); err != nil {
-			return errors.Wrapf(err, "failed to map decode map element of type %s", val.Type())
+			return ierrors.Wrapf(err, "failed to map decode map element of type %s", val.Type())
 		}
 
 		value.SetMapIndex(key, val)

@@ -3,16 +3,17 @@ package backoff
 
 import (
 	"context"
-	"errors"
 	"math"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
-var errTest = errors.New("test")
+var errTest = ierrors.New("test")
 
 const (
 	intervalDelta = 100 * time.Millisecond // allowed deviation to pass the test

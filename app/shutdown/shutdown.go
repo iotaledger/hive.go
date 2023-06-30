@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/app/daemon"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/runtime/event"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
@@ -106,7 +107,7 @@ func (gs *ShutdownHandler) checkSelfShutdownLogsDirectory() error {
 	}
 
 	if err := ioutils.CreateDirectory(shutdownLogsDirectory, 0o700); err != nil {
-		return fmt.Errorf("creating self-shutdown logs directory (%s) failed: %w", shutdownLogsDirectory, err)
+		return ierrors.Wrapf(err, "creating self-shutdown logs directory (%s) failed", shutdownLogsDirectory)
 
 	}
 

@@ -4,8 +4,8 @@ import (
 	"github.com/mr-tron/base58"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/sign/bdn"
-	"golang.org/x/xerrors"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
@@ -18,7 +18,7 @@ type PublicKey struct {
 func PublicKeyFromBytes(bytes []byte) (publicKey PublicKey, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if publicKey, err = PublicKeyFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse PublicKey from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse PublicKey from MarshalUtil")
 	}
 	consumedBytes = marshalUtil.ReadOffset()
 
@@ -29,13 +29,13 @@ func PublicKeyFromBytes(bytes []byte) (publicKey PublicKey, consumedBytes int, e
 func PublicKeyFromBase58EncodedString(base58String string) (publicKey PublicKey, err error) {
 	bytes, err := base58.Decode(base58String)
 	if err != nil {
-		err = xerrors.Errorf("error while decoding base58 encoded PublicKey (%v): %w", err, ErrBase58DecodeFailed)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded PublicKey (%v)", err)
 
 		return
 	}
 
 	if publicKey, _, err = PublicKeyFromBytes(bytes); err != nil {
-		err = xerrors.Errorf("failed to parse PublicKey from bytes: %w", err)
+		err = ierrors.Wrap(err, "failed to parse PublicKey from bytes")
 
 		return
 	}
@@ -47,13 +47,13 @@ func PublicKeyFromBase58EncodedString(base58String string) (publicKey PublicKey,
 func PublicKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (publicKey PublicKey, err error) {
 	bytes, err := marshalUtil.ReadBytes(PublicKeySize)
 	if err != nil {
-		err = xerrors.Errorf("failed to read PublicKey bytes (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read PublicKey bytes (%v)", err)
 
 		return
 	}
 	publicKey.Point = blsSuite.G2().Point()
 	if err = publicKey.Point.UnmarshalBinary(bytes); err != nil {
-		err = xerrors.Errorf("failed to unmarshal PublicKey (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to unmarshal PublicKey (%v)", err)
 
 		return
 	}

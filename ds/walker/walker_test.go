@@ -3,8 +3,9 @@ package walker_test
 import (
 	"testing"
 
-	"github.com/iotaledger/hive.go/ds/walker"
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/ds/walker"
 )
 
 func TestWalker(t *testing.T) {

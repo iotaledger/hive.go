@@ -7,8 +7,9 @@
 package backoff
 
 import (
-	"errors"
 	"time"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // Stop indicates that no more retries should be made for use in NextBackOff().
@@ -74,7 +75,7 @@ func Retry(p Policy, f func() error) error {
 		}
 
 		var permanent *permanentError
-		if errors.As(err, &permanent) {
+		if ierrors.As(err, &permanent) {
 			return permanent.Unwrap()
 		}
 

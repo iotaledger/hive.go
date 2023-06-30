@@ -2,7 +2,6 @@ package daemon_test
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -12,12 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/app/daemon"
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // graceTime for go routines to start.
 const graceTime = 5 * time.Millisecond
 
-var ErrDaemonStopped = errors.New("daemon was stopped")
+var ErrDaemonStopped = ierrors.New("daemon was stopped")
 
 // returnErrIfCtxDone returns the given error if the provided context is done.
 func returnErrIfCtxDone(ctx context.Context, err error) error {

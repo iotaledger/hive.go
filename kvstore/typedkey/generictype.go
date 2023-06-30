@@ -3,9 +3,9 @@ package typedkey
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"sync"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 )
 
@@ -55,7 +55,7 @@ func (t *GenericType[T]) Set(value T) {
 func (t *GenericType[T]) load() (loadedValue T) {
 	loadedValueBytes, err := t.store.Get(t.key)
 	if err != nil {
-		if !errors.Is(err, kvstore.ErrKeyNotFound) {
+		if !ierrors.Is(err, kvstore.ErrKeyNotFound) {
 			panic(err)
 		}
 

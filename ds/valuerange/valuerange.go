@@ -1,9 +1,8 @@
 package valuerange
 
 import (
-	"golang.org/x/xerrors"
-
 	"github.com/iotaledger/hive.go/ds/bitmask"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
@@ -37,7 +36,7 @@ type ValueRange struct {
 func FromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(valueRangeBytes)
 	if valueRange, err = FromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse ValueRange from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse ValueRange from MarshalUtil")
 
 		return
 	}
@@ -50,7 +49,7 @@ func FromBytes(valueRangeBytes []byte) (valueRange *ValueRange, consumedBytes in
 func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRange, err error) {
 	endPointExistsMaskByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = xerrors.Errorf("failed to read endpoint exists mask (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read endpoint exists mask (%v)", err)
 
 		return
 	}
@@ -59,14 +58,14 @@ func FromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueRange *ValueRan
 	endPointExistsMask := bitmask.BitMask(endPointExistsMaskByte)
 	if endPointExistsMask.HasBit(0) {
 		if valueRange.lowerEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse lower EndPoint from MarshalUtil: %w", ErrParseBytesFailed)
+			err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse lower EndPoint from MarshalUtil (%v)", err)
 
 			return
 		}
 	}
 	if endPointExistsMask.HasBit(1) {
 		if valueRange.upperEndPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
-			err = xerrors.Errorf("failed to parse upper EndPoint from MarshalUtil: %w", ErrParseBytesFailed)
+			err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse upper EndPoint from MarshalUtil (%v)", err)
 
 			return
 		}

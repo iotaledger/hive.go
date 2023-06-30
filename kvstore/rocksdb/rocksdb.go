@@ -6,10 +6,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
-
 	"github.com/iotaledger/grocksdb"
 	"github.com/iotaledger/hive.go/ds/types"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/utils"
 	"github.com/iotaledger/hive.go/serializer/v2/byteutils"
@@ -78,7 +77,7 @@ func (s *rocksDBStore) getIterFuncs(it *grocksdb.Iterator, keyPrefix []byte, ite
 			// we need to search the first item after the prefix
 			prefixUpperBound := utils.KeyPrefixUpperBound(keyPrefix)
 			if prefixUpperBound == nil {
-				return nil, nil, nil, errors.New("no upper bound for prefix")
+				return nil, nil, nil, ierrors.New("no upper bound for prefix")
 			}
 			startFunc = func() {
 				it.SeekForPrev(prefixUpperBound)

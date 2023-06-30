@@ -4,17 +4,17 @@
 package subscriptionmanager
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/event"
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 
 var (
-	ErrMaxTopicSubscriptionsPerClientReached = errors.New("maximum amount of topic subscriptions per client reached")
+	ErrMaxTopicSubscriptionsPerClientReached = ierrors.New("maximum amount of topic subscriptions per client reached")
 )
 
 type ClientID interface {

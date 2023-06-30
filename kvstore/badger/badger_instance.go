@@ -1,19 +1,19 @@
 package badger
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 )
 
 func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, error) {
 
 	if err := ioutils.CreateDirectory(directory, 0700); err != nil {
-		return nil, fmt.Errorf("could not create directory: %w", err)
+		return nil, ierrors.Wrapf(err, "could not create directory '%s'", directory)
 	}
 
 	var opts badger.Options
@@ -53,7 +53,7 @@ func CreateDB(directory string, optionalOptions ...badger.Options) (*badger.DB, 
 
 	db, err := badger.Open(opts)
 	if err != nil {
-		return nil, fmt.Errorf("could not open new DB: %w", err)
+		return nil, ierrors.Wrapf(err, "could not open new DB '%s'", directory)
 	}
 
 	return db, nil

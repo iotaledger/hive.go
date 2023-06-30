@@ -1,8 +1,7 @@
 package valuerange
 
 import (
-	"golang.org/x/xerrors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 	"github.com/iotaledger/hive.go/stringify"
 )
@@ -25,7 +24,7 @@ func NewEndPoint(value Value, boundType BoundType) *EndPoint {
 func EndPointFromBytes(endPointBytes []byte) (endPoint *EndPoint, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(endPointBytes)
 	if endPoint, err = EndPointFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse EndPoint from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse EndPoint from MarshalUtil")
 
 		return
 	}
@@ -38,12 +37,12 @@ func EndPointFromBytes(endPointBytes []byte) (endPoint *EndPoint, consumedBytes 
 func EndPointFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (endPoint *EndPoint, err error) {
 	endPoint = &EndPoint{}
 	if endPoint.value, err = ValueFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse Value from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse Value from MarshalUtil")
 
 		return
 	}
 	if endPoint.boundType, err = BoundTypeFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse BoundType from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse BoundType from MarshalUtil")
 
 		return
 	}

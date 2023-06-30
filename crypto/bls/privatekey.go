@@ -4,8 +4,8 @@ import (
 	"github.com/mr-tron/base58"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/sign/bdn"
-	"golang.org/x/xerrors"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
@@ -18,7 +18,7 @@ type PrivateKey struct {
 func PrivateKeyFromBytes(bytes []byte) (privateKey PrivateKey, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(bytes)
 	if privateKey, err = PrivateKeyFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse PrivateKey from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse PrivateKey from MarshalUtil")
 	}
 	consumedBytes = marshalUtil.ReadOffset()
 
@@ -29,13 +29,13 @@ func PrivateKeyFromBytes(bytes []byte) (privateKey PrivateKey, consumedBytes int
 func PrivateKeyFromBase58EncodedString(base58String string) (privateKey PrivateKey, err error) {
 	bytes, err := base58.Decode(base58String)
 	if err != nil {
-		err = xerrors.Errorf("error while decoding base58 encoded PrivateKey (%v): %w", err, ErrBase58DecodeFailed)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded PrivateKey (%v)", err)
 
 		return
 	}
 
 	if privateKey, _, err = PrivateKeyFromBytes(bytes); err != nil {
-		err = xerrors.Errorf("failed to parse PrivateKey from bytes: %w", err)
+		err = ierrors.Wrap(err, "failed to parse PrivateKey from bytes")
 
 		return
 	}
@@ -47,13 +47,13 @@ func PrivateKeyFromBase58EncodedString(base58String string) (privateKey PrivateK
 func PrivateKeyFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (privateKey PrivateKey, err error) {
 	bytes, err := marshalUtil.ReadBytes(PrivateKeySize)
 	if err != nil {
-		err = xerrors.Errorf("failed to read PrivateKey bytes (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read PrivateKey bytes (%v)", err)
 
 		return
 	}
 
 	if err = privateKey.Scalar.UnmarshalBinary(bytes); err != nil {
-		err = xerrors.Errorf("failed to unmarshal PrivateKey (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to unmarshal PrivateKey (%v)", err)
 
 		return
 	}
@@ -79,7 +79,7 @@ func (p PrivateKey) PublicKey() PublicKey {
 func (p PrivateKey) Sign(data []byte) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	sig, err := bdn.Sign(blsSuite, p.Scalar, data)
 	if err != nil {
-		err = xerrors.Errorf("failed to sign data (%v): %w", err, ErrBLSFailed)
+		err = ierrors.Wrapf(ErrBLSFailed, "failed to sign data (%v)", err)
 
 		return
 	}

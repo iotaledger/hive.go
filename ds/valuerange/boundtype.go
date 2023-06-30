@@ -3,8 +3,7 @@ package valuerange
 import (
 	"fmt"
 
-	"golang.org/x/xerrors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2/marshalutil"
 )
 
@@ -31,7 +30,7 @@ var BoundTypeNames = [...]string{
 func BoundTypeFromBytes(boundTypeBytes []byte) (boundType BoundType, consumedBytes int, err error) {
 	marshalUtil := marshalutil.New(boundTypeBytes)
 	if boundType, err = BoundTypeFromMarshalUtil(marshalUtil); err != nil {
-		err = xerrors.Errorf("failed to parse BoundType from MarshalUtil: %w", err)
+		err = ierrors.Wrap(err, "failed to parse BoundType from MarshalUtil")
 
 		return
 	}
@@ -44,13 +43,13 @@ func BoundTypeFromBytes(boundTypeBytes []byte) (boundType BoundType, consumedByt
 func BoundTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (boundType BoundType, err error) {
 	boundTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = xerrors.Errorf("failed to read BoundType (%v): %w", err, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read BoundType (%v)", err)
 
 		return
 	}
 
 	if boundType = BoundType(boundTypeByte); boundType > BoundTypeClosed {
-		err = xerrors.Errorf("unsupported BoundType (%X): %w", boundType, ErrParseBytesFailed)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "unsupported BoundType (%X)", boundType)
 
 		return
 	}

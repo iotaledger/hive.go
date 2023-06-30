@@ -2,23 +2,22 @@ package peer
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 
-	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/iotaledger/hive.go/autopeering/peer/proto"
 	"github.com/iotaledger/hive.go/autopeering/peer/service"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
 	"github.com/iotaledger/hive.go/crypto/identity"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
 )
 
 // Errors in the peer package.
 var (
-	ErrNeedsPeeringService = errors.New("needs peering service")
+	ErrNeedsPeeringService = ierrors.New("needs peering service")
 )
 
 // PublicKey is the type of Ed25519 public keys used for peers.
@@ -103,7 +102,7 @@ func FromProto(in *pb.Peer) (*Peer, error) {
 
 	ip := net.ParseIP(in.GetIp())
 	if ip == nil {
-		return nil, fmt.Errorf("invalid IP: %s", in.GetIp())
+		return nil, ierrors.Errorf("invalid IP: %s", in.GetIp())
 	}
 
 	services, err := service.FromProto(in.GetServices())
@@ -143,15 +142,15 @@ type peerJSON struct {
 func (p *Peer) UnmarshalJSON(b []byte) error {
 	pj := &peerJSON{}
 	if err := json.Unmarshal(b, pj); err != nil {
-		return xerrors.Errorf("%w", err)
+		return ierrors.WithStack(err)
 	}
 	publicKey, err := ed25519.PublicKeyFromString(pj.PublicKey)
 	if err != nil {
-		return xerrors.Errorf("can't parse public key: %w", err)
+		return ierrors.Wrap(err, "can't parse public key")
 	}
 	id := identity.New(publicKey)
 	if pj.Services.Get(service.PeeringKey) == nil {
-		return xerrors.Errorf("invalid services json: %w", ErrNeedsPeeringService)
+		return ierrors.Wrap(ErrNeedsPeeringService, "invalid services json")
 	}
 	*p = *NewPeer(id, pj.IP, pj.Services)
 

@@ -4,8 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/pkg/errors"
-
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -20,18 +19,18 @@ func ReadSerializable[T any, TPtr serializer.MarshalablePtr[T]](reader io.ReadSe
 	var readBytes []byte
 	if len(optFixedSize) == 0 {
 		if readBytes, err = ReadBlob(reader); err != nil {
-			return errors.Wrap(err, "failed to read serialized bytes")
+			return ierrors.Wrap(err, "failed to read serialized bytes")
 		}
 	} else {
 		if readBytes, err = ReadBytes(reader, uint64(optFixedSize[0])); err != nil {
-			return errors.Wrap(err, "failed to read serialized bytes")
+			return ierrors.Wrap(err, "failed to read serialized bytes")
 		}
 	}
 
 	if consumedBytes, err := target.FromBytes(readBytes); err != nil {
-		return errors.Wrap(err, "failed to parse bytes of serializable")
+		return ierrors.Wrap(err, "failed to parse bytes of serializable")
 	} else if len(optFixedSize) > 1 && consumedBytes != len(readBytes) {
-		return errors.Errorf("failed to parse serializable: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
+		return ierrors.Errorf("failed to parse serializable: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
 	}
 
 	return
@@ -41,7 +40,7 @@ func ReadSerializable[T any, TPtr serializer.MarshalablePtr[T]](reader io.ReadSe
 func ReadBytes(reader io.ReadSeeker, size uint64) (bytes []byte, err error) {
 	bytes = make([]byte, size)
 	if err = binary.Read(reader, binary.LittleEndian, &bytes); err != nil {
-		err = errors.Wrapf(err, "failed to read %d bytes", size)
+		err = ierrors.Wrapf(err, "failed to read %d bytes", size)
 	}
 
 	return
@@ -51,9 +50,9 @@ func ReadBytes(reader io.ReadSeeker, size uint64) (bytes []byte, err error) {
 func ReadBlob(reader io.ReadSeeker) (blob []byte, err error) {
 	var size uint64
 	if size, err = Read[uint64](reader); err != nil {
-		err = errors.Wrap(err, "failed to read blob size")
+		err = ierrors.Wrap(err, "failed to read blob size")
 	} else if blob, err = ReadBytes(reader, size); err != nil {
-		err = errors.Wrap(err, "failed to read blob")
+		err = ierrors.Wrap(err, "failed to read blob")
 	}
 
 	return
@@ -63,12 +62,12 @@ func ReadBlob(reader io.ReadSeeker) (blob []byte, err error) {
 func ReadCollection(reader io.ReadSeeker, readCallback func(int) error) (err error) {
 	var elementsCount uint64
 	if elementsCount, err = Read[uint64](reader); err != nil {
-		return errors.Wrap(err, "failed to read collection count")
+		return ierrors.Wrap(err, "failed to read collection count")
 	}
 
 	for i := 0; i < int(elementsCount); i++ {
 		if err = readCallback(i); err != nil {
-			return errors.Wrapf(err, "failed to read element %d", i)
+			return ierrors.Wrapf(err, "failed to read element %d", i)
 		}
 	}
 
