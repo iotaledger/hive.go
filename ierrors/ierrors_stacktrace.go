@@ -95,17 +95,11 @@ func Wrap(err error, message string) error {
 // in the error tree yet and if the build flag "stacktrace" is set.
 func Wrapf(err error, format string, args ...interface{}) error {
 	// check if the passed args also contain an error
-	containsErr := false
 	for _, arg := range args {
 		if _, ok := arg.(error); ok {
-			containsErr = true
-			break
+			// wrap the other errors as well
+			return ensureStacktraceUniqueness(fmt.Errorf("%w: %w", err, fmt.Errorf(format, args...)))
 		}
-	}
-
-	if containsErr {
-		// wrap the other errors as well
-		return ensureStacktraceUniqueness(fmt.Errorf("%w: %s", err, fmt.Errorf(format, args...)))
 	}
 
 	return ensureStacktraceUniqueness(fmt.Errorf("%w: %s", err, fmt.Sprintf(format, args...)))
