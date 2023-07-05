@@ -11,7 +11,10 @@ import (
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store)
+	newSet := ads.NewSet[testKey](store,
+		testKey.Bytes,
+		testKeyFromBytes,
+	)
 
 	key := testKey([]byte{'a'})
 	newSet.Add(key)
@@ -39,13 +42,19 @@ func TestSet(t *testing.T) {
 	require.NotEqualValues(t, root, root1)
 
 	// new set from old store, make sure the root is correct
-	newSet1 := ads.NewSet[testKey](store)
+	newSet1 := ads.NewSet[testKey](store,
+		testKey.Bytes,
+		testKeyFromBytes,
+	)
 	require.EqualValues(t, newSet.Root(), newSet1.Root())
 }
 
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store)
+	newSet := ads.NewSet[testKey](store,
+		testKey.Bytes,
+		testKeyFromBytes,
+	)
 
 	key1 := testKey([]byte{'b'})
 	key2 := testKey([]byte{'c'})
