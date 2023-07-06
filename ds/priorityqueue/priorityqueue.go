@@ -68,7 +68,7 @@ func (p *PriorityQueue[Element, Priority]) Pop() (element Element, exists bool) 
 
 	heapElement, ok := heap.Pop(&p.heap).(*generalheap.HeapElement[Priority, Element])
 	if !ok {
-		panic("unexpected type - somebody must have messed with the heap")
+		panic("this will never happen but the linter requires a sanity check")
 	}
 
 	return heapElement.Value, true
