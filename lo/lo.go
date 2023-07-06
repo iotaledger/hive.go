@@ -47,6 +47,25 @@ func Flatten[V any](slices [][]V) []V {
 	return result
 }
 
+// Equal checks if two slices are equal.
+//
+// Example:
+//
+//	lo.Equal([]int{1, 2, 3}, []int{1, 2, 3}) // returns true
+func Equal[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, value := range a {
+		if value != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Reduce reduces collection to a value which is the accumulated result of running each element in collection
 // through accumulator, where each successive invocation is supplied the return value of the previous.
 func Reduce[T any, R any](collection []T, accumulator func(R, T) R, initial R) R {
