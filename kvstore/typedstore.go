@@ -112,9 +112,9 @@ func (t *TypedStore[K, V]) Iterate(prefix KeyPrefix, callback func(key K, value 
 			return false
 		}
 
-		valueDecoded, _, valuErr := t.bytesToV(value)
-		if valuErr != nil {
-			innerErr = valuErr
+		valueDecoded, _, valueErr := t.bytesToV(value)
+		if valueErr != nil {
+			innerErr = valueErr
 			return false
 		}
 
