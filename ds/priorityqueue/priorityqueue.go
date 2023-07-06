@@ -62,16 +62,13 @@ func (p *PriorityQueue[Element, Priority]) Pop() (element Element, exists bool) 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.heap.Len() == 0 {
-		return
+	if p.heap.Len() != 0 {
+		if heapElement, ok := heap.Pop(&p.heap).(*generalheap.HeapElement[Priority, Element]); ok {
+			element, exists = heapElement.Value, true
+		}
 	}
 
-	heapElement, ok := heap.Pop(&p.heap).(*generalheap.HeapElement[Priority, Element])
-	if !ok {
-		panic("this will never happen but the linter requires a sanity check")
-	}
-
-	return heapElement.Value, true
+	return element, exists
 }
 
 // PopUntil removes all elements with a priority lower than the given priority from the queue.
