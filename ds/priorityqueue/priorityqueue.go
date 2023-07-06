@@ -50,12 +50,11 @@ func (p *PriorityQueue[Element, Priority]) Peek() (element Element, exists bool)
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 
-	heapLen := p.heap.Len()
-	if heapLen == 0 {
-		return
+	if exists = p.heap.Len() != 0; exists {
+		element = p.heap[0].Value
 	}
 
-	return p.heap[0].Value, true
+	return element, exists
 }
 
 // Pop removes the element with the highest priority from the queue.
