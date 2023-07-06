@@ -96,8 +96,8 @@ func (p *PriorityQueue[Element, Priority]) PopAll() []Element {
 
 	values := make([]Element, 0)
 	for p.heap.Len() != 0 {
-		if element, ok := heap.Pop(&p.heap).(Element); ok {
-			values = append(values, element)
+		if element, ok := heap.Pop(&p.heap).(*generalheap.HeapElement[Priority, Element]); ok {
+			values = append(values, element.Value)
 		}
 	}
 
