@@ -30,7 +30,7 @@ func SignatureFromBytes(bytes []byte) (signature Signature, consumedBytes int, e
 func SignatureFromBase58EncodedString(base58EncodedString string) (signature Signature, err error) {
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
-		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Signature (%v)", err)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Signature: %w", err)
 
 		return
 	}
@@ -48,7 +48,7 @@ func SignatureFromBase58EncodedString(base58EncodedString string) (signature Sig
 func SignatureFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (signature Signature, err error) {
 	signatureBytes, err := marshalUtil.ReadBytes(SignatureSize)
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read signature bytes (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read signature bytes: %w", err)
 
 		return
 	}
@@ -108,7 +108,7 @@ func SignatureWithPublicKeyFromBytes(bytes []byte) (signatureWithPublicKey Signa
 func SignatureWithPublicKeyFromBase58EncodedString(base58EncodedString string) (signatureWithPublicKey SignatureWithPublicKey, err error) {
 	bytes, err := base58.Decode(base58EncodedString)
 	if err != nil {
-		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded SignatureWithPublicKey (%v)", err)
+		err = ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded SignatureWithPublicKey: %w", err)
 
 		return
 	}

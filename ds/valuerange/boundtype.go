@@ -43,7 +43,7 @@ func BoundTypeFromBytes(boundTypeBytes []byte) (boundType BoundType, consumedByt
 func BoundTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (boundType BoundType, err error) {
 	boundTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read BoundType (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read BoundType: %w", err)
 
 		return
 	}

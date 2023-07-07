@@ -71,7 +71,7 @@ func TestEventTicker(t *testing.T) {
 	case <-done:
 		// done
 	case <-time.After(time.Second):
-		t.Errorf("Shutdown timed out")
+		t.Error("Shutdown timed out")
 	}
 }
 
@@ -120,7 +120,7 @@ func TestRescheduleTicker(t *testing.T) {
 		unhook()
 		eventTicker.Shutdown()
 	case <-time.After(10 * time.Second):
-		t.Errorf("Shutdown timed out")
+		t.Error("Shutdown timed out")
 	}
 }
 

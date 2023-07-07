@@ -36,7 +36,7 @@ func NewID(key ed25519.PublicKey) ID {
 func IDFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (id ID, err error) {
 	idBytes, err := marshalUtil.ReadBytes(IDLength)
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse ID (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse ID: %w", err)
 
 		return
 	}

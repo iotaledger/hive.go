@@ -47,7 +47,7 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (Sig
 
 	mask, err := sign.NewMask(blsSuite, publicKeyPoints, nil)
 	if err != nil {
-		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to create mask (%v)", err)
+		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to create mask: %w", err)
 	}
 	for i := range publicKeyPoints {
 		_ = mask.SetBit(i, true)
@@ -55,11 +55,11 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (Sig
 
 	rawAggregatedSignature, err := bdn.AggregateSignatures(blsSuite, signaturesBytes, mask)
 	if err != nil {
-		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to aggregate Signatures (%v)", err)
+		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to aggregate Signatures: %w", err)
 	}
 	signatureBytes, err := rawAggregatedSignature.MarshalBinary()
 	if err != nil {
-		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to marshal aggregated Signature (%v)", err)
+		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to marshal aggregated Signature: %w", err)
 	}
 
 	aggregatedSignature := SignatureWithPublicKey{}
@@ -67,7 +67,7 @@ func AggregateSignatures(signaturesWithPublicKey ...SignatureWithPublicKey) (Sig
 
 	aggregatedSignature.PublicKey.Point, err = bdn.AggregatePublicKeys(blsSuite, mask)
 	if err != nil {
-		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to aggregate PublicKeys (%v)", err)
+		return SignatureWithPublicKey{}, ierrors.Wrapf(ErrBLSFailed, "failed to aggregate PublicKeys: %w", err)
 	}
 
 	return aggregatedSignature, nil

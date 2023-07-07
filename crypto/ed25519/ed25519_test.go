@@ -43,7 +43,7 @@ func TestGenerateKey(t *testing.T) {
 	assert.False(t, private.Equal(privOther), "public keys are equal")
 
 	_, _, err = std.GenerateKey(new(bytes.Reader))
-	assert.Errorf(t, err, "calling GenerateKey(rand) from insufficient entropy is invalid")
+	assert.Error(t, err, "calling GenerateKey(rand) from insufficient entropy is invalid")
 }
 
 func TestSignVerify(t *testing.T) {

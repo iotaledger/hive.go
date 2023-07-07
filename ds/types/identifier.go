@@ -40,7 +40,7 @@ func (t *Identifier) FromRandomness() (err error) {
 func (t *Identifier) FromBase58(base58String string) (err error) {
 	decodedBytes, err := base58.Decode(base58String)
 	if err != nil {
-		return ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Identifier (%v)", err)
+		return ierrors.Wrapf(ErrBase58DecodeFailed, "error while decoding base58 encoded Identifier: %w", err)
 	}
 
 	if _, err = t.Decode(decodedBytes); err != nil {

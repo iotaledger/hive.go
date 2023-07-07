@@ -68,7 +68,7 @@ func ValueTypeFromBytes(valueTypeBytes []byte) (valueType ValueType, consumedByt
 func ValueTypeFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (valueType ValueType, err error) {
 	valueTypeByte, err := marshalUtil.ReadByte()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse ValueType (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to parse ValueType: %w", err)
 
 		return
 	}
@@ -215,7 +215,7 @@ func Int8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int8Value I
 
 	value, err := marshalUtil.ReadInt8()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int8 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int8: %w", err)
 
 		return
 	}
@@ -300,7 +300,7 @@ func Int16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int16Value
 
 	value, err := marshalUtil.ReadInt16()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int16 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int16: %w", err)
 
 		return
 	}
@@ -385,7 +385,7 @@ func Int32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int32Value
 
 	value, err := marshalUtil.ReadInt32()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int32 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int32: %w", err)
 
 		return
 	}
@@ -470,7 +470,7 @@ func Int64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (int64Value
 
 	value, err := marshalUtil.ReadInt64()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int64 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read int64: %w", err)
 
 		return
 	}
@@ -555,7 +555,7 @@ func Uint8ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint8Value
 
 	value, err := marshalUtil.ReadUint8()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint8 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint8: %w", err)
 
 		return
 	}
@@ -640,7 +640,7 @@ func Uint16ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint16Val
 
 	value, err := marshalUtil.ReadUint16()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint16 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint16: %w", err)
 
 		return
 	}
@@ -725,7 +725,7 @@ func Uint32ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint32Val
 
 	value, err := marshalUtil.ReadUint32()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint32 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint32: %w", err)
 
 		return
 	}
@@ -810,7 +810,7 @@ func Uint64ValueFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (uint64Val
 
 	value, err := marshalUtil.ReadUint64()
 	if err != nil {
-		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint64 (%v)", err)
+		err = ierrors.Wrapf(ErrParseBytesFailed, "failed to read uint64: %w", err)
 
 		return
 	}
