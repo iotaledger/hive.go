@@ -99,11 +99,6 @@ func (s *set[ElementType]) ToReadOnlySet() ReadOnlySet[ElementType] {
 	return s.readOnlySet
 }
 
-// Decode decodes the set from a byte slice.
-func (s *set[ElementType]) Decode(b []byte) (bytesRead int, err error) {
-	return s.OrderedMap.Decode(b)
-}
-
 // code contract (make sure the type implements all required methods).
 var _ Set[int] = new(set[int])
 
