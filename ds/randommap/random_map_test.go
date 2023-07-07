@@ -92,10 +92,5 @@ func TestRandomMap_EmptyMap(t *testing.T) {
 }
 
 func containsUniqueElements[V comparable](list []V) bool {
-	elementSet := ds.New[V](false)
-	for _, element := range list {
-		elementSet.Add(element)
-	}
-
-	return elementSet.Size() == len(list)
+	return ds.NewSet[V](list...).Size() == len(list)
 }

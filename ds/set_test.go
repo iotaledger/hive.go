@@ -140,7 +140,7 @@ func TestSet_Slice(t *testing.T) {
 	setSlice := testSet.ToSlice()
 
 	require.Equal(t, testSet.Size(), len(setSlice), "length should be equal")
-	require.True(t, ds.New(setSlice...).Equals(testSet), "sets should be equal")
+	require.True(t, ds.NewSet(setSlice...).Equals(testSet), "sets should be equal")
 }
 
 func TestSet_Iterator(t *testing.T) {
@@ -179,7 +179,7 @@ func TestSet_Encoding(t *testing.T) {
 	bytes, err := testSet.Encode()
 	require.NoError(t, err)
 
-	decoded := ds.New[string]()
+	decoded := ds.NewSet[string]()
 	consumed, err := decoded.Decode(bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), consumed)
@@ -188,7 +188,7 @@ func TestSet_Encoding(t *testing.T) {
 }
 
 func initSet(count int, start int) ds.Set[string] {
-	set := ds.New[string]()
+	set := ds.NewSet[string]()
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))

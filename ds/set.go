@@ -38,8 +38,8 @@ type Set[ElementType comparable] interface {
 	ReadOnlySet[ElementType]
 }
 
-// New creates a new Set with the given elements.
-func New[T comparable](elements ...T) Set[T] {
+// NewSet creates a new Set with the given elements.
+func NewSet[T comparable](elements ...T) Set[T] {
 	s := &set[T]{&readOnly[T]{
 		OrderedMap: orderedmap.New[T, types.Empty](),
 	}}
@@ -63,7 +63,7 @@ func (s *set[ElementType]) Add(element ElementType) bool {
 
 // AddAll adds all elements to the set and returns true if any element has been added.
 func (s *set[ElementType]) AddAll(elements ReadOnlySet[ElementType]) (addedElements Set[ElementType]) {
-	addedElements = New[ElementType]()
+	addedElements = NewSet[ElementType]()
 	_ = elements.ForEach(func(element ElementType) (err error) {
 		if !lo.Return2(s.Set(element, types.Void)) {
 			addedElements.Add(element)
@@ -82,7 +82,7 @@ func (s *set[ElementType]) Delete(element ElementType) bool {
 
 // DeleteAll deletes the given elements from the set.
 func (s *set[ElementType]) DeleteAll(other ReadOnlySet[ElementType]) (removedElements Set[ElementType]) {
-	removedElements = New[ElementType]()
+	removedElements = NewSet[ElementType]()
 	_ = other.ForEach(func(element ElementType) (err error) {
 		if s.Delete(element) {
 			removedElements.Add(element)
@@ -217,7 +217,7 @@ func (r *readOnly[T]) Intersect(other ReadOnlySet[T]) (intersection Set[T]) {
 
 // Filter returns a new set with all elements that satisfy the given predicate.
 func (r *readOnly[T]) Filter(predicate func(element T) bool) (filtered Set[T]) {
-	filtered = New[T]()
+	filtered = NewSet[T]()
 	_ = r.ForEach(func(element T) (err error) {
 		if predicate(element) {
 			filtered.Add(element)
@@ -246,7 +246,7 @@ func (r *readOnly[T]) Iterator() *walker.Walker[T] {
 
 // Clone returns a shallow copy of the set.
 func (r *readOnly[T]) Clone() (cloned Set[T]) {
-	return New[T]().AddAll(r)
+	return NewSet[T]().AddAll(r)
 }
 
 // ToSlice returns a slice representation of the set.
