@@ -13,9 +13,9 @@ import (
 func TestSet_IsEmpty(t *testing.T) {
 	set := initSet(1, 0)
 
-	require.False(t, set.IsEmpty(), "the readOnly should not be empty")
+	require.False(t, set.IsEmpty(), "the readOnlySet should not be empty")
 	require.True(t, set.Delete("item0"), "the item should already exist")
-	require.True(t, true, set.IsEmpty(), "the readOnly should be empty")
+	require.True(t, true, set.IsEmpty(), "the readOnlySet should be empty")
 }
 
 func TestSet_Add(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSet_AddAll(t *testing.T) {
 	set2 := initSet(3, 4)
 
 	require.Equal(t, 3, set.Size(), "wrong size")
-	require.True(t, set.AddAll(set2).HasAll(set2), "should add elements to the readOnly")
+	require.True(t, set.AddAll(set2).HasAll(set2), "should add elements to the readOnlySet")
 	require.Equal(t, 6, set.Size(), "wrong size")
 }
 
@@ -42,7 +42,7 @@ func TestSet_DeleteAll(t *testing.T) {
 	set2 := initSet(3, 1)
 
 	require.Equal(t, 3, set.Size(), "wrong size")
-	require.Equal(t, 2, set.DeleteAll(set2).Size(), "should remove 2 elements from the readOnly")
+	require.Equal(t, 2, set.DeleteAll(set2).Size(), "should remove 2 elements from the readOnlySet")
 	require.Equal(t, 1, set.Size(), "wrong size")
 }
 
@@ -148,7 +148,7 @@ func TestSet_Iterator(t *testing.T) {
 	setWalker := set.Iterator()
 	counter := 0
 	for setWalker.HasNext() {
-		require.True(t, set.Has(setWalker.Next()), "the element should exist in original readOnly")
+		require.True(t, set.Has(setWalker.Next()), "the element should exist in original readOnlySet")
 		counter++
 	}
 
