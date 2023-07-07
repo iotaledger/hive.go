@@ -31,8 +31,8 @@ type Set[ElementType comparable] interface {
 	// Decode decodes the set from a byte slice.
 	Decode(b []byte) (bytesRead int, err error)
 
-	// ToReadOnlySet returns a read-only version of the set.
-	ToReadOnlySet() ReadOnlySet[ElementType]
+	// ToReadOnly returns a read-only version of the set.
+	ToReadOnly() ReadOnlySet[ElementType]
 
 	// ReadOnlySet imports the read methods from ReadOnlySet.
 	ReadOnlySet[ElementType]
@@ -94,8 +94,8 @@ func (s *set[ElementType]) DeleteAll(other ReadOnlySet[ElementType]) (removedEle
 	return removedElements
 }
 
-// ToReadOnlySet returns a read-only version of the set.
-func (s *set[ElementType]) ToReadOnlySet() ReadOnlySet[ElementType] {
+// ToReadOnly returns a read-only version of the set.
+func (s *set[ElementType]) ToReadOnly() ReadOnlySet[ElementType] {
 	return s.readOnlySet
 }
 
