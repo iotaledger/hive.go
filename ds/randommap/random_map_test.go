@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/ds/randommap"
-	"github.com/iotaledger/hive.go/ds/set"
 )
 
 func TestRandomMap_Basics(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRandomMap_EmptyMap(t *testing.T) {
 }
 
 func containsUniqueElements[V comparable](list []V) bool {
-	elementSet := set.New[V](false)
+	elementSet := ds.New[V](false)
 	for _, element := range list {
 		elementSet.Add(element)
 	}
