@@ -12,6 +12,9 @@ type PriorityQueue[ElementType any] interface {
 	// Push adds an element to the queue with the given time.
 	Push(element ElementType, time time.Time)
 
+	// Peek returns the element with the highest priority without removing it.
+	Peek() (element ElementType, exists bool)
+
 	// Pop removes the element with the highest priority from the queue.
 	Pop() (element ElementType, exists bool)
 
@@ -23,6 +26,9 @@ type PriorityQueue[ElementType any] interface {
 
 	// Size returns the number of elements in the queue.
 	Size() int
+
+	// IsEmpty returns true if the queue is empty.
+	IsEmpty() bool
 }
 
 // NewPriorityQueue creates a new PriorityQueue that can optionally be set to ascending order (oldest element first).
