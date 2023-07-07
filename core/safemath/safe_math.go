@@ -2,8 +2,9 @@ package safemath
 
 import (
 	"errors"
-	"fmt"
 	"math/bits"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 var (
@@ -23,10 +24,10 @@ func SafeAdd[T Integer](x T, y T) (T, error) {
 
 	if y > 0 {
 		if result < x {
-			return 0, fmt.Errorf("%w: %d and %d", ErrIntegerOverflow, x, y)
+			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 		}
 	} else if result > x {
-		return 0, fmt.Errorf("%w: %d and %d", ErrIntegerOverflow, x, y)
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	return result, nil
@@ -38,10 +39,10 @@ func SafeSub[T Integer](x T, y T) (T, error) {
 
 	if y > 0 {
 		if result > x {
-			return 0, fmt.Errorf("%w: %d and %d", ErrIntegerOverflow, x, y)
+			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 		}
 	} else if result < x {
-		return 0, fmt.Errorf("%w: %d and %d", ErrIntegerOverflow, x, y)
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	return result, nil
@@ -54,7 +55,7 @@ func SafeMulUint64(x, y uint64) (uint64, error) {
 	hi, lo := bits.Mul64(x, y)
 
 	if hi != 0 {
-		return 0, ErrIntegerOverflow
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	return lo, nil
@@ -94,7 +95,7 @@ func SafeMulInt64(x, y int64) (int64, error) {
 	// The multiplication would take place using 16-bits, so the result as a uint16 will be
 	// binary 0001 0000 0000 0000, since we calculate 128*32 without the sign.
 	// Interpreted as an int8 and multiplied with -1, to account for the expected sign of the result, we simply get
-	// 0000 0000, since the least significnat byte of the result is 0.
+	// 0000 0000, since the least significant byte of the result is 0.
 	// However, since the most significant byte of the result is non-zero, we detect the overflow.
 
 	xNegative := x < 0
@@ -129,7 +130,7 @@ func SafeMulInt64(x, y int64) (int64, error) {
 
 	// If the computation overflowed a uint64, it would also overflow an int64.
 	if hi != 0 {
-		return 0, ErrIntegerOverflow
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	// Extract the most significant bit, signaling if the number is negative (1) or not (0).
@@ -137,12 +138,12 @@ func SafeMulInt64(x, y int64) (int64, error) {
 
 	// If the result is expected to be positive but the sign bit is set, it's an overflow.
 	if resultIsPositive && signBitSet {
-		return 0, ErrIntegerOverflow
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	// If the result is expected to be negative but the sign bit is not set, it's an underflow.
 	if !resultIsPositive && !signBitSet {
-		return 0, ErrIntegerOverflow
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	return loSigned, nil
@@ -153,7 +154,7 @@ func SafeMul[T Integer](x T, y T) (T, error) {
 	result := x * y
 
 	if x != 0 && result/x != y {
-		return 0, fmt.Errorf("%w: %d and %d", ErrIntegerOverflow, x, y)
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
 	return result, nil
@@ -162,7 +163,7 @@ func SafeMul[T Integer](x T, y T) (T, error) {
 // Returns x / y or an error if that computation would cause a division by zero.
 func SafeDiv[T Integer](x T, y T) (T, error) {
 	if y == 0 {
-		return 0, fmt.Errorf("%w: divisor is zero", ErrIntegerDivisionByZero)
+		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "%d and %d", x, y)
 	}
 
 	return x / y, nil
