@@ -9,27 +9,27 @@ import (
 )
 
 func TestPriorityQueue(t *testing.T) {
-	queue := priorityqueue.New[queueElement]()
-	queue.Push(2)
-	queue.Push(3)
+	queue := priorityqueue.New[int, priority]()
+	queue.Push(2, 2)
+	queue.Push(3, 3)
 	peekedElement, exists := queue.Peek()
 	assert.True(t, exists)
-	assert.Equal(t, queueElement(2), peekedElement, "wrong element")
+	assert.Equal(t, 2, peekedElement, "wrong element")
 	poppedElement, exists := queue.Pop()
 	assert.True(t, exists)
-	assert.Equal(t, queueElement(2), poppedElement, "wrong element")
+	assert.Equal(t, 2, poppedElement, "wrong element")
 	peekedElement, exists = queue.Peek()
 	assert.True(t, exists)
-	assert.Equal(t, queueElement(3), peekedElement, "wrong element")
-	queue.Push(1)
+	assert.Equal(t, 3, peekedElement, "wrong element")
+	queue.Push(1, 1)
 	peekedElement, exists = queue.Peek()
 	assert.True(t, exists)
-	assert.Equal(t, queueElement(1), peekedElement, "wrong element")
+	assert.Equal(t, 1, peekedElement, "wrong element")
 }
 
-type queueElement int
+type priority int
 
-func (q queueElement) Compare(other queueElement) int {
+func (q priority) CompareTo(other priority) int {
 	if q == other {
 		return 0
 	}
