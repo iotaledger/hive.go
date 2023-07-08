@@ -1,4 +1,4 @@
-package ds_test
+package set_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ds"
+	"github.com/iotaledger/hive.go/ds/set"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
@@ -140,7 +140,7 @@ func TestSet_Slice(t *testing.T) {
 	setSlice := testSet.ToSlice()
 
 	require.Equal(t, testSet.Size(), len(setSlice), "length should be equal")
-	require.True(t, ds.NewSet(setSlice...).Equals(testSet), "sets should be equal")
+	require.True(t, set.New(setSlice...).Equals(testSet), "sets should be equal")
 }
 
 func TestSet_Iterator(t *testing.T) {
@@ -179,7 +179,7 @@ func TestSet_Encoding(t *testing.T) {
 	bytes, err := testSet.Encode()
 	require.NoError(t, err)
 
-	decoded := ds.NewSet[string]()
+	decoded := set.New[string]()
 	consumed, err := decoded.Decode(bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), consumed)
@@ -187,8 +187,8 @@ func TestSet_Encoding(t *testing.T) {
 	require.Equal(t, testSet, decoded)
 }
 
-func initSet(count int, start int) ds.Set[string] {
-	set := ds.NewSet[string]()
+func initSet(count int, start int) set.Set[string] {
+	set := set.New[string]()
 	end := start + count
 	for i := start; i < end; i++ {
 		set.Add(fmt.Sprintf("item%d", i))
