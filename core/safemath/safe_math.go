@@ -1,7 +1,6 @@
 package safemath
 
 import (
-	"errors"
 	"math/bits"
 
 	"github.com/iotaledger/hive.go/ierrors"
@@ -9,9 +8,9 @@ import (
 
 var (
 	// ErrIntegerOverflow gets returned if an operation on two integers would under- or overflow.
-	ErrIntegerOverflow = errors.New("integer under- or overflow")
+	ErrIntegerOverflow = ierrors.New("integer under- or overflow")
 	// ErrIntegerDivisionByZero gets returned if an integer division would cause a division by zero error.
-	ErrIntegerDivisionByZero = errors.New("integer division by zero")
+	ErrIntegerDivisionByZero = ierrors.New("integer division by zero")
 )
 
 type Integer interface {
