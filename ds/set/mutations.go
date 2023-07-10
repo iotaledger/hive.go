@@ -5,65 +5,65 @@ import (
 )
 
 // Mutations represents a set of mutations that can be applied to a Set atomically.
-type Mutations[T comparable] interface {
+type Mutations[ElementType comparable] interface {
 	// WithAddedElements is a setter for the added elements of the mutations.
-	WithAddedElements(elements ReadOnly[T]) Mutations[T]
+	WithAddedElements(elements Set[ElementType]) Mutations[ElementType]
 
 	// WithDeletedElements is a setter for the deleted elements of the mutations.
-	WithDeletedElements(elements ReadOnly[T]) Mutations[T]
+	WithDeletedElements(elements Set[ElementType]) Mutations[ElementType]
 
 	// AddedElements returns the elements that are supposed to be added.
-	AddedElements() ReadOnly[T]
+	AddedElements() Set[ElementType]
 
 	// DeletedElements returns the elements that are supposed to be removed.
-	DeletedElements() ReadOnly[T]
+	DeletedElements() Set[ElementType]
 
 	// IsEmpty returns true if the Mutations instance is empty.
 	IsEmpty() bool
 }
 
 // NewMutations creates a new Mutations instance.
-func NewMutations[T comparable]() Mutations[T] {
-	return &mutations[T]{
-		addedElements:   New[T](),
-		deletedElements: New[T](),
+func NewMutations[ElementType comparable]() Mutations[ElementType] {
+	return &mutations[ElementType]{
+		addedElements:   New[ElementType](),
+		deletedElements: New[ElementType](),
 	}
 }
 
 // mutations is the default implementation of the Mutations interface.
-type mutations[T comparable] struct {
+type mutations[ElementType comparable] struct {
 	// AddedElements are the elements that are supposed to be added.
-	addedElements ReadOnly[T]
+	addedElements Set[ElementType]
 
 	// deletedElements are the elements that are supposed to be removed.
-	deletedElements ReadOnly[T]
+	deletedElements Set[ElementType]
 
 	// mutex is used to synchronize access to the mutations.
 	mutex sync.RWMutex
 }
 
 // WithAddedElements is a setter for the added elements of the mutations.
-func (m *mutations[T]) WithAddedElements(elements ReadOnly[T]) Mutations[T] {
+func (m *mutations[ElementType]) WithAddedElements(elements Set[ElementType]) Mutations[ElementType] {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	m.addedElements = elements
+	m.addedElements.AddAll(elements)
 
 	return m
 }
 
 // WithDeletedElements sets the deleted elements of the mutations.
-func (m *mutations[T]) WithDeletedElements(elements ReadOnly[T]) Mutations[T] {
+func (m *mutations[ElementType]) WithDeletedElements(elements Set[ElementType]) Mutations[ElementType] {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	m.deletedElements = elements
+	m.deletedElements.AddAll(elements)
 
 	return m
 }
 
 // AddedElements returns the elements that are supposed to be added.
-func (m *mutations[T]) AddedElements() ReadOnly[T] {
+func (m *mutations[ElementType]) AddedElements() Set[ElementType] {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -71,7 +71,7 @@ func (m *mutations[T]) AddedElements() ReadOnly[T] {
 }
 
 // DeletedElements returns the elements that are supposed to be removed.
-func (m *mutations[T]) DeletedElements() ReadOnly[T] {
+func (m *mutations[ElementType]) DeletedElements() Set[ElementType] {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -79,7 +79,7 @@ func (m *mutations[T]) DeletedElements() ReadOnly[T] {
 }
 
 // IsEmpty returns true if the Mutations instance is empty.
-func (m *mutations[T]) IsEmpty() bool {
+func (m *mutations[ElementType]) IsEmpty() bool {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
