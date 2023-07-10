@@ -23,9 +23,9 @@ type Mutations[ElementType comparable] interface {
 }
 
 // NewMutations creates a new Mutations instance.
-func NewMutations[ElementType comparable]() Mutations[ElementType] {
+func NewMutations[ElementType comparable](elements ...ElementType) Mutations[ElementType] {
 	return &mutations[ElementType]{
-		addedElements:   New[ElementType](),
+		addedElements:   New[ElementType](elements...),
 		deletedElements: New[ElementType](),
 	}
 }
