@@ -7,10 +7,10 @@ import (
 // Mutations represents a set of mutations that can be applied to a Set atomically.
 type Mutations[ElementType comparable] interface {
 	// WithAddedElements is a setter for the added elements of the mutations.
-	WithAddedElements(elements Set[ElementType]) Mutations[ElementType]
+	WithAddedElements(elements ReadOnly[ElementType]) Mutations[ElementType]
 
 	// WithDeletedElements is a setter for the deleted elements of the mutations.
-	WithDeletedElements(elements Set[ElementType]) Mutations[ElementType]
+	WithDeletedElements(elements ReadOnly[ElementType]) Mutations[ElementType]
 
 	// AddedElements returns the elements that are supposed to be added.
 	AddedElements() Set[ElementType]
@@ -43,7 +43,7 @@ type mutations[ElementType comparable] struct {
 }
 
 // WithAddedElements is a setter for the added elements of the mutations.
-func (m *mutations[ElementType]) WithAddedElements(elements Set[ElementType]) Mutations[ElementType] {
+func (m *mutations[ElementType]) WithAddedElements(elements ReadOnly[ElementType]) Mutations[ElementType] {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -53,7 +53,7 @@ func (m *mutations[ElementType]) WithAddedElements(elements Set[ElementType]) Mu
 }
 
 // WithDeletedElements sets the deleted elements of the mutations.
-func (m *mutations[ElementType]) WithDeletedElements(elements Set[ElementType]) Mutations[ElementType] {
+func (m *mutations[ElementType]) WithDeletedElements(elements ReadOnly[ElementType]) Mutations[ElementType] {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
