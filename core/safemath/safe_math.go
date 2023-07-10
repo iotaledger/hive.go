@@ -124,24 +124,25 @@ func SafeMulInt64(x, y int64) (int64, error) {
 
 	// Execute the multiplication in 128-bit space using unsigned integers.
 	hi, lo := bits.Mul64(uint64(x), uint64(y))
-	// Interpret the lo result as an int64, then correct for the expected sign.
-	loSigned := int64(lo) * resultSign
 
 	// If the computation overflowed a uint64, it would also overflow an int64.
 	if hi != 0 {
 		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
+	// Interpret the lo result as an int64, then correct for the expected sign.
+	loSigned := int64(lo) * resultSign
+
 	// Extract the most significant bit, signaling if the number is negative (1) or not (0).
 	signBitSet := ((loSigned >> 63) & 1) == 1
 
-	// If the result is expected to be positive but the sign bit is set, it's an overflow.
-	if resultIsPositive && signBitSet {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
-	}
-
-	// If the result is expected to be negative but the sign bit is not set, it's an underflow.
-	if !resultIsPositive && !signBitSet {
+	if resultIsPositive {
+		// If the result is expected to be positive but the sign bit is set, it's an overflow.
+		if signBitSet {
+			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
+		}
+	} else if !signBitSet {
+		// If the result is expected to be negative but the sign bit is not set, it's an underflow.
 		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
