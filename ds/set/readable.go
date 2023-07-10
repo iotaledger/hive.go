@@ -11,13 +11,13 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 )
 
-// ReadOnly is a generic thread-safe collection of unique elements that can only be read.
-type ReadOnly[ElementType comparable] interface {
+// Readable bundles the read methods of the Set interface.
+type Readable[ElementType comparable] interface {
 	// Has returns true if the set contains the given element.
 	Has(key ElementType) (has bool)
 
 	// HasAll returns true if the set contains all elements of the given set.
-	HasAll(other ReadOnly[ElementType]) bool
+	HasAll(other Readable[ElementType]) bool
 
 	// ForEach iterates through all elements of the set (returning an error will stop the iteration).
 	ForEach(callback func(element ElementType) error) error
@@ -26,13 +26,13 @@ type ReadOnly[ElementType comparable] interface {
 	Range(callback func(element ElementType))
 
 	// Intersect returns the intersection of the set and the given set.
-	Intersect(other ReadOnly[ElementType]) Set[ElementType]
+	Intersect(other Readable[ElementType]) Set[ElementType]
 
 	// Filter returns a new set with all elements that satisfy the given predicate.
 	Filter(predicate func(element ElementType) bool) Set[ElementType]
 
 	// Equals returns true if the set contains the same elements as the given set.
-	Equals(other ReadOnly[ElementType]) bool
+	Equals(other Readable[ElementType]) bool
 
 	// Is returns true if the given element is the only element in the set.
 	Is(element ElementType) bool
@@ -62,13 +62,31 @@ type ReadOnly[ElementType comparable] interface {
 	String() string
 }
 
-// readOnly implements the ReadOnly interface.
-type readOnly[T comparable] struct {
+// NewReadable creates a new readable Set with the given elements.
+func NewReadable[T comparable](elements ...T) Readable[T] {
+	return newReadable[T](elements...)
+}
+
+// readable is the standard implementation of the Readable interface.
+type readable[T comparable] struct {
 	*orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
 
+// newReadable creates a new readable set with the given elements.
+func newReadable[T comparable](elements ...T) *readable[T] {
+	r := &readable[T]{
+		OrderedMap: orderedmap.New[T, types.Empty](),
+	}
+
+	for _, element := range elements {
+		r.OrderedMap.Set(element, types.Void)
+	}
+
+	return r
+}
+
 // HasAll returns true if the set contains all elements of the given set.
-func (r *readOnly[T]) HasAll(other ReadOnly[T]) bool {
+func (r *readable[T]) HasAll(other Readable[T]) bool {
 	if r == nil {
 		return false
 	}
@@ -83,7 +101,7 @@ func (r *readOnly[T]) HasAll(other ReadOnly[T]) bool {
 }
 
 // ForEach iterates through all elements of the set (returning an error will stop the iteration).
-func (r *readOnly[T]) ForEach(callback func(element T) error) (err error) {
+func (r *readable[T]) ForEach(callback func(element T) error) (err error) {
 	if r == nil {
 		return nil
 	}
@@ -100,7 +118,7 @@ func (r *readOnly[T]) ForEach(callback func(element T) error) (err error) {
 }
 
 // Range iterates through all elements of the set.
-func (r *readOnly[T]) Range(callback func(element T)) {
+func (r *readable[T]) Range(callback func(element T)) {
 	if r != nil {
 		r.OrderedMap.ForEach(func(element T, _ types.Empty) bool {
 			callback(element)
@@ -111,12 +129,12 @@ func (r *readOnly[T]) Range(callback func(element T)) {
 }
 
 // Intersect returns the intersection of the set and the given set.
-func (r *readOnly[T]) Intersect(other ReadOnly[T]) (intersection Set[T]) {
+func (r *readable[T]) Intersect(other Readable[T]) (intersection Set[T]) {
 	return r.Filter(other.Has)
 }
 
 // Filter returns a new set with all elements that satisfy the given predicate.
-func (r *readOnly[T]) Filter(predicate func(element T) bool) (filtered Set[T]) {
+func (r *readable[T]) Filter(predicate func(element T) bool) (filtered Set[T]) {
 	filtered = New[T]()
 	_ = r.ForEach(func(element T) (err error) {
 		if predicate(element) {
@@ -130,27 +148,27 @@ func (r *readOnly[T]) Filter(predicate func(element T) bool) (filtered Set[T]) {
 }
 
 // Equals returns true if the set contains the same elements as the given set.
-func (r *readOnly[T]) Equals(other ReadOnly[T]) (equal bool) {
+func (r *readable[T]) Equals(other Readable[T]) (equal bool) {
 	return r == other || (r != nil && other != nil && r.Size() == other.Size() && r.HasAll(other))
 }
 
 // Is returns true if the given element is the only element in the set.
-func (r *readOnly[T]) Is(element T) bool {
+func (r *readable[T]) Is(element T) bool {
 	return r.Size() == 1 && r.Has(element)
 }
 
 // Iterator returns an iterator for the set.
-func (r *readOnly[T]) Iterator() *walker.Walker[T] {
+func (r *readable[T]) Iterator() *walker.Walker[T] {
 	return walker.New[T](false).PushAll(r.ToSlice()...)
 }
 
 // Clone returns a shallow copy of the set.
-func (r *readOnly[T]) Clone() (cloned Set[T]) {
+func (r *readable[T]) Clone() (cloned Set[T]) {
 	return New[T]().AddAll(r)
 }
 
 // ToSlice returns a slice representation of the set.
-func (r *readOnly[T]) ToSlice() (slice []T) {
+func (r *readable[T]) ToSlice() (slice []T) {
 	slice = make([]T, 0)
 
 	if r != nil {
@@ -165,7 +183,7 @@ func (r *readOnly[T]) ToSlice() (slice []T) {
 }
 
 // String returns a string representation of the set.
-func (r *readOnly[T]) String() (humanReadable string) {
+func (r *readable[T]) String() (humanReadable string) {
 	var elementType T
 	elementTypeName := reflect.TypeOf(elementType).Name()
 
@@ -178,6 +196,3 @@ func (r *readOnly[T]) String() (humanReadable string) {
 
 	return fmt.Sprintf("%ss(%s)", elementTypeName, strings.Join(elementStrings, ", "))
 }
-
-// code contract (make sure the type implements all required methods).
-var _ ReadOnly[int] = new(readOnly[int])
