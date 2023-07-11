@@ -47,6 +47,21 @@ func SafeSub[T Integer](x T, y T) (T, error) {
 	return result, nil
 }
 
+// Returns x * y or an error if that computation would under- or overflow.
+func SafeMul[T Integer](x T, y T) (T, error) {
+	if x == 0 || y == 0 {
+		return 0, nil
+	}
+
+	result := x * y
+
+	if result/x != y {
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
+	}
+
+	return result, nil
+}
+
 // Returns x * y or an error if that computation would overflow.
 //
 // According to benchmarks, this function is about 73% faster than SafeMul.
@@ -155,21 +170,6 @@ func SafeMulInt64(x, y int64) (int64, error) {
 	}
 
 	return loSigned, nil
-}
-
-// Returns x * y or an error if that computation would under- or overflow.
-func SafeMul[T Integer](x T, y T) (T, error) {
-	if x == 0 || y == 0 {
-		return 0, nil
-	}
-
-	result := x * y
-
-	if result/x != y {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
-	}
-
-	return result, nil
 }
 
 // Returns x / y or an error if that computation would cause a division by zero.
