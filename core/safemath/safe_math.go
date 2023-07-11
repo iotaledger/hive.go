@@ -51,6 +51,10 @@ func SafeSub[T Integer](x T, y T) (T, error) {
 //
 // According to benchmarks, this function is about 73% faster than SafeMul.
 func SafeMulUint64(x, y uint64) (uint64, error) {
+	if x == 0 || y == 0 {
+		return 0, nil
+	}
+
 	hi, lo := bits.Mul64(x, y)
 
 	if hi != 0 {
@@ -96,6 +100,10 @@ func SafeMulInt64(x, y int64) (int64, error) {
 	// Interpreted as an int8 and multiplied with -1, to account for the expected sign of the result, we simply get
 	// 0000 0000, since the least significant byte of the result is 0.
 	// However, since the most significant byte of the result is non-zero, we detect the overflow.
+
+	if x == 0 || y == 0 {
+		return 0, nil
+	}
 
 	xNegative := x < 0
 	yNegative := y < 0
@@ -151,9 +159,13 @@ func SafeMulInt64(x, y int64) (int64, error) {
 
 // Returns x * y or an error if that computation would under- or overflow.
 func SafeMul[T Integer](x T, y T) (T, error) {
+	if x == 0 || y == 0 {
+		return 0, nil
+	}
+
 	result := x * y
 
-	if x != 0 && result/x != y {
+	if result/x != y {
 		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d and %d", x, y)
 	}
 
