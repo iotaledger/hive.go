@@ -111,7 +111,7 @@ type WriteableSet[ElementType comparable] interface {
 	Apply(mutations SetMutations[ElementType]) (appliedMutations SetMutations[ElementType])
 
 	// Replace replaces the elements of the set with the given elements and returns the removed elements.
-	Replace(elements ReadableSet[ElementType]) (removedElements ReadableSet[ElementType])
+	Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType])
 
 	// Decode decodes the set from a byte slice.
 	Decode(b []byte) (bytesRead int, err error)
