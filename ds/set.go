@@ -110,11 +110,14 @@ type WriteableSet[ElementType comparable] interface {
 	// Apply tries to apply the given mutations to the set atomically and returns the applied mutations.
 	Apply(mutations SetMutations[ElementType]) (appliedMutations SetMutations[ElementType])
 
+	// Replace replaces the elements of the set with the given elements and returns the removed elements.
+	Replace(elements ReadableSet[ElementType]) (removedElements ReadableSet[ElementType])
+
 	// Decode decodes the set from a byte slice.
 	Decode(b []byte) (bytesRead int, err error)
 
-	// ToReadOnly returns a read-only version of the set.
-	ToReadOnly() ReadableSet[ElementType]
+	// ReadOnly returns a read-only version of the set.
+	ReadOnly() ReadableSet[ElementType]
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,10 +127,10 @@ type WriteableSet[ElementType comparable] interface {
 // SetMutations represents a set of mutations that can be applied to a Set atomically.
 type SetMutations[ElementType comparable] interface {
 	// WithAddedElements is a setter for the added elements of the setMutations.
-	WithAddedElements(elements ReadableSet[ElementType]) SetMutations[ElementType]
+	WithAddedElements(elements Set[ElementType]) SetMutations[ElementType]
 
 	// WithDeletedElements is a setter for the deleted elements of the setMutations.
-	WithDeletedElements(elements ReadableSet[ElementType]) SetMutations[ElementType]
+	WithDeletedElements(elements Set[ElementType]) SetMutations[ElementType]
 
 	// AddedElements returns the elements that are supposed to be added.
 	AddedElements() Set[ElementType]
@@ -214,7 +217,7 @@ func (s *set[ElementType]) DeleteAll(other ReadableSet[ElementType]) (removedEle
 	return removedElements
 }
 
-// Apply tries to apply the given mutations to the set atomically and returns the applied mutations.
+// Apply tries to apply the given mutations to the set atomically and returns the mutations that have been applied.
 func (s *set[ElementType]) Apply(mutations SetMutations[ElementType]) (appliedMutations SetMutations[ElementType]) {
 	s.applyMutex.Lock()
 	defer s.applyMutex.Unlock()
@@ -236,8 +239,23 @@ func (s *set[ElementType]) Apply(mutations SetMutations[ElementType]) (appliedMu
 	return NewSetMutations[ElementType]().WithAddedElements(addedElements).WithDeletedElements(removedElements)
 }
 
-// ToReadOnly returns a read-only version of the set.
-func (s *set[ElementType]) ToReadOnly() ReadableSet[ElementType] {
+// Replace replaces the elements of the set with the given elements and returns the removed elements.
+func (s *set[ElementType]) Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType]) {
+	s.applyMutex.Lock()
+	defer s.applyMutex.Unlock()
+
+	removedElements = NewSet(s.ToSlice()...)
+	s.Clear()
+
+	elements.Range(func(element ElementType) {
+		s.Set(element, types.Void)
+	})
+
+	return removedElements
+}
+
+// ReadOnly returns a read-only version of the set.
+func (s *set[ElementType]) ReadOnly() ReadableSet[ElementType] {
 	return s.readableSet
 }
 
@@ -397,15 +415,15 @@ func newSetMutations[ElementType comparable](elements ...ElementType) *setMutati
 }
 
 // WithAddedElements is a setter for the added elements of the mutations.
-func (m *setMutations[ElementType]) WithAddedElements(elements ReadableSet[ElementType]) SetMutations[ElementType] {
-	m.addedElements.AddAll(elements)
+func (m *setMutations[ElementType]) WithAddedElements(elements Set[ElementType]) SetMutations[ElementType] {
+	m.addedElements = elements
 
 	return m
 }
 
 // WithDeletedElements sets the deleted elements of the mutations.
-func (m *setMutations[ElementType]) WithDeletedElements(elements ReadableSet[ElementType]) SetMutations[ElementType] {
-	m.deletedElements.AddAll(elements)
+func (m *setMutations[ElementType]) WithDeletedElements(elements Set[ElementType]) SetMutations[ElementType] {
+	m.deletedElements = elements
 
 	return m
 }
