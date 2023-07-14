@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/app
 go 1.20
 
 require (
+	github.com/felixge/fgprof v0.9.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20230630101126-a9b43f69f1f0
 	github.com/iotaledger/hive.go/lo v0.0.0-20230630101126-a9b43f69f1f0
@@ -24,6 +25,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230630101126-a9b43f69f1f0 // indirect
 	github.com/iotaledger/hive.go/ds v0.0.0-20230630101126-a9b43f69f1f0 // indirect
