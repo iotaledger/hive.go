@@ -58,7 +58,7 @@ func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValu
 	v.valueMutex.Lock()
 	defer v.valueMutex.Unlock()
 
-	if previousValue, newValue = v.value, newValueGenerator(previousValue); newValue == previousValue {
+	if previousValue, newValue = v.value, v.transformationFunc(previousValue, newValueGenerator(previousValue)); newValue == previousValue {
 		return newValue, previousValue, 0, nil
 	}
 

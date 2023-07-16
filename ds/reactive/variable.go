@@ -8,14 +8,10 @@ import (
 
 // Variable represents a variable that can be read and written and that informs subscribed consumers about updates.
 type Variable[Type comparable] interface {
-	// Set sets the new value and triggers the registered callbacks if the value has changed.
-	Set(newValue Type) (previousValue Type)
+	// WritableVariable imports the write methods of the Variable.
+	WritableVariable[Type]
 
-	// Compute sets the new value by applying the given function to the current value and triggers the registered
-	// callbacks if the value has changed.
-	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
-
-	// ReadableVariable imports the interface that allows subscribers to read the value and to be notified when it changes.
+	// ReadableVariable imports the read methods of the Variable.
 	ReadableVariable[Type]
 }
 
@@ -44,6 +40,18 @@ func NewReadableVariable[Type comparable](value Type) ReadableVariable[Type] {
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region WritableVariable /////////////////////////////////////////////////////////////////////////////////////////////
+
+// WritableVariable represents a variable that can be written to.
+type WritableVariable[Type comparable] interface {
+	// Set sets the new value and triggers the registered callbacks if the value has changed.
+	Set(newValue Type) (previousValue Type)
+
+	// Compute sets the new value by applying the given function to the current value and triggers the registered
+	// callbacks if the value has changed.
+	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
+}
 
 // region DerivedVariable //////////////////////////////////////////////////////////////////////////////////////////////
 
