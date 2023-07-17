@@ -38,6 +38,31 @@ func WriteSerializable[T serializer.Byter](writer io.WriteSeeker, target T, optF
 	return
 }
 
+// WriteFunc writes a type to the stream as specified by the writeFunc. If the serialized type is of fixed size, we can provide
+// the length to omit additional information about the length to be prepended.
+func WriteFunc[T any](writer io.WriteSeeker, target T, writeFunc func(T) ([]byte, error), optFixedSize ...int) (err error) {
+	serializedBytes, err := writeFunc(target)
+	if err != nil {
+		return ierrors.Wrap(err, "failed to serialize target")
+	}
+
+	if len(optFixedSize) == 0 {
+		if err = WriteBlob(writer, serializedBytes); err != nil {
+			return ierrors.Wrap(err, "failed to write serialized bytes")
+		}
+
+		return
+	}
+
+	if len(serializedBytes) != optFixedSize[0] {
+		return ierrors.Errorf("serialized bytes length (%d) != fixed size (%d)", len(serializedBytes), optFixedSize[0])
+	} else if err = Write(writer, serializedBytes); err != nil {
+		return ierrors.Wrap(err, "failed to write target")
+	}
+
+	return
+}
+
 // WriteBlob writes a byte slice to the stream (the first 8 bytes are the length of the blob).
 func WriteBlob(writer io.WriteSeeker, blob []byte) (err error) {
 	if err = Write(writer, uint64(len(blob))); err != nil {
