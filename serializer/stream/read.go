@@ -36,6 +36,34 @@ func ReadSerializable[T any, TPtr serializer.MarshalablePtr[T]](reader io.ReadSe
 	return
 }
 
+// ReadFunc reads a type from the stream as specified by readFunc. If the serialized type is of fixed size, we can provide
+// the length to omit additional information about the length.
+// Note: optFixedSize needs to be specified when writing this type as well, otherwise there will be issues with the bytes' alignment.
+func ReadFunc[T any](reader io.ReadSeeker, readFunc func(bytes []byte) (T, int, error), optFixedSize ...int) (T, error) {
+	var readBytes []byte
+	var result T
+	var err error
+
+	if len(optFixedSize) == 0 {
+		if readBytes, err = ReadBlob(reader); err != nil {
+			return result, ierrors.Wrap(err, "failed to read serialized bytes")
+		}
+	} else {
+		if readBytes, err = ReadBytes(reader, uint64(optFixedSize[0])); err != nil {
+			return result, ierrors.Wrap(err, "failed to read serialized bytes")
+		}
+	}
+
+	result, consumedBytes, err := readFunc(readBytes)
+	if err != nil {
+		return result, ierrors.Wrap(err, "failed to parse bytes of readFunc")
+	} else if len(optFixedSize) > 1 && consumedBytes != len(readBytes) {
+		return result, ierrors.Errorf("failed to parse readFunc: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
+	}
+
+	return result, nil
+}
+
 // ReadBytes reads a byte slice of the given size from the stream.
 func ReadBytes(reader io.ReadSeeker, size uint64) (bytes []byte, err error) {
 	bytes = make([]byte, size)
