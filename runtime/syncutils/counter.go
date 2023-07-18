@@ -43,9 +43,9 @@ func (c *Counter) Set(newValue int) (oldValue int) {
 }
 
 func (c *Counter) Update(delta int) (newValue int) {
-	if newValue = c.update(delta); delta > 1 {
+	if newValue = c.update(delta); delta >= 1 {
 		c.valueIncreasedCond.Broadcast()
-	} else if delta < 1 {
+	} else if delta <= -1 {
 		c.valueDecreasedCond.Broadcast()
 	}
 

@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/felixge/fgprof"
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app"
@@ -33,6 +34,8 @@ func run() error {
 	runtime.SetBlockProfileRate(5)
 
 	bindAddr := ParamsProfiling.BindAddress
+
+	http.DefaultServeMux.Handle("/debug/fgprof", fgprof.Handler())
 
 	go func() {
 		Component.LogInfof("You can now access the profiling server using: http://%s/debug/pprof/", bindAddr)
