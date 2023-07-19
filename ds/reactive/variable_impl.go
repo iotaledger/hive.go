@@ -58,15 +58,13 @@ func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValu
 	v.valueMutex.Lock()
 	defer v.valueMutex.Unlock()
 
-	previousValue = v.value
-	newValue = v.transformationFunc(previousValue, newValueGenerator(previousValue))
-	if newValue == previousValue {
-		return newValue, previousValue, 0, nil
+	if previousValue, newValue = v.value, v.transformationFunc(v.value, newValueGenerator(v.value)); newValue != previousValue {
+		v.value = newValue
+		triggerID = v.uniqueUpdateID.Next()
+		callbacksToTrigger = v.registeredCallbacks.Values()
 	}
 
-	v.value = newValue
-
-	return newValue, previousValue, v.uniqueUpdateID.Next(), v.registeredCallbacks.Values()
+	return newValue, previousValue, triggerID, callbacksToTrigger
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

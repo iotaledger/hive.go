@@ -1,6 +1,7 @@
 package reactive_test
 
 import (
+	"math/rand"
 	"sync"
 	"testing"
 
@@ -9,41 +10,42 @@ import (
 	"github.com/iotaledger/hive.go/ds/reactive"
 )
 
-// TestMonitorConcurrency checks if Monitor function correctly updates the counter when multiple goroutines are changing the value
-func TestMonitorConcurrency(t *testing.T) {
-	//var wg sync.WaitGroup
-	condition := func(i int) bool { return i%2 == 0 } // condition is true for even numbers
-	c := reactive.NewCounter[int](condition)
+// TestCounter_Monitor tests the counter by monitoring a variable concurrently.
+func TestCounter_Monitor(t *testing.T) {
+	variableCount := 1000
 
-	v := reactive.NewVariable[int]()
+	counter := reactive.NewCounter[int]()
+	assert.Equal(t, 0, counter.Get())
 
-	// We expect half of the numbers to be even, so the counter should be 500000
-	assert.Equal(t, 0, c.Get()) // 0
+	variables := make([]reactive.Variable[int], variableCount)
+	for i := 0; i < variableCount; i++ {
+		variables[i] = reactive.NewVariable[int]()
 
-	unsubscribe := c.Monitor(v)
+		counter.Monitor(variables[i])
+	}
 
-	assert.Equal(t, 1, c.Get()) // 1
-
+	// modify the variables concurrently
 	var wg sync.WaitGroup
-	// 1001 goroutines each updating the variable 1001 times (odd number of times)
 	for i := 0; i < 1001; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 1001; j++ {
-				v.Compute(func(currentValue int) int {
-					return currentValue + 1
-				})
-			}
+
+			// choose a random variable and set it to 1 or 0
+			variable := variables[rand.Intn(variableCount)]
+			variable.Set(rand.Intn(2))
 		}()
 
 	}
-
 	wg.Wait()
 
-	// We expect half of the numbers to be even, so the counter should be 500000
-	assert.Equal(t, 0, c.Get()) // -1
+	trueValues := 0
+	for _, variable := range variables {
+		if variable.Get() == 1 {
+			trueValues++
+		}
+	}
 
-	// Clean up
-	unsubscribe()
+	assert.Equal(t, trueValues, counter.Get()) // -1
 }
