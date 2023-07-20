@@ -103,19 +103,19 @@ func (s *set[ElementType]) Apply(mutations SetMutations[ElementType]) (appliedMu
 	return NewSetMutations[ElementType]().WithAddedElements(addedElements).WithDeletedElements(removedElements)
 }
 
-// Replace replaces the elements of the set with the given elements and returns the removed elements.
-func (s *set[ElementType]) Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType]) {
+// Replace replaces the elements of the set with the given elements and returns the previous elements of the set.
+func (s *set[ElementType]) Replace(elements ReadableSet[ElementType]) (previousElements Set[ElementType]) {
 	s.applyMutex.Lock()
 	defer s.applyMutex.Unlock()
 
-	removedElements = NewSet(s.ToSlice()...)
+	previousElements = NewSet(s.ToSlice()...)
 	s.Clear()
 
 	elements.Range(func(element ElementType) {
 		s.Set(element, types.Void)
 	})
 
-	return removedElements
+	return previousElements
 }
 
 // ReadOnly returns a read-only version of the set.
