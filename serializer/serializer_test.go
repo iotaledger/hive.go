@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/stretchr/testify/assert"
@@ -369,6 +371,73 @@ func TestReadWriteUint256(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, 0, tt.x.Cmp(y))
+		})
+	}
+}
+
+func TestReadWriteTime(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name              string
+		timeToWrite       time.Time
+		expectedTimestamp time.Time
+		expectedErr       error
+	}{
+		{
+			name:              "ok - unix epoch",
+			timeToWrite:       time.Unix(0, 0),
+			expectedTimestamp: time.Unix(0, 0),
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - now",
+			timeToWrite:       now,
+			expectedTimestamp: now,
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - maximum representable timestamp",
+			timeToWrite:       time.Unix(0, math.MaxInt64),
+			expectedTimestamp: time.Unix(0, math.MaxInt64),
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - time before unix epoch is truncated",
+			timeToWrite:       time.Unix(-1_000_000, 0),
+			expectedTimestamp: time.Unix(0, 0),
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - time after max representable is truncated to max",
+			timeToWrite:       time.Unix(serializer.MaxNanoTimestampInt64Seconds+1, 0),
+			expectedTimestamp: time.Unix(0, math.MaxInt64),
+			expectedErr:       nil,
+		},
+	}
+
+	returnErr := func(err error) error { return err }
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serializedBytes, err := serializer.NewSerializer().WriteTime(tt.timeToWrite, returnErr).Serialize()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+
+			timestamp := time.Time{}
+			_, err = serializer.NewDeserializer(serializedBytes).ReadTime(&timestamp, returnErr).Done()
+			if err != nil && tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+
+				return
+			}
+			require.NoError(t, err)
+
+			require.True(t, tt.expectedTimestamp.Equal(timestamp))
 		})
 	}
 }
