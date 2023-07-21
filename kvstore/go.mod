@@ -6,12 +6,12 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20230627193317-c807f60529a3
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230630101126-a9b43f69f1f0
-	github.com/iotaledger/hive.go/ds v0.0.0-20230630101126-a9b43f69f1f0
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20230630101126-a9b43f69f1f0
-	github.com/iotaledger/hive.go/lo v0.0.0-20230630101126-a9b43f69f1f0
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230630101126-a9b43f69f1f0
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230630101126-a9b43f69f1f0
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/ds v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/lo v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230720140101-3f0a9a305cd6
 	github.com/stretchr/testify v1.8.4
 )
 
@@ -34,8 +34,8 @@ require (
 	github.com/golang/glog v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230630101126-a9b43f69f1f0 // indirect
+	github.com/iancoleman/orderedmap v0.3.0 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230720140101-3f0a9a305cd6 // indirect
 	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -51,11 +51,11 @@ require (
 	github.com/prometheus/procfs v0.11.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/net v0.11.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
