@@ -86,21 +86,15 @@ func (s *set[ElementType]) Apply(mutations SetMutations[ElementType]) (appliedMu
 	s.applyMutex.Lock()
 	defer s.applyMutex.Unlock()
 
-	addedElements := NewSet[ElementType]()
-	mutations.AddedElements().Range(func(element ElementType) {
-		if !lo.Return2(s.Set(element, types.Void)) {
-			addedElements.Add(element)
-		}
-	})
+	return s.apply(mutations)
+}
 
-	removedElements := NewSet[ElementType]()
-	mutations.DeletedElements().Range(func(element ElementType) {
-		if s.OrderedMap.Delete(element) {
-			removedElements.Add(element)
-		}
-	})
+// Compute tries to compute the mutations for the set atomically and returns the applied mutations.
+func (s *set[ElementType]) Compute(mutationFactory func(set ReadableSet[ElementType]) SetMutations[ElementType]) (appliedMutations SetMutations[ElementType]) {
+	s.applyMutex.Lock()
+	defer s.applyMutex.Unlock()
 
-	return NewSetMutations[ElementType]().WithAddedElements(addedElements).WithDeletedElements(removedElements)
+	return s.apply(mutationFactory(s.readableSet))
 }
 
 // Replace replaces the elements of the set with the given elements and returns the previous elements of the set.
@@ -121,6 +115,25 @@ func (s *set[ElementType]) Replace(elements ReadableSet[ElementType]) (previousE
 // ReadOnly returns a read-only version of the set.
 func (s *set[ElementType]) ReadOnly() ReadableSet[ElementType] {
 	return s.readableSet
+}
+
+// apply tries to apply the given mutations to the set atomically and returns the mutations that have been applied.
+func (s *set[ElementType]) apply(mutations SetMutations[ElementType]) (appliedMutations SetMutations[ElementType]) {
+	addedElements := NewSet[ElementType]()
+	mutations.AddedElements().Range(func(element ElementType) {
+		if !lo.Return2(s.Set(element, types.Void)) {
+			addedElements.Add(element)
+		}
+	})
+
+	removedElements := NewSet[ElementType]()
+	mutations.DeletedElements().Range(func(element ElementType) {
+		if s.OrderedMap.Delete(element) {
+			removedElements.Add(element)
+		}
+	})
+
+	return NewSetMutations[ElementType]().WithAddedElements(addedElements).WithDeletedElements(removedElements)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
