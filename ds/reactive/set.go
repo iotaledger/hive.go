@@ -29,6 +29,10 @@ type ReadableSet[ElementType comparable] interface {
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(callback func(appliedMutations ds.SetMutations[ElementType]), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 
+	// SubtractReactive returns a new set that will automatically be updated to always hold all elements of the current
+	// set minus the elements of the other sets.
+	SubtractReactive(others ...ReadableSet[ElementType]) Set[ElementType]
+
 	// ReadableSet imports the read methods of the Set interface.
 	ds.ReadableSet[ElementType]
 }

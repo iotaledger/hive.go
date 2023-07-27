@@ -192,6 +192,57 @@ func (r *readableSet[ElementType]) OnUpdate(callback func(appliedMutations ds.Se
 	}
 }
 
+// SubtractReactive returns a new set that will automatically be updated to always hold all elements of the current set
+// minus the elements of the other sets.
+func (r *readableSet[ElementType]) SubtractReactive(others ...ReadableSet[ElementType]) Set[ElementType] {
+	elementCounters := shrinkingmap.New[ElementType, int]()
+	countMutations := func(targetSet, opposingSet ds.Set[ElementType], diff int, threshold int) func(addedElement ElementType) {
+		return func(element ElementType) {
+			if elementCounters.Compute(element, func(currentValue int, _ bool) int {
+				return currentValue + diff
+			}) == threshold && !opposingSet.Delete(element) {
+				targetSet.Add(element)
+			}
+		}
+	}
+
+	addMutations := func(mutations ds.SetMutations[ElementType]) func(ElementType) {
+		return countMutations(mutations.AddedElements(), mutations.DeletedElements(), +1, 1)
+	}
+
+	deleteMutations := func(mutations ds.SetMutations[ElementType]) func(addedElement ElementType) {
+		return countMutations(mutations.DeletedElements(), mutations.AddedElements(), -1, 0)
+	}
+
+	s := NewSet[ElementType]()
+	r.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
+		s.Compute(func(elements ds.ReadableSet[ElementType]) ds.SetMutations[ElementType] {
+			mutations := ds.NewSetMutations[ElementType]()
+
+			appliedMutations.AddedElements().Range(addMutations(mutations))
+			appliedMutations.DeletedElements().Range(deleteMutations(mutations))
+
+			return mutations
+		})
+
+	})
+
+	for _, other := range others {
+		other.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
+			s.Compute(func(elements ds.ReadableSet[ElementType]) ds.SetMutations[ElementType] {
+				mutations := ds.NewSetMutations[ElementType]()
+
+				appliedMutations.AddedElements().Range(deleteMutations(mutations))
+				appliedMutations.DeletedElements().Range(addMutations(mutations))
+
+				return mutations
+			})
+		})
+	}
+
+	return s
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region derivedSet ///////////////////////////////////////////////////////////////////////////////////////////////////
