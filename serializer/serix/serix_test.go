@@ -112,7 +112,7 @@ func NewSimpleStruct() SimpleStruct {
 		Bytes:      []byte{1, 2, 3},
 		BytesArray: [16]byte{3, 2, 1},
 		BigInt:     big.NewInt(8),
-		Time:       time.Unix(1000, 1000),
+		Time:       time.Unix(1000, 1000).UTC(),
 		Int:        23,
 		Float:      4.44,
 	}
