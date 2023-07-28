@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/ethereum/go-ethereum v1.12.0
-	github.com/iancoleman/orderedmap v0.2.0
+	github.com/iancoleman/orderedmap v0.3.0
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20230720140101-3f0a9a305cd6
 	github.com/iotaledger/hive.go/lo v0.0.0-20230720140101-3f0a9a305cd6
 	github.com/mr-tron/base58 v1.2.0

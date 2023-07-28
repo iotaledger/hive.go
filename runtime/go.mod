@@ -9,7 +9,7 @@ require (
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20230720140101-3f0a9a305cd6
 	github.com/iotaledger/hive.go/lo v0.0.0-20230720140101-3f0a9a305cd6
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230720140101-3f0a9a305cd6
-	github.com/pelletier/go-toml/v2 v2.0.8
+	github.com/pelletier/go-toml/v2 v2.0.9
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/stretchr/testify v1.8.4
 )

@@ -24,7 +24,7 @@ require (
 	github.com/iotaledger/hive.go/lo v0.0.0-20230720140101-3f0a9a305cd6 // indirect
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230720140101-3f0a9a305cd6 // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230720140101-3f0a9a305cd6 // indirect
-	github.com/klauspost/compress v1.16.6 // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
