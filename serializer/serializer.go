@@ -1321,7 +1321,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 		nanoseconds = math.MaxInt64
 	}
 
-	*dest = time.Unix(0, int64(nanoseconds)).Local()
+	*dest = time.Unix(0, int64(nanoseconds)).UTC()
 
 	d.offset += UInt64ByteSize
 
