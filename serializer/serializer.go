@@ -460,14 +460,23 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 		return s
 	}
 
-	if timeToWrite.IsZero() {
-		if err := binary.Write(&s.buf, binary.LittleEndian, int64(0)); err != nil {
-			s.err = errProducer(err)
-		}
+	// Convert the int64 timestamp to uint64 by truncating.
+	var unixNano int64
+	// Times whose unix timestamp in seconds would be larger than what fits into a
+	// nanosecond-precision int64 timestamp will be truncated to the max value.
+	if timeToWrite.Unix() > MaxNanoTimestampInt64Seconds {
+		unixNano = math.MaxInt64
 	} else {
-		if err := binary.Write(&s.buf, binary.LittleEndian, timeToWrite.UnixNano()); err != nil {
-			s.err = errProducer(err)
+		unixNano = timeToWrite.UnixNano()
+		// Times before the Unix Epoch will be truncated to the Unix Epoch.
+		if unixNano < 0 {
+			unixNano = 0
 		}
+	}
+	time := uint64(unixNano)
+
+	if err := binary.Write(&s.buf, binary.LittleEndian, time); err != nil {
+		s.err = errProducer(err)
 	}
 
 	return s
@@ -1297,22 +1306,24 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 		return d
 	}
 
-	l := len(d.src[d.offset:])
-
-	if l < Int64ByteSize {
+	remainingLen := len(d.src[d.offset:])
+	if remainingLen < UInt64ByteSize {
 		d.err = errProducer(ErrDeserializationNotEnoughData)
 
 		return d
 	}
-	l = Int64ByteSize
-	nanoSeconds := int64(binary.LittleEndian.Uint64(d.src[d.offset : d.offset+Int64ByteSize]))
-	if nanoSeconds == 0 {
-		*dest = time.Time{}
-	} else {
-		*dest = time.Unix(0, nanoSeconds)
+
+	nanoseconds := binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize])
+
+	// If the number of seconds in the nanosecond timestamp exceeds the max number of
+	// seconds that can be represented in a nanosecond int64 timestamp truncate to max.
+	if nanoseconds/1_000_000_000 > MaxNanoTimestampInt64Seconds {
+		nanoseconds = math.MaxInt64
 	}
 
-	d.offset += l
+	*dest = time.Unix(0, int64(nanoseconds))
+
+	d.offset += UInt64ByteSize
 
 	return d
 }

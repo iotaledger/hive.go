@@ -1,5 +1,7 @@
 package serializer
 
+import "math"
+
 const (
 	// OneByte is the byte size of a single byte.
 	OneByte = 1
@@ -29,6 +31,8 @@ const (
 	PayloadLengthByteSize = UInt32ByteSize
 	// MinPayloadByteSize is the minimum size of a payload (together with its length denotation).
 	MinPayloadByteSize = UInt32ByteSize + OneByte
+	// MaxNanoTimestampInt64Seconds is the maximum number of seconds that fit into a nanosecond-precision int64 timestamp.
+	MaxNanoTimestampInt64Seconds = math.MaxInt64 / 1_000_000_000
 )
 
 // TypeDenotationType defines a type denotation.
