@@ -3,9 +3,9 @@ module github.com/iotaledger/hive.go/logger
 go 1.20
 
 require (
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20230720140101-3f0a9a305cd6
-	github.com/iotaledger/hive.go/lo v0.0.0-20230720140101-3f0a9a305cd6
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230720140101-3f0a9a305cd6
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20230728082147-9fbb11f3eab5
+	github.com/iotaledger/hive.go/lo v0.0.0-20230728082147-9fbb11f3eab5
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230728082147-9fbb11f3eab5
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
 )
@@ -14,10 +14,10 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.12.0 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230720140101-3f0a9a305cd6 // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20230720140101-3f0a9a305cd6 // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230720140101-3f0a9a305cd6 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230720140101-3f0a9a305cd6 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230728082147-9fbb11f3eab5 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20230728082147-9fbb11f3eab5 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230728082147-9fbb11f3eab5 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230728082147-9fbb11f3eab5 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20230518223814-80aa455d8761 // indirect
