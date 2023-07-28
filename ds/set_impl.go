@@ -341,37 +341,35 @@ func newSetArithmetic[ElementType comparable]() *setArithmetic[ElementType] {
 // Add adds the given mutations to the elements and returns the resulting net mutations for the set that are formed by
 // tracking the elements that rise above the given threshold.
 func (s *setArithmetic[ElementType]) Add(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType] {
-	currentThreshold := lo.First(threshold, 1)
-
 	m := NewSetMutations[ElementType]()
-	mutations.AddedElements().Range(s.AddedElementsCollector(m, currentThreshold))
-	mutations.DeletedElements().Range(s.SubtractedElementsCollector(m, currentThreshold))
+
+	mutations.AddedElements().Range(s.AddedElementsCollector(m, threshold...))
+	mutations.DeletedElements().Range(s.SubtractedElementsCollector(m, threshold...))
 
 	return m
 }
 
 // AddedElementsCollector returns a function that adds an element to the given mutations if its occurrence count reaches
 // the given threshold (after the addition).
-func (s *setArithmetic[ElementType]) AddedElementsCollector(mutations SetMutations[ElementType], threshold int) func(ElementType) {
-	return s.elementsCollector(mutations.AddedElements(), mutations.DeletedElements(), true, threshold)
+func (s *setArithmetic[ElementType]) AddedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType) {
+	return s.elementsCollector(mutations.AddedElements(), mutations.DeletedElements(), true, lo.First(threshold, 1))
 }
 
 // Subtract subtracts the given mutations from the elements and returns the resulting net mutations for the set that are
 // formed by tracking the elements that fall below the given threshold.
 func (s *setArithmetic[ElementType]) Subtract(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType] {
-	currentThreshold := lo.First(threshold, 1)
-
 	m := NewSetMutations[ElementType]()
-	mutations.AddedElements().Range(s.SubtractedElementsCollector(m, currentThreshold))
-	mutations.DeletedElements().Range(s.AddedElementsCollector(m, currentThreshold))
+
+	mutations.AddedElements().Range(s.SubtractedElementsCollector(m, threshold...))
+	mutations.DeletedElements().Range(s.AddedElementsCollector(m, threshold...))
 
 	return m
 }
 
 // SubtractedElementsCollector returns a function that deletes an element from the given mutations if its occurrence count
 // falls below the given threshold (after the subtraction)
-func (s *setArithmetic[ElementType]) SubtractedElementsCollector(mutations SetMutations[ElementType], threshold int) func(ElementType) {
-	return s.elementsCollector(mutations.DeletedElements(), mutations.AddedElements(), false, threshold)
+func (s *setArithmetic[ElementType]) SubtractedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType) {
+	return s.elementsCollector(mutations.DeletedElements(), mutations.AddedElements(), false, lo.First(threshold, 1))
 }
 
 // elementsCollector returns a function that collects elements in the given sets that pass the given threshold in either

@@ -282,8 +282,8 @@ func (s *derivedSet[ElementType]) applyInheritedMutations(mutations ds.SetMutati
 	defer s.readableSet.mutex.Unlock()
 
 	inheritedMutations = ds.NewSetMutations[ElementType]()
-	mutations.AddedElements().Range(s.setArithmetic.AddedElementsCollector(inheritedMutations, 1))
-	mutations.DeletedElements().Range(s.setArithmetic.SubtractedElementsCollector(inheritedMutations, 1))
+	mutations.AddedElements().Range(s.setArithmetic.AddedElementsCollector(inheritedMutations))
+	mutations.DeletedElements().Range(s.setArithmetic.SubtractedElementsCollector(inheritedMutations))
 
 	return s.value.Apply(inheritedMutations), s.uniqueUpdateID.Next(), s.updateCallbacks.Values()
 }
