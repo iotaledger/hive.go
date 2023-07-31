@@ -142,3 +142,32 @@ func NewSetMutations[ElementType comparable](elements ...ElementType) SetMutatio
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region SetArithmetic ////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SetArithmetic is an interface that allows to perform arithmetic operations on a set of elements to return the
+// resulting mutations of the operation.
+type SetArithmetic[ElementType comparable] interface {
+	// Add adds the given mutations to the elements and returns the resulting net mutations for the set that are formed
+	// by tracking the elements that rise above the given threshold (defaults to 1).
+	Add(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType]
+
+	// AddedElementsCollector returns a function that adds an element to the given mutations if its occurrence count
+	// reaches the given threshold (defaults to 1) after the addition.
+	AddedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(addedElement ElementType)
+
+	// Subtract subtracts the given mutations from the elements and returns the resulting net mutations for the set that
+	// are formed by tracking the elements that fall below the given threshold (defaults to 1).
+	Subtract(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType]
+
+	// SubtractedElementsCollector returns a function that deletes an element from the given mutations if its occurrence
+	// count falls below the given threshold (defaults to 1) after the subtraction.
+	SubtractedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType)
+}
+
+// NewSetArithmetic creates a new SetArithmetic instance.
+func NewSetArithmetic[ElementType comparable]() SetArithmetic[ElementType] {
+	return newSetArithmetic[ElementType]()
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

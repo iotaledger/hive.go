@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/ds/orderedmap"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ds/walker"
 	"github.com/iotaledger/hive.go/ierrors"
@@ -318,6 +319,69 @@ func (m *setMutations[ElementType]) DeletedElements() Set[ElementType] {
 // IsEmpty returns true if the SetMutations instance is empty.
 func (m *setMutations[ElementType]) IsEmpty() bool {
 	return m.addedElements.IsEmpty() && m.deletedElements.IsEmpty()
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region setArithmetic ////////////////////////////////////////////////////////////////////////////////////////////////
+
+// setArithmetic is the default implementation of the SetArithmetic interface.
+type setArithmetic[ElementType comparable] struct {
+	// ShrinkingMap is used to keep track of the number of times an element is present.
+	*shrinkingmap.ShrinkingMap[ElementType, int]
+}
+
+// newSetArithmetic creates a new setArithmetic instance.
+func newSetArithmetic[ElementType comparable]() *setArithmetic[ElementType] {
+	return &setArithmetic[ElementType]{
+		ShrinkingMap: shrinkingmap.New[ElementType, int](),
+	}
+}
+
+// Add adds the given mutations to the elements and returns the resulting net mutations for the set that are formed by
+// tracking the elements that rise above the given threshold.
+func (s *setArithmetic[ElementType]) Add(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType] {
+	m := NewSetMutations[ElementType]()
+
+	mutations.AddedElements().Range(s.AddedElementsCollector(m, threshold...))
+	mutations.DeletedElements().Range(s.SubtractedElementsCollector(m, threshold...))
+
+	return m
+}
+
+// AddedElementsCollector returns a function that adds an element to the given mutations if its occurrence count reaches
+// the given threshold (after the addition).
+func (s *setArithmetic[ElementType]) AddedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType) {
+	return s.elementsCollector(mutations.AddedElements(), mutations.DeletedElements(), true, lo.First(threshold, 1))
+}
+
+// Subtract subtracts the given mutations from the elements and returns the resulting net mutations for the set that are
+// formed by tracking the elements that fall below the given threshold.
+func (s *setArithmetic[ElementType]) Subtract(mutations SetMutations[ElementType], threshold ...int) SetMutations[ElementType] {
+	m := NewSetMutations[ElementType]()
+
+	mutations.AddedElements().Range(s.SubtractedElementsCollector(m, threshold...))
+	mutations.DeletedElements().Range(s.AddedElementsCollector(m, threshold...))
+
+	return m
+}
+
+// SubtractedElementsCollector returns a function that deletes an element from the given mutations if its occurrence count
+// falls below the given threshold (after the subtraction)
+func (s *setArithmetic[ElementType]) SubtractedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType) {
+	return s.elementsCollector(mutations.DeletedElements(), mutations.AddedElements(), false, lo.First(threshold, 1))
+}
+
+// elementsCollector returns a function that collects elements in the given sets that pass the given threshold in either
+// direction.
+func (s *setArithmetic[ElementType]) elementsCollector(targetSet, opposingSet Set[ElementType], increase bool, threshold int) func(ElementType) {
+	return func(element ElementType) {
+		if s.Compute(element, func(currentValue int, _ bool) int {
+			return currentValue + lo.Cond(increase, 1, -1)
+		}) == lo.Cond(increase, threshold, threshold-1) && !opposingSet.Delete(element) {
+			targetSet.Add(element)
+		}
+	}
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

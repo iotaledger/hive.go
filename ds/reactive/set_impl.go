@@ -192,6 +192,30 @@ func (r *readableSet[ElementType]) OnUpdate(callback func(appliedMutations ds.Se
 	}
 }
 
+// SubtractReactive returns a new set that will automatically be updated to always hold all elements of the current set
+// minus the elements of the other sets.
+func (r *readableSet[ElementType]) SubtractReactive(others ...ReadableSet[ElementType]) Set[ElementType] {
+	s := NewSet[ElementType]()
+
+	setArithmetic := ds.NewSetArithmetic[ElementType]()
+
+	r.OnUpdate(func(mutations ds.SetMutations[ElementType]) {
+		s.Compute(func(ds.ReadableSet[ElementType]) ds.SetMutations[ElementType] {
+			return setArithmetic.Add(mutations)
+		})
+	})
+
+	for _, other := range others {
+		other.OnUpdate(func(mutations ds.SetMutations[ElementType]) {
+			s.Compute(func(ds.ReadableSet[ElementType]) ds.SetMutations[ElementType] {
+				return setArithmetic.Subtract(mutations)
+			})
+		})
+	}
+
+	return s
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region derivedSet ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,16 +225,15 @@ type derivedSet[ElementType comparable] struct {
 	// set is the set that is derived from the source sets.
 	*set[ElementType]
 
-	// sourceCounters are the counters that keep track of the number of times an element is contained in the source
-	// sets (we only want to remove an element from the set if it is not contained in any of the source sets anymore).
-	sourceCounters *shrinkingmap.ShrinkingMap[ElementType, int]
+	// setArithmetic is used to track the amount of times an element has been added or removed by any of the sources.
+	setArithmetic ds.SetArithmetic[ElementType]
 }
 
 // newDerivedSet creates a new derivedSet with the given elements.
 func newDerivedSet[ElementType comparable]() *derivedSet[ElementType] {
 	return &derivedSet[ElementType]{
-		set:            newSet[ElementType](),
-		sourceCounters: shrinkingmap.New[ElementType, int](),
+		set:           newSet[ElementType](),
+		setArithmetic: ds.NewSetArithmetic[ElementType](),
 	}
 }
 
@@ -259,24 +282,8 @@ func (s *derivedSet[ElementType]) applyInheritedMutations(mutations ds.SetMutati
 	defer s.readableSet.mutex.Unlock()
 
 	inheritedMutations = ds.NewSetMutations[ElementType]()
-
-	elementsToAdd := inheritedMutations.AddedElements()
-	mutations.AddedElements().Range(func(element ElementType) {
-		if s.sourceCounters.Compute(element, func(currentValue int, _ bool) int {
-			return currentValue + 1
-		}) == 1 {
-			elementsToAdd.Add(element)
-		}
-	})
-
-	elementsToDelete := inheritedMutations.DeletedElements()
-	mutations.DeletedElements().Range(func(element ElementType) {
-		if s.sourceCounters.Compute(element, func(currentValue int, _ bool) int {
-			return currentValue - 1
-		}) == 0 && !elementsToAdd.Delete(element) {
-			elementsToDelete.Add(element)
-		}
-	})
+	mutations.AddedElements().Range(s.setArithmetic.AddedElementsCollector(inheritedMutations))
+	mutations.DeletedElements().Range(s.setArithmetic.SubtractedElementsCollector(inheritedMutations))
 
 	return s.value.Apply(inheritedMutations), s.uniqueUpdateID.Next(), s.updateCallbacks.Values()
 }
