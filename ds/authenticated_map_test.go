@@ -1,4 +1,4 @@
-package ads_test
+package ds_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := ads.NewMap[testKey, testValue](store,
+	newMap := ads.NewMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -64,7 +64,7 @@ func TestMap(t *testing.T) {
 	require.False(t, newMap.Delete(keys[0]))
 
 	// The root should be same if loading the same store to map
-	newMap1 := ads.NewMap[testKey, testValue](store,
+	newMap1 := ads.NewMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,

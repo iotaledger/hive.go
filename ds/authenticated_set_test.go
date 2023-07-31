@@ -1,4 +1,4 @@
-package ads_test
+package ds_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store,
+	newSet := ads.NewSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -42,7 +42,7 @@ func TestSet(t *testing.T) {
 	require.NotEqualValues(t, root, root1)
 
 	// new set from old store, make sure the root is correct
-	newSet1 := ads.NewSet[testKey](store,
+	newSet1 := ads.NewSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -51,7 +51,7 @@ func TestSet(t *testing.T) {
 
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store,
+	newSet := ads.NewSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
