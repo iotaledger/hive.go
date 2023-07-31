@@ -67,6 +67,23 @@ func (s *set[ElementType]) Apply(mutations ds.SetMutations[ElementType]) (applie
 	return appliedMutations
 }
 
+// Compute tries to compute the mutations for the set atomically and returns the applied mutations.
+func (s *set[ElementType]) Compute(mutationFactory func(set ds.ReadableSet[ElementType]) ds.SetMutations[ElementType]) (appliedMutations ds.SetMutations[ElementType]) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	appliedMutations, updateID, registeredCallbacks := s.apply(mutationFactory(s.readableSet))
+
+	for _, registeredCallback := range registeredCallbacks {
+		if registeredCallback.LockExecution(updateID) {
+			registeredCallback.Invoke(appliedMutations)
+			registeredCallback.UnlockExecution()
+		}
+	}
+
+	return appliedMutations
+}
+
 // Replace replaces the current value of the set with the given elements.
 func (s *set[ElementType]) Replace(elements ds.ReadableSet[ElementType]) (removedElements ds.Set[ElementType]) {
 	s.mutex.Lock()
@@ -205,11 +222,11 @@ func (s *derivedSet[ElementType]) InheritFrom(sources ...ReadableSet[ElementType
 		sourceElements := ds.NewSet[ElementType]()
 
 		unsubscribeFromSource := source.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
-			s.Apply(sourceElements.Apply(appliedMutations))
+			s.inheritMutations(sourceElements.Apply(appliedMutations))
 		})
 
 		removeSourceElements := func() {
-			s.Apply(ds.NewSetMutations[ElementType]().WithDeletedElements(sourceElements))
+			s.inheritMutations(ds.NewSetMutations[ElementType]().WithDeletedElements(sourceElements))
 		}
 
 		unsubscribeCallbacks = append(unsubscribeCallbacks, unsubscribeFromSource, removeSourceElements)
@@ -218,16 +235,12 @@ func (s *derivedSet[ElementType]) InheritFrom(sources ...ReadableSet[ElementType
 	return lo.Batch(unsubscribeCallbacks...)
 }
 
-// Apply triggers the update of the set with the given mutations.
-func (s *derivedSet[ElementType]) Apply(mutations ds.SetMutations[ElementType]) (appliedMutations ds.SetMutations[ElementType]) {
-	if mutations.IsEmpty() {
-		return
-	}
-
+// inheritMutations triggers the update of the set with the given mutations.
+func (s *derivedSet[ElementType]) inheritMutations(mutations ds.SetMutations[ElementType]) (appliedMutations ds.SetMutations[ElementType]) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	appliedMutations, updateID, registeredCallbacks := s.apply(mutations)
+	appliedMutations, updateID, registeredCallbacks := s.applyInheritedMutations(mutations)
 
 	for _, registeredCallback := range registeredCallbacks {
 		if registeredCallback.LockExecution(updateID) {
@@ -239,9 +252,9 @@ func (s *derivedSet[ElementType]) Apply(mutations ds.SetMutations[ElementType]) 
 	return appliedMutations
 }
 
-// apply prepares the trigger by applying the given mutations to the set and returning the applied
+// applyInheritedMutations prepares the trigger by applying the given mutations to the set and returning the applied
 // mutations, the trigger ID and the callbacks to trigger.
-func (s *derivedSet[ElementType]) apply(mutations ds.SetMutations[ElementType]) (inheritedMutations ds.SetMutations[ElementType], triggerID uniqueID, callbacksToTrigger []*callback[func(ds.SetMutations[ElementType])]) {
+func (s *derivedSet[ElementType]) applyInheritedMutations(mutations ds.SetMutations[ElementType]) (inheritedMutations ds.SetMutations[ElementType], triggerID uniqueID, callbacksToTrigger []*callback[func(ds.SetMutations[ElementType])]) {
 	s.readableSet.mutex.Lock()
 	defer s.readableSet.mutex.Unlock()
 

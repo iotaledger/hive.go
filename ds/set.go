@@ -101,6 +101,9 @@ type WriteableSet[ElementType comparable] interface {
 	// Apply tries to apply the given mutations to the set atomically and returns the applied mutations.
 	Apply(mutations SetMutations[ElementType]) (appliedMutations SetMutations[ElementType])
 
+	// Compute tries to compute the mutations for the set atomically and returns the applied mutations.
+	Compute(mutationFactory func(set ReadableSet[ElementType]) SetMutations[ElementType]) (appliedMutations SetMutations[ElementType])
+
 	// Replace replaces the elements of the set with the given elements and returns the removed elements.
 	Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType])
 
