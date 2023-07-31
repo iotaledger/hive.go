@@ -63,7 +63,7 @@ func newAuthenticatedMap[K, V any](
 
 // WasRestoredFromStorage returns true if the map has been restored from storage.
 func (m *authenticatedMap[K, V]) WasRestoredFromStorage() bool {
-	return len(m.root.Get()) == 0
+	return len(m.root.Get()) != 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
