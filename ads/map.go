@@ -23,7 +23,7 @@ type Map[K, V any] interface {
 	// Stream streams all key-value pairs to the given consumer function.
 	Stream(consumerFunc func(key K, value V) error) error
 
-	// Commit commits the changes to the underlying store.
+	// Commit persists the changes to the underlying store.
 	Commit() error
 
 	// Root returns the root of the sparse merkle tree.
