@@ -1,4 +1,4 @@
-package ds
+package ads
 
 import (
 	"github.com/iotaledger/hive.go/ads/amap"
