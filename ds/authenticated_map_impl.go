@@ -86,10 +86,6 @@ func (m *authenticatedMap[K, V]) Set(key K, value V) error {
 		return ierrors.Wrap(err, "failed to serialize value")
 	}
 
-	if len(valueBytes) == 0 {
-		return ierrors.Errorf("value cannot be empty")
-	}
-
 	keyBytes, err := m.kToBytes(key)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize key")
