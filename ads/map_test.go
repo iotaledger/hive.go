@@ -1,17 +1,20 @@
-package ads_test
+package ads
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ads"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/lo"
 )
+
+var ErrStopIteration = ierrors.New("stop")
 
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := ads.NewMap[testKey, testValue](store,
+	newMap := newAuthenticatedMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -20,30 +23,39 @@ func TestMap(t *testing.T) {
 	keys := []testKey{testKey([]byte{'a'}), testKey([]byte{'b'})}
 	values := []testValue{testValueFromString("test value"), testValueFromString("test value 1")}
 	// Test setting and getting a value
+	require.Equal(t, 0, newMap.Size())
+	require.False(t, newMap.WasRestoredFromStorage())
+
 	for i, k := range keys {
 		newMap.Set(k, values[i])
 	}
 
 	for i, k := range keys {
-		exist := newMap.Has(k)
+		exist, err := newMap.Has(k)
+		require.NoError(t, err)
 		require.True(t, exist)
-		gotValue, exists := newMap.Get(k)
+		gotValue, exists, err := newMap.Get(k)
+		require.NoError(t, err)
 		require.True(t, exists)
 		require.ElementsMatch(t, values[i], gotValue)
 	}
 
-	// Test setting a value to empty, which should panic
-	require.Panics(t, func() { newMap.Set(keys[0], testValue{}) })
+	require.Equal(t, len(keys), newMap.Size())
+
+	// Test setting a value to empty, which should be just fine
+	require.NoError(t, newMap.Set(keys[0], testValue{}))
 
 	// Test getting a non-existing key
-	gotValue, exists := newMap.Get(testKey([]byte{'c'}))
+	gotValue, exists, err := newMap.Get(testKey([]byte{'c'}))
+	require.NoError(t, err)
 	require.False(t, exists)
 	require.Nil(t, gotValue)
 
 	// overwrite the value of keys[0]
 	newValue := testValueFromString("test")
 	newMap.Set(keys[0], newValue)
-	gotValue, exists = newMap.Get(keys[0])
+	gotValue, exists, err = newMap.Get(keys[0])
+	require.NoError(t, err)
 	require.True(t, exists)
 	require.ElementsMatch(t, newValue, gotValue)
 
@@ -51,31 +63,37 @@ func TestMap(t *testing.T) {
 	oldRoot := newMap.Root()
 
 	// Test deleting a key
-	require.True(t, newMap.Delete(keys[0]))
-	exists = newMap.Has(keys[0])
+	require.True(t, lo.PanicOnErr(newMap.Delete(keys[0])))
+	exists, err = newMap.Has(keys[0])
+	require.NoError(t, err)
 	require.False(t, exists)
-	_, exists = newMap.Get(keys[0])
+	_, exists, err = newMap.Get(keys[0])
+	require.NoError(t, err)
 	require.False(t, exists)
 
 	// The root now should be different
 	require.NotEqualValues(t, oldRoot, newMap.Root())
 
 	// Test deleting a non-existent key
-	require.False(t, newMap.Delete(keys[0]))
+	require.False(t, lo.PanicOnErr(newMap.Delete(keys[0])))
+
+	require.NoError(t, newMap.Commit())
 
 	// The root should be same if loading the same store to map
-	newMap1 := ads.NewMap[testKey, testValue](store,
+	newMap1 := newAuthenticatedMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
 		testValueFromBytes,
 	)
+
+	require.True(t, newMap.WasRestoredFromStorage())
 	require.EqualValues(t, newMap.Root(), newMap1.Root())
 }
 
 func TestStreamMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := ads.NewMap[testKey, testValue](store,
+	newMap := newAuthenticatedMap[testKey, testValue](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -91,9 +109,9 @@ func TestStreamMap(t *testing.T) {
 	}
 
 	seen := make(map[testKey]testValue)
-	err := newMap.Stream(func(key testKey, value testValue) bool {
+	err := newMap.Stream(func(key testKey, value testValue) error {
 		seen[key] = value
-		return true
+		return nil
 	})
 	require.NoError(t, err)
 
@@ -106,12 +124,14 @@ func TestStreamMap(t *testing.T) {
 
 	// consume function returns false, only 1 element is visited.
 	seenKV := make(map[testKey]testValue)
-	err = newMap.Stream(func(key testKey, value testValue) bool {
+	err = newMap.Stream(func(key testKey, value testValue) error {
 		seenKV[key] = value
 
-		return false
+		return ErrStopIteration
 	})
-	require.NoError(t, err)
+	// the error is expected because we stopped the iteration early
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrStopIteration)
 	require.Equal(t, 1, len(seenKV))
 	for k, v := range seenKV {
 		expectedV, has := kvMap[k]

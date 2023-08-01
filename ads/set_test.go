@@ -1,40 +1,47 @@
-package ads_test
+package ads
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ads"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
+	"github.com/iotaledger/hive.go/lo"
 )
+
+var errStopIteration = ierrors.New("stop")
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store,
+	newSet := newAuthenticatedSet(
+		store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
 
 	key := testKey([]byte{'a'})
 	newSet.Add(key)
-	exist := newSet.Has(key)
+	exist, err := newSet.Has(key)
+	require.NoError(t, err)
 	require.True(t, exist)
 
 	// add the same key again
 	newSet.Add(key)
-	exist = newSet.Has(key)
+	exist, err = newSet.Has(key)
+	require.NoError(t, err)
 	require.True(t, exist)
 	require.Equal(t, 1, newSet.Size())
 	root := newSet.Root()
 
 	// Test deleting a key
-	require.True(t, newSet.Delete(key))
-	exist = newSet.Has(key)
+	require.True(t, lo.PanicOnErr(newSet.Delete(key)))
+	exist, err = newSet.Has(key)
+	require.NoError(t, err)
 	require.False(t, exist)
 
 	// Test deleting a non-existent key
-	require.False(t, newSet.Delete(key))
+	require.False(t, lo.PanicOnErr(newSet.Delete(key)))
 	require.Equal(t, 0, newSet.Size())
 
 	// make sure the root has changed
@@ -42,7 +49,7 @@ func TestSet(t *testing.T) {
 	require.NotEqualValues(t, root, root1)
 
 	// new set from old store, make sure the root is correct
-	newSet1 := ads.NewSet[testKey](store,
+	newSet1 := newAuthenticatedSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -51,7 +58,7 @@ func TestSet(t *testing.T) {
 
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := ads.NewSet[testKey](store,
+	newSet := newAuthenticatedSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -63,9 +70,9 @@ func TestStreamSet(t *testing.T) {
 	require.Equal(t, 2, newSet.Size())
 
 	seen := make(map[testKey]bool)
-	err := newSet.Stream(func(key testKey) bool {
+	err := newSet.Stream(func(key testKey) error {
 		seen[key] = true
-		return true
+		return nil
 	})
 	require.NoError(t, err)
 	require.True(t, seen[key1])
@@ -74,10 +81,11 @@ func TestStreamSet(t *testing.T) {
 
 	// with consume function returning false, only 1 element will be visited.
 	firstSeen := make(map[testKey]bool)
-	err = newSet.Stream(func(key testKey) bool {
+	err = newSet.Stream(func(key testKey) error {
 		firstSeen[key] = true
-		return false
+		return ErrStopIteration
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrStopIteration)
 	require.Equal(t, 1, len(firstSeen))
 }
