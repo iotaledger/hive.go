@@ -221,7 +221,7 @@ func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) (er
 	defer m.mutex.Unlock()
 
 	if iterationErr := m.rawKeysStore.Iterate([]byte{}, func(key kvstore.Key, _ kvstore.Value) bool {
-		value, valueErr := m.tree.Get(key)
+		valueBytes, valueErr := m.tree.Get(key)
 		if valueErr != nil {
 			err = ierrors.Wrapf(valueErr, "failed to get value for key %s", key)
 
@@ -235,9 +235,9 @@ func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) (er
 			return false
 		}
 
-		v, _, valueErr := m.bytesToV(value)
+		v, _, valueErr := m.bytesToV(valueBytes)
 		if valueErr != nil {
-			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", value)
+			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
 
 			return false
 		}
