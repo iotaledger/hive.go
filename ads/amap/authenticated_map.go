@@ -1,4 +1,4 @@
-package ds
+package amap
 
 import (
 	"crypto/sha256"
@@ -21,7 +21,8 @@ const (
 	nonEmptyLeaf = 1
 )
 
-type authenticatedMap[K, V any] struct {
+// AuthenticatedMap is a sparse merkle tree based map.
+type AuthenticatedMap[K, V any] struct {
 	rawKeysStore *kvstore.TypedStore[K, types.Empty]
 	tree         *smt.SMT
 	size         *typedkey.Number[uint64]
@@ -34,14 +35,15 @@ type authenticatedMap[K, V any] struct {
 	bytesToV kvstore.BytesToObject[V]
 }
 
-func newAuthenticatedMap[K, V any](
+// NewAuthenticatedMap creates a new authenticated map.
+func NewAuthenticatedMap[K, V any](
 	store kvstore.KVStore,
 	kToBytes kvstore.ObjectToBytes[K],
 	bytesToK kvstore.BytesToObject[K],
 	vToBytes kvstore.ObjectToBytes[V],
 	bytesToV kvstore.BytesToObject[V],
-) *authenticatedMap[K, V] {
-	newMap := &authenticatedMap[K, V]{
+) *AuthenticatedMap[K, V] {
+	newMap := &AuthenticatedMap[K, V]{
 		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), kToBytes, bytesToK, types.Empty.Bytes, types.EmptyFromBytes),
 		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
 		root:         typedkey.NewBytes(store, prefixRootKey),
@@ -62,12 +64,12 @@ func newAuthenticatedMap[K, V any](
 }
 
 // WasRestoredFromStorage returns true if the map has been restored from storage.
-func (m *authenticatedMap[K, V]) WasRestoredFromStorage() bool {
+func (m *AuthenticatedMap[K, V]) WasRestoredFromStorage() bool {
 	return len(m.root.Get()) != 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
-func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
+func (m *AuthenticatedMap[K, V]) Root() (root types.Identifier) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -77,7 +79,7 @@ func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
 }
 
 // Set sets the output to unspent outputs set.
-func (m *authenticatedMap[K, V]) Set(key K, value V) error {
+func (m *AuthenticatedMap[K, V]) Set(key K, value V) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -112,7 +114,7 @@ func (m *authenticatedMap[K, V]) Set(key K, value V) error {
 }
 
 // Size returns the number of elements in the map.
-func (m *authenticatedMap[K, V]) Size() int {
+func (m *AuthenticatedMap[K, V]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -120,7 +122,7 @@ func (m *authenticatedMap[K, V]) Size() int {
 }
 
 // Commit persists the current state of the map to the storage.
-func (m *authenticatedMap[K, V]) Commit() error {
+func (m *AuthenticatedMap[K, V]) Commit() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -130,7 +132,7 @@ func (m *authenticatedMap[K, V]) Commit() error {
 }
 
 // Delete removes the key from the map.
-func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
+func (m *AuthenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -164,7 +166,7 @@ func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 }
 
 // Has returns true if the key is in the set.
-func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
+func (m *AuthenticatedMap[K, V]) Has(key K) (has bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -177,7 +179,7 @@ func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
 }
 
 // Get returns the value for the given key.
-func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
+func (m *AuthenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -188,14 +190,10 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 
 	valueBytes, err := m.tree.Get(keyBytes)
 	if err != nil {
-		if ierrors.Is(err, kvstore.ErrKeyNotFound) {
-			return value, false, err
-		}
-
 		return value, false, ierrors.Wrap(err, "failed to get from tree")
 	}
 
-	if len(valueBytes) == 0 {
+	if valueBytes == nil {
 		return value, false, err
 	}
 
@@ -212,48 +210,49 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 }
 
 // Stream streams all the keys and values.
-func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) (err error) {
+func (m *AuthenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	var innerErr error
 	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
 		keyBytes, err := m.kToBytes(key)
 		if err != nil {
-			err = ierrors.Wrapf(err, "failed to serialize key %s", key)
+			innerErr = ierrors.Wrapf(err, "failed to serialize key %s", keyBytes)
 
 			return false
 		}
 
 		valueBytes, valueErr := m.tree.Get(keyBytes)
 		if valueErr != nil {
-			err = ierrors.Wrapf(valueErr, "failed to get value for key %s", keyBytes)
+			innerErr = ierrors.Wrapf(valueErr, "failed to get value for key %s", keyBytes)
 
 			return false
 		}
 
 		value, _, valueErr := m.bytesToV(valueBytes)
 		if valueErr != nil {
-			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
+			innerErr = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
 
 			return false
 		}
 
 		if callbackErr := callback(key, value); callbackErr != nil {
-			err = ierrors.Wrapf(callbackErr, "failed to execute callback for key %s", keyBytes)
+			innerErr = ierrors.Wrapf(callbackErr, "failed to execute callback for key %s", keyBytes)
 
 			return false
 		}
 
 		return true
 	}); iterationErr != nil {
-		err = ierrors.Wrap(iterationErr, "failed to iterate over raw keys")
+		return ierrors.Wrap(iterationErr, "failed to iterate over raw keys")
 	}
 
-	return
+	return innerErr
 }
 
 // has returns true if the key is in the map.
-func (m *authenticatedMap[K, V]) has(keyBytes []byte) (has bool, err error) {
+func (m *AuthenticatedMap[K, V]) has(keyBytes []byte) (has bool, err error) {
 	value, err := m.tree.Get(keyBytes)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to get from tree")
