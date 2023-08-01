@@ -1,21 +1,20 @@
-package aset_test
+package ads
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ads/aset"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/lo"
 )
 
-var ErrStopIteration = ierrors.New("stop")
+var errStopIteration = ierrors.New("stop")
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := aset.NewAuthenticatedSet(
+	newSet := newAuthenticatedSet(
 		store,
 		testKey.Bytes,
 		testKeyFromBytes,
@@ -50,7 +49,7 @@ func TestSet(t *testing.T) {
 	require.NotEqualValues(t, root, root1)
 
 	// new set from old store, make sure the root is correct
-	newSet1 := aset.NewAuthenticatedSet(store,
+	newSet1 := newAuthenticatedSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -59,7 +58,7 @@ func TestSet(t *testing.T) {
 
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := aset.NewAuthenticatedSet(store,
+	newSet := newAuthenticatedSet(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -89,28 +88,4 @@ func TestStreamSet(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrStopIteration)
 	require.Equal(t, 1, len(firstSeen))
-}
-
-type testKey [1]byte
-
-func (t testKey) Bytes() ([]byte, error) {
-	return t[:], nil
-}
-
-func testKeyFromBytes(b []byte) (testKey, int, error) {
-	return testKey(b), 1, nil
-}
-
-type testValue []byte
-
-func testValueFromString(s string) testValue {
-	return testValue(s)
-}
-
-func (t testValue) Bytes() ([]byte, error) {
-	return t[:], nil
-}
-
-func testValueFromBytes(b []byte) (testValue, int, error) {
-	return b, len(b), nil
 }

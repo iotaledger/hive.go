@@ -1,11 +1,10 @@
-package amap_test
+package ads
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ads/amap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/lo"
@@ -15,7 +14,7 @@ var ErrStopIteration = ierrors.New("stop")
 
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := amap.NewAuthenticatedMap(store,
+	newMap := newAuthenticatedMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -81,20 +80,20 @@ func TestMap(t *testing.T) {
 	require.NoError(t, newMap.Commit())
 
 	// The root should be same if loading the same store to map
-	newMap1 := amap.NewAuthenticatedMap(store,
+	newMap1 := newAuthenticatedMap(store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
 		testValueFromBytes,
 	)
-	
+
 	require.True(t, newMap.WasRestoredFromStorage())
 	require.EqualValues(t, newMap.Root(), newMap1.Root())
 }
 
 func TestStreamMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := amap.NewAuthenticatedMap[testKey, testValue](store,
+	newMap := newAuthenticatedMap[testKey, testValue](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,

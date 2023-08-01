@@ -1,8 +1,6 @@
 package ads
 
 import (
-	"github.com/iotaledger/hive.go/ads/amap"
-	"github.com/iotaledger/hive.go/ads/aset"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore"
 )
@@ -40,7 +38,7 @@ type Map[K, V any] interface {
 
 // NewMap creates a new AuthenticatedMap.
 func NewMap[K, V any](store kvstore.KVStore, kToBytes kvstore.ObjectToBytes[K], bytesToK kvstore.BytesToObject[K], vToBytes kvstore.ObjectToBytes[V], bytesToV kvstore.BytesToObject[V]) Map[K, V] {
-	return amap.NewAuthenticatedMap(store, kToBytes, bytesToK, vToBytes, bytesToV)
+	return newAuthenticatedMap(store, kToBytes, bytesToK, vToBytes, bytesToV)
 }
 
 // Set is a sparse merkle tree based set.
@@ -57,5 +55,5 @@ type Set[K any] interface {
 
 // NewSet creates a new sparse merkle tree based map.
 func NewSet[K any](store kvstore.KVStore, kToBytes kvstore.ObjectToBytes[K], bytesToK kvstore.BytesToObject[K]) Set[K] {
-	return aset.NewAuthenticatedSet(store, kToBytes, bytesToK)
+	return newAuthenticatedSet(store, kToBytes, bytesToK)
 }

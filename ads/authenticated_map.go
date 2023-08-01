@@ -1,4 +1,4 @@
-package amap
+package ads
 
 import (
 	"crypto/sha256"
@@ -22,7 +22,7 @@ const (
 )
 
 // AuthenticatedMap is a sparse merkle tree based map.
-type AuthenticatedMap[K, V any] struct {
+type authenticatedMap[K, V any] struct {
 	rawKeysStore *kvstore.TypedStore[K, types.Empty]
 	tree         *smt.SMT
 	size         *typedkey.Number[uint64]
@@ -36,14 +36,14 @@ type AuthenticatedMap[K, V any] struct {
 }
 
 // NewAuthenticatedMap creates a new authenticated map.
-func NewAuthenticatedMap[K, V any](
+func newAuthenticatedMap[K, V any](
 	store kvstore.KVStore,
 	kToBytes kvstore.ObjectToBytes[K],
 	bytesToK kvstore.BytesToObject[K],
 	vToBytes kvstore.ObjectToBytes[V],
 	bytesToV kvstore.BytesToObject[V],
-) *AuthenticatedMap[K, V] {
-	newMap := &AuthenticatedMap[K, V]{
+) *authenticatedMap[K, V] {
+	newMap := &authenticatedMap[K, V]{
 		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), kToBytes, bytesToK, types.Empty.Bytes, types.EmptyFromBytes),
 		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
 		root:         typedkey.NewBytes(store, prefixRootKey),
@@ -64,12 +64,12 @@ func NewAuthenticatedMap[K, V any](
 }
 
 // WasRestoredFromStorage returns true if the map has been restored from storage.
-func (m *AuthenticatedMap[K, V]) WasRestoredFromStorage() bool {
+func (m *authenticatedMap[K, V]) WasRestoredFromStorage() bool {
 	return len(m.root.Get()) != 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
-func (m *AuthenticatedMap[K, V]) Root() (root types.Identifier) {
+func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -79,7 +79,7 @@ func (m *AuthenticatedMap[K, V]) Root() (root types.Identifier) {
 }
 
 // Set sets the output to unspent outputs set.
-func (m *AuthenticatedMap[K, V]) Set(key K, value V) error {
+func (m *authenticatedMap[K, V]) Set(key K, value V) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -114,7 +114,7 @@ func (m *AuthenticatedMap[K, V]) Set(key K, value V) error {
 }
 
 // Size returns the number of elements in the map.
-func (m *AuthenticatedMap[K, V]) Size() int {
+func (m *authenticatedMap[K, V]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -122,7 +122,7 @@ func (m *AuthenticatedMap[K, V]) Size() int {
 }
 
 // Commit persists the current state of the map to the storage.
-func (m *AuthenticatedMap[K, V]) Commit() error {
+func (m *authenticatedMap[K, V]) Commit() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -132,7 +132,7 @@ func (m *AuthenticatedMap[K, V]) Commit() error {
 }
 
 // Delete removes the key from the map.
-func (m *AuthenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
+func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -166,7 +166,7 @@ func (m *AuthenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 }
 
 // Has returns true if the key is in the set.
-func (m *AuthenticatedMap[K, V]) Has(key K) (has bool, err error) {
+func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -179,7 +179,7 @@ func (m *AuthenticatedMap[K, V]) Has(key K) (has bool, err error) {
 }
 
 // Get returns the value for the given key.
-func (m *AuthenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
+func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -210,7 +210,7 @@ func (m *AuthenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 }
 
 // Stream streams all the keys and values.
-func (m *AuthenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
+func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -252,7 +252,7 @@ func (m *AuthenticatedMap[K, V]) Stream(callback func(key K, value V) error) err
 }
 
 // has returns true if the key is in the map.
-func (m *AuthenticatedMap[K, V]) has(keyBytes []byte) (has bool, err error) {
+func (m *authenticatedMap[K, V]) has(keyBytes []byte) (has bool, err error) {
 	value, err := m.tree.Get(keyBytes)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to get from tree")
