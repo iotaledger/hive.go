@@ -22,7 +22,7 @@ const (
 )
 
 type authenticatedMap[K, V any] struct {
-	rawKeysStore kvstore.KVStore
+	rawKeysStore *kvstore.TypedStore[K, types.Empty]
 	tree         *smt.SMT
 	size         *typedkey.Number[uint64]
 	root         *typedkey.Bytes
@@ -42,7 +42,7 @@ func newAuthenticatedMap[K, V any](
 	bytesToV kvstore.BytesToObject[V],
 ) *authenticatedMap[K, V] {
 	newMap := &authenticatedMap[K, V]{
-		rawKeysStore: lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})),
+		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), kToBytes, bytesToK, types.Empty.Bytes, types.EmptyFromBytes),
 		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
 		root:         typedkey.NewBytes(store, prefixRootKey),
 
@@ -100,7 +100,7 @@ func (m *authenticatedMap[K, V]) Set(key K, value V) error {
 		return ierrors.Wrap(err, "failed to update tree")
 	}
 
-	if err := m.rawKeysStore.Set(keyBytes, []byte{}); err != nil {
+	if err := m.rawKeysStore.Set(key, types.Void); err != nil {
 		return ierrors.Wrap(err, "failed to set raw key")
 	}
 
@@ -152,7 +152,7 @@ func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 		return false, ierrors.Wrap(err, "failed to delete from tree")
 	}
 
-	if err := m.rawKeysStore.Delete(keyBytes); err != nil {
+	if err := m.rawKeysStore.Delete(key); err != nil {
 		return false, ierrors.Wrap(err, "failed to delete from raw keys store")
 	}
 
@@ -216,30 +216,30 @@ func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) (er
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	if iterationErr := m.rawKeysStore.Iterate([]byte{}, func(key kvstore.Key, _ kvstore.Value) bool {
-		valueBytes, valueErr := m.tree.Get(key)
+	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
+		keyBytes, err := m.kToBytes(key)
+		if err != nil {
+			err = ierrors.Wrapf(err, "failed to serialize key %s", key)
+
+			return false
+		}
+
+		valueBytes, valueErr := m.tree.Get(keyBytes)
 		if valueErr != nil {
-			err = ierrors.Wrapf(valueErr, "failed to get value for key %s", key)
+			err = ierrors.Wrapf(valueErr, "failed to get value for key %s", keyBytes)
 
 			return false
 		}
 
-		k, _, keyErr := m.bytesToK(key)
-		if keyErr != nil {
-			err = ierrors.Wrapf(keyErr, "failed to deserialize key %s", key)
-
-			return false
-		}
-
-		v, _, valueErr := m.bytesToV(valueBytes)
+		value, _, valueErr := m.bytesToV(valueBytes)
 		if valueErr != nil {
 			err = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
 
 			return false
 		}
 
-		if callbackErr := callback(k, v); callbackErr != nil {
-			err = ierrors.Wrapf(callbackErr, "failed to execute callback for key %s", key)
+		if callbackErr := callback(key, value); callbackErr != nil {
+			err = ierrors.Wrapf(callbackErr, "failed to execute callback for key %s", keyBytes)
 
 			return false
 		}
