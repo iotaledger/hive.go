@@ -4,8 +4,10 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 )
 
-type ObjectToBytes[O any] func(O) ([]byte, error)
-type BytesToObject[O any] func([]byte) (object O, consumed int, err error)
+type (
+	ObjectToBytes[O any] func(O) ([]byte, error)
+	BytesToObject[O any] func([]byte) (object O, consumed int, err error)
+)
 
 // TypedStore is a generically typed wrapper around a KVStore that abstracts serialization away.
 type TypedStore[K, V any] struct {
@@ -121,6 +123,23 @@ func (t *TypedStore[K, V]) Iterate(prefix KeyPrefix, callback func(key K, value 
 		return callback(keyDecoded, valueDecoded)
 	}, direction...); iterationErr != nil {
 		return ierrors.Wrap(iterationErr, "failed to iterate over KV store")
+	}
+
+	return innerErr
+}
+
+func (t *TypedStore[K, V]) IterateKeys(prefix KeyPrefix, callback func(key K) (advance bool), direction ...IterDirection) (err error) {
+	var innerErr error
+	if iterationErr := t.kv.IterateKeys(prefix, func(key Key) bool {
+		keyDecoded, _, keyErr := t.bytesToK(key)
+		if keyErr != nil {
+			innerErr = keyErr
+			return false
+		}
+
+		return callback(keyDecoded)
+	}, direction...); iterationErr != nil {
+		return ierrors.Wrap(iterationErr, "failed to iterate keys over KV store")
 	}
 
 	return innerErr
