@@ -15,10 +15,9 @@ import (
 
 const (
 	prefixRawKeysStorage uint8 = iota
+	prefixTreeStorage
 	prefixRootKey
 	prefixSizeKey
-
-	nonEmptyLeaf = 1
 )
 
 // AuthenticatedMap is a sparse merkle tree based map.
@@ -30,7 +29,6 @@ type authenticatedMap[K, V any] struct {
 	mutex        sync.RWMutex
 
 	kToBytes kvstore.ObjectToBytes[K]
-	bytesToK kvstore.BytesToObject[K]
 	vToBytes kvstore.ObjectToBytes[V]
 	bytesToV kvstore.BytesToObject[V]
 }
@@ -49,15 +47,14 @@ func newAuthenticatedMap[K, V any](
 		root:         typedkey.NewBytes(store, prefixRootKey),
 
 		kToBytes: kToBytes,
-		bytesToK: bytesToK,
 		vToBytes: vToBytes,
 		bytesToV: bytesToV,
 	}
 
 	if root := newMap.root.Get(); len(root) != 0 {
-		newMap.tree = smt.ImportSparseMerkleTree(store, sha256.New(), root, smt.WithValueHasher(nil))
+		newMap.tree = smt.ImportSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), root, smt.WithValueHasher(nil))
 	} else {
-		newMap.tree = smt.NewSparseMerkleTree(store, sha256.New(), smt.WithValueHasher(nil))
+		newMap.tree = smt.NewSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), smt.WithValueHasher(nil))
 	}
 
 	return newMap
@@ -167,8 +164,8 @@ func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 
 // Has returns true if the key is in the set.
 func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	keyBytes, err := m.kToBytes(key)
 	if err != nil {
@@ -180,8 +177,8 @@ func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
 
 // Get returns the value for the given key.
 func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	keyBytes, err := m.kToBytes(key)
 	if err != nil {
@@ -211,8 +208,8 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 
 // Stream streams all the keys and values.
 func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	var innerErr error
 	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
