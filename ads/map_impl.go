@@ -15,6 +15,7 @@ import (
 
 const (
 	prefixRawKeysStorage uint8 = iota
+	prefixTreeStorage
 	prefixRootKey
 	prefixSizeKey
 
@@ -55,9 +56,9 @@ func newAuthenticatedMap[K, V any](
 	}
 
 	if root := newMap.root.Get(); len(root) != 0 {
-		newMap.tree = smt.ImportSparseMerkleTree(store, sha256.New(), root, smt.WithValueHasher(nil))
+		newMap.tree = smt.ImportSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), root, smt.WithValueHasher(nil))
 	} else {
-		newMap.tree = smt.NewSparseMerkleTree(store, sha256.New(), smt.WithValueHasher(nil))
+		newMap.tree = smt.NewSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), smt.WithValueHasher(nil))
 	}
 
 	return newMap
