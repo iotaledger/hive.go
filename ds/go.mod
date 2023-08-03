@@ -4,11 +4,11 @@ go 1.20
 
 require (
 	github.com/emirpasic/gods v1.18.1
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230802094910-ee406a79dbfa
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20230802094910-ee406a79dbfa
-	github.com/iotaledger/hive.go/lo v0.0.0-20230802094910-ee406a79dbfa
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230802094910-ee406a79dbfa
-	github.com/iotaledger/hive.go/stringify v0.0.0-20230802094910-ee406a79dbfa
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230803074708-c420cf82142c
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20230803074708-c420cf82142c
+	github.com/iotaledger/hive.go/lo v0.0.0-20230803074708-c420cf82142c
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230803074708-c420cf82142c
+	github.com/iotaledger/hive.go/stringify v0.0.0-20230803074708-c420cf82142c
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.11.0
