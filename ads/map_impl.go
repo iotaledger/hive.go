@@ -67,8 +67,8 @@ func (m *authenticatedMap[K, V]) WasRestoredFromStorage() bool {
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
 func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	copy(root[:], m.tree.Root())
 
@@ -164,8 +164,8 @@ func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 
 // Has returns true if the key is in the set.
 func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	keyBytes, err := m.kToBytes(key)
 	if err != nil {
@@ -177,8 +177,8 @@ func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
 
 // Get returns the value for the given key.
 func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	keyBytes, err := m.kToBytes(key)
 	if err != nil {
@@ -208,8 +208,8 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 
 // Stream streams all the keys and values.
 func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	var innerErr error
 	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
