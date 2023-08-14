@@ -23,7 +23,7 @@ func NewRingBuffer[T any](capacity int) *RingBuffer[T] {
 }
 
 // Add adds an element to the buffer, overwriting the oldest element if the buffer is full.
-func (r *RingBuffer[T]) Add(element T) {
+func (r *RingBuffer[T]) Add(element T) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -33,10 +33,12 @@ func (r *RingBuffer[T]) Add(element T) {
 	if r.size < r.capacity {
 		r.size = r.size + 1
 	}
+
+	return true
 }
 
-// Elements returns all the elements currently in the buffer, from newest to oldest.
-func (r *RingBuffer[T]) Elements() []T {
+// ToSlice returns all the elements currently in the buffer, from newest to oldest.
+func (r *RingBuffer[T]) ToSlice() []T {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
