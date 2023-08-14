@@ -9,12 +9,12 @@ import (
 func TestRingBuffer(t *testing.T) {
 	r := NewRingBuffer[int](3)
 
-	require.Equal(t, []int{}, r.Elements())
+	require.Equal(t, []int{}, r.ToSlice())
 
 	r.Add(1)
 	r.Add(2)
 	expected := []int{2, 1}
-	actual := r.Elements()
+	actual := r.ToSlice()
 	require.Len(t, actual, 2)
 	require.Equal(t, expected, actual, "Buffer should contain %v but got %v", expected, actual)
 
@@ -22,7 +22,7 @@ func TestRingBuffer(t *testing.T) {
 
 	// Test that the buffer contains the expected elements
 	expected = []int{3, 2, 1}
-	actual = r.Elements()
+	actual = r.ToSlice()
 	require.Equal(t, expected, actual, "Buffer should contain %v but got %v", expected, actual)
 
 	// Add 2 more elements to the buffer, overwriting the oldest element
@@ -31,7 +31,7 @@ func TestRingBuffer(t *testing.T) {
 
 	// Test that the buffer contains the expected elements
 	expected = []int{5, 4, 3}
-	actual = r.Elements()
+	actual = r.ToSlice()
 	require.Equal(t, expected, actual, "Buffer should contain %v but got %v", expected, actual)
 
 	// Add 1 more element to the buffer, overwriting the oldest element
@@ -39,6 +39,6 @@ func TestRingBuffer(t *testing.T) {
 
 	// Test that the buffer contains the expected elements
 	expected = []int{6, 5, 4}
-	actual = r.Elements()
+	actual = r.ToSlice()
 	require.Equal(t, expected, actual, "Buffer should contain %v but got %v", expected, actual)
 }
