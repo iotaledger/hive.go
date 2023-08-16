@@ -6,7 +6,7 @@ type Event interface {
 	// Variable holds the boolean value that indicates whether the event was triggered.
 	Variable[bool]
 
-	// Trigger triggers the event and returns true if the event was triggered.
+	// Trigger triggers the event and returns true if the event was triggered for the first time.
 	Trigger() bool
 
 	// WasTriggered returns true if the event was triggered.
