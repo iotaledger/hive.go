@@ -15,9 +15,9 @@ func newEvent() *event {
 	}
 }
 
-// Trigger triggers the event.
-func (e *event) Trigger() {
-	e.Set(true)
+// Trigger triggers the event and returns true if the event was triggered.
+func (e *event) Trigger() bool {
+	return !e.Set(true)
 }
 
 // WasTriggered returns true if the event was triggered.
