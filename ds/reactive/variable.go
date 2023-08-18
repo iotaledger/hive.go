@@ -51,6 +51,9 @@ type WritableVariable[Type comparable] interface {
 	// Compute sets the new value by applying the given function to the current value and triggers the registered
 	// callbacks if the value has changed.
 	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
+
+	// InheritFrom inherits the value from the given ReadableVariable.
+	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
 }
 
 // region DerivedVariable //////////////////////////////////////////////////////////////////////////////////////////////

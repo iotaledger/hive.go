@@ -52,6 +52,13 @@ func (v *variable[Type]) Compute(computeFunc func(currentValue Type) Type) (prev
 	return previousValue
 }
 
+// InheritFrom inherits the value from the given ReadableVariable.
+func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe func()) {
+	return other.OnUpdate(func(_, newValue Type) {
+		v.Set(newValue)
+	})
+}
+
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
 // the triggerID and the callbacks to trigger.
 func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValue, previousValue Type, triggerID uniqueID, callbacksToTrigger []*callback[func(prevValue, newValue Type)]) {
