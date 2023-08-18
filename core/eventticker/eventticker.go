@@ -125,7 +125,7 @@ func (r *EventTicker[I, T]) addTickerToQueue(id T) (added bool) {
 	}
 
 	// schedule the next request and trigger the event
-	queue.Set(id, r.timedExecutor.ExecuteAfter(r.createReScheduler(id, 0), 0))
+	queue.Set(id, r.timedExecutor.ExecuteAfter(r.createReScheduler(id, 0), r.optsRetryInterval+time.Duration(crypto.Randomness.Float64()*float64(r.optsRetryJitter))))
 
 	r.updateScheduledTickerCount(1)
 
