@@ -112,6 +112,14 @@ func (r *readableVariable[Type]) Get() Type {
 	return r.value
 }
 
+// Read executes the given function with the current value while read locking the variable.
+func (r *readableVariable[Type]) Read(readFunc func(currentValue Type)) {
+	r.valueMutex.RLock()
+	defer r.valueMutex.RUnlock()
+
+	readFunc(r.value)
+}
+
 // OnUpdate registers the given callback that is triggered when the value changes.
 func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	r.valueMutex.Lock()
