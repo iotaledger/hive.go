@@ -30,6 +30,9 @@ type ReadableVariable[Type comparable] interface {
 	// Get returns the current value.
 	Get() Type
 
+	// Read executes the given function with the current value while read locking the variable.
+	Read(readFunc func(currentValue Type))
+
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(consumer func(oldValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 }
@@ -51,6 +54,9 @@ type WritableVariable[Type comparable] interface {
 	// Compute sets the new value by applying the given function to the current value and triggers the registered
 	// callbacks if the value has changed.
 	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
+
+	// InheritFrom inherits the value from the given ReadableVariable.
+	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
 }
 
 // region DerivedVariable //////////////////////////////////////////////////////////////////////////////////////////////
