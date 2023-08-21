@@ -30,6 +30,13 @@ func newVariable[Type comparable](transformationFunc ...func(currentValue Type, 
 	}
 }
 
+// Init is a convenience function that acts as a setter for the variable that can be chained with the constructor.
+func (v *variable[Type]) Init(value Type) Variable[Type] {
+	v.Set(value)
+
+	return v
+}
+
 // Set sets the new value and triggers the registered callbacks if the value has changed.
 func (v *variable[Type]) Set(newValue Type) (previousValue Type) {
 	return v.Compute(func(Type) Type { return newValue })

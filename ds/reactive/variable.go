@@ -8,6 +8,9 @@ import (
 
 // Variable represents a variable that can be read and written and that informs subscribed consumers about updates.
 type Variable[Type comparable] interface {
+	// Init is a convenience function that acts as a setter for the variable that can be chained with the constructor.
+	Init(value Type) Variable[Type]
+
 	// WritableVariable imports the write methods of the Variable.
 	WritableVariable[Type]
 
