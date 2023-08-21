@@ -53,7 +53,7 @@ func (e *evictionState[Type]) evict(slot Type) (eventsToTrigger []Event) {
 			return lastEvictedSlotIndex
 		}
 
-		for i := lastEvictedSlotIndex + Type(1); i <= slot; i = i + Type(1) {
+		for i := lastEvictedSlotIndex + Type(1); i <= slot; i++ {
 			if slotEvictedEvent, exists := e.evictionEvents.Get(i); exists {
 				eventsToTrigger = append(eventsToTrigger, slotEvictedEvent)
 			}
