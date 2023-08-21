@@ -30,6 +30,9 @@ type ReadableVariable[Type comparable] interface {
 	// Get returns the current value.
 	Get() Type
 
+	// Read executes the given function with the current value while read locking the variable.
+	Read(readFunc func(currentValue Type))
+
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(consumer func(oldValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 }
