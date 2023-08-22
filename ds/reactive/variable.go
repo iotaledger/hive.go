@@ -38,6 +38,10 @@ type ReadableVariable[Type comparable] interface {
 
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(consumer func(oldValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func())
+
+	// OnUpdateOnce registers the given callback for the next update and then automatically unsubscribes it. It is
+	// possible to provide an optional condition that has to be satisfied for the callback to be triggered.
+	OnUpdateOnce(callback func(oldValue Type, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool)
 }
 
 // NewReadableVariable creates a new ReadableVariable instance with the given value.
