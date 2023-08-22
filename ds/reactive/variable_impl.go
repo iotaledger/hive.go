@@ -154,6 +154,29 @@ func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type
 	}
 }
 
+// OnUpdateOnce registers the given callback for the next update and then automatically unsubscribes it. It is possible
+// to provide an optional condition that has to be satisfied for the callback to be triggered.
+func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool) {
+	var triggeredPreValue, triggeredNewValue Type
+
+	triggered := NewEvent()
+
+	unsubscribe := r.OnUpdate(func(prevValue, newValue Type) {
+		if len(optCondition) == 0 || optCondition[0](prevValue, newValue) {
+			triggeredPreValue = prevValue
+			triggeredNewValue = newValue
+
+			triggered.Trigger()
+		}
+	})
+
+	triggered.OnTrigger(func() {
+		go unsubscribe()
+
+		callback(triggeredPreValue, triggeredNewValue)
+	})
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region derivedVariable //////////////////////////////////////////////////////////////////////////////////////////////
