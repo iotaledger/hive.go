@@ -15,7 +15,10 @@ type Module struct {
 	// initialized is triggered when the module was initialized.
 	initialized *promise.Event
 
-	// stopped is triggered when the module was stopped.
+	// shutdown is triggered when the module begins its shutdown process.
+	shutdown *promise.Event
+
+	// stopped is triggered when the module finishes its shutdown process.
 	stopped *promise.Event
 
 	// initOnce is used to ensure that the init function is only called once.
@@ -64,6 +67,27 @@ func (m *Module) HookInitialized(callback func()) (unsubscribe func()) {
 	return m.initialized.OnTrigger(callback)
 }
 
+// TriggerShutdown triggers the shutdown event.
+func (m *Module) TriggerShutdown() {
+	m.initOnce.Do(m.init)
+
+	m.shutdown.Trigger()
+}
+
+// WasShutdown returns true if the shutdown event was triggered.
+func (m *Module) WasShutdown() bool {
+	m.initOnce.Do(m.init)
+
+	return m.shutdown.WasTriggered()
+}
+
+// HookShutdown registers a callback for the shutdown event.
+func (m *Module) HookShutdown(callback func()) (unsubscribe func()) {
+	m.initOnce.Do(m.init)
+
+	return m.shutdown.OnTrigger(callback)
+}
+
 // TriggerStopped triggers the stopped event.
 func (m *Module) TriggerStopped() {
 	m.initOnce.Do(m.init)
@@ -89,5 +113,6 @@ func (m *Module) HookStopped(callback func()) (unsubscribe func()) {
 func (m *Module) init() {
 	m.constructed = promise.NewEvent()
 	m.initialized = promise.NewEvent()
+	m.shutdown = promise.NewEvent()
 	m.stopped = promise.NewEvent()
 }

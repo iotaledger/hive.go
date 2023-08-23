@@ -23,6 +23,15 @@ type Interface interface {
 	// Shutdown shuts down the module, should finally call TriggerStopped.
 	Shutdown()
 
+	// TriggerShutdown triggers the shutdown event.
+	TriggerShutdown()
+
+	// WasShutdown returns true if the shutdown event was triggered.
+	WasShutdown() bool
+
+	// HookShutdown registers a callback for the shutdown event.
+	HookShutdown(func()) (unsubscribe func())
+
 	// TriggerStopped triggers the stopped event.
 	TriggerStopped()
 
