@@ -374,8 +374,9 @@ func TestMapEncodeDecode(t *testing.T) {
 				api := serix.NewAPI()
 				must(api.RegisterTypeSettings(example{}, serix.TypeSettings{}.WithObjectType(uint8(23))))
 
-				exampleTime, err := time.Parse(time.RFC3339Nano, "2022-08-12T12:51:18.120072+02:00")
+				uint64Time, err := strconv.ParseUint("1660301478120072000", 10, 64)
 				require.NoError(t, err)
+				exampleTime := time.Unix(0, int64(uint64Time)).UTC()
 
 				return paras{
 					api: api,
@@ -386,7 +387,7 @@ func TestMapEncodeDecode(t *testing.T) {
 			}(),
 			expected: `{
 				"type": 23,
- 				"creationDate": "2022-08-12T12:51:18.120072+02:00"
+ 				"creationDate": "1660301478120072000"
 			}`,
 		},
 
