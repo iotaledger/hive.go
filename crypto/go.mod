@@ -4,10 +4,10 @@ go 1.21
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20230803074708-c420cf82142c
-	github.com/iotaledger/hive.go/lo v0.0.0-20230803074708-c420cf82142c
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230803074708-c420cf82142c
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230803074708-c420cf82142c
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20230829150524-d4509588c3a0
+	github.com/iotaledger/hive.go/lo v0.0.0-20230829150524-d4509588c3a0
+	github.com/iotaledger/hive.go/runtime v0.0.0-20230829150524-d4509588c3a0
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230829150524-d4509588c3a0
 	github.com/libp2p/go-libp2p v0.30.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
@@ -21,7 +21,7 @@ require (
 	github.com/ethereum/go-ethereum v1.12.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20230803074708-c420cf82142c // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20230829150524-d4509588c3a0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
