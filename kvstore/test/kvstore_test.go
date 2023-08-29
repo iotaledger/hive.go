@@ -13,7 +13,6 @@ import (
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/debug"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/kvstore/rocksdb"
 )
 
@@ -34,13 +33,6 @@ func testStore(t *testing.T, dbImplementation string, realm []byte) (kvstore.KVS
 
 	case "mapDB":
 		return mapdb.NewMapDB().WithRealm(realm)
-
-	case "pebble":
-		dir := t.TempDir()
-		db, err := pebble.CreateDB(dir)
-		require.NoError(t, err, "used db: %s", dbImplementation)
-
-		return pebble.New(db).WithRealm(realm)
 
 	case "rocksdb":
 		dir := t.TempDir()

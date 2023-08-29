@@ -16,7 +16,6 @@ const (
 	EngineAuto    Engine = "auto"
 	EngineDebug   Engine = "debug"
 	EngineMapDB   Engine = "mapdb"
-	EnginePebble  Engine = "pebble"
 	EngineRocksDB Engine = "rocksdb"
 )
 

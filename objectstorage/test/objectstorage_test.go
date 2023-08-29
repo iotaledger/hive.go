@@ -16,7 +16,6 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/iotaledger/hive.go/kvstore/pebble"
 	"github.com/iotaledger/hive.go/kvstore/testutil"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
@@ -25,7 +24,6 @@ import (
 
 const (
 	dbMapDB = iota
-	dbPebble
 )
 
 const (
@@ -36,13 +34,6 @@ func testStorage(t testing.TB, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
 	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
-
-	case dbPebble:
-		dir := t.TempDir()
-		db, err := pebble.CreateDB(dir)
-		require.NoError(t, err)
-
-		return pebble.New(db).WithRealm(realm)
 	}
 
 	panic("unknown database")
