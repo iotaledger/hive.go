@@ -460,26 +460,31 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 		return s
 	}
 
-	// Convert the int64 timestamp to uint64 by truncating.
-	var unixNano int64
-	// Times whose unix timestamp in seconds would be larger than what fits into a
-	// nanosecond-precision int64 timestamp will be truncated to the max value.
-	if timeToWrite.Unix() > MaxNanoTimestampInt64Seconds {
-		unixNano = math.MaxInt64
-	} else {
-		unixNano = timeToWrite.UnixNano()
-		// Times before the Unix Epoch will be truncated to the Unix Epoch.
-		if unixNano < 0 {
-			unixNano = 0
-		}
-	}
-	time := uint64(unixNano)
-
-	if err := binary.Write(&s.buf, binary.LittleEndian, time); err != nil {
+	if err := binary.Write(&s.buf, binary.LittleEndian, TimeToUint64(timeToWrite)); err != nil {
 		s.err = errProducer(err)
 	}
 
 	return s
+}
+
+// TimeToUint64 converts times to uint64 unix timestamps with nanosecond-precision.
+// Times whose unix timestamp in seconds would be larger than what fits into a
+// nanosecond-precision int64 timestamp will be truncated to the max value.
+// Times before the Unix Epoch will be truncated to the Unix Epoch.
+func TimeToUint64(value time.Time) uint64 {
+	unixSeconds := value.Unix()
+	unixNano := value.UnixNano()
+
+	// we need to check against Unix seconds here, because the UnixNano result is undefined if the Unix time
+	// in nanoseconds cannot be represented by an int64 (a date before the year 1678 or after 2262)
+	switch {
+	case unixSeconds > MaxNanoTimestampInt64Seconds:
+		unixNano = math.MaxInt64
+	case unixSeconds < 0 || unixNano < 0:
+		unixNano = 0
+	}
+
+	return uint64(unixNano)
 }
 
 // WritePayload writes the given payload Serializable into the Serializer.

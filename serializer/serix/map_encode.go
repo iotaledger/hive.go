@@ -11,6 +11,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 const (
@@ -145,7 +146,9 @@ func (api *API) mapEncodeStruct(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (any, error) {
 	if valueTime, ok := valueI.(time.Time); ok {
-		return valueTime.Format(time.RFC3339Nano), nil
+		timeUint64 := serializer.TimeToUint64(valueTime)
+
+		return strconv.FormatUint(timeUint64, 10), nil
 	}
 
 	obj := orderedmap.New()

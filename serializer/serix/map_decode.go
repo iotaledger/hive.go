@@ -269,11 +269,12 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	if valueType == timeType {
 		strVal := mapVal.(string)
-		parsedTime, err := time.Parse(time.RFC3339Nano, strVal)
+		nanoTime, err := strconv.ParseUint(strVal, 10, 64)
 		if err != nil {
 			return ierrors.Wrapf(err, "unable to parse time %s map value", strVal)
 		}
-		value.Set(reflect.ValueOf(parsedTime))
+
+		value.Set(reflect.ValueOf(time.Unix(0, int64(nanoTime)).UTC()))
 
 		return nil
 	}
