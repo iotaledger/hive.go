@@ -15,9 +15,8 @@ import (
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
-	"github.com/iotaledger/hive.go/kvstore/pebble"
+	"github.com/iotaledger/hive.go/kvstore/rocksdb"
 	"github.com/iotaledger/hive.go/kvstore/testutil"
 	"github.com/iotaledger/hive.go/objectstorage"
 	"github.com/iotaledger/hive.go/objectstorage/typeutils"
@@ -25,9 +24,8 @@ import (
 )
 
 const (
-	dbBadger = iota
-	dbMapDB
-	dbPebble
+	dbMapDB = iota
+	dbRocksDB
 )
 
 const (
@@ -36,22 +34,15 @@ const (
 
 func testStorage(t testing.TB, realm []byte) (kvstore.KVStore, error) {
 	switch usedDatabase {
-	case dbBadger:
-		dir := t.TempDir()
-		db, err := badger.CreateDB(dir)
-		require.NoError(t, err)
-
-		return badger.New(db).WithRealm(realm)
-
 	case dbMapDB:
 		return mapdb.NewMapDB().WithRealm(realm)
 
-	case dbPebble:
+	case dbRocksDB:
 		dir := t.TempDir()
-		db, err := pebble.CreateDB(dir)
+		db, err := rocksdb.CreateDB(dir)
 		require.NoError(t, err)
 
-		return pebble.New(db).WithRealm(realm)
+		return rocksdb.New(db).WithRealm(realm)
 	}
 
 	panic("unknown database")
@@ -67,15 +58,15 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	// test parameters
 	objectCount := 50000
 
-	// create badger DB
-	badgerDBMissingMessageStorage, err := testutil.BadgerDB(t)
+	// create rocksDB
+	rocksDBMissingMessageStorage, err := testutil.RocksDB(t)
 	require.NoError(t, err)
-	badgerDBMetadataStorage, err := testutil.BadgerDB(t)
+	rocksDBMetadataStorage, err := testutil.RocksDB(t)
 	require.NoError(t, err)
 
 	// create ObjectStorage instances
-	missingMessageStorage := objectstorage.New(badgerDBMissingMessageStorage, testObjectFactory)
-	metadataStorage := objectstorage.New(badgerDBMetadataStorage, testObjectFactory)
+	missingMessageStorage := objectstorage.New(rocksDBMissingMessageStorage, testObjectFactory)
+	metadataStorage := objectstorage.New(rocksDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
 	wp := workerpool.New(t.Name(), 1024).Start()
