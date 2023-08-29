@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/lo
 
-go 1.20
+go 1.21
 
 require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-20230803074708-c420cf82142c

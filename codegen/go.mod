@@ -1,6 +1,6 @@
 module github.com/iotaledger/hive.go/codegen
 
-go 1.20
+go 1.21
 
 require (
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20230803074708-c420cf82142c

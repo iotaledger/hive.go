@@ -1,3 +1,3 @@
 module github.com/iotaledger/hive.go/constraints
 
-go 1.20
+go 1.21
