@@ -2,7 +2,6 @@ package serix
 
 import (
 	"context"
-	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -147,20 +146,9 @@ func (api *API) mapEncodeStruct(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (any, error) {
 	if valueTime, ok := valueI.(time.Time); ok {
-		// Convert the int64 timestamp to uint64 by truncating.
-		var unixNano int64
-		// Times whose unix timestamp in seconds would be larger than what fits into a
-		// nanosecond-precision int64 timestamp will be truncated to the max value.
-		if valueTime.Unix() > serializer.MaxNanoTimestampInt64Seconds {
-			unixNano = math.MaxInt64
-		} else {
-			unixNano = valueTime.UnixNano()
-			// Times before the Unix Epoch will be truncated to the Unix Epoch.
-			if unixNano < 0 {
-				unixNano = 0
-			}
-		}
-		return strconv.FormatUint(uint64(unixNano), 10), nil
+		timeUint64 := serializer.TimeToUint64(valueTime)
+
+		return strconv.FormatUint(timeUint64, 10), nil
 	}
 
 	obj := orderedmap.New()

@@ -460,26 +460,29 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 		return s
 	}
 
+	if err := binary.Write(&s.buf, binary.LittleEndian, TimeToUint64(timeToWrite)); err != nil {
+		s.err = errProducer(err)
+	}
+
+	return s
+}
+
+func TimeToUint64(timeToConvert time.Time) uint64 {
 	// Convert the int64 timestamp to uint64 by truncating.
 	var unixNano int64
 	// Times whose unix timestamp in seconds would be larger than what fits into a
 	// nanosecond-precision int64 timestamp will be truncated to the max value.
-	if timeToWrite.Unix() > MaxNanoTimestampInt64Seconds {
+	if timeToConvert.Unix() > MaxNanoTimestampInt64Seconds {
 		unixNano = math.MaxInt64
 	} else {
-		unixNano = timeToWrite.UnixNano()
+		unixNano = timeToConvert.UnixNano()
 		// Times before the Unix Epoch will be truncated to the Unix Epoch.
 		if unixNano < 0 {
 			unixNano = 0
 		}
 	}
-	time := uint64(unixNano)
 
-	if err := binary.Write(&s.buf, binary.LittleEndian, time); err != nil {
-		s.err = errProducer(err)
-	}
-
-	return s
+	return uint64(unixNano)
 }
 
 // WritePayload writes the given payload Serializable into the Serializer.
