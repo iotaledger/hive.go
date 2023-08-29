@@ -2,11 +2,16 @@ package testutil
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/rocksdb"
 )
+
+// variables for keeping track of how many databases have been created by the given test.
+var databaseCounter = make(map[string]int)
+var databaseCounterMutex sync.Mutex
 
 // RocksDB creates a temporary RocksDBKVStore that automatically gets cleaned up when the test finishes.
 func RocksDB(t *testing.T) (kvstore.KVStore, error) {

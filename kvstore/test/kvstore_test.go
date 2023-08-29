@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/debug"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/kvstore/pebble"
@@ -32,13 +31,6 @@ var (
 
 func testStore(t *testing.T, dbImplementation string, realm []byte) (kvstore.KVStore, error) {
 	switch dbImplementation {
-
-	case "badger":
-		dir := t.TempDir()
-		db, err := badger.CreateDB(dir)
-		require.NoError(t, err, "used db: %s", dbImplementation)
-
-		return badger.New(db).WithRealm(realm)
 
 	case "mapDB":
 		return mapdb.NewMapDB().WithRealm(realm)
