@@ -408,6 +408,18 @@ func TestReadWriteTime(t *testing.T) {
 			expectedErr:       nil,
 		},
 		{
+			name:              "ok - time nano before unix epoch is truncated",
+			timeToWrite:       time.Unix(0, -1_000_000),
+			expectedTimestamp: time.Unix(0, 0),
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - time before min representable is truncated",
+			timeToWrite:       time.Unix(-(serializer.MaxNanoTimestampInt64Seconds + 1), 0),
+			expectedTimestamp: time.Unix(0, 0),
+			expectedErr:       nil,
+		},
+		{
 			name:              "ok - time after max representable is truncated to max",
 			timeToWrite:       time.Unix(serializer.MaxNanoTimestampInt64Seconds+1, 0),
 			expectedTimestamp: time.Unix(0, math.MaxInt64),

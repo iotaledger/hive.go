@@ -472,13 +472,15 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 // nanosecond-precision int64 timestamp will be truncated to the max value.
 // Times before the Unix Epoch will be truncated to the Unix Epoch.
 func TimeToUint64(value time.Time) uint64 {
+	unixSeconds := value.Unix()
 	unixNano := value.UnixNano()
 
 	// we need to check against Unix seconds here, because the UnixNano result is undefined if the Unix time
 	// in nanoseconds cannot be represented by an int64 (a date before the year 1678 or after 2262)
-	if value.Unix() > MaxNanoTimestampInt64Seconds {
+	switch {
+	case unixSeconds > MaxNanoTimestampInt64Seconds:
 		unixNano = math.MaxInt64
-	} else if unixNano < 0 {
+	case unixSeconds < 0 || unixNano < 0:
 		unixNano = 0
 	}
 
