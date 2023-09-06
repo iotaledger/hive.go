@@ -180,3 +180,13 @@ func SafeDiv[T Integer](x T, y T) (T, error) {
 
 	return x / y, nil
 }
+
+func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
+	result := val << shift
+	// if the result is smaller than the original value, we have an overflow
+	if result < val {
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d << %d", val, shift)
+	}
+
+	return result, nil
+}
