@@ -46,6 +46,7 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 			return nil, ierrors.WithStack(err)
 		}
 	}
+
 	return ele, nil
 }
 

@@ -55,6 +55,7 @@ func (s *serializableStruct) DecodeJSON(val any) error {
 	}
 	copy(s.bytes[:], bytes)
 	s.index = uint64(idx)
+
 	return nil
 }
 

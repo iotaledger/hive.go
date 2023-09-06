@@ -111,6 +111,7 @@ func TestStreamMap(t *testing.T) {
 	seen := make(map[testKey]testValue)
 	err := newMap.Stream(func(key testKey, value testValue) error {
 		seen[key] = value
+
 		return nil
 	})
 	require.NoError(t, err)

@@ -655,6 +655,7 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 		ts, ok = api.typeSettingsRegistry[objType]
+
 		return ts, ok
 	}
 

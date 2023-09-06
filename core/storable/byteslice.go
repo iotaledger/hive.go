@@ -114,12 +114,12 @@ func (b *ByteSlice) readHeader() (err error) {
 }
 
 func (b *ByteSlice) writeHeader() (err error) {
-	startOffsetBytes, err := serix.DefaultAPI.Encode(context.Background(), uint64(b.startOffset))
+	startOffsetBytes, err := serix.DefaultAPI.Encode(context.Background(), b.startOffset)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to encode startOffset")
 	}
 
-	entrySizeBytes, err := serix.DefaultAPI.Encode(context.Background(), uint64(b.entrySize))
+	entrySizeBytes, err := serix.DefaultAPI.Encode(context.Background(), b.entrySize)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to encode entrySize")
 	}

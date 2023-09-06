@@ -111,12 +111,14 @@ func (t *TypedStore[K, V]) Iterate(prefix KeyPrefix, callback func(key K, value 
 		keyDecoded, _, keyErr := t.bytesToK(key)
 		if keyErr != nil {
 			innerErr = keyErr
+
 			return false
 		}
 
 		valueDecoded, _, valueErr := t.bytesToV(value)
 		if valueErr != nil {
 			innerErr = valueErr
+
 			return false
 		}
 
@@ -134,6 +136,7 @@ func (t *TypedStore[K, V]) IterateKeys(prefix KeyPrefix, callback func(key K) (a
 		keyDecoded, _, keyErr := t.bytesToK(key)
 		if keyErr != nil {
 			innerErr = keyErr
+
 			return false
 		}
 
