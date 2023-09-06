@@ -19,6 +19,7 @@ func MemoryReport(ptr interface{}) string {
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80)+"\n")
 	memoryReport(reflect.ValueOf(ptr).Elem(), 0, stringBuilder)
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80))
+
 	return stringBuilder.String()
 }
 

@@ -50,6 +50,7 @@ func (t *TaskExecutor[T]) ExecuteAt(identifier T, callback func(), executionTime
 	}, executionTime))
 
 	queuedElement, _ = t.queuedElements.Get(identifier)
+
 	return queuedElement
 }
 

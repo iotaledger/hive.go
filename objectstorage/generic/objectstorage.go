@@ -86,6 +86,7 @@ func (o *ObjectStorage[T]) ComputeIfAbsent(key []byte, remappingFunction func(ke
 		if !typeutils.IsInterfaceNil(remappedObj) {
 			remappedObj.SetModified(true)
 		}
+
 		return remappedObj
 	}))
 }

@@ -527,6 +527,7 @@ func (a *App) run() {
 				a.LogPanicf("run component (%s) failed: %s", component.Name, err)
 			}
 		}
+
 		return true
 	})
 }
@@ -568,6 +569,7 @@ func (a *App) Run() {
 
 	a.ForEachComponent(func(component *Component) bool {
 		component.WorkerPool.Shutdown()
+
 		return true
 	})
 
@@ -620,6 +622,7 @@ func (a *App) addComponent(component *Component) {
 // IsComponentEnabled returns whether the component is enabled.
 func (a *App) IsComponentEnabled(identifier string) bool {
 	enabled, exists := a.componentsEnabledState[identifier]
+
 	return exists && enabled
 }
 

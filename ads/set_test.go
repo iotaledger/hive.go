@@ -72,6 +72,7 @@ func TestStreamSet(t *testing.T) {
 	seen := make(map[testKey]bool)
 	err := newSet.Stream(func(key testKey) error {
 		seen[key] = true
+
 		return nil
 	})
 	require.NoError(t, err)
@@ -83,6 +84,7 @@ func TestStreamSet(t *testing.T) {
 	firstSeen := make(map[testKey]bool)
 	err = newSet.Stream(func(key testKey) error {
 		firstSeen[key] = true
+
 		return ErrStopIteration
 	})
 	require.Error(t, err)

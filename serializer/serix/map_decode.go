@@ -34,6 +34,7 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 			return ierrors.WithStack(err)
 		}
 	}
+
 	return nil
 }
 

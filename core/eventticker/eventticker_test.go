@@ -16,8 +16,8 @@ import (
 
 func TestEventTicker(t *testing.T) {
 	eventTicker := eventticker.New(
-		eventticker.RetryInterval[index, testID](time.Duration(time.Second)),
-		eventticker.RetryJitter[index, testID](time.Duration(time.Millisecond)),
+		eventticker.RetryInterval[index, testID](time.Second),
+		eventticker.RetryJitter[index, testID](time.Millisecond),
 	)
 
 	// Add ticker for slot 1

@@ -83,6 +83,7 @@ func (g *Group) Pools() map[string]*WorkerPool {
 		for name, pool := range group.Pools() {
 			pools[fmt.Sprintf("%s.%s", g.name, name)] = pool
 		}
+
 		return true
 	})
 
@@ -190,6 +191,7 @@ func (g *Group) poolsString(indent int) string {
 		if currentValue := value.PendingTasksCounter.Get(); currentValue > 0 {
 			result += strings.Repeat(indentStr, indent) + "- " + key + " (" + strconv.Itoa(currentValue) + " pending tasks)\n"
 		}
+
 		return true
 	})
 
