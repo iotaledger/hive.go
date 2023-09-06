@@ -19,15 +19,14 @@ github.com/iotaledger/hive.go/ierrors v0.0.0-20230829145721-3041a551a2dd h1:rkTr
 github.com/iotaledger/hive.go/ierrors v0.0.0-20230829145721-3041a551a2dd/go.mod h1:HcE8B5lP96enc/OALTb2/rIIi+yOLouRoHOKRclKmC8=
 github.com/iotaledger/hive.go/lo v0.0.0-20230829145721-3041a551a2dd h1:O9ka/40xr6k+jjEYuwK6Y/AxB/6phoP4YesYkIhesx8=
 github.com/iotaledger/hive.go/lo v0.0.0-20230829145721-3041a551a2dd/go.mod h1:/LERu5vqcessCqr40Wxmbx4x0bbymsK7GuL+TK/ckKo=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230829145721-3041a551a2dd h1:o6pe43Z9LSOW7vHLL+FHidWgPlTNf7dPUZonZt0dUEg=
+github.com/iotaledger/hive.go/runtime v0.0.0-20230829145721-3041a551a2dd/go.mod h1:j03oAE0YQbsRlCs6MJkKLEyk0y7zxQfIUCmr5N1/sNQ=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230829145721-3041a551a2dd h1:LODitqdRE4Bw++Lc/ANEA3l6/sK05WT3eWvZ4Q1rK4E=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230829145721-3041a551a2dd/go.mod h1:IJgaaxbgKCsNat18jlJJEAxCY2oVYR3F30B+M4vJ89I=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230829145721-3041a551a2dd h1:JSO5iQPpUsmTXxXQYr4FKxIBN2hoq01qLAZgNQcv4sc=
 github.com/iotaledger/hive.go/stringify v0.0.0-20230829145721-3041a551a2dd/go.mod h1:FTo/UWzNYgnQ082GI9QVM9HFDERqf9rw9RivNpqrnTs=
-github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
-github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
-github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
@@ -43,7 +42,7 @@ golang.org/x/crypto v0.12.0/go.mod h1:NF0Gs7EO5K4qLn+Ylc+fih8BSTeIjAP05siRnAh98y
 golang.org/x/sys v0.11.0 h1:eG7RXZHdqOJ1i+0lgLgCpSXAp6M3LYlAo6osgSi0xOM=
 golang.org/x/sys v0.11.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
-gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
-gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
+gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 h1:YR8cESwS4TdDjEe65xsg0ogRM/Nc3DYOhEAlW+xobZo=
+gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
