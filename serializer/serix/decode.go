@@ -93,13 +93,22 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			return deseri.Done()
 		}
 		elemType := valueType.Elem()
-		if elemType.Kind() == reflect.Struct {
+
+		switch elemType.Kind() {
+		case reflect.Struct:
 			if value.IsNil() {
 				value.Set(reflect.New(elemType))
 			}
 			elemValue := value.Elem()
 
 			return api.decodeStruct(ctx, b, elemValue, elemType, ts, opts)
+		case reflect.Array:
+			if value.IsNil() {
+				value.Set(reflect.New(elemType))
+			}
+			elemValue := value.Elem()
+
+			return api.decodeArray(ctx, b, elemValue, ts, opts)
 		}
 
 	case reflect.Struct:
@@ -109,19 +118,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 	case reflect.Map:
 		return api.decodeMap(ctx, b, value, valueType, ts, opts)
 	case reflect.Array:
-		sliceValue := sliceFromArray(value)
-		sliceValueType := sliceValue.Type()
-		if sliceValueType.AssignableTo(bytesType) {
-			deseri := serializer.NewDeserializer(b)
-			deseri.ReadBytesInPlace(sliceValue.Bytes(), func(err error) error {
-				return ierrors.Wrap(err, "failed to ready array of bytes from the deserializer")
-			})
-			fillArrayFromSlice(value, sliceValue)
-
-			return deseri.Done()
-		}
-
-		return api.decodeSlice(ctx, b, sliceValue, sliceValueType, ts, opts)
+		return api.decodeArray(ctx, b, value, ts, opts)
 	case reflect.Interface:
 		return api.decodeInterface(ctx, b, value, valueType, ts, opts)
 	case reflect.String:
@@ -291,6 +288,34 @@ func (api *API) decodeStructFields(
 	}
 
 	return nil
+}
+
+func (api *API) decodeArray(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {
+	sliceValue := sliceFromArray(value)
+	sliceValueType := sliceValue.Type()
+
+	// check if it is an array of bytes
+	if sliceValueType.AssignableTo(bytesType) {
+		deseri := serializer.NewDeserializer(b)
+		if objectType := ts.ObjectType(); objectType != nil {
+			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
+			if err != nil {
+				return 0, ierrors.WithStack(err)
+			}
+			deseri.CheckTypePrefix(objectCode, typeDen, func(err error) error {
+				return ierrors.Wrap(err, "failed to check object type")
+			})
+		}
+		deseri.ReadBytesInPlace(sliceValue.Bytes(), func(err error) error {
+			return ierrors.Wrap(err, "failed to read array of bytes from the deserializer")
+		})
+		fillArrayFromSlice(value, sliceValue)
+
+		return deseri.Done()
+	}
+
+	// if it is an array of objects, handle the array like a slice
+	return api.decodeSlice(ctx, b, sliceValue, sliceValueType, ts, opts)
 }
 
 func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
