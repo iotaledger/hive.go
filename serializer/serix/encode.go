@@ -31,11 +31,11 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 
 		var bPrefix, bEncoded []byte
 		if objectType := ts.ObjectType(); objectType != nil {
-			s := serializer.NewSerializer()
-			s.WriteNum(objectType, func(err error) error {
+			seri := serializer.NewSerializer()
+			seri.WriteNum(objectType, func(err error) error {
 				return ierrors.Wrap(err, "failed to write object type code into serializer")
 			})
-			bPrefix, err = s.Serialize()
+			bPrefix, err = seri.Serialize()
 			if err != nil {
 				return nil, ierrors.WithStack(err)
 			}
@@ -219,17 +219,17 @@ func (api *API) encodeStruct(
 			return ierrors.Wrap(err, "failed to write time to serializer")
 		}).Serialize()
 	}
-	s := serializer.NewSerializer()
+	seri := serializer.NewSerializer()
 	if objectType := ts.ObjectType(); objectType != nil {
-		s.WriteNum(objectType, func(err error) error {
+		seri.WriteNum(objectType, func(err error) error {
 			return ierrors.Wrap(err, "failed to write object type code into serializer")
 		})
 	}
-	if err := api.encodeStructFields(ctx, s, value, valueType, opts); err != nil {
+	if err := api.encodeStructFields(ctx, seri, value, valueType, opts); err != nil {
 		return nil, ierrors.WithStack(err)
 	}
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 func (api *API) encodeStructFields(

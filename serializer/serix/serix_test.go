@@ -72,10 +72,10 @@ func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMo
 }
 
 func (bs Bools) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 func (bs Bools) ToSerializables() serializer.Serializables {
@@ -136,19 +136,19 @@ func (ss SimpleStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializ
 }
 
 func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WriteNum(simpleStructObjectCode, defaultErrProducer)
-	s.WriteBool(ss.Bool, defaultErrProducer)
-	s.WriteNum(ss.Uint, defaultErrProducer)
-	s.WriteString(ss.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer, 0, 0)
-	s.WriteVariableByteSlice(ss.Bytes, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer, 0, 0)
-	s.WriteBytes(ss.BytesArray[:], defaultErrProducer)
-	s.WriteUint256(ss.BigInt, defaultErrProducer)
-	s.WriteTime(ss.Time, defaultErrProducer)
-	s.WriteNum(ss.Int, defaultErrProducer)
-	s.WriteNum(ss.Float, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WriteNum(simpleStructObjectCode, defaultErrProducer)
+	seri.WriteBool(ss.Bool, defaultErrProducer)
+	seri.WriteNum(ss.Uint, defaultErrProducer)
+	seri.WriteString(ss.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer, 0, 0)
+	seri.WriteVariableByteSlice(ss.Bytes, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer, 0, 0)
+	seri.WriteBytes(ss.BytesArray[:], defaultErrProducer)
+	seri.WriteUint256(ss.BigInt, defaultErrProducer)
+	seri.WriteTime(ss.Time, defaultErrProducer)
+	seri.WriteNum(ss.Int, defaultErrProducer)
+	seri.WriteNum(ss.Float, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 type Interface interface {
@@ -195,12 +195,12 @@ func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerial
 }
 
 func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	ser := serializer.NewSerializer()
-	ser.WriteNum(interfaceImplObjectCode, defaultErrProducer)
-	ser.WriteNum(ii.A, defaultErrProducer)
-	ser.WriteNum(ii.B, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WriteNum(interfaceImplObjectCode, defaultErrProducer)
+	seri.WriteNum(ii.A, defaultErrProducer)
+	seri.WriteNum(ii.B, defaultErrProducer)
 
-	return ser.Serialize()
+	return seri.Serialize()
 }
 
 type StructWithInterface struct {
@@ -223,10 +223,10 @@ func (si StructWithInterface) Deserialize(data []byte, deSeriMode serializer.DeS
 }
 
 func (si StructWithInterface) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WriteObject(si.Interface.(serializer.Serializable), defaultSeriMode, deSeriCtx, defaultWriteGuard, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WriteObject(si.Interface.(serializer.Serializable), defaultSeriMode, deSeriCtx, defaultWriteGuard, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 type StructWithOptionalField struct {
@@ -249,10 +249,10 @@ func (so StructWithOptionalField) Deserialize(data []byte, deSeriMode serializer
 }
 
 func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WritePayloadLength(0, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WritePayloadLength(0, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 type StructWithEmbeddedStructs struct {
@@ -276,12 +276,12 @@ func (se StructWithEmbeddedStructs) Deserialize(data []byte, deSeriMode serializ
 }
 
 func (se StructWithEmbeddedStructs) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	s := serializer.NewSerializer()
-	s.WriteNum(se.unexportedStruct.Foo, defaultErrProducer)
-	s.WriteNum(exportedStructObjectCode, defaultErrProducer)
-	s.WriteNum(se.ExportedStruct.Bar, defaultErrProducer)
+	seri := serializer.NewSerializer()
+	seri.WriteNum(se.unexportedStruct.Foo, defaultErrProducer)
+	seri.WriteNum(exportedStructObjectCode, defaultErrProducer)
+	seri.WriteNum(se.ExportedStruct.Bar, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 type unexportedStruct struct {
@@ -317,22 +317,22 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 	bytes := make([][]byte, len(m))
 	var i int
 	for k, v := range m {
-		s := serializer.NewSerializer()
-		s.WriteNum(k, defaultErrProducer)
-		s.WriteNum(v, defaultErrProducer)
-		b, err := s.Serialize()
+		seri := serializer.NewSerializer()
+		seri.WriteNum(k, defaultErrProducer)
+		seri.WriteNum(v, defaultErrProducer)
+		b, err := seri.Serialize()
 		if err != nil {
 			return nil, err
 		}
 		bytes[i] = b
 		i++
 	}
-	s := serializer.NewSerializer()
+	seri := serializer.NewSerializer()
 	mode := defaultSeriMode | serializer.DeSeriModePerformLexicalOrdering
 	arrayRules := &serializer.ArrayRules{ValidationMode: serializer.ArrayValidationModeLexicalOrdering}
-	s.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
+	seri.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 type CustomSerializable int

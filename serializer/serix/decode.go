@@ -43,12 +43,12 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 				return 0, ierrors.WithStack(err)
 			}
 
-			deserializer := serializer.NewDeserializer(b)
-			deserializer.CheckTypePrefix(objectCode, typeDen, func(err error) error {
+			deseri := serializer.NewDeserializer(b)
+			deseri.CheckTypePrefix(objectCode, typeDen, func(err error) error {
 				return ierrors.Wrap(err, "failed to check object type")
 			})
-			b = deserializer.RemainingBytes()
-			prefixBytesRead, err := deserializer.Done()
+			b = deseri.RemainingBytes()
+			prefixBytesRead, err := deseri.Done()
 			if err != nil {
 				return 0, ierrors.WithStack(err)
 			}
@@ -177,8 +177,8 @@ func (api *API) decodeInterface(
 	if iObjects == nil {
 		return 0, ierrors.Errorf("interface %s hasn't been registered", valueType)
 	}
-	d := serializer.NewDeserializer(b)
-	objectCode, err := d.GetObjectType(iObjects.typeDenotation)
+	deseri := serializer.NewDeserializer(b)
+	objectCode, err := deseri.GetObjectType(iObjects.typeDenotation)
 	if err != nil {
 		return 0, ierrors.WithStack(err)
 	}
