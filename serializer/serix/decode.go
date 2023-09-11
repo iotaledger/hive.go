@@ -349,7 +349,18 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		return bytesRead, nil
 	}
 
-	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	bytesRead, err := api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	if err != nil {
+		return bytesRead, err
+	}
+
+	// check if the slice is a nil pointer to the slice type (in case the sliceLength is zero and the slice was not initialized before)
+	if value.IsNil() {
+		// initialize a new empty slice
+		value.Set(reflect.MakeSlice(valueType, 0, 0))
+	}
+
+	return bytesRead, nil
 }
 
 func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,

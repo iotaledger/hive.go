@@ -18,6 +18,13 @@ func TestDecode_Slice(t *testing.T) {
 	testDecode(t, testObj, serix.WithTypeSettings(ts))
 }
 
+func TestDecode_EmptySlice(t *testing.T) {
+	t.Parallel()
+	testObj := Bools{}
+	ts := serix.TypeSettings{}.WithLengthPrefixType(boolsLenType)
+	testDecode(t, testObj, serix.WithTypeSettings(ts))
+}
+
 func TestDecode_Struct(t *testing.T) {
 	t.Parallel()
 	testObj := NewSimpleStruct()
