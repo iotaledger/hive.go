@@ -31,11 +31,11 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 
 		var bPrefix, bEncoded []byte
 		if objectType := ts.ObjectType(); objectType != nil {
-			s := serializer.NewSerializer()
-			s.WriteNum(objectType, func(err error) error {
+			seri := serializer.NewSerializer()
+			seri.WriteNum(objectType, func(err error) error {
 				return ierrors.Wrap(err, "failed to write object type code into serializer")
 			})
-			bPrefix, err = s.Serialize()
+			bPrefix, err = seri.Serialize()
 			if err != nil {
 				return nil, ierrors.WithStack(err)
 			}
@@ -86,8 +86,12 @@ func (api *API) encodeBasedOnType(
 		if !elemValue.IsValid() {
 			return nil, ierrors.Errorf("unexpected nil pointer for type %T", valueI)
 		}
-		if elemValue.Kind() == reflect.Struct {
+
+		switch elemValue.Kind() {
+		case reflect.Struct:
 			return api.encodeStruct(ctx, elemValue, elemValue.Interface(), elemValue.Type(), ts, opts)
+		case reflect.Array:
+			return api.encodeArray(ctx, elemValue, ts, opts)
 		}
 
 	case reflect.Struct:
@@ -97,17 +101,7 @@ func (api *API) encodeBasedOnType(
 	case reflect.Map:
 		return api.encodeMap(ctx, value, valueType, ts, opts)
 	case reflect.Array:
-		sliceValue := sliceFromArray(value)
-		sliceValueType := sliceValue.Type()
-		if sliceValueType.AssignableTo(bytesType) {
-			seri := serializer.NewSerializer()
-
-			return seri.WriteBytes(sliceValue.Bytes(), func(err error) error {
-				return ierrors.Wrap(err, "failed to write array of bytes to serializer")
-			}).Serialize()
-		}
-
-		return api.encodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
+		return api.encodeArray(ctx, value, ts, opts)
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
@@ -219,17 +213,17 @@ func (api *API) encodeStruct(
 			return ierrors.Wrap(err, "failed to write time to serializer")
 		}).Serialize()
 	}
-	s := serializer.NewSerializer()
+	seri := serializer.NewSerializer()
 	if objectType := ts.ObjectType(); objectType != nil {
-		s.WriteNum(objectType, func(err error) error {
+		seri.WriteNum(objectType, func(err error) error {
 			return ierrors.Wrap(err, "failed to write object type code into serializer")
 		})
 	}
-	if err := api.encodeStructFields(ctx, s, value, valueType, opts); err != nil {
+	if err := api.encodeStructFields(ctx, seri, value, valueType, opts); err != nil {
 		return nil, ierrors.WithStack(err)
 	}
 
-	return s.Serialize()
+	return seri.Serialize()
 }
 
 func (api *API) encodeStructFields(
@@ -301,6 +295,28 @@ func (api *API) encodeStructFields(
 	}
 
 	return nil
+}
+
+func (api *API) encodeArray(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
+	sliceValue := sliceFromArray(value)
+	sliceValueType := sliceValue.Type()
+
+	// check if it is an array of bytes
+	if sliceValueType.AssignableTo(bytesType) {
+		seri := serializer.NewSerializer()
+		if objectType := ts.ObjectType(); objectType != nil {
+			seri.WriteNum(objectType, func(err error) error {
+				return ierrors.Wrap(err, "failed to write object type code into serializer")
+			})
+		}
+
+		return seri.WriteBytes(sliceValue.Bytes(), func(err error) error {
+			return ierrors.Wrap(err, "failed to write array of bytes to serializer")
+		}).Serialize()
+	}
+
+	// if it is an array of objects, handle the array like a slice
+	return api.encodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 }
 
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType reflect.Type,
