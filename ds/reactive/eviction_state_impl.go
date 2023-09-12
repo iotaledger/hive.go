@@ -31,7 +31,9 @@ func (e *evictionState[Type]) EvictionEvent(slot Type) Event {
 	evictionEvent := evictedSlotEvent
 
 	e.lastEvictedSlot.Read(func(lastEvictedSlotIndex Type) {
-		if slot > lastEvictedSlotIndex {
+		var zeroValue Type
+
+		if slot > lastEvictedSlotIndex || (slot == zeroValue && lastEvictedSlotIndex == zeroValue) {
 			evictionEvent, _ = e.evictionEvents.GetOrCreate(slot, NewEvent)
 		}
 	})
