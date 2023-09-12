@@ -387,6 +387,12 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		value.Set(reflect.Append(value, elemValue))
 	}
 
+	// check if the slice is a nil pointer to the slice type (in case the sliceLength is zero and the slice was not initialized before)
+	if value.IsNil() {
+		// initialize a new empty slice
+		value.Set(reflect.MakeSlice(valueType, 0, 0))
+	}
+
 	return nil
 }
 
