@@ -1,9 +1,7 @@
-package logger
+package reactive
 
-import "github.com/iotaledger/hive.go/ds/reactive"
-
-func NewEntityLogger(parentLogger *Logger, namespace string, shutdownEvent reactive.Event) *Logger {
-	embeddedLogger, shutdown := parentLogger.NestedLogger(namespace)
+func NewEntityLogger(parentLogger *Logger, entityType string, shutdownEvent Event) *Logger {
+	embeddedLogger, shutdown := parentLogger.NestedLogger(entityType)
 	if embeddedLogger != nil {
 		shutdownEvent.OnTrigger(shutdown)
 	}
