@@ -11,17 +11,17 @@ import (
 func TestLogger(t *testing.T) {
 	logger := New("node1")
 	logger.LogDebug("some log (invisible due to log level)")
-	logger.reactiveLevel.Set(LevelTrace)
+	logger.SetLogLevel(LevelTrace)
 	logger.Trace("created chain", "id", "chain1")
 
 	networkLogger, shutdownNetworkLogger := logger.NestedLogger("network")
 	defer shutdownNetworkLogger()
-	networkLogger.reactiveLevel.Set(LevelInfo)
+	networkLogger.SetLogLevel(LevelInfo)
 	networkLogger.LogDebug("instantiated chain (invisible)", "id", 1)
 
 	chainLogger, shutdownChainLogger := logger.NestedLogger("chain1")
 	defer shutdownChainLogger()
-	chainLogger.reactiveLevel.Set(LevelDebug)
+	chainLogger.SetLogLevel(LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
 }
 
@@ -71,14 +71,14 @@ func NewTestObject(logger *Logger) *TestObject {
 func (t *TestObject) initLogging(logger *Logger) {
 	t.Logger = NewEntityLogger(logger, "TestObject", t.IsEvicted)
 
-	t.Logger.OnInfoLevel(func() (shutdown func()) {
+	t.Logger.OnLogLevelInfo(func() (shutdown func()) {
 		return lo.Batch(
 			t.ImportantValue1.OnUpdate(LogReactiveVariableUpdate[uint64](t.Logger.LogInfo, "ImportantValue1")),
 			t.ImportantValue2.OnUpdate(LogReactiveVariableUpdate[uint64](t.Logger.LogInfo, "ImportantValue2")),
 		)
 	})
 
-	t.Logger.OnDebugLevel(func() (shutdown func()) {
+	t.Logger.OnLogLevelDebug(func() (shutdown func()) {
 		return t.LessImportantValue1.OnUpdate(LogReactiveVariableUpdate[uint64](t.Logger.LogDebug, "LessImportantValue1"))
 	})
 }

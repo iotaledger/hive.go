@@ -56,5 +56,5 @@ func (h *defaultHandler) WithAttrs(_ []slog.Attr) slog.Handler {
 // WithGroup is not supported (we don't want to support contextual logging where we pass around loggers between code
 // parts but rather have a strictly hierarchical logging based on derived namespaces).
 func (h *defaultHandler) WithGroup(_ string) slog.Handler {
-	return h
+	panic("not supported")
 }

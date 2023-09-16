@@ -73,7 +73,7 @@ func (l *Logger) DebugAttrs(msg string, args ...slog.Attr) {
 }
 
 // OnDebugLevel registers a callback that is called when the log level is set to debug or lower.
-func (l *Logger) OnDebugLevel(setup func() (shutdown func())) (unsubscribe func()) {
+func (l *Logger) OnLogLevelDebug(setup func() (shutdown func())) (unsubscribe func()) {
 	return l.onLogLevel(LevelDebug, setup)
 }
 
@@ -88,7 +88,7 @@ func (l *Logger) InfoAttrs(msg string, args ...slog.Attr) {
 }
 
 // OnInfoLevel registers a callback that is called when the log level is set to info or lower.
-func (l *Logger) OnInfoLevel(setup func() (shutdown func())) (unsubscribe func()) {
+func (l *Logger) OnLogLevelInfo(setup func() (shutdown func())) (unsubscribe func()) {
 	return l.onLogLevel(LevelInfo, setup)
 }
 
