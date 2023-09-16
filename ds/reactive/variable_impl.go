@@ -63,7 +63,7 @@ func (v *variable[Type]) Compute(computeFunc func(currentValue Type) Type) (prev
 func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe func()) {
 	return other.OnUpdate(func(_, newValue Type) {
 		v.Set(newValue)
-	})
+	}, true)
 }
 
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
@@ -185,15 +185,15 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 // OnUpdateWithContext registers the given callback that is triggered when the value changes. In contrast to the
 // normal OnUpdate method, this method provides the old and new value as well as a withinContext function that can
 // be used to create subscriptions that are automatically unsubscribed when the callback is triggered again.
-func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func())))) (unsubscribe func()) {
+func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	var previousUnsubscribedEvent Event
 
 	return r.OnUpdate(func(oldValue, newValue Type) {
 		if previousUnsubscribedEvent != nil {
 			previousUnsubscribedEvent.Trigger()
 		}
-		unsubscribedEvent := NewEvent()
 
+		unsubscribedEvent := NewEvent()
 		withinContext := func(subscription func() func()) {
 			if !unsubscribedEvent.WasTriggered() {
 				unsubscribedEvent.OnTrigger(subscription())
@@ -203,7 +203,7 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 		callback(oldValue, newValue, withinContext)
 
 		previousUnsubscribedEvent = unsubscribedEvent
-	})
+	}, triggerWithInitialZeroValue...)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
