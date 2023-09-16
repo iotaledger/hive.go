@@ -1,6 +1,7 @@
 package reactive
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
@@ -204,6 +205,17 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 
 		previousUnsubscribedEvent = unsubscribedEvent
 	}, triggerWithInitialZeroValue...)
+}
+
+// LogUpdates configures the Variable to emit logs about updates with the given logger and log level.
+func (r *readableVariable[Type]) LogUpdates(logger *Logger, level slog.Level, name string) (unsubscribe func()) {
+	logMessage := name + " updated"
+
+	return logger.onLogLevel(level, func() (shutdown func()) {
+		return r.OnUpdate(func(oldValue, newValue Type) {
+			logger.log(logMessage, level, "oldValue", oldValue, "newValue", newValue)
+		})
+	})
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

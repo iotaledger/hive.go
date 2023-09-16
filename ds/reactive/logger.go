@@ -7,6 +7,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/lo"
 )
@@ -20,11 +24,34 @@ type Logger struct {
 	reactiveLevel Variable[LogLevel]
 }
 
-// New creates a new logger with the given namespace and an optional handler. The default handler prints log records in
-// a human-readable format to stdout.
-func New(name string, handler ...slog.Handler) *Logger {
+// NewLogger creates a new logger with the given namespace and an optional handler. The default handler prints log
+// records in a human-readable format to stdout.
+func NewLogger(name string, handler ...slog.Handler) *Logger {
 	return newLogger("", name, slog.New(lo.First(handler, newDefaultLogHandler(os.Stdout))))
 }
+
+// NewEmbeddedLogger creates a logger for an entity of a specific type that can be embedded into the entity's struct.
+// The logger's namespace is derived from the type name and an instance counter. The logger is automatically closed when
+// the shutdown event is triggered.
+func NewEmbeddedLogger(logger *Logger, typeName string, shutdownEvent Event) *Logger {
+	if logger == nil {
+		return nil
+	}
+
+	instanceCounter, _ := embeddedInstanceCounters.LoadOrStore(typeName, &atomic.Int64{})
+
+	var namespaceBuilder strings.Builder
+	namespaceBuilder.WriteString(typeName)
+	namespaceBuilder.WriteString(strconv.FormatInt(instanceCounter.(*atomic.Int64).Add(1)-1, 10))
+
+	embeddedLogger, shutdown := logger.NestedLogger(namespaceBuilder.String())
+	shutdownEvent.OnTrigger(shutdown)
+
+	return embeddedLogger
+}
+
+// embeddedInstanceCounters holds the counters for embedded instances per type.
+var embeddedInstanceCounters = sync.Map{}
 
 // newLogger creates a new logger with the given namespace and root logger instance.
 func newLogger(namespace, name string, rootLogger *slog.Logger) *Logger {
@@ -91,21 +118,9 @@ func (l *Logger) LogErrorAttrs(msg string, args ...slog.Attr) {
 	l.logAttrs(msg, LogLevelError, args...)
 }
 
-// LogLogger logs a logger message.
-func (l *Logger) LogLogger(msg string, args ...any) {
-	l.log(msg, LogLevelLogger, args...)
-}
-
-// LogLoggerAttrs logs a logger message with typed slog attributes.
-func (l *Logger) LogLoggerAttrs(msg string, args ...slog.Attr) {
-	l.logAttrs(msg, LogLevelLogger, args...)
-}
-
 // SetLogLevel sets the log level of the logger.
 func (l *Logger) SetLogLevel(level LogLevel) {
 	if l != nil {
-		l.LogLogger("log level set to " + LogLevelName(level))
-
 		l.reactiveLevel.Set(level)
 	}
 }
@@ -206,9 +221,6 @@ const (
 
 	// LogLevelError is the log level for error messages.
 	LogLevelError = slog.LevelError
-
-	// LogLevelLogger is the log level for logger messages.
-	LogLevelLogger = slog.Level(12)
 )
 
 // LogLevelName returns the name of the given log level.
@@ -224,8 +236,6 @@ func LogLevelName(level LogLevel) string {
 		return "WARNING"
 	case LogLevelError:
 		return "ERROR  "
-	case LogLevelLogger:
-		return "LOGGER "
 	default:
 		return "UNKNOWN"
 	}
