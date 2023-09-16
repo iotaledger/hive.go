@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
+// ability to create nested loggers with individual log levels.
 func TestLogger(t *testing.T) {
 	logger := NewLogger("node1")
 	logger.LogDebug("some log (invisible due to log level)")
@@ -24,8 +26,22 @@ func TestLogger(t *testing.T) {
 	time.Sleep(1 * time.Second) // wait for log message to be printed
 }
 
+// TestEntityBasedLogging tests the entity based logging.
 func TestEntityBasedLogging(t *testing.T) {
 	logger := NewLogger("node1")
+
+	testObject0 := NewTestObject(logger)
+	testObject0.ImportantValue1.Set(1)      // will produce a log message
+	testObject0.LessImportantValue1.Set(10) // will not produce a log message
+	testObject0.SetLogLevel(LogLevelDebug)
+	testObject0.ImportantValue1.Set(10)     // will produce a log message
+	testObject0.LessImportantValue1.Set(20) // will produce a log message
+	testObject0.SetLogLevel(LogLevelInfo)
+	testObject0.LessImportantValue1.Set(40) // will not produce a log message
+	testObject0.ImportantValue1.Set(100)    // will produce a log message
+	testObject0.SetLogLevel(LogLevelWarning)
+	testObject0.LessImportantValue1.Set(40) // will not produce a log message
+	testObject0.ImportantValue1.Set(100)    // will not produce a log message
 
 	testObject1 := NewTestObject(logger)
 	testObject1.ImportantValue1.Set(1)      // will produce a log message
@@ -39,19 +55,6 @@ func TestEntityBasedLogging(t *testing.T) {
 	testObject1.SetLogLevel(LogLevelWarning)
 	testObject1.LessImportantValue1.Set(40) // will not produce a log message
 	testObject1.ImportantValue1.Set(100)    // will not produce a log message
-
-	testObject2 := NewTestObject(logger)
-	testObject2.ImportantValue1.Set(1)      // will produce a log message
-	testObject2.LessImportantValue1.Set(10) // will not produce a log message
-	testObject2.SetLogLevel(LogLevelDebug)
-	testObject2.ImportantValue1.Set(10)     // will produce a log message
-	testObject2.LessImportantValue1.Set(20) // will produce a log message
-	testObject2.SetLogLevel(LogLevelInfo)
-	testObject2.LessImportantValue1.Set(40) // will not produce a log message
-	testObject2.ImportantValue1.Set(100)    // will produce a log message
-	testObject2.SetLogLevel(LogLevelWarning)
-	testObject2.LessImportantValue1.Set(40) // will not produce a log message
-	testObject2.ImportantValue1.Set(100)    // will not produce a log message
 
 	time.Sleep(1 * time.Second) // wait for log message to be printed
 }
@@ -73,13 +76,11 @@ func NewTestObject(logger *Logger) *TestObject {
 		IsEvicted:           NewEvent(),
 	}
 
-	if logger != nil {
-		t.Logger = NewEmbeddedLogger(logger, "TestObject", t.IsEvicted)
-
-		t.ImportantValue1.LogUpdates(t.Logger, LogLevelInfo, "ImportantValue1")
-		t.ImportantValue2.LogUpdates(t.Logger, LogLevelInfo, "ImportantValue2")
-		t.LessImportantValue1.LogUpdates(t.Logger, LogLevelDebug, "LessImportantValue1")
-	}
+	t.Logger = NewEmbeddedLogger(logger, "TestObject", t.IsEvicted, func(embeddedLogger *Logger) {
+		t.ImportantValue1.LogUpdates(embeddedLogger, LogLevelInfo, "ImportantValue1")
+		t.ImportantValue2.LogUpdates(embeddedLogger, LogLevelInfo, "ImportantValue2")
+		t.LessImportantValue1.LogUpdates(embeddedLogger, LogLevelDebug, "LessImportantValue1")
+	})
 
 	return t
 }
