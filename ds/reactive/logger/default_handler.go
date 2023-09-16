@@ -26,24 +26,11 @@ func (h *defaultHandler) Enabled(_ context.Context, _ slog.Level) bool {
 
 // Handle writes the log record to the output.
 func (h *defaultHandler) Handle(_ context.Context, r slog.Record) error {
-	var level string
-	switch r.Level {
-	case LevelTrace:
-		level = "TRACE"
-	case LevelDebug:
-		level = "DEBUG"
-	case LevelInfo:
-		level = "INFO"
-	case LevelWarning:
-		level = "WARNING"
-	case LevelError:
-		level = "ERROR"
-	default:
-		level = "UNKNOWN"
-	}
+	var (
+		namespace    string
+		fieldsBuffer = new(bytes.Buffer)
+	)
 
-	var namespace string
-	fieldsBuffer := new(bytes.Buffer)
 	r.Attrs(func(attr slog.Attr) bool {
 		if attr.Key == namespaceKey {
 			namespace = attr.Value.Any().(string)
@@ -55,7 +42,7 @@ func (h *defaultHandler) Handle(_ context.Context, r slog.Record) error {
 		return true
 	})
 
-	fmt.Fprintf(h.output, "%s\t%s\t%s\t%s\t%s\n", r.Time.Format("2006/01/02 15:04:05"), level, namespace, r.Message, fieldsBuffer.String())
+	fmt.Fprintf(h.output, "%s\t%s\t%s\t%s\t%s\n", r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
 
 	return nil
 }
