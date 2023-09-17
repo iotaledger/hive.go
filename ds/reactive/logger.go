@@ -70,6 +70,16 @@ func newLogger(namespace, name string, rootLogger *slog.Logger) *Logger {
 	return l
 }
 
+// LoggerName returns the name of the logger (the last part of the namespace).
+func (l *Logger) LoggerName() string {
+	return l.name
+}
+
+// LoggerNamespace returns the full namespace of the logger.
+func (l *Logger) LoggerNamespace() string {
+	return l.namespace
+}
+
 // Log logs a message with the given log level.
 func (l *Logger) Log(msg string, level LogLevel, args ...any) {
 	if l != nil && l.level.Level() <= level {
@@ -173,31 +183,6 @@ func (l *Logger) OnLogLevel(logLevel LogLevel, setup func() (shutdown func())) (
 	}
 }
 
-// OnLogLevelTrace registers a callback that is called when the log level is set to trace or lower.
-func (l *Logger) OnLogLevelTrace(setup func() (shutdown func())) (unsubscribe func()) {
-	return l.OnLogLevel(LogLevelTrace, setup)
-}
-
-// OnLogLevelDebug registers a callback that is called when the log level is set to debug or lower.
-func (l *Logger) OnLogLevelDebug(setup func() (shutdown func())) (unsubscribe func()) {
-	return l.OnLogLevel(LogLevelDebug, setup)
-}
-
-// OnLogLevelInfo registers a callback that is called when the log level is set to info or lower.
-func (l *Logger) OnLogLevelInfo(setup func() (shutdown func())) (unsubscribe func()) {
-	return l.OnLogLevel(LogLevelInfo, setup)
-}
-
-// OnLogLevelWarn registers a callback that is called when the log level is set to warning or lower.
-func (l *Logger) OnLogLevelWarn(setup func() (shutdown func())) (unsubscribe func()) {
-	return l.OnLogLevel(LogLevelWarning, setup)
-}
-
-// OnLogLevelError registers a callback that is called when the log level is set to error or lower.
-func (l *Logger) OnLogLevelError(setup func() (shutdown func())) (unsubscribe func()) {
-	return l.OnLogLevel(LogLevelError, setup)
-}
-
 // NestedLogger creates a new logger with the given sub-namespace. The new logger inherits the log level from the parent
 // logger, but can also be set to its own individual log level.
 func (l *Logger) NestedLogger(subNamespace string) (nestedLogger *Logger, shutdown func()) {
@@ -208,6 +193,10 @@ func (l *Logger) NestedLogger(subNamespace string) (nestedLogger *Logger, shutdo
 	nestedLogger = newLogger(l.namespace, subNamespace, l.rootLogger)
 
 	return nestedLogger, nestedLogger.reactiveLevel.InheritFrom(l.reactiveLevel)
+}
+
+func (l *Logger) String() string {
+	return strings.TrimRight(fmt.Sprintf("Logger[%s] (LEVEL = %s", l.namespace, LogLevelName(l.level.Level())), " ") + ")"
 }
 
 // namespaceKey is the key of the slog attribute that holds the namespace of the logger.
