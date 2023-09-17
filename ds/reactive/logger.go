@@ -31,29 +31,20 @@ func NewLogger(name string, handler ...slog.Handler) *Logger {
 }
 
 // NewEmbeddedLogger creates a logger for an entity of a specific type that can be embedded into the entity's struct.
-// The logger's namespace is derived from the type name and an instance counter. The logger is automatically closed when
-// the shutdown event is triggered.
+// The logger's name is a combination of the name of the type and an ever-increasing instance counter. The logger is
+// automatically closed when the shutdown event is triggered.
 func NewEmbeddedLogger(logger *Logger, typeName string, shutdownEvent Event, initLogging func(embeddedLogger *Logger)) *Logger {
 	if logger == nil {
 		return nil
 	}
 
-	instanceCounter, _ := embeddedInstanceCounters.LoadOrStore(typeName, &atomic.Int64{})
-
-	var namespaceBuilder strings.Builder
-	namespaceBuilder.WriteString(typeName)
-	namespaceBuilder.WriteString(strconv.FormatInt(instanceCounter.(*atomic.Int64).Add(1)-1, 10))
-
-	embeddedLogger, shutdown := logger.NestedLogger(namespaceBuilder.String())
+	embeddedLogger, shutdown := logger.NestedLogger(embeddedInstanceName(typeName))
 	shutdownEvent.OnTrigger(shutdown)
 
 	initLogging(embeddedLogger)
 
 	return embeddedLogger
 }
-
-// embeddedInstanceCounters holds the counters for embedded instances per type.
-var embeddedInstanceCounters = sync.Map{}
 
 // newLogger creates a new logger with the given namespace and root logger instance.
 func newLogger(namespace, name string, rootLogger *slog.Logger) *Logger {
@@ -198,6 +189,30 @@ func (l *Logger) NestedLogger(subNamespace string) (nestedLogger *Logger, shutdo
 func (l *Logger) String() string {
 	return strings.TrimRight(fmt.Sprintf("Logger[%s] (LEVEL = %s", l.namespace, LogLevelName(l.level.Level())), " ") + ")"
 }
+
+// embeddedInstanceName returns the name of an embedded instance of the given type.
+func embeddedInstanceName(typeName string) string {
+	embeddedInstanceCounter := func() int64 {
+		instanceCounter, loaded := embeddedInstanceCounters.Load(typeName)
+		if loaded {
+			return instanceCounter.(*atomic.Int64).Add(1) - 1
+		}
+
+		instanceCounter, _ = embeddedInstanceCounters.LoadOrStore(typeName, &atomic.Int64{})
+
+		return instanceCounter.(*atomic.Int64).Add(1) - 1
+	}
+
+	var nameBuilder strings.Builder
+
+	nameBuilder.WriteString(typeName)
+	nameBuilder.WriteString(strconv.FormatInt(embeddedInstanceCounter(), 10))
+
+	return nameBuilder.String()
+}
+
+// embeddedInstanceCounters holds the instance counters for embedded loggers.
+var embeddedInstanceCounters = sync.Map{}
 
 // namespaceKey is the key of the slog attribute that holds the namespace of the logger.
 const namespaceKey = "namespace"
