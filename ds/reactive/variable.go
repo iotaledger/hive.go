@@ -1,8 +1,6 @@
 package reactive
 
 import (
-	"log/slog"
-
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -51,7 +49,7 @@ type ReadableVariable[Type comparable] interface {
 	OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 
 	// LogUpdates configures the Variable to emit logs about updates with the given logger and log level.
-	LogUpdates(logger *Logger, level slog.Level, name string) (unsubscribe func())
+	LogUpdates(logger *Logger, logLevel LogLevel, variableName string) (unsubscribe func())
 }
 
 // NewReadableVariable creates a new ReadableVariable instance with the given value.

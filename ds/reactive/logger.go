@@ -151,8 +151,8 @@ func (l *Logger) OnLogLevel(logLevel LogLevel, setup func() (shutdown func())) (
 
 	var shutdownEvent Event
 
-	unsubscribeFromLevel := l.reactiveLevel.OnUpdate(func(_, newValue LogLevel) {
-		if newValue <= logLevel {
+	unsubscribeFromLevel := l.reactiveLevel.OnUpdate(func(_, newLevel LogLevel) {
+		if newLevel <= logLevel {
 			if shutdownEvent == nil {
 				shutdownEvent = NewEvent()
 				shutdownEvent.OnTrigger(setup())
