@@ -260,18 +260,29 @@ func (d *defaultLogHandler) Enabled(_ context.Context, _ slog.Level) bool {
 func (d *defaultLogHandler) Handle(_ context.Context, r slog.Record) error {
 	var namespace string
 	fieldsBuffer := new(bytes.Buffer)
+
+	fieldCount := r.NumAttrs() - 1
+	if fieldCount > 0 {
+		fieldsBuffer.WriteString("(")
+	}
+
 	r.Attrs(func(attr slog.Attr) bool {
 		if attr.Key == namespaceKey {
 			namespace = attr.Value.Any().(string)
 		} else {
-			fieldsBuffer.WriteByte(' ')
 			fieldsBuffer.WriteString(attr.String())
+			fieldsBuffer.WriteString(" ")
 		}
 
 		return true
 	})
 
-	fmt.Fprintf(d.output, "%s\t%s\t%s\t%s\t%s\n", r.Time.Format("2006/01/02 15:04:05"), LogLevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
+	if fieldCount > 0 {
+		fieldsBuffer.Truncate(fieldsBuffer.Len() - 1)
+		fieldsBuffer.WriteString(")")
+	}
+
+	fmt.Fprintf(d.output, "%s\t%s\t%s\t%s \t\t %s\n", r.Time.Format("2006/01/02 15:04:05"), LogLevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
 
 	return nil
 }

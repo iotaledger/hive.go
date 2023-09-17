@@ -213,7 +213,7 @@ func (r *readableVariable[Type]) LogUpdates(logger *Logger, level slog.Level, na
 
 	return logger.OnLogLevel(level, func() (shutdown func()) {
 		return r.OnUpdate(func(oldValue, newValue Type) {
-			logger.Log(logMessage, level, "oldValue", oldValue, "newValue", newValue)
+			logger.Log(logMessage, level, "old", oldValue, "new", newValue)
 		})
 	})
 }

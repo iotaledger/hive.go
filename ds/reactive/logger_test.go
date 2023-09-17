@@ -11,7 +11,7 @@ func TestLogger(t *testing.T) {
 	logger := NewLogger("node1")
 	logger.LogDebug("some log (invisible due to log level)")
 	logger.SetLogLevel(LogLevelTrace)
-	logger.LogTrace("created chain", "id", "chain1")
+	logger.LogTrace("created chain")
 
 	networkLogger, shutdownNetworkLogger := logger.NestedLogger("network")
 	defer shutdownNetworkLogger()
