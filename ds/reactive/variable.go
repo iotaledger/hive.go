@@ -48,8 +48,9 @@ type ReadableVariable[Type comparable] interface {
 	// be used to create subscriptions that are automatically unsubscribed when the callback is triggered again.
 	OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 
-	// LogUpdates configures the Variable to emit logs about updates with the given logger and log level.
-	LogUpdates(logger *Logger, logLevel LogLevel, variableName string) (unsubscribe func())
+	// LogUpdates configures the Variable to emit logs about updates with the given logger and log level. An optional
+	// stringer function can be provided to log the value in a custom format.
+	LogUpdates(logger *Logger, logLevel LogLevel, variableName string, stringer ...func(Type) string) (unsubscribe func())
 }
 
 // NewReadableVariable creates a new ReadableVariable instance with the given value.
