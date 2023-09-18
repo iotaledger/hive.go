@@ -297,7 +297,7 @@ func (d *defaultLogHandler) Handle(_ context.Context, r slog.Record) error {
 		fieldsBuffer.WriteString(")")
 	}
 
-	fmt.Fprintf(d.output, "%s\t%s\t%s\t%s \t\t %s\n", r.Time.Format("2006/01/02 15:04:05"), LogLevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
+	fmt.Fprintf(d.output, "%s\t%s\t%s\t%s %s\n", r.Time.Format("2006/01/02 15:04:05"), LogLevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
 
 	return nil
 }
