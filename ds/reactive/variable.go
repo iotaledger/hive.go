@@ -1,6 +1,8 @@
 package reactive
 
 import (
+	"log/slog"
+
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -50,7 +52,7 @@ type ReadableVariable[Type comparable] interface {
 
 	// LogUpdates configures the Variable to emit logs about updates with the given logger and log level. An optional
 	// stringer function can be provided to log the value in a custom format.
-	LogUpdates(logger *Logger, logLevel LogLevel, variableName string, stringer ...func(Type) string) (unsubscribe func())
+	LogUpdates(logger VariableLogReceiver, logLevel slog.Level, variableName string, stringer ...func(Type) string) (unsubscribe func())
 }
 
 // NewReadableVariable creates a new ReadableVariable instance with the given value.
@@ -74,6 +76,8 @@ type WritableVariable[Type comparable] interface {
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
 }
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region DerivedVariable //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -127,6 +131,20 @@ func NewDerivedVariable3[Type, InputType1, InputType2, InputType3 comparable, In
 			}, true),
 		)
 	})
+}
+
+// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// region VariableLogReceiver //////////////////////////////////////////////////////////////////////////////////////////
+
+// VariableLogReceiver defines the interface that is required to receive log messages from a Variable.
+type VariableLogReceiver interface {
+	// OnLogLevel registers a callback that is triggered when the given log level is activated. The shutdown function
+	// that is returned by the callback is automatically called when the log level is deactivated.
+	OnLogLevel(slog.Level, func() (shutdown func())) (unsubscribe func())
+
+	// LogAttrs emits a log message with the given attributes.
+	LogAttrs(string, slog.Level, ...slog.Attr)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

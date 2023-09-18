@@ -1,4 +1,4 @@
-package reactive
+package log
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/iotaledger/hive.go/ds/reactive"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -21,7 +22,7 @@ type Logger struct {
 	namespace     string
 	rootLogger    *slog.Logger
 	level         *slog.LevelVar
-	reactiveLevel Variable[LogLevel]
+	reactiveLevel reactive.Variable[LogLevel]
 }
 
 // NewLogger creates a new logger with the given namespace and an optional handler. The default handler prints log
@@ -33,7 +34,7 @@ func NewLogger(name string, handler ...slog.Handler) *Logger {
 // NewEmbeddedLogger creates a logger for an entity of a specific type that can be embedded into the entity's struct.
 // The logger's name is a combination of the name of the type and an ever-increasing instance counter. The logger is
 // automatically closed when the shutdown event is triggered.
-func NewEmbeddedLogger(logger *Logger, typeName string, shutdownEvent Event, initLogging func(embeddedLogger *Logger)) *Logger {
+func NewEmbeddedLogger(logger *Logger, typeName string, shutdownEvent reactive.Event, initLogging func(embeddedLogger *Logger)) *Logger {
 	if logger == nil {
 		return nil
 	}
@@ -53,7 +54,7 @@ func newLogger(namespace, name string, rootLogger *slog.Logger) *Logger {
 		namespace:     lo.Cond(namespace == "", name, namespace+"."+name),
 		rootLogger:    rootLogger,
 		level:         new(slog.LevelVar),
-		reactiveLevel: NewVariable[LogLevel](),
+		reactiveLevel: reactive.NewVariable[LogLevel](),
 	}
 
 	l.reactiveLevel.OnUpdate(func(_, newLevel LogLevel) { l.level.Set(newLevel) })
@@ -149,12 +150,12 @@ func (l *Logger) OnLogLevel(logLevel LogLevel, setup func() (shutdown func())) (
 		return func() {}
 	}
 
-	var shutdownEvent Event
+	var shutdownEvent reactive.Event
 
 	unsubscribeFromLevel := l.reactiveLevel.OnUpdate(func(_, newLevel LogLevel) {
 		if newLevel <= logLevel {
 			if shutdownEvent == nil {
-				shutdownEvent = NewEvent()
+				shutdownEvent = reactive.NewEvent()
 				shutdownEvent.OnTrigger(setup())
 			}
 		} else {

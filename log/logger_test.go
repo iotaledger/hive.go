@@ -1,8 +1,10 @@
-package reactive
+package log
 
 import (
 	"testing"
 	"time"
+
+	"github.com/iotaledger/hive.go/ds/reactive"
 )
 
 // TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
@@ -16,7 +18,7 @@ func TestLogger(t *testing.T) {
 	networkLogger, shutdownNetworkLogger := logger.NestedLogger("network")
 	defer shutdownNetworkLogger()
 	networkLogger.SetLogLevel(LogLevelInfo)
-	networkLogger.LogDebug("instantiated chain (invisible)", "id", 1)
+	networkLogger.LogInfo("instantiated chain (invisible)", "id", 1)
 
 	chainLogger, shutdownChainLogger := logger.NestedLogger("chain1")
 	defer shutdownChainLogger()
@@ -60,20 +62,20 @@ func TestEntityBasedLogging(t *testing.T) {
 }
 
 type TestObject struct {
-	ImportantValue1     Variable[uint64]
-	ImportantValue2     Variable[uint64]
-	LessImportantValue1 Variable[uint64]
-	IsEvicted           Event
+	ImportantValue1     reactive.Variable[uint64]
+	ImportantValue2     reactive.Variable[uint64]
+	LessImportantValue1 reactive.Variable[uint64]
+	IsEvicted           reactive.Event
 
 	*Logger
 }
 
 func NewTestObject(logger *Logger) *TestObject {
 	t := &TestObject{
-		ImportantValue1:     NewVariable[uint64](),
-		ImportantValue2:     NewVariable[uint64](),
-		LessImportantValue1: NewVariable[uint64](),
-		IsEvicted:           NewEvent(),
+		ImportantValue1:     reactive.NewVariable[uint64](),
+		ImportantValue2:     reactive.NewVariable[uint64](),
+		LessImportantValue1: reactive.NewVariable[uint64](),
+		IsEvicted:           reactive.NewEvent(),
 	}
 
 	t.Logger = NewEmbeddedLogger(logger, "TestObject", t.IsEvicted, func(embeddedLogger *Logger) {
