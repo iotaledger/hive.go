@@ -3,7 +3,7 @@ module github.com/iotaledger/hive.go/logger
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/ds v0.0.0-20230918135813-4d2376f7d065
+	github.com/iotaledger/hive.go/ds v0.0.0-20230918225456-16f3e6be1a6c
 	github.com/iotaledger/hive.go/lo v0.0.0-20230829145721-3041a551a2dd
 )
 

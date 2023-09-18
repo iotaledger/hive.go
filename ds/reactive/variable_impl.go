@@ -212,7 +212,7 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 func (r *readableVariable[Type]) LogUpdates(logger VariableLogReceiver, logLevel slog.Level, variableName string, stringer ...func(Type) string) (unsubscribe func()) {
 	logMessage := variableName
 
-	return logger.OnLogLevel(logLevel, func() (shutdown func()) {
+	return logger.OnLogLevelActive(logLevel, func() (shutdown func()) {
 		return r.OnUpdate(func(_, newValue Type) {
 			if len(stringer) != 0 {
 				logger.LogAttrs(logMessage, logLevel, slog.String("set", stringer[0](newValue)))
