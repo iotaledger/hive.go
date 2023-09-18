@@ -139,11 +139,11 @@ func NewDerivedVariable3[Type, InputType1, InputType2, InputType3 comparable, In
 
 // VariableLogReceiver defines the interface that is required to receive log messages from a Variable.
 type VariableLogReceiver interface {
-	// OnLogLevel registers a callback that is triggered when the given log level is activated. The shutdown function
-	// that is returned by the callback is automatically called when the log level is deactivated.
-	OnLogLevel(slog.Level, func() (shutdown func())) (unsubscribe func())
+	// OnLogLevelActive registers a callback that is triggered when the given log level is activated. The shutdown
+	// function that is returned by the callback is automatically called when the log level is deactivated.
+	OnLogLevelActive(slog.Level, func() (shutdown func())) (unsubscribe func())
 
-	// LogAttrs emits a log message with the given attributes.
+	// LogAttrs emits a log message with the given log level and attributes.
 	LogAttrs(string, slog.Level, ...slog.Attr)
 }
 

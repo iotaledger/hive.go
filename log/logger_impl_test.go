@@ -1,28 +1,29 @@
-package log
+package log_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
+	log "github.com/iotaledger/hive.go/logger"
 )
 
 // TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
 // ability to create nested loggers with individual log levels.
 func TestLogger(t *testing.T) {
-	logger := NewLogger("node1")
+	logger := log.NewLogger("node1")
 	logger.LogDebug("some log (invisible due to log level)")
-	logger.SetLogLevel(LogLevelTrace)
+	logger.SetLogLevel(log.LevelTrace)
 	logger.LogTrace("created chain")
 
-	networkLogger, shutdownNetworkLogger := logger.NestedLogger("network")
+	networkLogger, shutdownNetworkLogger := logger.NewChildLogger("network")
 	defer shutdownNetworkLogger()
-	networkLogger.SetLogLevel(LogLevelInfo)
+	networkLogger.SetLogLevel(log.LevelInfo)
 	networkLogger.LogInfo("instantiated chain (invisible)", "id", 1)
 
-	chainLogger, shutdownChainLogger := logger.NestedLogger("chain1")
+	chainLogger, shutdownChainLogger := logger.NewChildLogger("chain1")
 	defer shutdownChainLogger()
-	chainLogger.SetLogLevel(LogLevelDebug)
+	chainLogger.SetLogLevel(log.LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
 
 	time.Sleep(1 * time.Second) // wait for log message to be printed
@@ -30,31 +31,31 @@ func TestLogger(t *testing.T) {
 
 // TestEntityBasedLogging tests the entity based logging.
 func TestEntityBasedLogging(t *testing.T) {
-	logger := NewLogger("node1")
+	logger := log.NewLogger("node1")
 
 	testObject0 := NewTestObject(logger)
 	testObject0.ImportantValue1.Set(1)      // will produce a log message
 	testObject0.LessImportantValue1.Set(10) // will not produce a log message
-	testObject0.SetLogLevel(LogLevelDebug)
+	testObject0.SetLogLevel(log.LevelDebug)
 	testObject0.ImportantValue1.Set(10)     // will produce a log message
 	testObject0.LessImportantValue1.Set(20) // will produce a log message
-	testObject0.SetLogLevel(LogLevelInfo)
+	testObject0.SetLogLevel(log.LevelInfo)
 	testObject0.LessImportantValue1.Set(40) // will not produce a log message
 	testObject0.ImportantValue1.Set(100)    // will produce a log message
-	testObject0.SetLogLevel(LogLevelWarning)
+	testObject0.SetLogLevel(log.LevelWarning)
 	testObject0.LessImportantValue1.Set(40) // will not produce a log message
 	testObject0.ImportantValue1.Set(100)    // will not produce a log message
 
 	testObject1 := NewTestObject(logger)
 	testObject1.ImportantValue1.Set(1)      // will produce a log message
 	testObject1.LessImportantValue1.Set(10) // will not produce a log message
-	testObject1.SetLogLevel(LogLevelDebug)
+	testObject1.SetLogLevel(log.LevelDebug)
 	testObject1.ImportantValue1.Set(10)     // will produce a log message
 	testObject1.LessImportantValue1.Set(20) // will produce a log message
-	testObject1.SetLogLevel(LogLevelInfo)
+	testObject1.SetLogLevel(log.LevelInfo)
 	testObject1.LessImportantValue1.Set(40) // will not produce a log message
 	testObject1.ImportantValue1.Set(100)    // will produce a log message
-	testObject1.SetLogLevel(LogLevelWarning)
+	testObject1.SetLogLevel(log.LevelWarning)
 	testObject1.LessImportantValue1.Set(40) // will not produce a log message
 	testObject1.ImportantValue1.Set(100)    // will not produce a log message
 
@@ -67,10 +68,10 @@ type TestObject struct {
 	LessImportantValue1 reactive.Variable[uint64]
 	IsEvicted           reactive.Event
 
-	*Logger
+	log.Logger
 }
 
-func NewTestObject(logger *Logger) *TestObject {
+func NewTestObject(logger log.Logger) *TestObject {
 	t := &TestObject{
 		ImportantValue1:     reactive.NewVariable[uint64](),
 		ImportantValue2:     reactive.NewVariable[uint64](),
@@ -78,10 +79,10 @@ func NewTestObject(logger *Logger) *TestObject {
 		IsEvicted:           reactive.NewEvent(),
 	}
 
-	t.Logger = NewEmbeddedLogger(logger, "TestObject", t.IsEvicted, func(embeddedLogger *Logger) {
-		t.ImportantValue1.LogUpdates(embeddedLogger, LogLevelInfo, "ImportantValue1")
-		t.ImportantValue2.LogUpdates(embeddedLogger, LogLevelInfo, "ImportantValue2")
-		t.LessImportantValue1.LogUpdates(embeddedLogger, LogLevelDebug, "LessImportantValue1")
+	t.Logger = log.NewEntityLogger(logger, "TestObject", t.IsEvicted, func(entityLogger log.Logger) {
+		t.ImportantValue1.LogUpdates(entityLogger, log.LevelInfo, "ImportantValue1")
+		t.ImportantValue2.LogUpdates(entityLogger, log.LevelInfo, "ImportantValue2")
+		t.LessImportantValue1.LogUpdates(entityLogger, log.LevelDebug, "LessImportantValue1")
 	})
 
 	return t
