@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
 	"github.com/iotaledger/hive.go/lo"
@@ -207,3 +210,27 @@ func (l *logger) String() string {
 
 // namespaceKey is the key of the slog attribute that holds the namespace of the logger.
 const namespaceKey = "namespace"
+
+// uniqueEntityName returns the name of an embedded instance of the given type.
+func uniqueEntityName(name string) (uniqueName string) {
+	entityNameCounter := func() int64 {
+		instanceCounter, loaded := entityNameCounters.Load(name)
+		if loaded {
+			return instanceCounter.(*atomic.Int64).Add(1) - 1
+		}
+
+		instanceCounter, _ = entityNameCounters.LoadOrStore(name, &atomic.Int64{})
+
+		return instanceCounter.(*atomic.Int64).Add(1) - 1
+	}
+
+	var nameBuilder strings.Builder
+
+	nameBuilder.WriteString(name)
+	nameBuilder.WriteString(strconv.FormatInt(entityNameCounter(), 10))
+
+	return nameBuilder.String()
+}
+
+// entityNameCounters holds the instance counters for embedded loggers.
+var entityNameCounters = sync.Map{}

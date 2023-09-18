@@ -79,7 +79,7 @@ func NewTestObject(logger log.Logger) *TestObject {
 		IsEvicted:           reactive.NewEvent(),
 	}
 
-	t.Logger = log.NewEntityLogger(logger, "TestObject", t.IsEvicted, func(entityLogger log.Logger) {
+	t.Logger = logger.NewEntityLogger("TestObject", t.IsEvicted, func(entityLogger log.Logger) {
 		t.ImportantValue1.LogUpdates(entityLogger, log.LevelInfo, "ImportantValue1")
 		t.ImportantValue2.LogUpdates(entityLogger, log.LevelInfo, "ImportantValue2")
 		t.LessImportantValue1.LogUpdates(entityLogger, log.LevelDebug, "LessImportantValue1")
