@@ -13,20 +13,33 @@ import (
 	"github.com/iotaledger/hive.go/lo"
 )
 
-// Logger is a reactive logger that can be used to log messages with different log levels.
+// logger is the default implementation of the Logger interface.
 type logger struct {
-	name          string
-	namespace     string
-	rootLogger    *slog.Logger
-	level         *slog.LevelVar
+	// name is the name of the logger instance.
+	name string
+
+	// path is the full path of the logger that is formed by a combination of the names of its ancestors and its own
+	// name.
+	path string
+
+	// rootLogger is the root logger instance.
+	rootLogger *slog.Logger
+
+	// level is the current log level of the logger.
+	level *slog.LevelVar
+
+	// reactiveLevel is the reactive variable that is used to make changes to the log level reactive.
 	reactiveLevel reactive.Variable[Level]
+
+	// entityNameCounters holds the instance counters for entity loggers.
+	entityNameCounters sync.Map
 }
 
-// newLogger creates a new logger with the given namespace and root logger instance.
-func newLogger(namespace, name string, rootLogger *slog.Logger) *logger {
+// newLogger creates a new logger instance with the given name and parent logger.
+func newLogger(rootLogger *slog.Logger, parentPath, name string) *logger {
 	l := &logger{
 		name:          name,
-		namespace:     lo.Cond(namespace == "", name, namespace+"."+name),
+		path:          lo.Cond(parentPath == "", name, parentPath+"."+name),
 		rootLogger:    rootLogger,
 		level:         new(slog.LevelVar),
 		reactiveLevel: reactive.NewVariable[Level](),
@@ -37,120 +50,20 @@ func newLogger(namespace, name string, rootLogger *slog.Logger) *logger {
 	return l
 }
 
-func (l *logger) LogPath() string {
-	return l.namespace
-}
-
-func (l *logger) LogLevel() Level {
-	return l.level.Level()
-}
-
-func (l *logger) LogF(fmtString string, level Level, args ...any) {
-	if l != nil && l.level.Level() <= level {
-		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...))
-	}
-}
-
-func (l *logger) LogTraceF(fmt string, args ...any) {
-	l.LogF(fmt, LevelTrace, args...)
-}
-
-func (l *logger) LogDebugF(fmt string, args ...any) {
-	l.LogF(fmt, LevelDebug, args...)
-}
-
-func (l *logger) LogInfoF(fmt string, args ...any) {
-	l.LogF(fmt, LevelInfo, args...)
-}
-
-func (l *logger) LogWarnF(fmt string, args ...any) {
-	l.LogF(fmt, LevelWarning, args...)
-}
-
-func (l *logger) LogErrorF(fmt string, args ...any) {
-	l.LogF(fmt, LevelError, args...)
-}
-
-func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger {
-	if l == nil {
-		return l
-	}
-
-	embeddedLogger, shutdown := l.NewChildLogger(uniqueEntityName(entityName))
-	shutdownEvent.OnTrigger(shutdown)
-
-	initLogging(embeddedLogger)
-
-	return embeddedLogger
-}
-
-// LogName returns the name of the logger (the last part of the namespace).
+// LogName returns the name of the logger instance.
 func (l *logger) LogName() string {
 	return l.name
 }
 
-// Log logs a message with the given log level.
-func (l *logger) Log(msg string, level Level, args ...any) {
-	if l != nil && l.level.Level() <= level {
-		l.rootLogger.Log(context.Background(), level, msg, append([]interface{}{namespaceKey, l.namespace}, args...)...)
-	}
+// LogPath returns the full path of the logger that is formed by a combination of the names of its ancestors and its own
+// name.
+func (l *logger) LogPath() string {
+	return l.path
 }
 
-// LogAttrs logs a message with the given log level and typed slog attributes.
-func (l *logger) LogAttrs(msg string, level Level, args ...slog.Attr) {
-	if l != nil && l.level.Level() <= level {
-		l.rootLogger.LogAttrs(context.Background(), level, msg, append([]slog.Attr{{Key: namespaceKey, Value: slog.StringValue(l.namespace)}}, args...)...)
-	}
-}
-
-// LogTrace logs a trace message.
-func (l *logger) LogTrace(msg string, args ...any) {
-	l.Log(msg, LevelTrace, args...)
-}
-
-// LogTraceAttrs logs a trace message with typed slog attributes.
-func (l *logger) LogTraceAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelTrace, args...)
-}
-
-// LogDebug logs a debug message.
-func (l *logger) LogDebug(msg string, args ...any) {
-	l.Log(msg, LevelDebug, args...)
-}
-
-// LogDebugAttrs logs a debug message with typed slog attributes.
-func (l *logger) LogDebugAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelDebug, args...)
-}
-
-// LogInfo logs an info message.
-func (l *logger) LogInfo(msg string, args ...any) {
-	l.Log(msg, LevelInfo, args...)
-}
-
-// LogInfoAttrs logs an info message with typed slog attributes.
-func (l *logger) LogInfoAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelInfo, args...)
-}
-
-// LogWarn logs a warning message.
-func (l *logger) LogWarn(msg string, args ...any) {
-	l.Log(msg, LevelWarning, args...)
-}
-
-// LogWarnAttrs logs a warning message with typed slog attributes.
-func (l *logger) LogWarnAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelWarning, args...)
-}
-
-// LogError logs an error message.
-func (l *logger) LogError(msg string, args ...any) {
-	l.Log(msg, LevelError, args...)
-}
-
-// LogErrorAttrs logs an error message with typed slog attributes.
-func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelError, args...)
+// LogLevel returns the current log level of the logger.
+func (l *logger) LogLevel() Level {
+	return l.level.Level()
 }
 
 // SetLogLevel sets the log level of the logger.
@@ -192,45 +105,146 @@ func (l *logger) OnLogLevelActive(logLevel Level, setup func() (shutdown func())
 	}
 }
 
-// NestedLogger creates a new logger with the given sub-namespace. The new logger inherits the log level from the parent
-// logger, but can also be set to its own individual log level.
-func (l *logger) NewChildLogger(subNamespace string) (nestedLogger Logger, shutdown func()) {
+// LogTrace emits a log message with the TRACE level.
+func (l *logger) LogTrace(msg string, args ...any) {
+	l.Log(msg, LevelTrace, args...)
+}
+
+// LogTraceF emits a formatted log message with the TRACE level.
+func (l *logger) LogTraceF(fmt string, args ...any) {
+	l.LogF(fmt, LevelTrace, args...)
+}
+
+// LogTraceAttrs emits a log message with the TRACE level and the given attributes.
+func (l *logger) LogTraceAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelTrace, args...)
+}
+
+// LogDebug emits a log message with the DEBUG level.
+func (l *logger) LogDebug(msg string, args ...any) {
+	l.Log(msg, LevelDebug, args...)
+}
+
+// LogDebugF emits a formatted log message with the DEBUG level.
+func (l *logger) LogDebugF(fmt string, args ...any) {
+	l.LogF(fmt, LevelDebug, args...)
+}
+
+// LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
+func (l *logger) LogDebugAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelDebug, args...)
+}
+
+// LogInfo emits a log message with the INFO level.
+func (l *logger) LogInfo(msg string, args ...any) {
+	l.Log(msg, LevelInfo, args...)
+}
+
+// LogInfoF emits a formatted log message with the INFO level.
+func (l *logger) LogInfoF(fmt string, args ...any) {
+	l.LogF(fmt, LevelInfo, args...)
+}
+
+// LogInfoAttrs emits a log message with the INFO level and the given attributes.
+func (l *logger) LogInfoAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelInfo, args...)
+}
+
+// LogWarn emits a log message with the WARN level.
+func (l *logger) LogWarn(msg string, args ...any) {
+	l.Log(msg, LevelWarning, args...)
+}
+
+// LogWarnF emits a formatted log message with the WARN level.
+func (l *logger) LogWarnF(fmt string, args ...any) {
+	l.LogF(fmt, LevelWarning, args...)
+}
+
+// LogWarnAttrs emits a log message with the WARN level and the given attributes.
+func (l *logger) LogWarnAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelWarning, args...)
+}
+
+// LogError emits a log message with the ERROR level.
+func (l *logger) LogError(msg string, args ...any) {
+	l.Log(msg, LevelError, args...)
+}
+
+// LogErrorF emits a formatted log message with the ERROR level.
+func (l *logger) LogErrorF(fmt string, args ...any) {
+	l.LogF(fmt, LevelError, args...)
+}
+
+// LogErrorAttrs emits a log message with the ERROR level and the given attributes.
+func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelError, args...)
+}
+
+// Log emits a log message with the given level.
+func (l *logger) Log(msg string, level Level, args ...any) {
+	if l != nil && l.level.Level() <= level {
+		l.rootLogger.Log(context.Background(), level, msg, append([]interface{}{namespaceKey, l.path}, args...)...)
+	}
+}
+
+// LogF emits a formatted log message with the given level.
+func (l *logger) LogF(fmtString string, level Level, args ...any) {
+	if l != nil && l.level.Level() <= level {
+		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...))
+	}
+}
+
+// LogAttrs emits a log message with the given level and attributes.
+func (l *logger) LogAttrs(msg string, level Level, args ...slog.Attr) {
+	if l != nil && l.level.Level() <= level {
+		l.rootLogger.LogAttrs(context.Background(), level, msg, append([]slog.Attr{{Key: namespaceKey, Value: slog.StringValue(l.path)}}, args...)...)
+	}
+}
+
+// NewChildLogger creates a new child logger with the given name.
+func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func()) {
 	if l == nil {
 		return (*logger)(nil), func() {}
 	}
 
-	nestedLoggerInstance := newLogger(l.namespace, subNamespace, l.rootLogger)
+	nestedLoggerInstance := newLogger(l.rootLogger, l.path, name)
 
 	return nestedLoggerInstance, nestedLoggerInstance.reactiveLevel.InheritFrom(l.reactiveLevel)
 }
 
-func (l *logger) String() string {
-	return strings.TrimRight(fmt.Sprintf("Logger[%s] (LEVEL = %s", l.namespace, LevelName(l.level.Level())), " ") + ")"
+// NewEntityLogger creates a new entity logger with the given name.
+func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger {
+	if l == nil {
+		return l
+	}
+
+	embeddedLogger, shutdown := l.NewChildLogger(l.uniqueEntityName(entityName))
+	shutdownEvent.OnTrigger(shutdown)
+
+	initLogging(embeddedLogger)
+
+	return embeddedLogger
 }
 
-// namespaceKey is the key of the slog attribute that holds the namespace of the logger.
-const namespaceKey = "namespace"
-
 // uniqueEntityName returns the name of an embedded instance of the given type.
-func uniqueEntityName(name string) (uniqueName string) {
+func (l *logger) uniqueEntityName(name string) (uniqueName string) {
 	entityNameCounter := func() int64 {
-		instanceCounter, loaded := entityNameCounters.Load(name)
+		instanceCounter, loaded := l.entityNameCounters.Load(name)
 		if loaded {
 			return instanceCounter.(*atomic.Int64).Add(1) - 1
 		}
 
-		instanceCounter, _ = entityNameCounters.LoadOrStore(name, &atomic.Int64{})
+		instanceCounter, _ = l.entityNameCounters.LoadOrStore(name, &atomic.Int64{})
 
 		return instanceCounter.(*atomic.Int64).Add(1) - 1
 	}
 
 	var nameBuilder strings.Builder
-
 	nameBuilder.WriteString(name)
 	nameBuilder.WriteString(strconv.FormatInt(entityNameCounter(), 10))
 
 	return nameBuilder.String()
 }
 
-// entityNameCounters holds the instance counters for embedded loggers.
-var entityNameCounters = sync.Map{}
+// namespaceKey is the key of the slog attribute that holds the namespace of the logger.
+const namespaceKey = "namespace"

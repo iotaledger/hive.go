@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
-	"github.com/iotaledger/hive.go/lo"
 )
 
 // Logger is a reactive logger that can be used to log messages with different log levels.
@@ -91,7 +90,11 @@ type Logger interface {
 // NewLogger creates a new logger with the given namespace and an optional handler. The default handler prints log
 // records in a human-readable format to stdout.
 func NewLogger(name string, handler ...slog.Handler) Logger {
-	return newLogger("", name, slog.New(lo.First(handler, NewTextHandler(os.Stdout))))
+	if len(handler) == 0 {
+		handler = append(handler, NewTextHandler(os.Stdout))
+	}
+
+	return newLogger(slog.New(handler[0]), "", name)
 }
 
 // EmptyLogger is a logger that does not log anything.
