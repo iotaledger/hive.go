@@ -212,7 +212,9 @@ func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func(
 	return nestedLoggerInstance, nestedLoggerInstance.reactiveLevel.InheritFrom(l.reactiveLevel)
 }
 
-// NewEntityLogger creates enumerated child loggers for reactive entities in a single call.
+// NewEntityLogger creates a new logger for an entity with the given name. The logger is automatically shut down when
+// the given shutdown event is triggered. The initLogging function is called with the new logger instance and can be
+// used to configure the logger.
 func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger {
 	if l == nil {
 		return l

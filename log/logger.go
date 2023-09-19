@@ -83,12 +83,14 @@ type Logger interface {
 	// NewChildLogger creates a new child logger with the given name.
 	NewChildLogger(name string) (childLogger Logger, shutdown func())
 
-	// NewEntityLogger creates enumerated child loggers for reactive entities in a single call.
+	// NewEntityLogger creates a new logger for an entity with the given name. The logger is automatically shut down
+	// when the given shutdown event is triggered. The initLogging function is called with the new logger instance and
+	// can be used to configure the logger.
 	NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger
 }
 
-// NewLogger creates a new logger with the given namespace and an optional handler. The default handler prints log
-// records in a human-readable format to stdout.
+// NewLogger creates a new logger with the given name and an optional handler. If no handler is provided, the logger
+// uses the built-in text handler that writes to stdout.
 func NewLogger(name string, handler ...slog.Handler) Logger {
 	if len(handler) == 0 {
 		handler = append(handler, NewTextHandler(os.Stdout))
