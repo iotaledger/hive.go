@@ -1,4 +1,4 @@
-module github.com/iotaledger/hive.go/logger
+module github.com/iotaledger/hive.go/log
 
 go 1.21
 

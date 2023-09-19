@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
-	log "github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 )
 
 // TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
