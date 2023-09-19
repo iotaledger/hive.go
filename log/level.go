@@ -26,15 +26,15 @@ const (
 func LevelName(level Level) string {
 	switch level {
 	case LevelTrace:
-		return "TRACE  "
+		return "TRACE"
 	case LevelDebug:
-		return "DEBUG  "
+		return "DEBUG"
 	case LevelInfo:
-		return "INFO   "
+		return "INFO"
 	case LevelWarning:
 		return "WARNING"
 	case LevelError:
-		return "ERROR  "
+		return "ERROR"
 	default:
 		return "UNKNOWN"
 	}

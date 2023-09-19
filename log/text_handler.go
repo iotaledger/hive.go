@@ -50,7 +50,7 @@ func (t *textHandler) Handle(_ context.Context, r slog.Record) error {
 		fieldsBuffer.WriteString(")")
 	}
 
-	fmt.Fprintf(t.output, "%s\t%s\t%s\t%s %s\n", r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
+	fmt.Fprintf(t.output, "%s\t%-7s\t%s\t%s %s\n", r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
 
 	return nil
 }

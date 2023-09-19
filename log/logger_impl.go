@@ -111,8 +111,8 @@ func (l *logger) LogTrace(msg string, args ...any) {
 }
 
 // LogTraceF emits a formatted log message with the TRACE level.
-func (l *logger) LogTraceF(fmt string, args ...any) {
-	l.LogF(fmt, LevelTrace, args...)
+func (l *logger) LogTraceF(fmtString string, args ...any) {
+	l.LogF(fmtString, LevelTrace, args...)
 }
 
 // LogTraceAttrs emits a log message with the TRACE level and the given attributes.
@@ -126,8 +126,8 @@ func (l *logger) LogDebug(msg string, args ...any) {
 }
 
 // LogDebugF emits a formatted log message with the DEBUG level.
-func (l *logger) LogDebugF(fmt string, args ...any) {
-	l.LogF(fmt, LevelDebug, args...)
+func (l *logger) LogDebugF(fmtString string, args ...any) {
+	l.LogF(fmtString, LevelDebug, args...)
 }
 
 // LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
@@ -141,8 +141,8 @@ func (l *logger) LogInfo(msg string, args ...any) {
 }
 
 // LogInfoF emits a formatted log message with the INFO level.
-func (l *logger) LogInfoF(fmt string, args ...any) {
-	l.LogF(fmt, LevelInfo, args...)
+func (l *logger) LogInfoF(fmtString string, args ...any) {
+	l.LogF(fmtString, LevelInfo, args...)
 }
 
 // LogInfoAttrs emits a log message with the INFO level and the given attributes.
@@ -156,8 +156,8 @@ func (l *logger) LogWarn(msg string, args ...any) {
 }
 
 // LogWarnF emits a formatted log message with the WARN level.
-func (l *logger) LogWarnF(fmt string, args ...any) {
-	l.LogF(fmt, LevelWarning, args...)
+func (l *logger) LogWarnF(fmtString string, args ...any) {
+	l.LogF(fmtString, LevelWarning, args...)
 }
 
 // LogWarnAttrs emits a log message with the WARN level and the given attributes.
@@ -171,8 +171,8 @@ func (l *logger) LogError(msg string, args ...any) {
 }
 
 // LogErrorF emits a formatted log message with the ERROR level.
-func (l *logger) LogErrorF(fmt string, args ...any) {
-	l.LogF(fmt, LevelError, args...)
+func (l *logger) LogErrorF(fmtString string, args ...any) {
+	l.LogF(fmtString, LevelError, args...)
 }
 
 // LogErrorAttrs emits a log message with the ERROR level and the given attributes.
@@ -204,7 +204,7 @@ func (l *logger) LogAttrs(msg string, level Level, args ...slog.Attr) {
 // NewChildLogger creates a new child logger with the given name.
 func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func()) {
 	if l == nil {
-		return (*logger)(nil), func() {}
+		return l, func() {}
 	}
 
 	nestedLoggerInstance := newLogger(l.rootLogger, l.path, name)
@@ -212,7 +212,7 @@ func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func(
 	return nestedLoggerInstance, nestedLoggerInstance.reactiveLevel.InheritFrom(l.reactiveLevel)
 }
 
-// NewEntityLogger creates a new entity logger with the given name.
+// NewEntityLogger creates enumerated child loggers for reactive entities in a single call.
 func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger {
 	if l == nil {
 		return l
