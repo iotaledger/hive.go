@@ -25,6 +25,7 @@ func TestLogger(t *testing.T) {
 	defer shutdownChainLogger()
 	chainLogger.SetLogLevel(log.LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
+	logger.LogTrace("shutdown")
 
 	time.Sleep(1 * time.Second) // wait for log message to be printed
 }
