@@ -62,3 +62,9 @@ type ComparableStringer[K comparable] interface {
 	Key() K
 	fmt.Stringer
 }
+
+// Cloneable is an object that can be cloned.
+type Cloneable[T any] interface {
+	// Clone returns an exact copy of the object.
+	Clone() T
+}
