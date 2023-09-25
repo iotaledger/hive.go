@@ -29,6 +29,10 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 		if err != nil {
 			return ierrors.WithStack(err)
 		}
+
+		if contextAwareDeserializable, ok := deserializable.(ContextAwareDeserializable); ok {
+			contextAwareDeserializable.SetDeserializationContext(ctx)
+		}
 	} else {
 		if err = api.mapDecodeBasedOnType(ctx, mapVal, value, value.Type(), ts, opts); err != nil {
 			return ierrors.WithStack(err)
@@ -301,6 +305,10 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 
 	if err := api.mapDecodeStructFields(ctx, m, value, valueType, opts); err != nil {
 		return ierrors.WithStack(err)
+	}
+
+	if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+		contextAwareDeserializable.SetDeserializationContext(ctx)
 	}
 
 	return nil

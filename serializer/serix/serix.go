@@ -44,6 +44,11 @@ type Deserializable interface {
 	Decode(b []byte) (int, error)
 }
 
+// ContextAwareDeserializable is a type that is able to receive the serialization context.
+type ContextAwareDeserializable interface {
+	SetDeserializationContext(ctx context.Context)
+}
+
 // SerializableJSON is a type that can serialize itself to JSON format.
 // Serix will call its .EncodeJSON() method instead of trying to serialize it in the default way.
 // The behavior is totally the same as in the standard "encoding/json" package and json.Marshaler interface.

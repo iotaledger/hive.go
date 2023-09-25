@@ -61,6 +61,10 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if err != nil {
 			return 0, ierrors.Wrap(err, "object failed to deserialize itself")
 		}
+
+		if contextAwareDeserializable, ok := deserializable.(ContextAwareDeserializable); ok {
+			contextAwareDeserializable.SetDeserializationContext(ctx)
+		}
 	} else {
 		var err error
 		bytesRead, err = api.decodeBasedOnType(ctx, b, value, valueType, ts, opts)
@@ -216,6 +220,10 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 	}
 	if err := api.decodeStructFields(ctx, deseri, value, valueType, opts); err != nil {
 		return 0, ierrors.WithStack(err)
+	}
+
+	if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+		contextAwareDeserializable.SetDeserializationContext(ctx)
 	}
 
 	return deseri.Done()
