@@ -253,10 +253,10 @@ func TestCausalOrder_EvictParallel(t *testing.T) {
 	// tf.EvictUntil(2)
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
-		go func(tf *TestFramework, index uint64) {
+		go func(tf *TestFramework, index uint32) {
 			tf.EvictUntil(index)
 			wg.Done()
-		}(tf, uint64(i))
+		}(tf, uint32(i))
 	}
 	wg.Wait()
 
