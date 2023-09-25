@@ -426,6 +426,10 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 		o(opt)
 	}
 
+	if contextDeserializable, ok := obj.(ContextAwareDeserializable); ok {
+		contextDeserializable.SetDeserializationContext(ctx)
+	}
+
 	return api.decode(ctx, b, value, opt.ts, opt)
 }
 

@@ -105,6 +105,10 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			}
 			elemValue := value.Elem()
 
+			if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+				contextAwareDeserializable.SetDeserializationContext(ctx)
+			}
+
 			return api.decodeStruct(ctx, b, elemValue, elemType, ts, opts)
 		case reflect.Array:
 			if value.IsNil() {
@@ -116,6 +120,9 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		}
 
 	case reflect.Struct:
+		if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+			contextAwareDeserializable.SetDeserializationContext(ctx)
+		}
 		return api.decodeStruct(ctx, b, value, valueType, ts, opts)
 	case reflect.Slice:
 		return api.decodeSlice(ctx, b, value, valueType, ts, opts)
@@ -220,10 +227,6 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 	}
 	if err := api.decodeStructFields(ctx, deseri, value, valueType, opts); err != nil {
 		return 0, ierrors.WithStack(err)
-	}
-
-	if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
-		contextAwareDeserializable.SetDeserializationContext(ctx)
 	}
 
 	return deseri.Done()

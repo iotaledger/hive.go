@@ -69,6 +69,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			}
 			elemValue := value.Elem()
 
+			if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+				contextAwareDeserializable.SetDeserializationContext(ctx)
+			}
+
 			return api.mapDecodeStruct(ctx, mapVal, elemValue, elemType, ts, opts)
 		}
 
@@ -113,6 +117,9 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		}
 
 	case reflect.Struct:
+		if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
+			contextAwareDeserializable.SetDeserializationContext(ctx)
+		}
 		return api.mapDecodeStruct(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Slice:
 		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
@@ -305,10 +312,6 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 
 	if err := api.mapDecodeStructFields(ctx, m, value, valueType, opts); err != nil {
 		return ierrors.WithStack(err)
-	}
-
-	if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
-		contextAwareDeserializable.SetDeserializationContext(ctx)
 	}
 
 	return nil
