@@ -52,6 +52,7 @@ type Numeric interface {
 type Ordered interface {
 	Integer | Float | ~string
 }
+
 type Comparable[T any] interface {
 	Compare(other T) int
 }
@@ -63,8 +64,13 @@ type ComparableStringer[K comparable] interface {
 	fmt.Stringer
 }
 
-// Cloneable is an object that can be cloned.
+// Cloneable is a constraint that permits cloning of any object.
 type Cloneable[T any] interface {
 	// Clone returns an exact copy of the object.
 	Clone() T
+}
+
+// Equalable is a constraint that permits checking for equality of any object.
+type Equalable[T any] interface {
+	Equal(other T) bool
 }
