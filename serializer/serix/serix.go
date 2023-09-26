@@ -420,14 +420,9 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 	if err := checkDecodeDestination(obj, value); err != nil {
 		return 0, err
 	}
-	value = value.Elem()
 	opt := &options{}
 	for _, o := range opts {
 		o(opt)
-	}
-
-	if contextDeserializable, ok := obj.(ContextAwareDeserializable); ok {
-		contextDeserializable.SetDeserializationContext(ctx)
 	}
 
 	return api.decode(ctx, b, value, opt.ts, opt)

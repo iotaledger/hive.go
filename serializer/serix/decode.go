@@ -30,6 +30,18 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			deserializable = addrDeserializable
 		}
 	}
+
+	// Check for a pointer to a Deserializable interface
+	if deserializable == nil && value.Kind() == reflect.Ptr && value.Elem().Kind() == reflect.Ptr {
+		if _, ok := value.Elem().Interface().(Deserializable); ok {
+			valueElem := value.Elem()
+			if valueElem.IsNil() {
+				valueElem.Set(reflect.New(valueElem.Type().Elem()))
+			}
+			return api.decode(ctx, b, valueElem, ts, opts)
+		}
+	}
+
 	if deserializable != nil {
 		typeSettingValue := value
 		if valueType.Kind() == reflect.Ptr {
@@ -98,24 +110,27 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		}
 		elemType := valueType.Elem()
 
+		if value.IsNil() {
+			value.Set(reflect.New(elemType))
+		}
+		elemValue := value.Elem()
+
 		switch elemType.Kind() {
 		case reflect.Struct:
-			if value.IsNil() {
-				value.Set(reflect.New(elemType))
-			}
-			elemValue := value.Elem()
-
 			if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
 				contextAwareDeserializable.SetDeserializationContext(ctx)
 			}
 
 			return api.decodeStruct(ctx, b, elemValue, elemType, ts, opts)
+		case reflect.Slice:
+			return api.decodeSlice(ctx, b, elemValue, elemType, ts, opts)
+		case reflect.Ptr:
+			return api.decodeBasedOnType(ctx, b, elemValue, elemType, ts, opts)
+		case reflect.Interface:
+			return api.decodeInterface(ctx, b, elemValue, elemType, ts, opts)
+		case reflect.Map:
+			return api.decodeMap(ctx, b, elemValue, elemType, ts, opts)
 		case reflect.Array:
-			if value.IsNil() {
-				value.Set(reflect.New(elemType))
-			}
-			elemValue := value.Elem()
-
 			return api.decodeArray(ctx, b, elemValue, ts, opts)
 		}
 
