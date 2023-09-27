@@ -162,6 +162,10 @@ type InterfaceImpl struct {
 	interfaceImpl `serix:"0"`
 }
 
+func (ii *InterfaceImpl) SetDeserializationContext(ctx context.Context) {
+	ctx.Value("contextValue").(func())()
+}
+
 type interfaceImpl struct {
 	A uint8 `serix:"0"`
 	B uint8 `serix:"1"`
@@ -292,6 +296,10 @@ type ExportedStruct struct {
 	Bar uint64 `serix:"0"`
 }
 
+func (e ExportedStruct) SetDeserializationContext(ctx context.Context) {
+	ctx.Value("contextValue").(func())()
+}
+
 var exportedStructObjectCode = uint32(3)
 
 type Map map[uint64]uint64
@@ -336,6 +344,10 @@ func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx inte
 }
 
 type CustomSerializable int
+
+func (cs CustomSerializable) SetDeserializationContext(ctx context.Context) {
+	ctx.Value("contextValue").(func())()
+}
 
 func (cs CustomSerializable) MarshalJSON() ([]byte, error) {
 	// ToDo: implement me

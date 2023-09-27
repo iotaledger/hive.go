@@ -339,6 +339,21 @@ func (l LexicalOrdered32ByteArrays) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// LexicalOrdered36ByteArrays are 36 byte arrays ordered in lexical order.
+type LexicalOrdered36ByteArrays [][36]byte
+
+func (l LexicalOrdered36ByteArrays) Len() int {
+	return len(l)
+}
+
+func (l LexicalOrdered36ByteArrays) Less(i, j int) bool {
+	return bytes.Compare(l[i][:], l[j][:]) < 0
+}
+
+func (l LexicalOrdered36ByteArrays) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
 // LexicalOrdered40ByteArrays are 40 byte arrays ordered in lexical order.
 type LexicalOrdered40ByteArrays [][40]byte
 

@@ -316,3 +316,21 @@ func Compare[A constraints.Ordered](a, b A) int {
 func Void[A, B any](f func(A) B) func(A) {
 	return func(a A) { f(a) }
 }
+
+func CloneSlice[T any, C constraints.Cloneable[T]](slice []C) []T {
+	cpy := make([]T, len(slice))
+	for i, elem := range slice {
+		cpy[i] = elem.Clone()
+	}
+
+	return cpy
+}
+
+func CloneMap[K comparable, V any, C constraints.Cloneable[V]](in map[K]C) map[K]V {
+	cpy := make(map[K]V, len(in))
+	for k, v := range in {
+		cpy[k] = v.Clone()
+	}
+
+	return cpy
+}

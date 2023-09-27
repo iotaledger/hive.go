@@ -9,7 +9,7 @@ import (
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 )
 
-type index uint64
+type index uint32
 
 func TestIndexedStorage(t *testing.T) {
 	// Create a new IndexedStorage.

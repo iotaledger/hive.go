@@ -1,7 +1,7 @@
 package index
 
 type Type interface {
-	~uint64
+	~uint32
 }
 
 func Max[I Type](i, o I) I {

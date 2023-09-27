@@ -23,6 +23,10 @@ func MemoryReport(ptr interface{}) string {
 	return stringBuilder.String()
 }
 
+func MemSize(ptr interface{}) uintptr {
+	return memsize.Scan(ptr).Total
+}
+
 func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
 	if indent/2 > maxDepth {
 		return

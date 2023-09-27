@@ -230,7 +230,7 @@ func (t testID) String() string {
 	return base58.Encode(t[:])
 }
 
-type index uint64
+type index uint32
 
 func randByte() byte {
 	return byte(rand.Intn(256))
