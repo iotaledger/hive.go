@@ -21,7 +21,7 @@ type EventTicker[I index.Type, T index.IndexedID[I]] struct {
 	scheduledTickers          *memstorage.IndexedStorage[I, T, *timed.ScheduledTask]
 	scheduledTickerCount      int
 	scheduledTickerCountMutex sync.RWMutex
-	lastEvictedIndex          I
+	lastEvictedSlot           I
 	evictionMutex             sync.RWMutex
 
 	optsRetryInterval       time.Duration
@@ -66,11 +66,11 @@ func (r *EventTicker[I, T]) HasTicker(id T) bool {
 	r.evictionMutex.RLock()
 	defer r.evictionMutex.RUnlock()
 
-	if id.Index() <= r.lastEvictedIndex {
+	if id.Slot() <= r.lastEvictedSlot {
 		return false
 	}
 
-	if queue := r.scheduledTickers.Get(id.Index(), false); queue != nil {
+	if queue := r.scheduledTickers.Get(id.Slot(), false); queue != nil {
 		return queue.Has(id)
 	}
 
@@ -84,16 +84,16 @@ func (r *EventTicker[I, T]) QueueSize() int {
 	return r.scheduledTickerCount
 }
 
-func (r *EventTicker[I, T]) EvictUntil(index I) {
+func (r *EventTicker[I, T]) EvictUntil(slot I) {
 	r.evictionMutex.Lock()
 	defer r.evictionMutex.Unlock()
 
-	if index <= r.lastEvictedIndex {
+	if slot <= r.lastEvictedSlot {
 		return
 	}
 
-	for currentIndex := r.lastEvictedIndex + 1; currentIndex <= index; currentIndex++ {
-		if evictedStorage := r.scheduledTickers.Evict(currentIndex); evictedStorage != nil {
+	for currentSlot := r.lastEvictedSlot + 1; currentSlot <= slot; currentSlot++ {
+		if evictedStorage := r.scheduledTickers.Evict(currentSlot); evictedStorage != nil {
 			evictedStorage.ForEach(func(id T, scheduledTask *timed.ScheduledTask) bool {
 				scheduledTask.Cancel()
 
@@ -103,7 +103,7 @@ func (r *EventTicker[I, T]) EvictUntil(index I) {
 			r.updateScheduledTickerCount(-evictedStorage.Size())
 		}
 	}
-	r.lastEvictedIndex = index
+	r.lastEvictedSlot = slot
 }
 
 func (r *EventTicker[I, T]) Shutdown() {
@@ -114,12 +114,12 @@ func (r *EventTicker[I, T]) addTickerToQueue(id T) (added bool) {
 	r.evictionMutex.RLock()
 	defer r.evictionMutex.RUnlock()
 
-	if id.Index() <= r.lastEvictedIndex {
+	if id.Slot() <= r.lastEvictedSlot {
 		return false
 	}
 
 	// ignore already scheduled requests
-	queue := r.scheduledTickers.Get(id.Index(), true)
+	queue := r.scheduledTickers.Get(id.Slot(), true)
 	if _, exists := queue.Get(id); exists {
 		return false
 	}
@@ -136,7 +136,7 @@ func (r *EventTicker[I, T]) stopTicker(id T) (stopped bool) {
 	r.evictionMutex.RLock()
 	defer r.evictionMutex.RUnlock()
 
-	storage := r.scheduledTickers.Get(id.Index())
+	storage := r.scheduledTickers.Get(id.Slot())
 	if storage == nil {
 		return false
 	}
@@ -163,7 +163,7 @@ func (r *EventTicker[I, T]) reSchedule(id T, count int) {
 
 	// reschedule, if the request has not been stopped in the meantime
 
-	tickerStorage := r.scheduledTickers.Get(id.Index())
+	tickerStorage := r.scheduledTickers.Get(id.Slot())
 	if tickerStorage == nil {
 		return
 	}

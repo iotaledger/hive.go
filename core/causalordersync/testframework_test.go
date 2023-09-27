@@ -183,21 +183,21 @@ func (t *TestFramework) AssertEvicted(aliases ...string) {
 // MockedEntityID is a mocked EntityID.
 type MockedEntityID struct {
 	id    int
-	index uint32
+	slot  uint32
 	alias string
 }
 
 // NewMockedEntityID creates a new MockedEntityID.
 func NewMockedEntityID(id int) MockedEntityID {
 	return MockedEntityID{
-		id:    id,
-		index: 1,
+		id:   id,
+		slot: 1,
 	}
 }
 
-// Index returns the slot.Index of the Entity.
-func (m MockedEntityID) Index() uint32 {
-	return m.index
+// Slot returns the slot.Slot of the Entity.
+func (m MockedEntityID) Slot() uint32 {
+	return m.slot
 }
 
 // String returns a human-readable representation of the EntityID.
@@ -314,7 +314,7 @@ func WithInvalid(invalid bool) options.Option[MockedOrderedEntity] {
 // WithIndex is an option that sets the slot of the Entity.
 func WithIndex(index uint32) options.Option[MockedOrderedEntity] {
 	return func(entity *MockedOrderedEntity) {
-		entity.id.index = index
+		entity.id.slot = index
 	}
 }
 

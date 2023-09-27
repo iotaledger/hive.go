@@ -14,7 +14,7 @@ func Max[I Type](i, o I) I {
 type IndexedID[I Type] interface {
 	comparable
 
-	Index() I
+	Slot() I
 	String() string
 }
 

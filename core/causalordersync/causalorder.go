@@ -45,8 +45,8 @@ type CausalOrder[I index.Type, ID index.IndexedID[I], Entity OrderedEntity[I, ID
 	// unorderedChildrenMutex contains a mutex used to synchronize access to the unorderedChildren.
 	unorderedChildrenMutex sync.Mutex
 
-	// lastEvictedIndex contains the last evicted slot.
-	lastEvictedIndex I
+	// lastEvictedSlot contains the last evicted slot.
+	lastEvictedSlot I
 
 	// evictionMutex contains the local manager used to orchestrate the eviction of old Entities.
 	evictionMutex sync.RWMutex
@@ -92,9 +92,9 @@ func (c *CausalOrder[I, ID, Entity]) Queue(entity Entity) {
 }
 
 // EvictUntil removes all Entities that are older than the given slot from the CausalOrder.
-func (c *CausalOrder[I, ID, Entity]) EvictUntil(index I) {
-	for _, evictedEntity := range c.evictUntil(index) {
-		c.evictionCallback(evictedEntity, ierrors.Errorf("entity evicted from %d", index))
+func (c *CausalOrder[I, ID, Entity]) EvictUntil(slot I) {
+	for _, evictedEntity := range c.evictUntil(slot) {
+		c.evictionCallback(evictedEntity, ierrors.Errorf("entity evicted from %d", slot))
 	}
 }
 
@@ -111,7 +111,7 @@ func (c *CausalOrder[I, ID, Entity]) triggerOrderedIfReady(entity Entity) []Enti
 		return nil
 	}
 
-	if c.lastEvictedIndex >= entity.ID().Index() {
+	if c.lastEvictedSlot >= entity.ID().Slot() {
 		c.evictionCallback(entity, ierrors.Errorf("entity %s below max evicted slot", entity.ID()))
 
 		return nil
@@ -161,7 +161,7 @@ func (c *CausalOrder[I, ID, Entity]) registerUnorderedChild(entityID ID, child E
 	c.unorderedChildrenMutex.Lock()
 	defer c.unorderedChildrenMutex.Unlock()
 
-	unorderedChildrenStorage := c.unorderedChildren.Get(entityID.Index(), true)
+	unorderedChildrenStorage := c.unorderedChildren.Get(entityID.Slot(), true)
 	entityChildren, _ := unorderedChildrenStorage.Get(entityID)
 	unorderedChildrenStorage.Set(entityID, append(entityChildren, child))
 }
@@ -171,7 +171,7 @@ func (c *CausalOrder[I, ID, Entity]) setUnorderedParentsCounter(entityID ID, uno
 	c.unorderedParentsCounterMutex.Lock()
 	defer c.unorderedParentsCounterMutex.Unlock()
 
-	c.unorderedParentsCounter.Get(entityID.Index(), true).Set(entityID, unorderedParentsCount)
+	c.unorderedParentsCounter.Get(entityID.Slot(), true).Set(entityID, unorderedParentsCount)
 }
 
 // decrementUnorderedParentsCounter decrements the unordered parents counter of the given Entity by 1 and returns the
@@ -180,7 +180,7 @@ func (c *CausalOrder[I, ID, Entity]) decreaseUnorderedParentsCounter(metadata En
 	c.unorderedParentsCounterMutex.Lock()
 	defer c.unorderedParentsCounterMutex.Unlock()
 
-	unorderedParentsCounterStorage := c.unorderedParentsCounter.Get(metadata.ID().Index())
+	unorderedParentsCounterStorage := c.unorderedParentsCounter.Get(metadata.ID().Slot())
 	newUnorderedParentsCounter, _ = unorderedParentsCounterStorage.Get(metadata.ID())
 	newUnorderedParentsCounter--
 	if newUnorderedParentsCounter == 0 {
@@ -199,7 +199,7 @@ func (c *CausalOrder[I, ID, Entity]) popUnorderedChildren(entityID ID) (pendingC
 	c.unorderedChildrenMutex.Lock()
 	defer c.unorderedChildrenMutex.Unlock()
 
-	pendingChildrenStorage := c.unorderedChildren.Get(entityID.Index())
+	pendingChildrenStorage := c.unorderedChildren.Get(entityID.Slot())
 	if pendingChildrenStorage == nil {
 		return pendingChildren
 	}
@@ -248,45 +248,45 @@ func (c *CausalOrder[I, ID, Entity]) entity(blockID ID) (entity Entity) {
 }
 
 // evictUntil evicts the given slot from the CausalOrder and returns the evicted Entities.
-func (c *CausalOrder[I, ID, Entity]) evictUntil(index I) (evictedEntities map[ID]Entity) {
+func (c *CausalOrder[I, ID, Entity]) evictUntil(slot I) (evictedEntities map[ID]Entity) {
 	c.evictionMutex.Lock()
 	defer c.evictionMutex.Unlock()
 
-	if index <= c.lastEvictedIndex {
+	if slot <= c.lastEvictedSlot {
 		return
 	}
 
 	evictedEntities = make(map[ID]Entity)
-	for currentIndex := c.lastEvictedIndex + 1; currentIndex <= index; currentIndex++ {
-		c.evictEntitiesFromSlot(currentIndex, func(id ID) {
+	for currentSlot := c.lastEvictedSlot + 1; currentSlot <= slot; currentSlot++ {
+		c.evictEntitiesFromSlot(currentSlot, func(id ID) {
 			if _, exists := evictedEntities[id]; !exists {
 				evictedEntities[id] = c.entity(id)
 			}
 		})
 	}
-	c.lastEvictedIndex = index
+	c.lastEvictedSlot = slot
 
 	return evictedEntities
 }
 
 // evictEntitiesFromSlot evicts the Entities that belong to the given slot from the CausalOrder.
-func (c *CausalOrder[I, ID, Entity]) evictEntitiesFromSlot(index I, entityCallback func(id ID)) {
-	if childrenStorage := c.unorderedChildren.Get(index); childrenStorage != nil {
+func (c *CausalOrder[I, ID, Entity]) evictEntitiesFromSlot(slot I, entityCallback func(id ID)) {
+	if childrenStorage := c.unorderedChildren.Get(slot); childrenStorage != nil {
 		childrenStorage.ForEachKey(func(id ID) bool {
 			entityCallback(id)
 
 			return true
 		})
-		c.unorderedChildren.Evict(index)
+		c.unorderedChildren.Evict(slot)
 	}
 
-	if unorderedParentsCountStorage := c.unorderedParentsCounter.Get(index); unorderedParentsCountStorage != nil {
+	if unorderedParentsCountStorage := c.unorderedParentsCounter.Get(slot); unorderedParentsCountStorage != nil {
 		unorderedParentsCountStorage.ForEachKey(func(id ID) bool {
 			entityCallback(id)
 
 			return true
 		})
-		c.unorderedParentsCounter.Evict(index)
+		c.unorderedParentsCounter.Evict(slot)
 	}
 }
 

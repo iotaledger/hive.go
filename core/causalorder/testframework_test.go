@@ -195,8 +195,8 @@ func NewMockedEntityID(id int) MockedEntityID {
 	}
 }
 
-// Index returns the slot.Index of the Entity.
-func (m MockedEntityID) Index() uint32 {
+// Slot returns the slot.Slot of the Entity.
+func (m MockedEntityID) Slot() uint32 {
 	return m.index
 }
 

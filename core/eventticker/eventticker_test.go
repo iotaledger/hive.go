@@ -222,7 +222,7 @@ func (t *testID) FromBytes(b []byte) (int, error) {
 	return len(t), nil
 }
 
-func (t testID) Index() index {
+func (t testID) Slot() index {
 	return index(binary.LittleEndian.Uint64(t[1:]))
 }
 
