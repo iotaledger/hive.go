@@ -126,8 +126,8 @@ func (api *API) encodeBasedOnType(
 			return ierrors.Wrap(err, "failed to write bool value to serializer")
 		}).Serialize()
 
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
 		_, typeToConvert, _ := getNumberTypeToConvert(valueType.Kind())
 		value = value.Convert(typeToConvert)

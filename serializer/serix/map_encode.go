@@ -101,11 +101,11 @@ func (api *API) mapEncodeBasedOnType(
 		return value.Bool(), nil
 	case reflect.Int8, reflect.Int16, reflect.Int32:
 		return value.Int(), nil
-	case reflect.Int64:
+	case reflect.Int64, reflect.Int:
 		return strconv.FormatInt(value.Int(), 10), nil
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return value.Uint(), nil
-	case reflect.Uint64:
+	case reflect.Uint64, reflect.Uint:
 		return strconv.FormatUint(value.Uint(), 10), nil
 	case reflect.Float32, reflect.Float64:
 		return strconv.FormatFloat(value.Float(), 'E', -1, 64), nil

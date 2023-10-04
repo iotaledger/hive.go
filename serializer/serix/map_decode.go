@@ -161,11 +161,11 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		return nil
 	case reflect.Int8, reflect.Int16, reflect.Int32:
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), true))
-	case reflect.Int64:
+	case reflect.Int64, reflect.Int:
 		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, true))
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), false))
-	case reflect.Uint64:
+	case reflect.Uint64, reflect.Uint:
 		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, false))
 	case reflect.Float32, reflect.Float64:
 		return api.mapDecodeFloat(value, valueType, mapVal)

@@ -76,10 +76,12 @@ func TestMapEncodeDecode(t *testing.T) {
 			name: "basic types",
 			paras: func() paras {
 				type example struct {
+					Uint      uint    `serix:"0,mapKey=uint"`
 					Uint64    uint64  `serix:"0,mapKey=uint64"`
 					Uint32    uint32  `serix:"1,mapKey=uint32"`
 					Uint16    uint16  `serix:"2,mapKey=uint16"`
 					Uint8     uint8   `serix:"3,mapKey=uint8"`
+					Int       int     `serix:"4,mapKey=int"`
 					Int64     int64   `serix:"4,mapKey=int64"`
 					Int32     int32   `serix:"5,mapKey=int32"`
 					Int16     int16   `serix:"6,mapKey=int16"`
@@ -97,10 +99,12 @@ func TestMapEncodeDecode(t *testing.T) {
 				return paras{
 					api: api,
 					in: &example{
+						Uint:      1,
 						Uint64:    64,
 						Uint32:    32,
 						Uint16:    16,
 						Uint8:     8,
+						Int:       1,
 						Int64:     -64,
 						Int32:     -32,
 						Int16:     -16,
@@ -115,10 +119,12 @@ func TestMapEncodeDecode(t *testing.T) {
 			}(),
 			expected: `{
 				"type": 42,
+				"uint": "1",
 				"uint64": "64",
 				"uint32": 32,
 				"uint16": 16,
 				"uint8": 8,
+				"int": "1",
 				"int64": "-64",
 				"int32": -32,
 				"int16": -16,

@@ -988,7 +988,7 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	case reflect.Int32:
 		numberType = reflect.TypeOf(int32(0))
 		bitSize = 32
-	case reflect.Int64:
+	case reflect.Int64, reflect.Int:
 		numberType = reflect.TypeOf(int64(0))
 		bitSize = 64
 	case reflect.Uint8:
@@ -1000,7 +1000,7 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	case reflect.Uint32:
 		numberType = reflect.TypeOf(uint32(0))
 		bitSize = 32
-	case reflect.Uint64:
+	case reflect.Uint64, reflect.Uint:
 		numberType = reflect.TypeOf(uint64(0))
 		bitSize = 64
 	case reflect.Float32:
