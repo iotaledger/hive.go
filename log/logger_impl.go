@@ -52,17 +52,29 @@ func newLogger(rootLogger *slog.Logger, parentPath, name string) *logger {
 
 // LogName returns the name of the logger instance.
 func (l *logger) LogName() string {
+	if l == nil {
+		return "<nil>"
+	}
+
 	return l.name
 }
 
 // LogPath returns the full path of the logger that is formed by a combination of the names of its ancestors and its own
 // name.
 func (l *logger) LogPath() string {
+	if l == nil {
+		return "<nil>"
+	}
+
 	return l.path
 }
 
 // LogLevel returns the current log level of the logger.
 func (l *logger) LogLevel() Level {
+	if l == nil {
+		return LevelInfo
+	}
+
 	return l.level.Level()
 }
 
