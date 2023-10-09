@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iotaledger/hive.go/ds/bitmask"
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 
@@ -53,7 +54,7 @@ func (t *Executor) WorkerCount() int {
 
 // Shutdown shuts down the TimedExecutor and waits until the executor has shutdown gracefully.
 func (t *Executor) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
-	shutdownFlags := PanicOnModificationsAfterShutdown
+	var shutdownFlags bitmask.BitMask
 	for _, optionalShutdownFlag := range optionalShutdownFlags {
 		shutdownFlags |= optionalShutdownFlag
 	}
