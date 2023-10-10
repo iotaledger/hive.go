@@ -161,7 +161,7 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 	callbackTriggered := NewEvent()
 	var triggeredPreValue, triggeredNewValue Type
 
-	unsubscribe = r.OnUpdate(func(prevValue, newValue Type) {
+	unsubscribeFromVariable := r.OnUpdate(func(prevValue, newValue Type) {
 		if callbackTriggered.Get() {
 			return
 		}
@@ -177,7 +177,7 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 	})
 
 	callbackTriggered.OnTrigger(func() {
-		go unsubscribe()
+		go unsubscribeFromVariable()
 
 		callback(triggeredPreValue, triggeredNewValue)
 	})
@@ -191,7 +191,7 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	var previousUnsubscribedEvent Event
 
-	unsubscribe = r.OnUpdate(func(oldValue, newValue Type) {
+	unsubscribeFromVariable := r.OnUpdate(func(oldValue, newValue Type) {
 		if previousUnsubscribedEvent != nil {
 			previousUnsubscribedEvent.Trigger()
 		}
@@ -209,7 +209,7 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 	}, triggerWithInitialZeroValue...)
 
 	return func() {
-		unsubscribe()
+		unsubscribeFromVariable()
 
 		if previousUnsubscribedEvent != nil {
 			previousUnsubscribedEvent.Trigger()
