@@ -97,12 +97,12 @@ func (cachedObject *CachedObjectImpl) Release(force ...bool) {
 		return
 	}
 
-	cachedObject.scheduledTask.Store(
-		cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
-			cachedObject.delayedRelease,
-			cachedObject.objectStorage.options.cacheTime,
-		),
-	)
+	if scheduledTask := cachedObject.objectStorage.ReleaseExecutor().ExecuteAfter(
+		cachedObject.delayedRelease,
+		cachedObject.objectStorage.options.cacheTime,
+	); scheduledTask != nil {
+		cachedObject.scheduledTask.Store(scheduledTask)
+	}
 }
 
 func (cachedObject *CachedObjectImpl) delayedRelease() {

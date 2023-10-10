@@ -35,23 +35,24 @@ func (t *TaskExecutor[T]) ExecuteAt(identifier T, callback func(), executionTime
 	t.queuedElementsMutex.Lock()
 	defer t.queuedElementsMutex.Unlock()
 
-	queuedElement, queuedElementExists := t.queuedElements.Get(identifier)
-	if queuedElementExists {
+	if queuedElement, queuedElementExists := t.queuedElements.Get(identifier); queuedElementExists {
 		queuedElement.Cancel()
 	}
 
-	t.queuedElements.Set(identifier, t.Executor.ExecuteAt(func() {
+	scheduledTask := t.Executor.ExecuteAt(func() {
 		callback()
 
 		t.queuedElementsMutex.Lock()
 		defer t.queuedElementsMutex.Unlock()
 
 		t.queuedElements.Delete(identifier)
-	}, executionTime))
+	}, executionTime)
 
-	queuedElement, _ = t.queuedElements.Get(identifier)
+	if scheduledTask != nil {
+		t.queuedElements.Set(identifier, scheduledTask)
+	}
 
-	return queuedElement
+	return scheduledTask
 }
 
 // Cancel cancels a queued task.
