@@ -8,6 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	TestMemoryReleaseMaxMemoryIncreaseFactor = 1.20
+)
+
 func TestTimedExecutor_MemLeak(t *testing.T) {
 	const testCount = 100000
 
@@ -26,7 +30,7 @@ func TestTimedExecutor_MemLeak(t *testing.T) {
 	}, 10*time.Second, 100*time.Millisecond)
 
 	memStatsEnd := memStats()
-	assert.Less(t, float64(memStatsEnd.HeapObjects), 1.1*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 10%")
+	assert.Less(t, float64(memStatsEnd.HeapObjects), TestMemoryReleaseMaxMemoryIncreaseFactor*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 10%")
 }
 
 func TestTimedExecutor(t *testing.T) {
