@@ -125,7 +125,9 @@ func (r *EventTicker[I, T]) addTickerToQueue(id T) (added bool) {
 	}
 
 	// schedule the next request and trigger the event
-	queue.Set(id, r.timedExecutor.ExecuteAfter(r.createReScheduler(id, 0), r.optsRetryInterval+time.Duration(crypto.Randomness.Float64()*float64(r.optsRetryJitter))))
+	if scheduledTask := r.timedExecutor.ExecuteAfter(r.createReScheduler(id, 0), r.optsRetryInterval+time.Duration(crypto.Randomness.Float64()*float64(r.optsRetryJitter))); scheduledTask != nil {
+		queue.Set(id, scheduledTask)
+	}
 
 	r.updateScheduledTickerCount(1)
 
@@ -182,8 +184,9 @@ func (r *EventTicker[I, T]) reSchedule(id T, count int) {
 			return
 		}
 
-		tickerStorage.Set(id, r.timedExecutor.ExecuteAfter(r.createReScheduler(id, count), r.optsRetryInterval+time.Duration(crypto.Randomness.Float64()*float64(r.optsRetryJitter))))
-		return
+		if scheduledTask := r.timedExecutor.ExecuteAfter(r.createReScheduler(id, count), r.optsRetryInterval+time.Duration(crypto.Randomness.Float64()*float64(r.optsRetryJitter))); scheduledTask != nil {
+			tickerStorage.Set(id, scheduledTask)
+		}
 	}
 }
 
