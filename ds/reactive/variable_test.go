@@ -80,7 +80,7 @@ func TestOnUpdateWithContext(t *testing.T) {
 
 	outerVar.Set(1)
 
-	innerVars[2].Set(4)
+	innerVars[2].Set(5)
 	require.Equal(t, []string{"2:3", "2:4"}, collectedValues)
 	innerVars[1].Set(1)
 	require.Equal(t, []string{"2:3", "2:4", "1:1"}, collectedValues)
