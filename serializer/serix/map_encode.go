@@ -11,6 +11,7 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
@@ -173,7 +174,7 @@ func (api *API) mapEncodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbeddedStruct && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.nest {
 			fieldType := sField.fType
 			if fieldValue.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -208,6 +209,10 @@ func (api *API) mapEncodeStructFields(
 		switch {
 		case sField.settings.ts.mapKey != nil:
 			obj.Set(*sField.settings.ts.mapKey, eleOut)
+		case sField.settings.nest:
+			for _, k := range eleOut.(*orderedmap.OrderedMap).Keys() {
+				obj.Set(k, lo.Return1(eleOut.(*orderedmap.OrderedMap).Get(k)))
+			}
 		default:
 			obj.Set(mapStringKey(sField.name), eleOut)
 		}

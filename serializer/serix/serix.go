@@ -779,12 +779,12 @@ func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
 }
 
 type structField struct {
-	name             string
-	isUnexported     bool
-	index            int
-	fType            reflect.Type
-	isEmbeddedStruct bool
-	settings         tagSettings
+	name         string
+	isUnexported bool
+	index        int
+	fType        reflect.Type
+	isEmbedded   bool
+	settings     tagSettings
 }
 
 type tagSettings struct {
@@ -810,7 +810,9 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 		isUnexported := field.PkgPath != ""
 		isEmbedded := field.Anonymous
 		isStruct := isUnderlyingStruct(field.Type)
+		isInterface := isUnderlyingInterface(field.Type)
 		isEmbeddedStruct := isEmbedded && isStruct
+		isEmbeddedInterface := isEmbedded && isInterface
 		if isUnexported && !isEmbeddedStruct {
 			continue
 		}
@@ -838,19 +840,29 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 					"struct field %s is invalid: 'optional' setting can't be used with embedded structs",
 					field.Name)
 			}
+			if isEmbeddedInterface {
+				return nil, ierrors.Errorf(
+					"struct field %s is invalid: 'optional' setting can't be used with embedded interfaces",
+					field.Name)
+			}
 		}
 		if tSettings.nest && isUnexported {
 			return nil, ierrors.Errorf(
 				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
 				field.Name)
 		}
+		if !tSettings.nest && isEmbeddedInterface {
+			return nil, ierrors.Errorf(
+				"struct field %s is invalid: 'nest' setting needs to be used for embedded interfaces",
+				field.Name)
+		}
 		structFields = append(structFields, structField{
-			name:             field.Name,
-			isUnexported:     isUnexported,
-			index:            i,
-			fType:            field.Type,
-			isEmbeddedStruct: isEmbeddedStruct,
-			settings:         tSettings,
+			name:         field.Name,
+			isUnexported: isUnexported,
+			index:        i,
+			fType:        field.Type,
+			isEmbedded:   isEmbeddedStruct || isEmbeddedInterface,
+			settings:     tSettings,
 		})
 	}
 	sort.Slice(structFields, func(i, j int) bool {
@@ -965,6 +977,12 @@ func isUnderlyingStruct(t reflect.Type) bool {
 	t = deRefPointer(t)
 
 	return t.Kind() == reflect.Struct
+}
+
+func isUnderlyingInterface(t reflect.Type) bool {
+	t = deRefPointer(t)
+
+	return t.Kind() == reflect.Interface
 }
 
 func deRefPointer(t reflect.Type) reflect.Type {
