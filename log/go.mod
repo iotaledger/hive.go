@@ -5,7 +5,6 @@ go 1.21
 require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20230918225815-75359a468439
 	github.com/iotaledger/hive.go/lo v0.0.0-20230829145721-3041a551a2dd
-	github.com/iotaledger/hive.go/objectstorage v0.0.0-20230629181801-64c530ff9d15
 )
 
 require (
