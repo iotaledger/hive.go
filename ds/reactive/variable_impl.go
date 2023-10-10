@@ -161,7 +161,7 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 	callbackTriggered := NewEvent()
 	var triggeredPreValue, triggeredNewValue Type
 
-	unsubscribeFromVariable := r.OnUpdate(func(prevValue, newValue Type) {
+	unsubscribe = r.OnUpdate(func(prevValue, newValue Type) {
 		if callbackTriggered.Get() {
 			return
 		}
@@ -177,14 +177,12 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 	})
 
 	callbackTriggered.OnTrigger(func() {
-		go unsubscribeFromVariable()
+		go unsubscribe()
 
-		if triggeredPreValue != triggeredNewValue {
-			callback(triggeredPreValue, triggeredNewValue)
-		}
+		callback(triggeredPreValue, triggeredNewValue)
 	})
 
-	return func() { callbackTriggered.Trigger() }
+	return unsubscribe
 }
 
 // OnUpdateWithContext registers the given callback that is triggered when the value changes. In contrast to the
