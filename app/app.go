@@ -401,7 +401,7 @@ func (a *App) addComponents() {
 			return true
 		}
 
-		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), 1)
+		component.WorkerPool = workerpool.New(fmt.Sprintf("Component-%s", component.Name), workerpool.WithWorkerCount(1))
 		a.addComponent(component)
 
 		return true

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
@@ -23,9 +24,6 @@ type WorkerPool struct {
 	// ShutdownComplete is a WaitGroup that is used to wait for the WorkerPool to shutdown.
 	ShutdownComplete sync.WaitGroup
 
-	// workerCount is the number of workers that are used to execute tasks.
-	workerCount int
-
 	// isRunning indicates if the WorkerPool is running.
 	isRunning bool
 
@@ -33,25 +31,34 @@ type WorkerPool struct {
 	dispatcherChan chan *Task
 
 	// shutdownSignal is the channel that is used to signal the workers to shut down.
-	shutdownSignal chan bool
+	shutdownSignal chan struct{}
+
+	// workerCount is the number of workers that are used to execute tasks, defaults to twice the amount of logical CPUs.
+	workerCount int
+
+	// optPanicOnSubmitAfterShutdown indicates if a panic should be triggered when a task is submitted after the WorkerPool was shut down.
+	optPanicOnSubmitAfterShutdown bool
+
+	// optCancelPendingTasksOnShutdown indicates if pending tasks should be canceled on shutdown.
+	optCancelPendingTasksOnShutdown bool
 
 	// mutex is used to synchronize access to the WorkerPool.
 	mutex syncutils.RWMutex
 }
 
 // New creates a new WorkerPool with the given name and returns it.
-func New(name string, optsWorkerCount ...int) *WorkerPool {
-	if len(optsWorkerCount) == 0 {
-		optsWorkerCount = append(optsWorkerCount, 2*runtime.NumCPU())
-	}
-
-	return &WorkerPool{
+func New(name string, opts ...options.Option[WorkerPool]) *WorkerPool {
+	return options.Apply(&WorkerPool{
 		Name:                name,
 		PendingTasksCounter: syncutils.NewCounter(),
 		Queue:               syncutils.NewStack[*Task](),
-		workerCount:         optsWorkerCount[0],
-		shutdownSignal:      make(chan bool, optsWorkerCount[0]),
-	}
+		workerCount:         2 * runtime.NumCPU(),
+
+		optCancelPendingTasksOnShutdown: false,
+		optPanicOnSubmitAfterShutdown:   false,
+	}, opts, func(w *WorkerPool) {
+		w.shutdownSignal = make(chan struct{}, w.workerCount)
+	})
 }
 
 // Start starts the WorkerPool.
@@ -74,7 +81,11 @@ func (w *WorkerPool) Start() *WorkerPool {
 // Submit submits a new task to the WorkerPool.
 func (w *WorkerPool) Submit(workerFunc func(), optStackTrace ...string) {
 	if !w.IsRunning() {
-		panic(fmt.Sprintf("worker pool '%s' is not running", w.Name))
+		if w.optPanicOnSubmitAfterShutdown {
+			panic(fmt.Sprintf("worker pool '%s' is not running", w.Name))
+		}
+
+		return
 	}
 
 	w.increasePendingTasks()
@@ -96,7 +107,7 @@ func (w *WorkerPool) WorkerCount() int {
 }
 
 // Shutdown shuts down the WorkerPool.
-func (w *WorkerPool) Shutdown(cancelPendingTasks ...bool) *WorkerPool {
+func (w *WorkerPool) Shutdown() *WorkerPool {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -104,7 +115,7 @@ func (w *WorkerPool) Shutdown(cancelPendingTasks ...bool) *WorkerPool {
 		w.isRunning = false
 
 		for i := 0; i < w.workerCount; i++ {
-			w.shutdownSignal <- len(cancelPendingTasks) >= 1 && cancelPendingTasks[0]
+			w.shutdownSignal <- struct{}{}
 		}
 
 		w.Queue.SignalShutdown()
@@ -156,22 +167,24 @@ func (w *WorkerPool) startWorkers() {
 func (w *WorkerPool) worker() {
 	defer w.ShutdownComplete.Done()
 
-	w.handleShutdown(w.workerReadLoop())
+	w.workerReadLoop()
+
+	w.handleShutdown()
 }
 
 // workerReadLoop reads tasks from the dispatcherChan and executes them.
-func (w *WorkerPool) workerReadLoop() bool {
+func (w *WorkerPool) workerReadLoop() {
 	for {
 		select {
-		case shutdownSignal := <-w.shutdownSignal:
-			return shutdownSignal
+		case <-w.shutdownSignal:
+			return
 		default:
 			select {
-			case shutdownSignal := <-w.shutdownSignal:
-				return shutdownSignal
+			case <-w.shutdownSignal:
+				return
 			case element, success := <-w.dispatcherChan:
 				if !success {
-					return false
+					return
 				}
 
 				element.run()
@@ -181,12 +194,33 @@ func (w *WorkerPool) workerReadLoop() bool {
 }
 
 // handleShutdown handles the shutdown of the worker.
-func (w *WorkerPool) handleShutdown(cancelPendingTasks bool) {
+func (w *WorkerPool) handleShutdown() {
 	for task, success := <-w.dispatcherChan; success; task, success = <-w.dispatcherChan {
-		if cancelPendingTasks {
+		if w.optCancelPendingTasksOnShutdown {
 			task.markDone()
 		} else {
 			task.run()
 		}
+	}
+}
+
+// WithWorkerCount is an option for the WorkerPool that allows to set the number of workers that are used to execute tasks.
+func WithWorkerCount(workerCount int) options.Option[WorkerPool] {
+	return func(w *WorkerPool) {
+		w.workerCount = workerCount
+	}
+}
+
+// WithPanicOnSubmitAfterShutdown is an option for the WorkerPool that allows to set if a panic should be triggered when a task is submitted after the WorkerPool was shut down.
+func WithPanicOnSubmitAfterShutdown(panicOnSubmitAfterShutdown bool) options.Option[WorkerPool] {
+	return func(w *WorkerPool) {
+		w.optPanicOnSubmitAfterShutdown = panicOnSubmitAfterShutdown
+	}
+}
+
+// WithCancelPendingTasksOnShutdown is an option for the WorkerPool that allows to set if pending tasks should be canceled on shutdown.
+func WithCancelPendingTasksOnShutdown(cancelPendingTasksOnShutdown bool) options.Option[WorkerPool] {
+	return func(w *WorkerPool) {
+		w.optCancelPendingTasksOnShutdown = cancelPendingTasksOnShutdown
 	}
 }

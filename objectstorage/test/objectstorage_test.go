@@ -69,7 +69,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	metadataStorage := objectstorage.New(rocksDBMetadataStorage, testObjectFactory)
 
 	// create workerpool
-	wp := workerpool.New(t.Name(), 1024).Start()
+	wp := workerpool.New(t.Name(), workerpool.WithWorkerCount(1024), workerpool.WithCancelPendingTasksOnShutdown(false)).Start()
 
 	// result counters
 	var eventsCounter int32
@@ -113,7 +113,7 @@ func TestConcurrentCreateDelete(t *testing.T) {
 	}
 
 	// wait for workers to finish
-	wp.Shutdown(false)
+	wp.Shutdown()
 	wp.PendingTasksCounter.WaitIsZero()
 
 	// count messages still in the store

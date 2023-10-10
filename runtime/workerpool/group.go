@@ -8,6 +8,7 @@ import (
 
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
@@ -48,8 +49,13 @@ func (g *Group) Name() (name string) {
 }
 
 // CreatePool creates a new WorkerPool with the given name and returns it.
-func (g *Group) CreatePool(name string, optWorkerCount ...int) *WorkerPool {
-	pool := New(name, optWorkerCount...)
+func (g *Group) CreatePool(name string, opts ...options.Option[WorkerPool]) *WorkerPool {
+	workerPoolOpts := []options.Option[WorkerPool]{
+		WithCancelPendingTasksOnShutdown(true),
+	}
+	workerPoolOpts = append(workerPoolOpts, opts...)
+
+	pool := New(name, workerPoolOpts...)
 	pool.PendingTasksCounter.Subscribe(func(oldValue, newValue int) {
 		if oldValue == 0 {
 			g.PendingChildrenCounter.Increase()
@@ -216,7 +222,7 @@ func (g *Group) shutdown() {
 	}
 
 	g.pools.ForEach(func(_ string, pool *WorkerPool) bool {
-		pool.Shutdown(true)
+		pool.Shutdown()
 		return true
 	})
 

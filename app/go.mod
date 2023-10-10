@@ -8,7 +8,7 @@ require (
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20230829150325-83bdfcee1088
 	github.com/iotaledger/hive.go/lo v0.0.0-20230829150325-83bdfcee1088
 	github.com/iotaledger/hive.go/logger v0.0.0-20230829150325-83bdfcee1088
-	github.com/iotaledger/hive.go/runtime v0.0.0-20230829150325-83bdfcee1088
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231010083704-a2a91fb9e0ab
 	github.com/knadh/koanf v1.5.0
 	github.com/spf13/cast v1.5.1
 	github.com/spf13/pflag v1.0.5
