@@ -92,3 +92,46 @@ func TestOnUpdateWithContext(t *testing.T) {
 	innerVars[1].Set(3)
 	require.Equal(t, []string{"2:3", "2:4", "1:1", "1:2"}, collectedValues)
 }
+
+func TestOnUpdateOnce(t *testing.T) {
+	{
+		myInt := NewVariable[int]()
+
+		var callCount, calledOldValue, calledNewValue int
+		myInt.OnUpdateOnce(func(oldValue, newValue int) {
+			callCount++
+			calledOldValue = oldValue
+			calledNewValue = newValue
+		})
+
+		myInt.Set(1)
+		require.Equal(t, 1, callCount)
+		require.Equal(t, 0, calledOldValue)
+		require.Equal(t, 1, calledNewValue)
+
+		myInt.Set(2)
+		require.Equal(t, 1, callCount)
+		require.Equal(t, 0, calledOldValue)
+		require.Equal(t, 1, calledNewValue)
+	}
+
+	{
+		myInt := NewVariable[int]()
+
+		var callCount, calledOldValue, calledNewValue int
+		unsubscribe := myInt.OnUpdateOnce(func(oldValue, newValue int) {
+			calledOldValue = oldValue
+			calledNewValue = newValue
+		})
+
+		unsubscribe()
+		require.Equal(t, 0, callCount)
+		require.Equal(t, 0, calledOldValue)
+		require.Equal(t, 0, calledNewValue)
+
+		myInt.Set(2)
+		require.Equal(t, 0, callCount)
+		require.Equal(t, 0, calledOldValue)
+		require.Equal(t, 0, calledNewValue)
+	}
+}

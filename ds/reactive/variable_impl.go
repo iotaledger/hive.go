@@ -179,7 +179,9 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 	callbackTriggered.OnTrigger(func() {
 		go unsubscribeFromVariable()
 
-		callback(triggeredPreValue, triggeredNewValue)
+		if triggeredPreValue != triggeredNewValue {
+			callback(triggeredPreValue, triggeredNewValue)
+		}
 	})
 
 	return func() { callbackTriggered.Trigger() }
