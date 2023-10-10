@@ -157,11 +157,11 @@ func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type
 
 // OnUpdateOnce registers the given callback for the next update and then automatically unsubscribes it. It is possible
 // to provide an optional condition that has to be satisfied for the callback to be triggered.
-func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool) {
+func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool) (unsubscribe func()) {
 	callbackTriggered := NewEvent()
 	var triggeredPreValue, triggeredNewValue Type
 
-	unsubscribe := r.OnUpdate(func(prevValue, newValue Type) {
+	unsubscribe = r.OnUpdate(func(prevValue, newValue Type) {
 		if callbackTriggered.Get() {
 			return
 		}
@@ -181,6 +181,8 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 
 		callback(triggeredPreValue, triggeredNewValue)
 	})
+
+	return unsubscribe
 }
 
 // OnUpdateWithContext registers the given callback that is triggered when the value changes. In contrast to the
@@ -189,7 +191,7 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	var previousUnsubscribedEvent Event
 
-	return r.OnUpdate(func(oldValue, newValue Type) {
+	unsubscribeFromVariable := r.OnUpdate(func(oldValue, newValue Type) {
 		if previousUnsubscribedEvent != nil {
 			previousUnsubscribedEvent.Trigger()
 		}
@@ -205,6 +207,14 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 
 		previousUnsubscribedEvent = unsubscribedEvent
 	}, triggerWithInitialZeroValue...)
+
+	return func() {
+		unsubscribeFromVariable()
+
+		if previousUnsubscribedEvent != nil {
+			previousUnsubscribedEvent.Trigger()
+		}
+	}
 }
 
 // LogUpdates configures the Variable to emit logs about updates with the given logger and log level. An optional

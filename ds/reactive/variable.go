@@ -43,7 +43,7 @@ type ReadableVariable[Type comparable] interface {
 
 	// OnUpdateOnce registers the given callback for the next update and then automatically unsubscribes it. It is
 	// possible to provide an optional condition that has to be satisfied for the callback to be triggered.
-	OnUpdateOnce(callback func(oldValue, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool)
+	OnUpdateOnce(callback func(oldValue, newValue Type), optCondition ...func(oldValue Type, newValue Type) bool) (unsubscribe func())
 
 	// OnUpdateWithContext registers the given callback that is triggered when the value changes. In contrast to the
 	// normal OnUpdate method, this method provides the old and new value as well as a withinContext function that can
