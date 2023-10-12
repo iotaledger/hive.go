@@ -190,3 +190,26 @@ func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
 
 	return result, nil
 }
+
+// Given a 128 bits integer x represented as xHi*(2^64)+xLo and a uint64 y,
+// returns result = x/y, (or an error if that computation would cause a division by zero
+// or a quotient overflow).
+func Safe128Div(xHi, xLo, y uint64) (uint64, error) {
+	if y == 0 {
+		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "(%d*(2^64)+%d) / %d", xHi, xLo, y)
+	}
+	if y <= xHi {
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "(%d*(2^64)+%d) / %d", xHi, xLo, y)
+	}
+
+	quotient, _ := bits.Div64(xHi, xLo, y)
+	return quotient, nil
+}
+
+// Given 2 uint64 x and y, returns (prodHi, prodLo), representing the upper and lower 64 digits of x*y
+func Safe128Mul(x, y uint64) (uint64, uint64) {
+
+	prodHi, prodLo := bits.Mul64(x, y)
+
+	return prodHi, prodLo
+}

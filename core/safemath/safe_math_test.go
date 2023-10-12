@@ -1,6 +1,7 @@
 package safemath
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -316,5 +317,36 @@ func TestSafeMathMulInt64(t *testing.T) {
 
 	// The result of this computation would be 2 smaller than MinInt64.
 	_, err = SafeMulInt64(int64(math.MinInt64/2)-1, 2)
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+}
+
+func TestSafeMath128Div(t *testing.T) {
+	var err error
+	var ures uint64
+
+	ures, err = Safe128Div(uint64(0), uint64(10), uint64(2))
+	fmt.Println(ures)
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(5))
+
+	ures, err = Safe128Div(uint64(0), uint64(10), uint64(8))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(1))
+
+	ures, err = Safe128Div(uint64(0), uint64(2<<43-1), uint64(2<<37-1))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(64))
+
+	ures, err = Safe128Div(uint64(1<<5-1), uint64(1<<43-1), uint64(1<<7-1))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(4502748622685741120))
+
+	_, err = Safe128Div(uint64(0), uint64(100), uint64(0))
+	require.ErrorIs(t, err, ErrIntegerDivisionByZero)
+
+	_, err = Safe128Div(uint64(100), uint64(0), uint64(100))
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+
+	_, err = Safe128Div(uint64(100), uint64(0), uint64(99))
 	require.ErrorIs(t, err, ErrIntegerOverflow)
 }
