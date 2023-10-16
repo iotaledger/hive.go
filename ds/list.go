@@ -60,12 +60,15 @@ type List[T any] interface {
 	// RangeReverse executes the given callback for the value of each element in the List in reverse order.
 	RangeReverse(callback func(value T))
 
+	// Values returns a slice of all values in the List.
+	Values() []T
+
 	// Len returns the number of elements in the List.
 	Len() int
 }
 
-// NewList creates a new List (the optional lockFree parameter can be set to true to create a List that is not thread
-// safe).
+// NewList creates a new List (the optional lockFree parameter can be set to true to create a List that is not
+// thread-safe).
 func NewList[T any](lockFree ...bool) List[T] {
 	if len(lockFree) > 0 && lockFree[0] {
 		return newList[T]()

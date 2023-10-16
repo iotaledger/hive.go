@@ -239,6 +239,17 @@ func (l *list[T]) RangeReverse(callback func(value T)) {
 	}
 }
 
+// Values returns a slice of all values in the List.
+func (l *list[T]) Values() []T {
+	values := make([]T, 0)
+
+	l.Range(func(value T) {
+		values = append(values, value)
+	})
+
+	return values
+}
+
 // Len returns the number of elements in the List.
 func (l *list[T]) Len() int { return l.len }
 
@@ -456,6 +467,14 @@ func (t *threadSafeList[T]) RangeReverse(callback func(value T)) {
 	defer t.mutex.RUnlock()
 
 	t.list.RangeReverse(callback)
+}
+
+// Values returns a slice of all values in the List.
+func (t *threadSafeList[T]) Values() []T {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	return t.list.Values()
 }
 
 // Len returns the number of elements in the List.
