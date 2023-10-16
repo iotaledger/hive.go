@@ -1,7 +1,6 @@
 package safemath
 
 import (
-	"fmt"
 	"math"
 	"testing"
 
@@ -325,7 +324,6 @@ func TestSafeMath128Div(t *testing.T) {
 	var ures uint64
 
 	ures, err = Safe128Div(uint64(0), uint64(10), uint64(2))
-	fmt.Println(ures)
 	require.NoError(t, err)
 	require.Equal(t, ures, uint64(5))
 
