@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -92,13 +92,10 @@ type readableVariable[Type comparable] struct {
 	value Type
 
 	// registeredCallbacks holds the callbacks that are triggered when the value changes.
-	registeredCallbacks *shrinkingmap.ShrinkingMap[uniqueID, *callback[func(prevValue, newValue Type)]]
+	registeredCallbacks ds.List[*callback[func(prevValue, newValue Type)]]
 
 	// uniqueUpdateID is used to derive a unique identifier for each update.
 	uniqueUpdateID uniqueID
-
-	// uniqueCallbackID is used to derive a unique identifier for each callback.
-	uniqueCallbackID uniqueID
 
 	// valueMutex is used to ensure that access to the value is synchronized.
 	valueMutex sync.RWMutex
@@ -108,7 +105,7 @@ type readableVariable[Type comparable] struct {
 func newReadableVariable[Type comparable](initialValue ...Type) *readableVariable[Type] {
 	return &readableVariable[Type]{
 		value:               lo.First(initialValue),
-		registeredCallbacks: shrinkingmap.New[uniqueID, *callback[func(prevValue, newValue Type)]](),
+		registeredCallbacks: ds.NewList[*callback[func(prevValue, newValue Type)]](),
 	}
 }
 
@@ -133,8 +130,8 @@ func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type
 	r.valueMutex.Lock()
 
 	currentValue := r.value
-	createdCallback := newCallback[func(prevValue, newValue Type)](r.uniqueCallbackID.Next(), callback)
-	r.registeredCallbacks.Set(createdCallback.ID, createdCallback)
+	createdCallback := newCallback[func(prevValue, newValue Type)](callback)
+	callbackElement := r.registeredCallbacks.PushBack(createdCallback)
 
 	// grab the execution lock before we unlock the mutex, so the callback cannot be triggered by another
 	// thread updating the value before we have called the callback with the initial value
@@ -149,7 +146,7 @@ func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type
 	}
 
 	return func() {
-		r.registeredCallbacks.Delete(createdCallback.ID)
+		r.registeredCallbacks.Remove(callbackElement)
 
 		createdCallback.MarkUnsubscribed()
 	}
