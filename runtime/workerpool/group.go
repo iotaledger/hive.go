@@ -142,9 +142,9 @@ func (g *Group) IsShutdown() bool {
 
 // Shutdown shuts down all child elements of the Group.
 func (g *Group) Shutdown() {
-	g.PendingChildrenCounter.WaitIsZero()
-
 	g.shutdown()
+
+	g.PendingChildrenCounter.WaitIsZero()
 }
 
 // String returns a human-readable string representation of the Group.
