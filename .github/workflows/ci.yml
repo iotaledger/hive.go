@@ -1,0 +1,62 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+  prep-test:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          echo "::set-output name=matrix::[$(find . -name 'go.mod' -exec dirname {} \; | sort -u | sed 's|^\./||' | sed 's/.*/"&"/' | tr '\n' ',' | sed 's/,$//')]"
+
+  go-test:
+    needs: prep-test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{fromJson(needs.prep-test.outputs.matrix)}}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+          go-version: "1.21"
+    - name: Run tests core
+      working-directory: ./${{ matrix.module }}
+      run: go test ./... -tags rocksdb,stacktrace -count=1 -timeout 10m
+
+  golangci-lint:
+    needs: prep-test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{fromJson(needs.prep-test.outputs.matrix)}}
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: golangci-lint
+        uses: reviewdog/action-golangci-lint@v2
+        with:
+          workdir: ./${{ matrix.module }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          golangci_lint_flags: "--timeout=10m"
+          reviewdog_flags: "-name=golangci-${{ matrix.module }}"
+          reporter: github-pr-check
+          filter_mode: nofilter
+          fail_on_error: true
