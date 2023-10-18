@@ -14,7 +14,7 @@ var ErrStopIteration = ierrors.New("stop")
 
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := newAuthenticatedMap(store,
+	newMap := newAuthenticatedMap[[32]byte](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -80,7 +80,7 @@ func TestMap(t *testing.T) {
 	require.NoError(t, newMap.Commit())
 
 	// The root should be same if loading the same store to map
-	newMap1 := newAuthenticatedMap(store,
+	newMap1 := newAuthenticatedMap[[32]byte](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -93,7 +93,7 @@ func TestMap(t *testing.T) {
 
 func TestStreamMap(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newMap := newAuthenticatedMap[testKey, testValue](store,
+	newMap := newAuthenticatedMap[[32]byte, testKey, testValue](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
