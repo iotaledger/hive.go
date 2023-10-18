@@ -1,4 +1,4 @@
-name: reviewdog
+name: CI
 on: [pull_request]
 
 jobs:
@@ -20,6 +20,7 @@ jobs:
           workdir: ./${{ matrix.module }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           golangci_lint_flags: "--timeout=10m"
+          reviewdog_flags: "-name=golangci-${{ matrix.module }}"
           reporter: github-pr-check
           filter_mode: nofilter
           fail_on_error: true
