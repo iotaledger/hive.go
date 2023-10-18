@@ -1,12 +1,11 @@
-name: GolangCIlint
-
-on: pull_request
+name: reviewdog
+on: [pull_request]
 
 jobs:
   golangci-lint:
-    name: GolangCI-Lint
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         module: [ ads, crypto, serializer, core, logger, app, constraints, ds, web, stringify, runtime, codegen, kvstore, ierrors, apputils, log, lo ]
     steps:
@@ -19,7 +18,6 @@ jobs:
         uses: reviewdog/action-golangci-lint@v2
         with:
           workdir: ./${{ matrix.module }}
-          version: v1.54
           github_token: ${{ secrets.GITHUB_TOKEN }}
           golangci_lint_flags: "--timeout=10m"
           reporter: github-pr-check
