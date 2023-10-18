@@ -7,6 +7,7 @@ require (
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20231018041106-de601c52d81a
 	github.com/iotaledger/hive.go/lo v0.0.0-20231018041106-de601c52d81a
 	github.com/iotaledger/hive.go/runtime v0.0.0-20231018041106-de601c52d81a
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230829145823-fdcc6f1afb61
 	github.com/libp2p/go-libp2p v0.30.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
@@ -23,9 +24,7 @@ require (
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
