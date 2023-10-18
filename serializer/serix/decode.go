@@ -132,6 +132,8 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			return api.decodeMap(ctx, b, elemValue, elemType, ts, opts)
 		case reflect.Array:
 			return api.decodeArray(ctx, b, elemValue, ts, opts)
+		default:
+			return api.decodeBasedOnType(ctx, b, elemValue, elemType, ts, opts)
 		}
 
 	case reflect.Struct:
