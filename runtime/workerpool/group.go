@@ -52,6 +52,7 @@ func (g *Group) Name() (name string) {
 func (g *Group) CreatePool(name string, opts ...options.Option[WorkerPool]) *WorkerPool {
 	workerPoolOpts := []options.Option[WorkerPool]{
 		WithCancelPendingTasksOnShutdown(true),
+		WithPanicOnSubmitAfterShutdown(true),
 	}
 	workerPoolOpts = append(workerPoolOpts, opts...)
 
@@ -142,8 +143,8 @@ func (g *Group) IsShutdown() bool {
 
 // Shutdown shuts down all child elements of the Group.
 func (g *Group) Shutdown() {
+	g.PendingChildrenCounter.WaitIsZero()
 	g.shutdown()
-
 	g.PendingChildrenCounter.WaitIsZero()
 }
 
