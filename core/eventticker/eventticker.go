@@ -7,6 +7,7 @@ import (
 	"github.com/iotaledger/hive.go/core/index"
 	"github.com/iotaledger/hive.go/core/memstorage"
 	"github.com/iotaledger/hive.go/crypto"
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/timed"
 )
@@ -104,6 +105,20 @@ func (r *EventTicker[I, T]) EvictUntil(index I) {
 		}
 	}
 	r.lastEvictedIndex = index
+}
+
+func (r *EventTicker[I, T]) Clear() {
+	pendingTickers := make([]T, 0)
+	r.scheduledTickers.ForEach(func(index I, storage *shrinkingmap.ShrinkingMap[T, *timed.ScheduledTask]) {
+		storage.ForEach(func(id T, scheduledTask *timed.ScheduledTask) bool {
+			pendingTickers = append(pendingTickers, id)
+			return true
+		})
+	})
+
+	for _, id := range pendingTickers {
+		r.StopTicker(id)
+	}
 }
 
 func (r *EventTicker[I, T]) Shutdown() {
