@@ -176,16 +176,15 @@ func TestSet_Encoding(t *testing.T) {
 	serix.DefaultAPI.RegisterTypeSettings("", serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte))
 
 	testSet := initSet(3, 0)
-	_, err := testSet.Encode()
+	bytes, err := testSet.Encode()
 	require.NoError(t, err)
 
-	// TODO: fix after stream package refactor
-	// decoded := ds.NewSet[string]()
-	// consumed, err := decoded.Decode(bytes)
-	// require.NoError(t, err)
-	// require.Equal(t, len(bytes), consumed)
-	//
-	// require.Equal(t, testSet, decoded)
+	decoded := ds.NewSet[string]()
+	consumed, err := decoded.Decode(bytes)
+	require.NoError(t, err)
+	require.Equal(t, len(bytes), consumed)
+
+	require.Equal(t, testSet, decoded)
 }
 
 func initSet(count int, start int) ds.Set[string] {
