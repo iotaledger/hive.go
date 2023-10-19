@@ -210,8 +210,13 @@ func (api *API) mapEncodeStructFields(
 		case sField.settings.ts.mapKey != nil:
 			obj.Set(*sField.settings.ts.mapKey, eleOut)
 		case sField.settings.nest:
-			for _, k := range eleOut.(*orderedmap.OrderedMap).Keys() {
-				obj.Set(k, lo.Return1(eleOut.(*orderedmap.OrderedMap).Get(k)))
+			castedEleOut, ok := eleOut.(*orderedmap.OrderedMap)
+			if !ok {
+				return ierrors.Errorf("failed to cast nested struct field %s to map", sField.name)
+			}
+
+			for _, k := range castedEleOut.Keys() {
+				obj.Set(k, lo.Return1(castedEleOut.Get(k)))
 			}
 		default:
 			obj.Set(mapStringKey(sField.name), eleOut)
@@ -280,5 +285,6 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 		return "", nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
 	}
 
+	//nolint:forcetypeassert // map keys are always strings
 	return k.(string), v, nil
 }

@@ -54,5 +54,6 @@ func (r *RingBuffer[T]) ToSlice() []T {
 			i = r.capacity - 1
 		}
 	}
+
 	return result
 }

@@ -17,6 +17,7 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 		if value.Kind() == reflect.Ptr && value.IsNil() {
 			value.Set(reflect.New(value.Type().Elem()))
 		}
+		//nolint:forcetypeassert // false positive
 		deserializable = value.Interface().(DeserializableJSON)
 	} else if value.CanAddr() {
 		if addrDeserializable, ok := value.Addr().Interface().(DeserializableJSON); ok {
@@ -102,6 +103,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 					mapKey = *innerTS.mapKey
 				}
 
+				//nolint:forcetypeassert
 				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
 				byteSlice, err := DecodeHex(fieldValStr)
 				if err != nil {
@@ -120,6 +122,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
 			contextAwareDeserializable.SetDeserializationContext(ctx)
 		}
+
 		return api.mapDecodeStruct(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Slice:
 		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
@@ -160,12 +163,16 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 
 		return nil
 	case reflect.Int8, reflect.Int16, reflect.Int32:
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), true))
 	case reflect.Int64:
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, true))
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		return api.mapDecodeNum(value, valueType, float64NumParser(mapVal.(float64), value.Kind(), false))
 	case reflect.Uint64:
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		return api.mapDecodeNum(value, valueType, strNumParser(mapVal.(string), 64, false))
 	case reflect.Float32, reflect.Float64:
 		return api.mapDecodeFloat(value, valueType, mapVal)
@@ -261,6 +268,7 @@ func (api *API) mapDecodeInterface(
 	if !has {
 		return ierrors.Errorf("no object type defined in map for interface %s", valueType)
 	}
+	//nolint:forcetypeassert // false positive
 	objectCode := uint32(objectCodeAny.(float64))
 
 	objectType := iObjects.fromCodeToType[objectCode]
@@ -280,6 +288,7 @@ func (api *API) mapDecodeInterface(
 func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	if valueType == timeType {
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		strVal := mapVal.(string)
 		nanoTime, err := strconv.ParseUint(strVal, 10, 64)
 		if err != nil {
@@ -305,7 +314,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 		if !has {
 			return ierrors.Wrap(err, "missing type key in struct")
 		}
-		if uint32(mapObjectCode.(float64)) != objectCode {
+		if castedMapObjectCode, ok := mapObjectCode.(float64); !ok || uint32(castedMapObjectCode) != objectCode {
 			return ierrors.Errorf("map type key (%d) not equal registered object code (%d)", mapObjectCode, objectCode)
 		}
 	}
@@ -385,6 +394,7 @@ func (api *API) mapDecodeStructFields(
 func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Value,
 	valueType reflect.Type, opts *options) error {
 	if valueType.AssignableTo(bytesType) {
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		fieldValStr := mapVal.(string)
 		byteSlice, err := DecodeHex(fieldValStr)
 		if err != nil {

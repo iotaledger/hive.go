@@ -7,7 +7,7 @@ import (
 
 // Map is a map that can produce proofs for its values which can be verified against a known merkle root
 // that is formed using a sparse merkle tree.
-type Map[K, V any] interface {
+type Map[IdentifierType types.IdentifierType, K, V any] interface {
 	// Set sets the given key to the given value.
 	Set(key K, value V) error
 
@@ -27,7 +27,7 @@ type Map[K, V any] interface {
 	Commit() error
 
 	// Root returns the root of the sparse merkle tree.
-	Root() types.Identifier
+	Root() IdentifierType
 
 	// Size returns the number of elements in the map.
 	Size() int
@@ -37,6 +37,6 @@ type Map[K, V any] interface {
 }
 
 // NewMap creates a new AuthenticatedMap.
-func NewMap[K, V any](store kvstore.KVStore, kToBytes kvstore.ObjectToBytes[K], bytesToK kvstore.BytesToObject[K], vToBytes kvstore.ObjectToBytes[V], bytesToV kvstore.BytesToObject[V]) Map[K, V] {
-	return newAuthenticatedMap(store, kToBytes, bytesToK, vToBytes, bytesToV)
+func NewMap[IdentifierType types.IdentifierType, K, V any](store kvstore.KVStore, keyToBytes kvstore.ObjectToBytes[K], bytesToKey kvstore.BytesToObject[K], valueToBytes kvstore.ObjectToBytes[V], bytesToValue kvstore.BytesToObject[V]) Map[IdentifierType, K, V] {
+	return newAuthenticatedMap[IdentifierType](store, keyToBytes, bytesToKey, valueToBytes, bytesToValue)
 }

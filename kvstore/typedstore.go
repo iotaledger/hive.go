@@ -13,26 +13,26 @@ type (
 type TypedStore[K, V any] struct {
 	kv KVStore
 
-	kToBytes ObjectToBytes[K]
-	bytesToK BytesToObject[K]
-	vToBytes ObjectToBytes[V]
-	bytesToV BytesToObject[V]
+	keyToBytes   ObjectToBytes[K]
+	bytesToKey   BytesToObject[K]
+	valueToBytes ObjectToBytes[V]
+	bytesToValue BytesToObject[V]
 }
 
 // NewTypedStore is the constructor for TypedStore.
 func NewTypedStore[K, V any](
 	kv KVStore,
-	kToBytes ObjectToBytes[K],
-	bytesToK BytesToObject[K],
-	vToBytes ObjectToBytes[V],
-	bytesToV BytesToObject[V],
+	keyToBytes ObjectToBytes[K],
+	bytesToKey BytesToObject[K],
+	valueToBytes ObjectToBytes[V],
+	bytesToValue BytesToObject[V],
 ) *TypedStore[K, V] {
 	return &TypedStore[K, V]{
-		kv:       kv,
-		kToBytes: kToBytes,
-		bytesToK: bytesToK,
-		vToBytes: vToBytes,
-		bytesToV: bytesToV,
+		kv:           kv,
+		keyToBytes:   keyToBytes,
+		bytesToKey:   bytesToKey,
+		valueToBytes: valueToBytes,
+		bytesToValue: bytesToValue,
 	}
 }
 
@@ -42,7 +42,7 @@ func (t *TypedStore[K, V]) KVStore() KVStore {
 
 // Get gets the given key or an error if an error occurred.
 func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
-	keyBytes, err := t.kToBytes(key)
+	keyBytes, err := t.keyToBytes(key)
 	if err != nil {
 		return value, ierrors.Wrap(err, "failed to encode key")
 	}
@@ -52,7 +52,7 @@ func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 		return value, ierrors.Wrap(err, "failed to retrieve from KV store")
 	}
 
-	v, _, err := t.bytesToV(valueBytes)
+	v, _, err := t.bytesToValue(valueBytes)
 	if err != nil {
 		return value, ierrors.Wrap(err, "failed to decode value")
 	}
@@ -62,7 +62,7 @@ func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 
 // Has checks whether the given key exists.
 func (t *TypedStore[K, V]) Has(key K) (has bool, err error) {
-	keyBytes, err := t.kToBytes(key)
+	keyBytes, err := t.keyToBytes(key)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to encode key")
 	}
@@ -72,12 +72,12 @@ func (t *TypedStore[K, V]) Has(key K) (has bool, err error) {
 
 // Set sets the given key and value.
 func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
-	keyBytes, err := t.kToBytes(key)
+	keyBytes, err := t.keyToBytes(key)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to encode key")
 	}
 
-	valueBytes, err := t.vToBytes(value)
+	valueBytes, err := t.valueToBytes(value)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to encode value")
 	}
@@ -92,7 +92,7 @@ func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
 
 // Delete deletes the given key from the store.
 func (t *TypedStore[K, V]) Delete(key K) (err error) {
-	keyBytes, err := t.kToBytes(key)
+	keyBytes, err := t.keyToBytes(key)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to encode key")
 	}
@@ -108,14 +108,14 @@ func (t *TypedStore[K, V]) Delete(key K) (err error) {
 func (t *TypedStore[K, V]) Iterate(prefix KeyPrefix, callback func(key K, value V) (advance bool), direction ...IterDirection) (err error) {
 	var innerErr error
 	if iterationErr := t.kv.Iterate(prefix, func(key Key, value Value) bool {
-		keyDecoded, _, keyErr := t.bytesToK(key)
+		keyDecoded, _, keyErr := t.bytesToKey(key)
 		if keyErr != nil {
 			innerErr = keyErr
 
 			return false
 		}
 
-		valueDecoded, _, valueErr := t.bytesToV(value)
+		valueDecoded, _, valueErr := t.bytesToValue(value)
 		if valueErr != nil {
 			innerErr = valueErr
 
@@ -133,7 +133,7 @@ func (t *TypedStore[K, V]) Iterate(prefix KeyPrefix, callback func(key K, value 
 func (t *TypedStore[K, V]) IterateKeys(prefix KeyPrefix, callback func(key K) (advance bool), direction ...IterDirection) (err error) {
 	var innerErr error
 	if iterationErr := t.kv.IterateKeys(prefix, func(key Key) bool {
-		keyDecoded, _, keyErr := t.bytesToK(key)
+		keyDecoded, _, keyErr := t.bytesToKey(key)
 		if keyErr != nil {
 			innerErr = keyErr
 

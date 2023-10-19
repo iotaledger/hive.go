@@ -11,8 +11,11 @@ type PrivateKey [PrivateKeySize]byte
 
 // PrivateKeyFromBytes creates a PrivateKey from the given bytes.
 func PrivateKeyFromBytes(bytes []byte) (result PrivateKey, consumedBytes int, err error) {
-	consumedBytes, err = (&result).FromBytes(bytes)
-	return
+	if len(bytes) < PrivateKeySize {
+		return PrivateKey{}, 0, ErrNotEnoughBytes
+	}
+
+	return PrivateKey(bytes), PrivateKeySize, nil
 }
 
 // PrivateKeyFromSeed calculates a private key from a seed.
@@ -31,21 +34,11 @@ func (privateKey PrivateKey) Sign(data []byte) (result Signature) {
 
 // Public returns the PublicKey corresponding to privateKey.
 func (privateKey PrivateKey) Public() (result PublicKey) {
-	publicKey := ed25519.PrivateKey(privateKey[:]).Public()
-	copy(result[:], publicKey.(ed25519.PublicKey))
+	//nolint:forcetypeassert // false positive, we know it's an ed25519.PublicKey
+	publicKey := ed25519.PrivateKey(privateKey[:]).Public().(ed25519.PublicKey)
+	copy(result[:], publicKey)
 
 	return
-}
-
-// FromBytes initializes the PrivateKey from the given bytes.
-func (privateKey *PrivateKey) FromBytes(bytes []byte) (consumedBytes int, err error) {
-	if len(bytes) < PrivateKeySize {
-		return 0, ErrNotEnoughBytes
-	}
-
-	copy(privateKey[:], bytes)
-
-	return PrivateKeySize, nil
 }
 
 // Bytes returns the privateKey in bytes.

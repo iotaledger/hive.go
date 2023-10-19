@@ -25,9 +25,11 @@ func NewRootLoggerFromConfiguration(config *configuration.Configuration) (*logge
 		cfg.Level = val
 	}
 	if val := config.Get(logger.ConfigurationKeyDisableCaller); val != nil {
+		// nolint:forcetypeassert // DisableCaller is a bool
 		cfg.DisableCaller = val.(bool)
 	}
 	if val := config.Get(logger.ConfigurationKeyDisableStacktrace); val != nil {
+		// nolint:forcetypeassert // DisableStacktrace is a bool
 		cfg.DisableStacktrace = val.(bool)
 	}
 	if val := config.String(logger.ConfigurationKeyStacktraceLevel); val != "" {
@@ -40,6 +42,7 @@ func NewRootLoggerFromConfiguration(config *configuration.Configuration) (*logge
 		cfg.OutputPaths = val
 	}
 	if val := config.Get(logger.ConfigurationKeyDisableEvents); val != nil {
+		// nolint:forcetypeassert // DisableEvents is a bool
 		cfg.DisableEvents = val.(bool)
 	}
 

@@ -1,13 +1,13 @@
 run:
     tests: true
+    skip-files:
+        - ".*_test.go$"
 
 linters-settings:
     gofmt:
         simplify: true
     goimports:
         local-prefixes: github.com/iotaledger
-    golint:
-        min-confidence: 0.9
     gocyclo:
         min-complexity: 15
     govet:
@@ -39,15 +39,13 @@ linters:
     disable-all: true
     # Enable specific linter
     enable:
-        - deadcode
         - errcheck
         - gosimple
         - govet
-        - ineffassign 
+        - ineffassign
         - staticcheck
         - typecheck
         - unused
-        - varcheck
         - asasalint
         - asciicheck
         - bidichk
@@ -61,49 +59,45 @@ linters:
         - durationcheck
         - errchkjson
         - errname
-        - errorlint
+        #- errorlint
         - execinquery
         #- exhaustive
         #- exhaustruct
         - exportloopref
-        #- forcetypeassert
+        - forcetypeassert
         - goconst
-        - gocritic
+        #- gocritic
         - godot
         #- godox
         #- goerr113
         - gofmt
         - goheader
         - goimports
-        - golint
         #- gomnd
-        - gomoddirectives
+        #- gomoddirectives
         - gomodguard
-        #- goprintffuncname
+        - goprintffuncname
         - gosec
         - grouper
-        #- ifshort
         - importas
         #- interfacer
-        - makezero
+        #- makezero
         #- maligned
         - misspell
-        - nakedret
+        #- nakedret
         - nilerr
         - nilnil
         - nlreturn
         - noctx
         #- nonamedreturns
-        - nosnakecase
-        - nosprintfhostport
+        #- nosnakecase
+        #- nosprintfhostport
         - prealloc
         - predeclared
         - promlinter
         - revive
-        - rowserrcheck
-        - scopelint
+        #- scopelint
         - sqlclosecheck
-        - structcheck
         - stylecheck
         - tagliatelle
         - tenv
@@ -114,7 +108,6 @@ linters:
         - unparam
         - usestdlibvars
         #- varnamelen
-        - wastedassign
 
 issues:
     # Maximum issues count per one linter.
@@ -144,4 +137,3 @@ issues:
     #    - "blank-imports" # revive
     #    - "var-naming: don't use leading k in Go names;" #revive
     #    - 'shadow: declaration of "err"' # govet
-

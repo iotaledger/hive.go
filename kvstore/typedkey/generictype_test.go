@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 )
 
@@ -17,8 +16,8 @@ func Test(t *testing.T) {
 	storableCommitment := NewGenericType[Commitment](storage, 1)
 	storableCommitment.Set(Commitment{
 		Index:            1,
-		PrevID:           types.Identifier{1, 2, 3},
-		RootsID:          types.Identifier{4, 5, 6},
+		PrevID:           [32]byte{1, 2, 3},
+		RootsID:          [32]byte{4, 5, 6},
 		CumulativeWeight: 789,
 	})
 
@@ -28,8 +27,8 @@ func Test(t *testing.T) {
 	// load the stored commitment
 	require.Equal(t, Commitment{
 		Index:            1,
-		PrevID:           types.Identifier{1, 2, 3},
-		RootsID:          types.Identifier{4, 5, 6},
+		PrevID:           [32]byte{1, 2, 3},
+		RootsID:          [32]byte{4, 5, 6},
 		CumulativeWeight: 789,
 	}, storableCommitment.Get())
 }
@@ -37,7 +36,7 @@ func Test(t *testing.T) {
 // Commitment is a somewhat complex type used to test the storable Type.
 type Commitment struct {
 	Index            int64
-	PrevID           types.Identifier
-	RootsID          types.Identifier
+	PrevID           [32]byte
+	RootsID          [32]byte
 	CumulativeWeight int64
 }

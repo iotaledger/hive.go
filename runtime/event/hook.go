@@ -27,6 +27,7 @@ func newHook[TriggerFunc any](id uint64, event *event[TriggerFunc], trigger Trig
 	}
 
 	if !IsInterfaceNil(h.triggerSettings.preTriggerFunc) {
+		//nolint:forcetypeassert // false positive, we know that preTriggerFunc is of type TriggerFunc
 		h.preTriggerFunc = h.triggerSettings.preTriggerFunc.(TriggerFunc)
 	}
 

@@ -7,9 +7,9 @@ import (
 
 // Set is a set that can produce proofs for its elements which can be verified against a known merkle root
 // that is formed using a sparse merkle tree.
-type Set[K any] interface {
+type Set[IdentifierType types.IdentifierType, K any] interface {
 	// Root returns the root of the sparse merkle tree.
-	Root() types.Identifier
+	Root() IdentifierType
 
 	// Add adds the key to the set.
 	Add(key K) error
@@ -34,6 +34,6 @@ type Set[K any] interface {
 }
 
 // NewSet creates a new sparse merkle tree based set.
-func NewSet[K any](store kvstore.KVStore, kToBytes kvstore.ObjectToBytes[K], bytesToK kvstore.BytesToObject[K]) Set[K] {
-	return newAuthenticatedSet(store, kToBytes, bytesToK)
+func NewSet[IdentifierType types.IdentifierType, K any](store kvstore.KVStore, keyToBytes kvstore.ObjectToBytes[K], bytesToKey kvstore.BytesToObject[K]) Set[IdentifierType, K] {
+	return newAuthenticatedSet[IdentifierType](store, keyToBytes, bytesToKey)
 }

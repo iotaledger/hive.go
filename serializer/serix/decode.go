@@ -24,6 +24,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if value.Kind() == reflect.Ptr && value.IsNil() {
 			value.Set(reflect.New(valueType.Elem()))
 		}
+		//nolint:forcetypeassert // false positive
 		deserializable = value.Interface().(Deserializable)
 	} else if value.CanAddr() {
 		if addrDeserializable, ok := value.Addr().Interface().(Deserializable); ok {
@@ -38,6 +39,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			if valueElem.IsNil() {
 				valueElem.Set(reflect.New(valueElem.Type().Elem()))
 			}
+
 			return api.decode(ctx, b, valueElem, ts, opts)
 		}
 	}
@@ -102,6 +104,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		if valueType == bigIntPtrType {
 			addrValue := value.Addr()
 			deseri := serializer.NewDeserializer(b)
+			//nolint:forcetypeassert // false positive, we already checked the type via reflect
 			deseri.ReadUint256(addrValue.Interface().(**big.Int), func(err error) error {
 				return ierrors.Wrap(err, "failed to read big.Int from deserializer")
 			})
@@ -132,12 +135,15 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			return api.decodeMap(ctx, b, elemValue, elemType, ts, opts)
 		case reflect.Array:
 			return api.decodeArray(ctx, b, elemValue, ts, opts)
+		default:
+			return api.decodeBasedOnType(ctx, b, elemValue, elemType, ts, opts)
 		}
 
 	case reflect.Struct:
 		if contextAwareDeserializable, ok := value.Interface().(ContextAwareDeserializable); ok {
 			contextAwareDeserializable.SetDeserializationContext(ctx)
 		}
+
 		return api.decodeStruct(ctx, b, value, valueType, ts, opts)
 	case reflect.Slice:
 		return api.decodeSlice(ctx, b, value, valueType, ts, opts)
@@ -156,6 +162,8 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*string)(nil)))
 		minLen, maxLen := ts.MinMaxLen()
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadString(
 			addrValue.Interface().(*string),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
@@ -168,7 +176,9 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 	case reflect.Bool:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		addrValue = addrValue.Convert(reflect.TypeOf((*bool)(nil)))
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadBool(addrValue.Interface().(*bool), func(err error) error {
 			return ierrors.Wrap(err, "failed to read bool value from the deserializer")
 		})
@@ -224,6 +234,8 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 	if valueType == timeType {
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadTime(addrValue.Interface().(*time.Time), func(err error) error {
 			return ierrors.Wrap(err, "failed to read time from the deserializer")
 		})
@@ -355,6 +367,8 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*[]byte)(nil)))
 		minLen, maxLen := ts.MinMaxLen()
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadVariableByteSlice(
 			addrValue.Interface().(*[]byte),
 			serializer.SeriLengthPrefixType(lengthPrefixType),

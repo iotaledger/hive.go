@@ -5,59 +5,61 @@ import (
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ds/types"
-	dsTypes "github.com/iotaledger/hive.go/ds/types"
 )
 
-type BytesFilter struct {
-	knownIdentifiers *shrinkingmap.ShrinkingMap[types.Identifier, dsTypes.Empty]
-	identifiers      []types.Identifier
-	size             int
-	mutex            sync.RWMutex
+type BytesFilter[IdentifierType types.IdentifierType] struct {
+	knownIdentifiers *shrinkingmap.ShrinkingMap[IdentifierType, types.Empty]
+	identifiers      []IdentifierType
+
+	newIdentifierFunc func([]byte) IdentifierType
+	size              int
+	mutex             sync.RWMutex
 }
 
-func New(size int) *BytesFilter {
-	return &BytesFilter{
-		knownIdentifiers: shrinkingmap.New[types.Identifier, dsTypes.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
-		identifiers:      make([]types.Identifier, 0, size),
-		size:             size,
+func New[IdentifierType types.IdentifierType](newIdentifierFunc func([]byte) IdentifierType, size int) *BytesFilter[IdentifierType] {
+	return &BytesFilter[IdentifierType]{
+		knownIdentifiers:  shrinkingmap.New[IdentifierType, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
+		identifiers:       make([]IdentifierType, 0, size),
+		newIdentifierFunc: newIdentifierFunc,
+		size:              size,
 	}
 }
 
-func (b *BytesFilter) Add(bytes []byte) (identifier types.Identifier, added bool) {
-	identifier = types.NewIdentifier(bytes)
+func (b *BytesFilter[IdentifierType]) Add(bytes []byte) (identifier IdentifierType, added bool) {
+	identifier = b.newIdentifierFunc(bytes)
 
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	added = b.addIdentifier(identifier)
-
-	return
+	return identifier, b.addIdentifier(identifier)
 }
 
-func (b *BytesFilter) AddIdentifier(identifier types.Identifier) (added bool) {
+func (b *BytesFilter[IdentifierType]) AddIdentifier(identifier IdentifierType) (added bool) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
 	return b.addIdentifier(identifier)
 }
 
-func (b *BytesFilter) Contains(bytes []byte) (exists bool) {
+func (b *BytesFilter[IdentifierType]) Contains(bytes []byte) (exists bool) {
 	b.mutex.RLock()
-	_, exists = b.knownIdentifiers.Get(types.NewIdentifier(bytes))
-	b.mutex.RUnlock()
+	defer b.mutex.RUnlock()
 
-	return
+	_, exists = b.knownIdentifiers.Get(b.newIdentifierFunc(bytes))
+
+	return exists
 }
 
-func (b *BytesFilter) ContainsIdentifier(identifier types.Identifier) (exists bool) {
+func (b *BytesFilter[IdentifierType]) ContainsIdentifier(identifier IdentifierType) (exists bool) {
 	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
 	_, exists = b.knownIdentifiers.Get(identifier)
-	b.mutex.RUnlock()
 
-	return
+	return exists
 }
 
-func (b *BytesFilter) addIdentifier(identifier types.Identifier) (added bool) {
+func (b *BytesFilter[IdentifierType]) addIdentifier(identifier IdentifierType) (added bool) {
 	if _, exists := b.knownIdentifiers.Get(identifier); exists {
 		return false
 	}
@@ -69,7 +71,7 @@ func (b *BytesFilter) addIdentifier(identifier types.Identifier) (added bool) {
 		b.identifiers = append(b.identifiers, identifier)
 	}
 
-	b.knownIdentifiers.Set(identifier, dsTypes.Void)
+	b.knownIdentifiers.Set(identifier, types.Void)
 
 	return true
 }

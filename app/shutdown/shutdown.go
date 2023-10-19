@@ -17,11 +17,6 @@ import (
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 
-// AppSelfShutdownCaller is used to signal a app self shutdown caused by an error.
-func AppSelfShutdownCaller(handler interface{}, params ...interface{}) {
-	handler.(func(reason string, critical bool))(params[0].(string), params[1].(bool))
-}
-
 type selfShutdownRequest struct {
 	message  string
 	critical bool

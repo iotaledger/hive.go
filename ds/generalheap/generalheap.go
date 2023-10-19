@@ -23,6 +23,7 @@ func (h Heap[K, V]) Swap(i, j int) {
 
 // Push adds x as the last element to the heap.
 func (h *Heap[K, V]) Push(x interface{}) {
+	//nolint:forcetypeassert // false positive, we know that the element is of type *HeapElement[K, V]
 	data := x.(*HeapElement[K, V])
 	*h = append(*h, data)
 	data.index = len(*h) - 1
@@ -35,6 +36,7 @@ func (h *Heap[K, V]) Pop() interface{} {
 	(*h)[n-1] = nil // avoid memory leak
 	*h = (*h)[:n-1]
 	data.index = -1
+
 	return data
 }
 

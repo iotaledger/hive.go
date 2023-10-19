@@ -406,7 +406,12 @@ func (api *API) MapEncode(ctx context.Context, obj interface{}, opts ...Option) 
 		return nil, err
 	}
 
-	return m.(*orderedmap.OrderedMap), nil
+	mCasted, ok := m.(*orderedmap.OrderedMap)
+	if !ok {
+		return nil, ierrors.New("failed to cast to *orderedmap.OrderedMap")
+	}
+
+	return mCasted, nil
 }
 
 // Decode deserializes bytes b into the provided object obj.
@@ -759,9 +764,13 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 	switch objCodeType.Kind() {
 	case reflect.Uint32:
 		objTypeDenotation = serializer.TypeDenotationUint32
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect.Kind
 		code = objectType.(uint32)
 	case reflect.Uint8:
 		objTypeDenotation = serializer.TypeDenotationByte
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect.Kind
 		code = uint32(objectType.(uint8))
 	default:
 		return 0, 0, ierrors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
