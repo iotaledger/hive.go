@@ -4,6 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 var (
@@ -189,4 +190,19 @@ func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
 	}
 
 	return result, nil
+}
+
+// Given x, y and div as unsigned 64-bits integers, returns (x*y)/div or an error if that computation would under- or overflow.
+func Safe64MulDiv(x, y, div uint64) (uint64, error) {
+	if div == 0 {
+		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "(%d*%d) / %d", x, y, div)
+	}
+
+	prodHi, prodLo := bits.Mul64(x, y)
+
+	if div <= prodHi {
+		return 0, ierrors.Wrapf(ErrIntegerOverflow, "(%d*(2^64)+%d) / %d", prodHi, prodLo, div)
+	}
+
+	return lo.Return1(bits.Div64(prodHi, prodLo, div)), nil
 }
