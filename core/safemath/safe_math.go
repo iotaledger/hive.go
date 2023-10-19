@@ -194,11 +194,11 @@ func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
 
 // Given x, y and div as unsigned 64-bits integers, returns (x*y)/div or an error if that computation would under- or overflow.
 func Safe64MulDiv(x, y, div uint64) (uint64, error) {
-	prodHi, prodLo := bits.Mul64(x, y)
-
 	if div == 0 {
 		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "(%d*(2^64)+%d) / %d", prodHi, prodLo, div)
 	}
+
+	prodHi, prodLo := bits.Mul64(x, y)
 
 	if div <= prodHi {
 		return 0, ierrors.Wrapf(ErrIntegerOverflow, "(%d*(2^64)+%d) / %d", prodHi, prodLo, div)
