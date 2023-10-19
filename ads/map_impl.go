@@ -28,27 +28,27 @@ type authenticatedMap[IdentifierType types.IdentifierType, K, V any] struct {
 	root         *typedkey.Bytes
 	mutex        sync.RWMutex
 
-	kToBytes kvstore.ObjectToBytes[K]
-	vToBytes kvstore.ObjectToBytes[V]
-	bytesToV kvstore.BytesToObject[V]
+	keyToBytes   kvstore.ObjectToBytes[K]
+	valueToBytes kvstore.ObjectToBytes[V]
+	bytesToValue kvstore.BytesToObject[V]
 }
 
 // NewAuthenticatedMap creates a new authenticated map.
 func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 	store kvstore.KVStore,
-	kToBytes kvstore.ObjectToBytes[K],
-	bytesToK kvstore.BytesToObject[K],
-	vToBytes kvstore.ObjectToBytes[V],
-	bytesToV kvstore.BytesToObject[V],
+	keyToBytes kvstore.ObjectToBytes[K],
+	bytesToKey kvstore.BytesToObject[K],
+	valueToBytes kvstore.ObjectToBytes[V],
+	bytesToValue kvstore.BytesToObject[V],
 ) *authenticatedMap[IdentifierType, K, V] {
 	newMap := &authenticatedMap[IdentifierType, K, V]{
-		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), kToBytes, bytesToK, types.Empty.Bytes, types.EmptyFromBytes),
+		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), keyToBytes, bytesToKey, types.Empty.Bytes, types.EmptyFromBytes),
 		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
 		root:         typedkey.NewBytes(store, prefixRootKey),
 
-		kToBytes: kToBytes,
-		vToBytes: vToBytes,
-		bytesToV: bytesToV,
+		keyToBytes:   keyToBytes,
+		valueToBytes: valueToBytes,
+		bytesToValue: bytesToValue,
 	}
 
 	if root := newMap.root.Get(); len(root) != 0 {
@@ -80,12 +80,12 @@ func (m *authenticatedMap[IdentifierType, K, V]) Set(key K, value V) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	valueBytes, err := m.vToBytes(value)
+	valueBytes, err := m.valueToBytes(value)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize value")
 	}
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -133,7 +133,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Delete(key K) (deleted bool, er
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -167,7 +167,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Has(key K) (has bool, err error
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -180,7 +180,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Get(key K) (value V, exists boo
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return value, false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -194,7 +194,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Get(key K) (value V, exists boo
 		return value, false, err
 	}
 
-	v, consumed, err := m.bytesToV(valueBytes)
+	v, consumed, err := m.bytesToValue(valueBytes)
 	if err != nil {
 		return value, false, ierrors.Wrap(err, "failed to deserialize value")
 	}
@@ -213,7 +213,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Stream(callback func(key K, val
 
 	var innerErr error
 	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
-		keyBytes, err := m.kToBytes(key)
+		keyBytes, err := m.keyToBytes(key)
 		if err != nil {
 			innerErr = ierrors.Wrapf(err, "failed to serialize key %s", keyBytes)
 
@@ -227,7 +227,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Stream(callback func(key K, val
 			return false
 		}
 
-		value, _, valueErr := m.bytesToV(valueBytes)
+		value, _, valueErr := m.bytesToValue(valueBytes)
 		if valueErr != nil {
 			innerErr = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
 
