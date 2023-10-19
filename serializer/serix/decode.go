@@ -17,10 +17,10 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			return 0, ierrors.Wrap(err, "pre-deserialization validation failed")
 		}
 	}
+	var deserializable Deserializable
 	var bytesRead int
 
-	deserializable, ok := value.Interface().(Deserializable)
-	if ok {
+	if _, ok := value.Interface().(Deserializable); ok {
 		if value.Kind() == reflect.Ptr && value.IsNil() {
 			value.Set(reflect.New(valueType.Elem()))
 		}
