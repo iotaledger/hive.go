@@ -243,13 +243,9 @@ func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event
 // uniqueEntityName returns the name of an embedded instance of the given type.
 func (l *logger) uniqueEntityName(name string) (uniqueName string) {
 	entityNameCounter := func() int64 {
-		instanceCounter, loaded := l.entityNameCounters.Load(name)
-		if loaded {
-			return instanceCounter.(*atomic.Int64).Add(1) - 1
-		}
+		instanceCounter, _ := l.entityNameCounters.LoadOrStore(name, &atomic.Int64{})
 
-		instanceCounter, _ = l.entityNameCounters.LoadOrStore(name, &atomic.Int64{})
-
+		//nolint:forcetypeassert // false positive
 		return instanceCounter.(*atomic.Int64).Add(1) - 1
 	}
 
