@@ -346,30 +346,3 @@ func TestSafe64MulDiv(t *testing.T) {
 	require.ErrorIs(t, err, ErrIntegerOverflow)
 }
 
-func TestSafe64MulShift(t *testing.T) {
-	var err error
-	var ures uint64
-
-	ures, err = Safe64MulShift(uint64(0), uint64(10), uint64(2))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint64(0))
-
-	ures, err = Safe64MulShift(uint64(10), uint64(10), uint64(8))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint64(0))
-
-	ures, err = Safe64MulShift(uint64(10), uint64(10), uint64(2))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint64(25))
-
-	ures, err = Safe64MulShift(uint64(1), uint64(1<<43-1), uint64(37))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint64(63))
-
-	ures, err = Safe64MulShift(uint64(1<<63-1), uint64(1<<13-1), uint64(50))
-	require.NoError(t, err)
-	require.Equal(t, ures, uint64(67100671))
-
-	_, err = Safe64MulShift(uint64(1<<63-1), uint64(1<<63-1), uint64(0))
-	require.ErrorIs(t, err, ErrIntegerOverflow)
-}
