@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/ethereum/go-ethereum v1.12.2
 	github.com/iancoleman/orderedmap v0.3.0
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231018113146-44f942407628
-	github.com/iotaledger/hive.go/lo v0.0.0-20231018113146-44f942407628
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019073122-5530d42468a1
+	github.com/iotaledger/hive.go/lo v0.0.0-20231019073122-5530d42468a1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.9.0
@@ -17,7 +17,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231018113146-44f942407628 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231019073122-5530d42468a1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
