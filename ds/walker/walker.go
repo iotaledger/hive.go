@@ -43,6 +43,7 @@ func (w *Walker[T]) Next() (nextElement T) {
 	currentEntry := w.stack.Front()
 	w.stack.Remove(currentEntry)
 
+	//nolint:forcetypeassert // false positive, we know that the element is of type T
 	return currentEntry.Value.(T)
 }
 

@@ -5,11 +5,10 @@ import (
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ds/types"
-	dsTypes "github.com/iotaledger/hive.go/ds/types"
 )
 
 type BytesFilter[IdentifierType types.IdentifierType] struct {
-	knownIdentifiers *shrinkingmap.ShrinkingMap[IdentifierType, dsTypes.Empty]
+	knownIdentifiers *shrinkingmap.ShrinkingMap[IdentifierType, types.Empty]
 	identifiers      []IdentifierType
 
 	newIdentifierFunc func([]byte) IdentifierType
@@ -19,7 +18,7 @@ type BytesFilter[IdentifierType types.IdentifierType] struct {
 
 func New[IdentifierType types.IdentifierType](newIdentifierFunc func([]byte) IdentifierType, size int) *BytesFilter[IdentifierType] {
 	return &BytesFilter[IdentifierType]{
-		knownIdentifiers:  shrinkingmap.New[IdentifierType, dsTypes.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
+		knownIdentifiers:  shrinkingmap.New[IdentifierType, types.Empty](shrinkingmap.WithShrinkingThresholdCount(size)),
 		identifiers:       make([]IdentifierType, 0, size),
 		newIdentifierFunc: newIdentifierFunc,
 		size:              size,
@@ -72,7 +71,7 @@ func (b *BytesFilter[IdentifierType]) addIdentifier(identifier IdentifierType) (
 		b.identifiers = append(b.identifiers, identifier)
 	}
 
-	b.knownIdentifiers.Set(identifier, dsTypes.Void)
+	b.knownIdentifiers.Set(identifier, types.Void)
 
 	return true
 }

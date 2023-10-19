@@ -67,7 +67,6 @@ func (e *evictionState[Type]) evict(slot Type) (eventsToTrigger []Event) {
 	return eventsToTrigger
 }
 
-// evictedSlotEvent holds an event that rep
 var evictedSlotEvent = func() Event {
 	e := NewEvent()
 	e.Trigger()

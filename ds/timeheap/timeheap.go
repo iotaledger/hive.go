@@ -54,20 +54,21 @@ func (h *TimeHeap) AveragePerSecond(timeBefore time.Duration) float32 {
 	lenHeap := h.heap.Len()
 	if lenHeap > 0 {
 		for i := 0; i < lenHeap; i++ {
-			oldest := heap.Pop(&h.heap)
-			if time.Since(oldest.(*timeHeapEntry).timestamp) < timeBefore {
+			//nolint:forcetypeassert // false positive, we know that the element is of type *timeHeapEntry
+			oldest := heap.Pop(&h.heap).(*timeHeapEntry)
+
+			if time.Since(oldest.timestamp) < timeBefore {
 				heap.Push(&h.heap, oldest)
 
 				break
 			}
-			h.total -= oldest.(*timeHeapEntry).count
+
+			h.total -= oldest.count
 		}
 	}
 
 	return float32(h.total) / float32(timeBefore.Seconds())
 }
-
-///////////////// heap interface /////////////////
 
 // timedHeap defines a heap based on timeHeapEntries.
 type timeHeap []*timeHeapEntry
@@ -89,6 +90,7 @@ func (h timeHeap) Swap(i, j int) {
 
 // Push adds x as the last element to the heap.
 func (h *timeHeap) Push(x interface{}) {
+	//nolint:forcetypeassert // false positive, we know that the element is of type *timeHeapEntry
 	*h = append(*h, x.(*timeHeapEntry))
 }
 
