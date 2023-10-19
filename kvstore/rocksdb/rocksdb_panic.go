@@ -13,17 +13,17 @@ type RocksDB struct {
 }
 
 // CreateDB creates a new RocksDB instance.
-func CreateDB(directory string, options ...Option) (*RocksDB, error) {
+func CreateDB(_ string, _ ...Option) (*RocksDB, error) {
 	panic(panicMissingRocksDB)
 }
 
 // OpenDBReadOnly opens a new RocksDB instance in read-only mode.
-func OpenDBReadOnly(directory string, options ...Option) (*RocksDB, error) {
+func OpenDBReadOnly(_ string, _ ...Option) (*RocksDB, error) {
 	panic(panicMissingRocksDB)
 }
 
 // New creates a new KVStore with the underlying RocksDB.
-func New(db *RocksDB) kvstore.KVStore {
+func New(_ *RocksDB) kvstore.KVStore {
 	panic(panicMissingRocksDB)
 }
 
@@ -38,12 +38,12 @@ func (r *RocksDB) Close() error {
 }
 
 // GetProperty returns the value of a database property.
-func (r *RocksDB) GetProperty(name string) string {
+func (r *RocksDB) GetProperty(_ string) string {
 	panic(panicMissingRocksDB)
 }
 
 // GetIntProperty similar to "GetProperty", but only works for a subset of properties whose
 // return value is an integer. Return the value by integer.
-func (r *RocksDB) GetIntProperty(name string) (uint64, bool) {
+func (r *RocksDB) GetIntProperty(_ string) (uint64, bool) {
 	panic(panicMissingRocksDB)
 }
