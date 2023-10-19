@@ -3,10 +3,10 @@ module github.com/iotaledger/hive.go/ads
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/ds v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/kvstore v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/lo v0.0.0-20231019073122-5530d42468a1
+	github.com/iotaledger/hive.go/ds v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/kvstore v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/lo v0.0.0-20231019074837-11ac86cdca66
 	github.com/pokt-network/smt v0.6.1
 	github.com/stretchr/testify v1.8.4
 )
@@ -15,9 +15,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.13.4 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231019073122-5530d42468a1 // indirect
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231019073122-5530d42468a1 // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231019073122-5530d42468a1 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231019074837-11ac86cdca66 // indirect
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231019074837-11ac86cdca66 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231019074837-11ac86cdca66 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20231018191940-f36386f4e2fa // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20230904192822-1876fd5063bc // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect

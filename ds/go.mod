@@ -3,11 +3,11 @@ module github.com/iotaledger/hive.go/ds
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/lo v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231019073122-5530d42468a1
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/lo v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231019074837-11ac86cdca66
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.14.0
 )

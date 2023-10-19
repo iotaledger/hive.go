@@ -5,15 +5,15 @@ go 1.21
 require (
 	github.com/fbiville/markdown-table-formatter v0.3.0
 	github.com/iancoleman/orderedmap v0.3.0
-	github.com/iotaledger/hive.go/app v0.0.0-20231019073122-5530d42468a1
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019073122-5530d42468a1
+	github.com/iotaledger/hive.go/app v0.0.0-20231019074837-11ac86cdca66
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019074837-11ac86cdca66
 	github.com/spf13/pflag v1.0.5
 )
 
 require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231019073122-5530d42468a1 // indirect
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231019074837-11ac86cdca66 // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
