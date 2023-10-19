@@ -268,6 +268,7 @@ func (l *list[T]) insert(e, at *listElement[T]) *listElement[T] {
 	e.next.Load().prev.Store(e)
 	e.list.Store(l)
 	l.len++
+
 	return e
 }
 
@@ -279,7 +280,7 @@ func (l *list[T]) insertValue(v T, at *listElement[T]) *listElement[T] {
 	return l.insert(newElement, at)
 }
 
-// remove removes e from its list, decrements l.len
+// remove removes e from its list, decrements l.len.
 func (l *list[T]) remove(e *listElement[T]) {
 	e.prev.Load().next.Store(e.next.Load())
 	e.next.Load().prev.Store(e.prev.Load())
@@ -506,6 +507,7 @@ func (l *listElement[T]) Prev() ListElement[T] {
 	if p, elementList := l.prev.Load(), l.list.Load(); elementList != nil && p != &elementList.root {
 		return p
 	}
+
 	return nil
 }
 
@@ -514,17 +516,19 @@ func (l *listElement[T]) Next() ListElement[T] {
 	if nextElement, elementList := l.next.Load(), l.list.Load(); elementList != nil && nextElement != &elementList.root {
 		return nextElement
 	}
+
 	return nil
 }
 
 // Value returns the value of the ListElement.
 func (l *listElement[T]) Value() T {
-	if value := l.value.Load(); value == nil {
+	value := l.value.Load()
+	if value == nil {
 		var zeroValue T
 		return zeroValue
-	} else {
-		return *value
 	}
+
+	return *value
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
