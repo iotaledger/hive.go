@@ -8,8 +8,6 @@ import (
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 
-// region TimedExecutor ////////////////////////////////////////////////////////////////////////////////////////////////
-
 // Executor defines a scheduler that executes tasks in the background at a given time. It does not spawn any
 // additional goroutines for each task and executes the tasks sequentially (in each worker).
 type Executor struct {
@@ -17,7 +15,7 @@ type Executor struct {
 
 	optsMaxQueueSize int
 
-	queue      *Queue
+	queue      *Queue[func()]
 	shutdownWG sync.WaitGroup
 }
 
@@ -27,7 +25,7 @@ func NewExecutor(workerCount int, opts ...options.Option[Executor]) (timedExecut
 	return options.Apply(&Executor{
 		workerCount: workerCount,
 	}, opts, func(t *Executor) {
-		t.queue = NewQueue(WithMaxSize(t.optsMaxQueueSize))
+		t.queue = NewQueue[func()](WithMaxSize[func()](t.optsMaxQueueSize))
 		t.startBackgroundWorkers()
 	})
 }
@@ -75,7 +73,7 @@ func (t *Executor) startBackgroundWorkers() {
 		go func() {
 			for currentEntry := t.queue.Poll(true); currentEntry != nil; currentEntry = t.queue.Poll(true) {
 				//nolint:forcetypeassert // false positive, we know that the element is of type func()
-				currentEntry.(func())()
+				currentEntry()
 			}
 
 			t.shutdownWG.Done()
@@ -83,16 +81,7 @@ func (t *Executor) startBackgroundWorkers() {
 	}
 }
 
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region ScheduledTask ////////////////////////////////////////////////////////////////////////////////////////////////
-
-// ScheduledTask is.
-type ScheduledTask = QueueElement
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// region Options///////////////////////////////////////////////////////////////////////////////////////////////////////
+type ScheduledTask = QueueElement[func()]
 
 // WithMaxQueueSize is an ExecutorOption for the TimedExecutor that allows to specify a maxSize of the underlying queue.
 func WithMaxQueueSize(maxSize int) options.Option[Executor] {
@@ -100,5 +89,3 @@ func WithMaxQueueSize(maxSize int) options.Option[Executor] {
 		t.optsMaxQueueSize = maxSize
 	}
 }
-
-// endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

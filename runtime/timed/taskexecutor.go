@@ -13,7 +13,7 @@ import (
 // identifier. It allows to replace existing scheduled tasks and cancel them using the same identifier.
 type TaskExecutor[T comparable] struct {
 	*Executor
-	queuedElements      *shrinkingmap.ShrinkingMap[T, *QueueElement]
+	queuedElements      *shrinkingmap.ShrinkingMap[T, *QueueElement[func()]]
 	queuedElementsMutex sync.Mutex
 }
 
@@ -21,7 +21,7 @@ type TaskExecutor[T comparable] struct {
 func NewTaskExecutor[T comparable](workerCount int) *TaskExecutor[T] {
 	return &TaskExecutor[T]{
 		Executor:       NewExecutor(workerCount),
-		queuedElements: shrinkingmap.New[T, *QueueElement](),
+		queuedElements: shrinkingmap.New[T, *QueueElement[func()]](),
 	}
 }
 

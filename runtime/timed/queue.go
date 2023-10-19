@@ -16,8 +16,8 @@ import (
 
 // Queue represents a queue, that holds values that will only be released at a given time. The corresponding Poll
 // method waits for the element to be available before it returns its value and is therefore blocking.
-type Queue struct {
-	heap      generalheap.Heap[HeapKey, *QueueElement]
+type Queue[T any] struct {
+	heap      generalheap.Heap[HeapKey, *QueueElement[T]]
 	heapMutex sync.RWMutex
 
 	waitCond *sync.Cond
@@ -32,24 +32,19 @@ type Queue struct {
 }
 
 // NewQueue is the constructor for the timed Queue.
-func NewQueue(opts ...options.Option[Queue]) (queue *Queue) {
+func NewQueue[T any](opts ...options.Option[Queue[T]]) (queue *Queue[T]) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	return options.Apply(&Queue{
+	return options.Apply(&Queue[T]{
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
-	}, opts, func(t *Queue) {
+	}, opts, func(t *Queue[T]) {
 		t.waitCond = sync.NewCond(&t.heapMutex)
 	})
 }
 
 // Add inserts a new element into the queue that can be retrieved via Poll() at the specified time.
-func (t *Queue) Add(value any, scheduledTime time.Time) (addedElement *QueueElement) {
-	// sanitize parameters
-	if value == nil {
-		panic("<nil> must not be added to the queue")
-	}
-
+func (t *Queue[T]) Add(value T, scheduledTime time.Time) (addedElement *QueueElement[T]) {
 	// prevent modifications of a shutdown queue
 	if t.IsShutdown() {
 		if t.shutdownFlags.HasBits(PanicOnModificationsAfterShutdown) {
@@ -64,11 +59,11 @@ func (t *Queue) Add(value any, scheduledTime time.Time) (addedElement *QueueElem
 
 	// add new element
 
-	element := &generalheap.HeapElement[HeapKey, *QueueElement]{
+	element := &generalheap.HeapElement[HeapKey, *QueueElement[T]]{
 		Key: HeapKey(scheduledTime),
 	}
 
-	element.Value = &QueueElement{
+	element.Value = &QueueElement[T]{
 		timedQueue: t,
 		Value:      value,
 		rawElem:    element,
@@ -93,7 +88,7 @@ func (t *Queue) Add(value any, scheduledTime time.Time) (addedElement *QueueElem
 }
 
 // Size returns the amount of elements that are currently enqueued in this queue.
-func (t *Queue) Size() int {
+func (t *Queue[T]) Size() int {
 	t.heapMutex.RLock()
 	defer t.heapMutex.RUnlock()
 
@@ -102,7 +97,7 @@ func (t *Queue) Size() int {
 
 // Shutdown terminates the queue. It accepts an optional list of shutdown flags that allows the caller to modify the
 // shutdown behavior.
-func (t *Queue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
+func (t *Queue[T]) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 	// acquire locks
 	t.shutdownMutex.Lock()
 
@@ -153,7 +148,7 @@ func (t *Queue) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 }
 
 // IsShutdown returns true if this queue was shutdown.
-func (t *Queue) IsShutdown() bool {
+func (t *Queue[T]) IsShutdown() bool {
 	t.shutdownMutex.Lock()
 	defer t.shutdownMutex.Unlock()
 
@@ -164,7 +159,7 @@ func (t *Queue) IsShutdown() bool {
 
 // Poll returns the first value of this queue. It waits for the scheduled time before returning and is therefore
 // blocking. It returns nil if the queue is empty.
-func (t *Queue) Poll(waitIfEmpty bool) any {
+func (t *Queue[T]) Poll(waitIfEmpty bool) T {
 	for {
 		// acquire locks
 		t.heapMutex.Lock()
@@ -173,15 +168,17 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 		for len(t.heap) == 0 {
 			if !waitIfEmpty || t.IsShutdown() {
 				t.heapMutex.Unlock()
+				var empty T
 
-				return nil
+				return empty
 			}
 
 			t.waitCond.Wait()
 		}
 
 		// retrieve first element
-		polledElement := heap.Pop(&t.heap).(*generalheap.HeapElement[HeapKey, *QueueElement])
+		//nolint:forcetypeassert // false positive, we know that the element is of type *QueueElement[T]
+		polledElement := heap.Pop(&t.heap).(*generalheap.HeapElement[HeapKey, *QueueElement[T]])
 		// release locks
 		t.heapMutex.Unlock()
 
@@ -194,7 +191,9 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 			// abort if the pending elements are supposed to be canceled
 			if t.shutdownFlags.HasBits(CancelPendingElements) {
 				timeutil.CleanupTimer(timer)
-				return nil
+				var empty T
+
+				return empty
 			}
 
 			// immediately return the value if the pending timeouts are supposed to be ignored
@@ -228,7 +227,7 @@ func (t *Queue) Poll(waitIfEmpty bool) any {
 }
 
 // removeElement is an internal utility function that removes the given element from the queue.
-func (t *Queue) removeElement(element *QueueElement) {
+func (t *Queue[T]) removeElement(element *QueueElement[T]) {
 	// abort if the element was removed already
 	if element.rawElem.Index() == -1 {
 		return
@@ -243,17 +242,17 @@ func (t *Queue) removeElement(element *QueueElement) {
 // region QueueElement /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // QueueElement is an element in the TimedQueue. It.
-type QueueElement struct {
+type QueueElement[T any] struct {
 	// Value represents the value of the queued element.
-	Value any
+	Value T
 
-	timedQueue *Queue
+	timedQueue *Queue[T]
 	cancel     chan byte
-	rawElem    *generalheap.HeapElement[HeapKey, *QueueElement]
+	rawElem    *generalheap.HeapElement[HeapKey, *QueueElement[T]]
 }
 
 // Cancel removed the given element from the queue and cancels its execution.
-func (timedQueueElement *QueueElement) Cancel() {
+func (timedQueueElement *QueueElement[T]) Cancel() {
 	// acquire locks
 	timedQueueElement.timedQueue.heapMutex.Lock()
 	defer timedQueueElement.timedQueue.heapMutex.Unlock()
@@ -298,8 +297,8 @@ const (
 // region Options///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // WithMaxSize is an Option for the timed.Queue that allows to specify a maxSize of the queue.
-func WithMaxSize(maxSize int) options.Option[Queue] {
-	return func(queue *Queue) {
+func WithMaxSize[T any](maxSize int) options.Option[Queue[T]] {
+	return func(queue *Queue[T]) {
 		queue.maxSize = maxSize
 	}
 }
