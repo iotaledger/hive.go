@@ -64,7 +64,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 					// parameter not found in settings
 					break
 				}
-
+				// nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
 				parameter = par.(map[string]interface{})
 			}
 		}
@@ -130,6 +130,7 @@ func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSetti
 					break
 				}
 
+				// nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
 				parameter = par.(map[string]interface{})
 			}
 		}
@@ -268,6 +269,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		// only use the default value from the tags if the value is the zero value
 		isZeroValue := valueField.IsZero()
 
+		// nolint:forcetypeassert // false positive
 		switch defaultValue := valueField.Interface().(type) {
 		case bool:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
@@ -596,6 +598,7 @@ func (c *Configuration) UpdateBoundParameters() {
 	for _, boundParameter := range c.boundParameters {
 		parameterName := boundParameter.Name
 
+		// nolint:forcetypeassert // type switch with reflect.Type
 		switch boundParameter.BoundType {
 		case reflectutils.BoolType:
 			*(boundParameter.BoundPointer.(*bool)) = c.Bool(parameterName)
