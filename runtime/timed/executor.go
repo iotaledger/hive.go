@@ -74,6 +74,7 @@ func (t *Executor) startBackgroundWorkers() {
 		t.shutdownWG.Add(1)
 		go func() {
 			for currentEntry := t.queue.Poll(true); currentEntry != nil; currentEntry = t.queue.Poll(true) {
+				//nolint:forcetypeassert // false positive, we know that the element is of type func()
 				currentEntry.(func())()
 			}
 
