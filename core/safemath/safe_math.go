@@ -206,3 +206,23 @@ func Safe64MulDiv(x, y, div uint64) (uint64, error) {
 
 	return lo.Return1(bits.Div64(prodHi, prodLo, div)), nil
 }
+
+// Given x, y and shift as unsigned 64-bits integers, returns (x*y)>>shift or an error if that computation would under- or overflow.
+func Safe64MulShift(x, y, shift uint64) (uint64, error) {
+	prodHi, prodLo := bits.Mul64(x, y)
+
+	if shift <= 64 {
+		resHi := prodHi >> shift
+		if resHi != 0 {
+			return 0, ierrors.Wrapf(ErrIntegerOverflow, "(%d*(2^64)+%d) >> %d", x, y, shift)
+		}
+		resLoLo := prodLo >> shift
+		resLoHi := prodHi << (64 - shift)
+
+		return lo.Return1(SafeAdd(resLoLo, resLoHi)), nil
+	} else {
+		extraShift := shift - 64
+		return prodHi >> extraShift, nil
+	}
+}
+
