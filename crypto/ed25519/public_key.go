@@ -91,3 +91,18 @@ func (publicKey PublicKey) ToEd25519() ed25519.PublicKey {
 
 	return nativePubKey
 }
+
+// UnmarshalJSON parses public key from JSON in base58 encoding.
+func (publicKey *PublicKey) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	pk, err := PublicKeyFromString(s)
+	if err != nil {
+		return ierrors.Wrap(err, "failed to parse public key from JSON")
+	}
+	*publicKey = pk
+
+	return nil
+}
