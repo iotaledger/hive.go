@@ -220,9 +220,9 @@ func Safe64MulShift(x, y, shift uint64) (uint64, error) {
 		resLoHi := prodHi << (64 - shift)
 
 		return lo.Return1(SafeAdd(resLoLo, resLoHi)), nil
-	} else {
-		extraShift := shift - 64
-		return prodHi >> extraShift, nil
 	}
+	extraShift := shift - 64
+	return prodHi >> extraShift, nil
+
 }
 
