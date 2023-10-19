@@ -21,34 +21,34 @@ const (
 )
 
 // AuthenticatedMap is a sparse merkle tree based map.
-type authenticatedMap[K, V any] struct {
+type authenticatedMap[IdentifierType types.IdentifierType, K, V any] struct {
 	rawKeysStore *kvstore.TypedStore[K, types.Empty]
 	tree         *smt.SMT
 	size         *typedkey.Number[uint64]
 	root         *typedkey.Bytes
 	mutex        sync.RWMutex
 
-	kToBytes kvstore.ObjectToBytes[K]
-	vToBytes kvstore.ObjectToBytes[V]
-	bytesToV kvstore.BytesToObject[V]
+	keyToBytes   kvstore.ObjectToBytes[K]
+	valueToBytes kvstore.ObjectToBytes[V]
+	bytesToValue kvstore.BytesToObject[V]
 }
 
 // NewAuthenticatedMap creates a new authenticated map.
-func newAuthenticatedMap[K, V any](
+func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 	store kvstore.KVStore,
-	kToBytes kvstore.ObjectToBytes[K],
-	bytesToK kvstore.BytesToObject[K],
-	vToBytes kvstore.ObjectToBytes[V],
-	bytesToV kvstore.BytesToObject[V],
-) *authenticatedMap[K, V] {
-	newMap := &authenticatedMap[K, V]{
-		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), kToBytes, bytesToK, types.Empty.Bytes, types.EmptyFromBytes),
+	keyToBytes kvstore.ObjectToBytes[K],
+	bytesToKey kvstore.BytesToObject[K],
+	valueToBytes kvstore.ObjectToBytes[V],
+	bytesToValue kvstore.BytesToObject[V],
+) *authenticatedMap[IdentifierType, K, V] {
+	newMap := &authenticatedMap[IdentifierType, K, V]{
+		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), keyToBytes, bytesToKey, types.Empty.Bytes, types.EmptyFromBytes),
 		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
 		root:         typedkey.NewBytes(store, prefixRootKey),
 
-		kToBytes: kToBytes,
-		vToBytes: vToBytes,
-		bytesToV: bytesToV,
+		keyToBytes:   keyToBytes,
+		valueToBytes: valueToBytes,
+		bytesToValue: bytesToValue,
 	}
 
 	if root := newMap.root.Get(); len(root) != 0 {
@@ -61,12 +61,12 @@ func newAuthenticatedMap[K, V any](
 }
 
 // WasRestoredFromStorage returns true if the map has been restored from storage.
-func (m *authenticatedMap[K, V]) WasRestoredFromStorage() bool {
+func (m *authenticatedMap[IdentifierType, K, V]) WasRestoredFromStorage() bool {
 	return len(m.root.Get()) != 0
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
-func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
+func (m *authenticatedMap[IdentifierType, K, V]) Root() (root IdentifierType) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -76,16 +76,16 @@ func (m *authenticatedMap[K, V]) Root() (root types.Identifier) {
 }
 
 // Set sets the output to unspent outputs set.
-func (m *authenticatedMap[K, V]) Set(key K, value V) error {
+func (m *authenticatedMap[IdentifierType, K, V]) Set(key K, value V) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	valueBytes, err := m.vToBytes(value)
+	valueBytes, err := m.valueToBytes(value)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize value")
 	}
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -111,7 +111,7 @@ func (m *authenticatedMap[K, V]) Set(key K, value V) error {
 }
 
 // Size returns the number of elements in the map.
-func (m *authenticatedMap[K, V]) Size() int {
+func (m *authenticatedMap[IdentifierType, K, V]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -119,7 +119,7 @@ func (m *authenticatedMap[K, V]) Size() int {
 }
 
 // Commit persists the current state of the map to the storage.
-func (m *authenticatedMap[K, V]) Commit() error {
+func (m *authenticatedMap[IdentifierType, K, V]) Commit() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -129,11 +129,11 @@ func (m *authenticatedMap[K, V]) Commit() error {
 }
 
 // Delete removes the key from the map.
-func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
+func (m *authenticatedMap[IdentifierType, K, V]) Delete(key K) (deleted bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -163,11 +163,11 @@ func (m *authenticatedMap[K, V]) Delete(key K) (deleted bool, err error) {
 }
 
 // Has returns true if the key is in the set.
-func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
+func (m *authenticatedMap[IdentifierType, K, V]) Has(key K) (has bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -176,11 +176,11 @@ func (m *authenticatedMap[K, V]) Has(key K) (has bool, err error) {
 }
 
 // Get returns the value for the given key.
-func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
+func (m *authenticatedMap[IdentifierType, K, V]) Get(key K) (value V, exists bool, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	keyBytes, err := m.kToBytes(key)
+	keyBytes, err := m.keyToBytes(key)
 	if err != nil {
 		return value, false, ierrors.Wrap(err, "failed to serialize key")
 	}
@@ -194,7 +194,7 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 		return value, false, err
 	}
 
-	v, consumed, err := m.bytesToV(valueBytes)
+	v, consumed, err := m.bytesToValue(valueBytes)
 	if err != nil {
 		return value, false, ierrors.Wrap(err, "failed to deserialize value")
 	}
@@ -207,13 +207,13 @@ func (m *authenticatedMap[K, V]) Get(key K) (value V, exists bool, err error) {
 }
 
 // Stream streams all the keys and values.
-func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) error {
+func (m *authenticatedMap[IdentifierType, K, V]) Stream(callback func(key K, value V) error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	var innerErr error
 	if iterationErr := m.rawKeysStore.IterateKeys([]byte{}, func(key K) bool {
-		keyBytes, err := m.kToBytes(key)
+		keyBytes, err := m.keyToBytes(key)
 		if err != nil {
 			innerErr = ierrors.Wrapf(err, "failed to serialize key %s", keyBytes)
 
@@ -227,7 +227,7 @@ func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) err
 			return false
 		}
 
-		value, _, valueErr := m.bytesToV(valueBytes)
+		value, _, valueErr := m.bytesToValue(valueBytes)
 		if valueErr != nil {
 			innerErr = ierrors.Wrapf(valueErr, "failed to deserialize value %s", valueBytes)
 
@@ -249,7 +249,7 @@ func (m *authenticatedMap[K, V]) Stream(callback func(key K, value V) error) err
 }
 
 // has returns true if the key is in the map.
-func (m *authenticatedMap[K, V]) has(keyBytes []byte) (has bool, err error) {
+func (m *authenticatedMap[IdentifierType, K, V]) has(keyBytes []byte) (has bool, err error) {
 	value, err := m.tree.Get(keyBytes)
 	if err != nil {
 		return false, ierrors.Wrap(err, "failed to get from tree")

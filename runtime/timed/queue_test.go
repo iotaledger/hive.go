@@ -17,12 +17,12 @@ import (
 func TestQueueElement_MemLeak(t *testing.T) {
 	const testCount = 100000
 
-	timedQueue := NewQueue()
+	timedQueue := NewQueue[func()]()
 	memStatsStart := memStats()
 
 	go func() {
 		for currentElement := timedQueue.Poll(true); currentElement != nil; currentElement = timedQueue.Poll(true) {
-			currentElement.(func())()
+			currentElement()
 		}
 	}()
 
@@ -56,13 +56,13 @@ func TestQueueSize(t *testing.T) {
 	t1 := time.Now().Add(1 * time.Hour)
 	t2 := time.Now().Add(5 * time.Hour)
 
-	timedQueue := NewQueue(WithMaxSize(maxSize))
+	timedQueue := NewQueue(WithMaxSize[func()](maxSize))
 	defer timedQueue.Shutdown()
 
 	// start worker (will simply block because times are too far in the future)
 	go func() {
 		for currentElement := timedQueue.Poll(true); currentElement != nil; currentElement = timedQueue.Poll(true) {
-			currentElement.(func())()
+			currentElement()
 		}
 	}()
 
@@ -79,7 +79,7 @@ func TestQueueSize(t *testing.T) {
 
 	// verify that all elements in the queue have time t1
 	for i := 0; i < timedQueue.Size(); i++ {
-		e := heap.Remove(&timedQueue.heap, 0).(*generalheap.HeapElement[HeapKey, *QueueElement])
+		e := heap.Remove(&timedQueue.heap, 0).(*generalheap.HeapElement[HeapKey, *QueueElement[func()]])
 		assert.EqualValues(t, t1, e.Key)
 	}
 }
@@ -87,7 +87,7 @@ func TestQueueSize(t *testing.T) {
 func TestTimedQueue(t *testing.T) {
 	const elementsCount = 10
 
-	tq := NewQueue()
+	tq := NewQueue[int]()
 	defer tq.Shutdown()
 
 	// prepare a list to insert
@@ -104,7 +104,7 @@ func TestTimedQueue(t *testing.T) {
 	// wait and Poll all elements, check the popped time is correct.
 	consumed := 0
 	for {
-		topElement := tq.Poll(false).(int)
+		topElement := tq.Poll(false)
 
 		// make sure elements are ready at their specified time.
 		assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)
@@ -122,7 +122,7 @@ func TestTimedQueue(t *testing.T) {
 func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 	const elementsCount = 10
 
-	tq := NewQueue()
+	tq := NewQueue[int]()
 	defer tq.Shutdown()
 
 	consumed := 0
@@ -138,7 +138,7 @@ func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for {
-			topElement := tq.Poll(true).(int)
+			topElement := tq.Poll(true)
 
 			// make sure elements are ready at their specified time.
 			assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)
@@ -170,14 +170,14 @@ func TestTimedQueuePollWaitIfEmpty(t *testing.T) {
 func TestTimedQueueCancel(t *testing.T) {
 	const elementsCount = 10
 
-	tq := NewQueue()
+	tq := NewQueue[int]()
 	defer tq.Shutdown()
 
 	consumed := 0
 
 	// prepare a list to insert
 	var elements []time.Time
-	var queueElements []*QueueElement
+	var queueElements []*QueueElement[int]
 
 	now := time.Now().Add(5 * time.Second)
 	for i := 0; i < elementsCount; i++ {
@@ -190,7 +190,7 @@ func TestTimedQueueCancel(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for {
-			topElement := tq.Poll(true).(int)
+			topElement := tq.Poll(true)
 
 			// make sure elements are ready at their specified time.
 			assert.True(t, time.Since(elements[topElement]) < 200*time.Millisecond)

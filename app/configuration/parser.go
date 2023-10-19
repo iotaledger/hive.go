@@ -16,8 +16,8 @@ func mapToLowerKeys(m map[string]interface{}) {
 			mapToLowerKeys(v)
 		case map[interface{}]interface{}:
 			// nested map: cast and call recursively
-			val = cast.ToStringMap(val)
-			mapToLowerKeys(val.(map[string]interface{}))
+			stringMap := cast.ToStringMap(val)
+			mapToLowerKeys(stringMap)
 		}
 
 		lower := strings.ToLower(key)

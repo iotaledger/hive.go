@@ -78,7 +78,7 @@ func Interface(value interface{}) string {
 			panic("undefined reflect type: " + typeCastedValue.Kind().String())
 		}
 	case fmt.Stringer:
-		return value.(fmt.Stringer).String()
+		return typeCastedValue.String()
 	default:
 		value := reflect.ValueOf(value)
 		switch value.Kind() {

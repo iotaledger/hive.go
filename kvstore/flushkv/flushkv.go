@@ -150,6 +150,6 @@ func (b *batchedMutations) Commit() error {
 	return b.store.Flush()
 }
 
-// code guards
+// code guards.
 var _ kvstore.KVStore = &flushKVStore{}
 var _ kvstore.BatchedMutations = &batchedMutations{}

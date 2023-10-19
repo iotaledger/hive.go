@@ -9,9 +9,6 @@ import (
 // callback is an internal wrapper for a callback function that is extended by an ID and a mutex (for call order
 // synchronization).
 type callback[FuncType any] struct {
-	// ID is the unique identifier of the callback.
-	ID uniqueID
-
 	// Invoke is the callback function that is invoked when the callback is triggered.
 	Invoke FuncType
 
@@ -26,9 +23,8 @@ type callback[FuncType any] struct {
 }
 
 // newCallback is the constructor for the callback type.
-func newCallback[FuncType any](id uniqueID, invoke FuncType) *callback[FuncType] {
+func newCallback[FuncType any](invoke FuncType) *callback[FuncType] {
 	return &callback[FuncType]{
-		ID:     id,
 		Invoke: invoke,
 	}
 }

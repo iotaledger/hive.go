@@ -14,7 +14,7 @@ var errStopIteration = ierrors.New("stop")
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := newAuthenticatedSet(
+	newSet := newAuthenticatedSet[[32]byte](
 		store,
 		testKey.Bytes,
 		testKeyFromBytes,
@@ -49,7 +49,7 @@ func TestSet(t *testing.T) {
 	require.NotEqualValues(t, root, root1)
 
 	// new set from old store, make sure the root is correct
-	newSet1 := newAuthenticatedSet(store,
+	newSet1 := newAuthenticatedSet[[32]byte](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -58,7 +58,7 @@ func TestSet(t *testing.T) {
 
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
-	newSet := newAuthenticatedSet(store,
+	newSet := newAuthenticatedSet[[32]byte](store,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)

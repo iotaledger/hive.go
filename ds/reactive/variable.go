@@ -133,6 +133,29 @@ func NewDerivedVariable3[Type, InputType1, InputType2, InputType3 comparable, In
 	})
 }
 
+// NewDerivedVariable4 creates a DerivedVariable that transforms four input values into a different one.
+func NewDerivedVariable4[Type, InputType1, InputType2, InputType3, InputType4 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2], InputValueType3 ReadableVariable[InputType3], InputValueType4 ReadableVariable[InputType4]](compute func(InputType1, InputType2, InputType3, InputType4) Type, input1 InputValueType1, input2 InputValueType2, input3 InputValueType3, input4 InputValueType4) DerivedVariable[Type] {
+	return newDerivedVariable[Type](func(d DerivedVariable[Type]) func() {
+		return lo.Batch(
+			input1.OnUpdate(func(_, input1 InputType1) {
+				d.Compute(func(_ Type) Type { return compute(input1, input2.Get(), input3.Get(), input4.Get()) })
+			}, true),
+
+			input2.OnUpdate(func(_, input2 InputType2) {
+				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2, input3.Get(), input4.Get()) })
+			}, true),
+
+			input3.OnUpdate(func(_, input3 InputType3) {
+				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2.Get(), input3, input4.Get()) })
+			}, true),
+
+			input4.OnUpdate(func(_, input4 InputType4) {
+				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2.Get(), input3.Get(), input4) })
+			}, true),
+		)
+	})
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region VariableLogReceiver //////////////////////////////////////////////////////////////////////////////////////////

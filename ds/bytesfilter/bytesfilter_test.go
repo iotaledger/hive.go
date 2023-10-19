@@ -5,13 +5,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/iotaledger/hive.go/ds/bytesfilter"
-	"github.com/iotaledger/hive.go/ds/types"
 )
 
+func newIdentifier(bytes []byte) [32]byte {
+	return blake2b.Sum256(bytes)
+}
+
 func TestBytesFilter(t *testing.T) {
-	filter := bytesfilter.New(2)
+
+	filter := bytesfilter.New[[32]byte](newIdentifier, 2)
 
 	data := randBytes(20)
 	id, added := filter.Add(data)
@@ -24,7 +29,7 @@ func TestBytesFilter(t *testing.T) {
 
 	// add new identifier
 	randData := rand32ByteArray()
-	randID := types.NewIdentifier(randData[:])
+	randID := newIdentifier(randData[:])
 	added = filter.AddIdentifier(randID)
 	require.True(t, added)
 	exists = filter.ContainsIdentifier(randID)
@@ -42,7 +47,7 @@ func TestBytesFilter(t *testing.T) {
 	require.ElementsMatch(t, id, id1)
 
 	tmpID := rand32ByteArray()
-	exists = filter.ContainsIdentifier(types.NewIdentifier(tmpID[:]))
+	exists = filter.ContainsIdentifier(newIdentifier(tmpID[:]))
 	require.False(t, exists)
 
 	data3 := randBytes(20)
@@ -80,8 +85,8 @@ func BenchmarkContains(b *testing.B) {
 	}
 }
 
-func setupTest(filterSize int, byteArraySize int) (*bytesfilter.BytesFilter, []byte) {
-	filter := bytesfilter.New(filterSize)
+func setupTest(filterSize int, byteArraySize int) (*bytesfilter.BytesFilter[[32]byte], []byte) {
+	filter := bytesfilter.New[[32]byte](newIdentifier, filterSize)
 
 	for j := 0; j < filterSize; j++ {
 		byteArray := make([]byte, byteArraySize)

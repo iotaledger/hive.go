@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/iotaledger/hive.go/ds"
-	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -137,13 +136,10 @@ func (s *set[ElementType]) replace(elements ds.ReadableSet[ElementType]) (applie
 // readableSet is th standard implementation of the ReadableSet interface.
 type readableSet[ElementType comparable] struct {
 	// updateCallbacks are the registered callbacks that are triggered when the value changes.
-	updateCallbacks *shrinkingmap.ShrinkingMap[uniqueID, *callback[func(ds.SetMutations[ElementType])]]
+	updateCallbacks ds.List[*callback[func(ds.SetMutations[ElementType])]]
 
 	// uniqueUpdateID is the unique ID that is used to identify an update.
 	uniqueUpdateID uniqueID
-
-	// uniqueCallbackID is the unique ID that is used to identify a callback.
-	uniqueCallbackID uniqueID
 
 	// value is the current value of the set.
 	value ds.Set[ElementType]
@@ -162,7 +158,7 @@ func newReadableSet[ElementType comparable](elements ...ElementType) *readableSe
 	return &readableSet[ElementType]{
 		ReadableSet:     setInstance.ReadOnly(),
 		value:           setInstance,
-		updateCallbacks: shrinkingmap.New[uniqueID, *callback[func(ds.SetMutations[ElementType])]](),
+		updateCallbacks: ds.NewList[*callback[func(ds.SetMutations[ElementType])]](),
 	}
 }
 
@@ -172,8 +168,8 @@ func (r *readableSet[ElementType]) OnUpdate(callback func(appliedMutations ds.Se
 
 	mutations := ds.NewSetMutations[ElementType]().WithAddedElements(r.Clone())
 
-	createdCallback := newCallback[func(ds.SetMutations[ElementType])](r.uniqueCallbackID.Next(), callback)
-	r.updateCallbacks.Set(createdCallback.ID, createdCallback)
+	createdCallback := newCallback[func(ds.SetMutations[ElementType])](callback)
+	callbackElement := r.updateCallbacks.PushBack(createdCallback)
 
 	// grab the lock to make sure that the callback is not executed before we have called it with the initial value.
 	createdCallback.LockExecution(r.uniqueUpdateID)
@@ -186,7 +182,7 @@ func (r *readableSet[ElementType]) OnUpdate(callback func(appliedMutations ds.Se
 	}
 
 	return func() {
-		r.updateCallbacks.Delete(createdCallback.ID)
+		r.updateCallbacks.Remove(callbackElement)
 
 		createdCallback.MarkUnsubscribed()
 	}

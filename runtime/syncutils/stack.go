@@ -43,6 +43,7 @@ func (b *Stack[T]) Pop() (element T, success bool) {
 		return
 	}
 
+	//nolint:forcetypeassert // false positive, we know that the element is of type T
 	return b.elements.Remove(b.elements.Front()).(T), true
 }
 
@@ -71,6 +72,7 @@ func (b *Stack[T]) PopOrWait(waitCondition func() bool) (element T, success bool
 		b.elementAdded.Wait()
 	}
 
+	//nolint:forcetypeassert // false positive, we know that the element is of type T
 	return b.elements.Remove(b.elements.Front()).(T), true
 }
 

@@ -142,6 +142,8 @@ func (s *set[ElementType]) apply(mutations SetMutations[ElementType]) (appliedMu
 // region readableSet //////////////////////////////////////////////////////////////////////////////////////////////////
 
 // readableSet is the standard implementation of the ReadableSet interface.
+//
+//nolint:tagliatelle // heck knows why this linter fails here
 type readableSet[T comparable] struct {
 	*orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
 }
@@ -367,7 +369,7 @@ func (s *setArithmetic[ElementType]) Subtract(mutations SetMutations[ElementType
 }
 
 // SubtractedElementsCollector returns a function that deletes an element from the given mutations if its occurrence count
-// falls below the given threshold (after the subtraction)
+// falls below the given threshold (after the subtraction).
 func (s *setArithmetic[ElementType]) SubtractedElementsCollector(mutations SetMutations[ElementType], threshold ...int) func(ElementType) {
 	return s.elementsCollector(mutations.DeletedElements(), mutations.AddedElements(), false, lo.First(threshold, 1))
 }

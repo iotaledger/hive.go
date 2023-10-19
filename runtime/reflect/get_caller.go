@@ -62,17 +62,18 @@ func GetExternalCallers(packageName string, skipCallers int) (callers *CallStack
 		frames := runtime.CallersFrames(programCounters[:programCountersSize])
 		frameCounter := 0
 		for {
-			if frame, frameExists := frames.Next(); !frameExists {
+			frame, frameExists := frames.Next()
+			if !frameExists {
 				break
-			} else {
-				if frameCounter := len(callStack.frames); callStack.externalEntryPoint == 0 && path.Base(path.Dir(frame.File)) != packageName {
-					callStack.externalEntryPoint = frameCounter + skipCallers
-				}
-
-				callStack.frames = append(callStack.frames, frame)
-
-				frameCounter++
 			}
+
+			if frameCounter := len(callStack.frames); callStack.externalEntryPoint == 0 && path.Base(path.Dir(frame.File)) != packageName {
+				callStack.externalEntryPoint = frameCounter + skipCallers
+			}
+
+			callStack.frames = append(callStack.frames, frame)
+
+			frameCounter++
 		}
 	}
 
@@ -91,12 +92,13 @@ func GetCallers(skipCallers int) (callers Callers) {
 	if programCountersSize >= 1 {
 		frames := runtime.CallersFrames(programCounters[:programCountersSize])
 		for {
-			if frame, frameExists := frames.Next(); !frameExists {
+			frame, frameExists := frames.Next()
+			if !frameExists {
 				break
-			} else {
-				fmt.Println(path.Base(path.Dir(frame.File)))
-				callers = append(callers, frame)
 			}
+
+			fmt.Println(path.Base(path.Dir(frame.File)))
+			callers = append(callers, frame)
 		}
 	}
 

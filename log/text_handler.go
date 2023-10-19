@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // NewTextHandler creates a new handler that writes human-readable log records to the given output.
@@ -49,6 +51,7 @@ func (t *textHandler) Handle(_ context.Context, r slog.Record) error {
 
 	r.Attrs(func(attr slog.Attr) bool {
 		if attr.Key == namespaceKey {
+			//nolint:forcetypeassert // false positive, we know that the value is a string for a namespace key
 			namespace = attr.Value.Any().(string)
 		} else {
 			fieldsBuffer.WriteString(attr.String())
@@ -63,7 +66,9 @@ func (t *textHandler) Handle(_ context.Context, r slog.Record) error {
 		fieldsBuffer.WriteString(")")
 	}
 
-	fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String())
+	if _, err := fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String()); err != nil {
+		return ierrors.Wrap(err, "writing log record failed")
+	}
 
 	return nil
 }

@@ -38,6 +38,7 @@ func newEvent[TriggerFunc any](opts ...Option) *event[TriggerFunc] {
 	}
 
 	if !IsInterfaceNil(e.triggerSettings.preTriggerFunc) {
+		//nolint:forcetypeassert // false positive, we know that preTriggerFunc is of type TriggerFunc
 		e.preTriggerFunc = e.triggerSettings.preTriggerFunc.(TriggerFunc)
 	}
 
