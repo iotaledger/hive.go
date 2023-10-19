@@ -137,4 +137,3 @@ issues:
     #    - "blank-imports" # revive
     #    - "var-naming: don't use leading k in Go names;" #revive
     #    - 'shadow: declaration of "err"' # govet
-
