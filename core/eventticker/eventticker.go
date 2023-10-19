@@ -181,6 +181,7 @@ func (r *EventTicker[I, T]) reSchedule(id T, count int) {
 			r.updateScheduledTickerCount(-1)
 
 			r.Events.TickerFailed.Trigger(id)
+
 			return
 		}
 

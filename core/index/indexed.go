@@ -8,6 +8,7 @@ func Max[I Type](i, o I) I {
 	if i > o {
 		return i
 	}
+
 	return o
 }
 
