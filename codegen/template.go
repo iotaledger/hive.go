@@ -61,6 +61,7 @@ func (t *Template) Generate(fileName string, optGenerator ...func() (string, err
 		return ierrors.Wrap(err, "could not generate content")
 	}
 
+	//nolint:gosec // false positive, only used for code generation
 	return os.WriteFile(fileName, []byte(strings.Join([]string{
 		generatedFileHeader + t.header,
 		generatedContent + "\n",

@@ -22,7 +22,7 @@ import (
 // | params        | string   | the current list of variadic parameters (without types).   | i.e. "arg1, arg2"         |
 // | typedParams   | string   | the current list of variadic parameters (including types). | i.e. "arg1 T1, arg2 T2"   |
 // | types         | string   | the current list of variadic types.                        | i.e. "T1, T2"             |
-// +---------------+----------+------------------------------------------------------------+---------------------------+
+// +---------------+----------+------------------------------------------------------------+---------------------------.
 type Variadic struct {
 	// currentParamCount is the number of parameters of the currently generated variadic instance.
 	currentParamCount int
