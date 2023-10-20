@@ -58,7 +58,7 @@ func main() {
 func printUsage(errorMsg string) {
 	_, _ = fmt.Fprintf(os.Stderr, "Error:\t%s\n\n", errorMsg)
 	_, _ = fmt.Fprintf(os.Stderr, "Usage of gen/cmd:\n")
-	_, _ = fmt.Fprintf(os.Stderr, "\tcmd [templateFile] [outputFile] [typeName] [typeReceiver] [features separated by space] [additional fields separated by space (FieldName=FieldValue)]\n")
+	_, _ = fmt.Fprintf(os.Stderr, "\tcmd [templateFile] [outputFile] [typeName] [typeReceiver] [features separated by comma (Feature1,Feature2)] [additional fields separated by comma (FieldName1=FieldValue1,FieldName2=FieldValue2)]\n")
 
 	os.Exit(2)
 }
