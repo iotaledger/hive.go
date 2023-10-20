@@ -9,12 +9,12 @@ import (
 func newConfiguration(fileName, name, receiver, featuresStr, additionalFieldsStr string) any {
 	// add all enabled features to a map
 	features := make(map[string]bool)
-	for _, feature := range strings.Split(featuresStr, " ") {
+	for _, feature := range strings.Split(featuresStr, ",") {
 		features[feature] = true
 	}
 
 	additionalFields := make(map[string]string)
-	for _, additionalField := range strings.Split(additionalFieldsStr, " ") {
+	for _, additionalField := range strings.Split(additionalFieldsStr, ",") {
 		if len(additionalField) == 0 {
 			continue
 		}
