@@ -19,12 +19,18 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 6 {
+	if len(os.Args) < 7 {
 		printUsage("not enough parameters")
 	}
 
 	templateFilePath := os.Args[1]
-	conf := newConfiguration(os.Args[2], os.Args[3], os.Args[4], os.Args[5])
+	fileName := os.Args[2]
+	name := os.Args[3]
+	receiver := os.Args[4]
+	featuresStr := os.Args[5]
+	additionalFieldsStr := os.Args[6]
+
+	conf := newConfiguration(fileName, name, receiver, featuresStr, additionalFieldsStr)
 
 	funcs := template.FuncMap{
 		"firstLower": func(s string) string {
@@ -45,14 +51,14 @@ func main() {
 
 	formattedOutput := lo.PanicOnErr(format.Source(buffer.Bytes()))
 
-	panicOnError(os.WriteFile(conf.FileName, formattedOutput, 0600))
+	panicOnError(os.WriteFile(fileName, formattedOutput, 0600))
 }
 
 // printUsage prints the usage of the variadic code generator in case of an error.
 func printUsage(errorMsg string) {
 	_, _ = fmt.Fprintf(os.Stderr, "Error:\t%s\n\n", errorMsg)
 	_, _ = fmt.Fprintf(os.Stderr, "Usage of gen/cmd:\n")
-	_, _ = fmt.Fprintf(os.Stderr, "\tcmd [templateFile] [outputFile] [typeName] [typeReceiver] [features separated by space]\n")
+	_, _ = fmt.Fprintf(os.Stderr, "\tcmd [templateFile] [outputFile] [typeName] [typeReceiver] [features separated by space] [additional fields separated by space (FieldName=FieldValue)]\n")
 
 	os.Exit(2)
 }
