@@ -329,11 +329,12 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 		case float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
+				value, err := strconv.ParseFloat(tagDefaultValue, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = value
 				}
+
+				defaultValue = value
 			}
 			flagset.Float64VarP(valueField.Addr().Interface().(*float64), name, shortHand, defaultValue, usage)
 
