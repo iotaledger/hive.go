@@ -2,102 +2,130 @@ package stream
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-// Read reads a generic basic type from the stream.
-func Read[T any](reader io.ReadSeeker) (result T, err error) {
+// Read reads a generic basic type from the reader.
+func Read[T allowedGenericTypes](reader io.Reader) (result T, err error) {
 	return result, binary.Read(reader, binary.LittleEndian, &result)
 }
 
-// ReadSerializable reads a serializable type from the stream (if the serialized field is of fixed size, we can provide
-// the length to omit additional information about the length of the serializable).
-func ReadSerializable[T any, TPtr serializer.MarshalablePtr[T]](reader io.ReadSeeker, target TPtr, optFixedSize ...int) (err error) {
-	var readBytes []byte
-	if len(optFixedSize) == 0 {
-		if readBytes, err = ReadBlob(reader); err != nil {
-			return ierrors.Wrap(err, "failed to read serialized bytes")
-		}
-	} else {
-		if readBytes, err = ReadBytes(reader, uint64(optFixedSize[0])); err != nil {
-			return ierrors.Wrap(err, "failed to read serialized bytes")
-		}
+// ReadBytesVariable reads a byte slice from the reader where lenType specifies the serialization length prefix type.
+func ReadBytesVariable(reader io.Reader, lenType serializer.SeriLengthPrefixType) ([]byte, error) {
+	size, err := readFixedSize(reader, lenType)
+	if err != nil {
+		return nil, ierrors.Wrap(err, "failed to read blob size")
 	}
 
-	if consumedBytes, err := target.FromBytes(readBytes); err != nil {
-		return ierrors.Wrap(err, "failed to parse bytes of serializable")
-	} else if len(optFixedSize) > 1 && consumedBytes != len(readBytes) {
-		return ierrors.Errorf("failed to parse serializable: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
+	readBytes := make([]byte, size)
+
+	nBytes, err := reader.Read(readBytes)
+	if err != nil {
+		return nil, ierrors.Wrap(err, "failed to read serialized bytes")
+	}
+	if uint64(nBytes) != size {
+		return nil, ierrors.Errorf("failed to read serialized bytes: read bytes (%d) != size (%d)", nBytes, size)
 	}
 
-	return
+	return readBytes, nil
 }
 
-// ReadFunc reads a type from the stream as specified by readFunc. If the serialized type is of fixed size, we can provide
-// the length to omit additional information about the length.
-// Note: optFixedSize needs to be specified when writing this type as well, otherwise there will be issues with the bytes' alignment.
-func ReadFunc[T any](reader io.ReadSeeker, readFunc func(bytes []byte) (T, int, error), optFixedSize ...int) (T, error) {
-	var readBytes []byte
+// ReadFixedFunc reads a type from the reader as specified by fromBytesFunc. A fixed length for the deserialized type must be specified.
+func ReadFixedFunc[T any](reader io.Reader, fixedLen int, fromBytesFunc func(bytes []byte) (T, int, error)) (T, error) {
 	var result T
-	var err error
+	readBytes := make([]byte, fixedLen)
 
-	if len(optFixedSize) == 0 {
-		if readBytes, err = ReadBlob(reader); err != nil {
-			return result, ierrors.Wrap(err, "failed to read serialized bytes")
-		}
-	} else {
-		if readBytes, err = ReadBytes(reader, uint64(optFixedSize[0])); err != nil {
-			return result, ierrors.Wrap(err, "failed to read serialized bytes")
-		}
+	nBytes, err := reader.Read(readBytes)
+	if err != nil {
+		return result, ierrors.Wrap(err, "failed to read serialized bytes")
+	}
+	if nBytes != fixedLen {
+		return result, ierrors.Errorf("failed to read serialized bytes: read bytes (%d) != fixed size (%d)", nBytes, fixedLen)
 	}
 
-	result, consumedBytes, err := readFunc(readBytes)
+	result, consumedBytes, err := fromBytesFunc(readBytes)
 	if err != nil {
-		return result, ierrors.Wrap(err, "failed to parse bytes of readFunc")
-	} else if len(optFixedSize) > 1 && consumedBytes != len(readBytes) {
-		return result, ierrors.Errorf("failed to parse readFunc: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
+		return result, ierrors.Wrap(err, "failed to parse bytes of fromBytesFunc")
+	}
+	if consumedBytes != len(readBytes) {
+		return result, ierrors.Errorf("failed to parse fromBytesFunc: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
 	}
 
 	return result, nil
 }
 
-// ReadBytes reads a byte slice of the given size from the stream.
-func ReadBytes(reader io.ReadSeeker, size uint64) (bytes []byte, err error) {
-	bytes = make([]byte, size)
-	if err = binary.Read(reader, binary.LittleEndian, &bytes); err != nil {
-		err = ierrors.Wrapf(err, "failed to read %d bytes", size)
+// ReadVariableFunc reads a type from the reader as specified by fromBytesFunc. The serialization length prefix type must be specified.
+func ReadVariableFunc[T any](reader io.Reader, lenType serializer.SeriLengthPrefixType, fromBytesFunc func(bytes []byte) (T, int, error)) (T, error) {
+	var result T
+
+	readBytes, err := ReadBytesVariable(reader, lenType)
+	if err != nil {
+		return result, ierrors.Wrap(err, "failed to read serialized bytes")
 	}
 
-	return
-}
-
-// ReadBlob reads a byte slice from the stream (the first 8 bytes are the length of the blob).
-func ReadBlob(reader io.ReadSeeker) (blob []byte, err error) {
-	var size uint64
-	if size, err = Read[uint64](reader); err != nil {
-		err = ierrors.Wrap(err, "failed to read blob size")
-	} else if blob, err = ReadBytes(reader, size); err != nil {
-		err = ierrors.Wrap(err, "failed to read blob")
+	result, consumedBytes, err := fromBytesFunc(readBytes)
+	if err != nil {
+		return result, ierrors.Wrap(err, "failed to parse bytes of fromBytesFunc")
+	}
+	if consumedBytes != len(readBytes) {
+		return result, ierrors.Errorf("failed to parse fromBytesFunc: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
 	}
 
-	return
+	return result, nil
 }
 
-// ReadCollection reads a collection from the stream (the first 8 bytes are the length of the collection).
-func ReadCollection(reader io.ReadSeeker, readCallback func(int) error) (err error) {
+// ReadCollection reads a collection from the reader where lenType specifies the serialization length prefix type.
+func ReadCollection(reader io.Reader, lenType serializer.SeriLengthPrefixType, readCallback func(uint64) error) (err error) {
 	var elementsCount uint64
-	if elementsCount, err = Read[uint64](reader); err != nil {
+
+	if elementsCount, err = readFixedSize(reader, lenType); err != nil {
 		return ierrors.Wrap(err, "failed to read collection count")
 	}
 
-	for i := 0; i < int(elementsCount); i++ {
+	for i := uint64(0); i < elementsCount; i++ {
 		if err = readCallback(i); err != nil {
 			return ierrors.Wrapf(err, "failed to read element %d", i)
 		}
 	}
 
-	return
+	return nil
+}
+
+func readFixedSize(reader io.Reader, lenType serializer.SeriLengthPrefixType) (uint64, error) {
+	switch lenType {
+	case serializer.SeriLengthPrefixTypeAsByte:
+		result, err := Read[uint8](reader)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to read length prefix")
+		}
+
+		return uint64(result), nil
+	case serializer.SeriLengthPrefixTypeAsUint16:
+		result, err := Read[uint16](reader)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to read length prefix")
+		}
+
+		return uint64(result), nil
+	case serializer.SeriLengthPrefixTypeAsUint32:
+		result, err := Read[uint32](reader)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to read length prefix")
+		}
+
+		return uint64(result), nil
+	case serializer.SeriLengthPrefixTypeAsUint64:
+		result, err := Read[uint64](reader)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to read length prefix")
+		}
+
+		return result, nil
+	default:
+		panic(fmt.Sprintf("unknown slice length type %v", lenType))
+	}
 }
