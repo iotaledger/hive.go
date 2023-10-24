@@ -7,10 +7,12 @@ import (
 
 // TypedValue is a generically typed wrapper around a KVStore that provides access to a single value.
 type TypedValue[V any] struct {
-	kv                KVStore
-	keyBytes          []byte
-	vToBytes          ObjectToBytes[V]
-	bytesToV          BytesToObject[V]
+	kv       KVStore
+	keyBytes []byte
+
+	vToBytes ObjectToBytes[V]
+	bytesToV BytesToObject[V]
+
 	valueCached       *V
 	valueExistsCached *bool
 	mutex             syncutils.Mutex
@@ -31,6 +33,7 @@ func NewTypedValue[V any](
 	}
 }
 
+// KVStore returns the underlying KVStore.
 func (t *TypedValue[V]) KVStore() KVStore {
 	return t.kv
 }
@@ -80,7 +83,7 @@ func (t *TypedValue[V]) Has() (has bool, err error) {
 	return has, nil
 }
 
-// Compute atomically computes and sets a new value based on the current value.
+// Compute atomically computes and sets a new value based on the current value and some provided computation function.
 func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (newValue V, err error)) (newValue V, err error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -145,7 +148,8 @@ func (t *TypedValue[V]) Delete() (err error) {
 	return nil
 }
 
-var (
-	truePtr  = true
-	falsePtr = false
-)
+// truePtr is a pointer to a true value.
+var truePtr = true
+
+// falsePtr is a pointer to a false value.
+var falsePtr = false
