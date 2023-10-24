@@ -168,83 +168,92 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 	switch valueField.Interface().(type) {
 	case bool, *bool:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseBool(tagDefaultValue); err != nil {
+			value, err := strconv.ParseBool(tagDefaultValue)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = value
 			}
+
+			defaultValue = value
 		}
 
 	case time.Duration:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if parsedDuration, err := time.ParseDuration(tagDefaultValue); err != nil {
+			parsedDuration, err := time.ParseDuration(tagDefaultValue)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = parsedDuration
 			}
+
+			defaultValue = parsedDuration
 		}
 
 	case float32, *float32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseFloat(tagDefaultValue, 32); err != nil {
+			value, err := strconv.ParseFloat(tagDefaultValue, 32)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = float32(value)
 			}
+
+			defaultValue = float32(value)
 		}
 
 	case float64, *float64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
+			value, err := strconv.ParseFloat(tagDefaultValue, 64)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = value
 			}
+
+			defaultValue = value
 		}
 
 	case int, *int:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+			value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = int(value)
 			}
+
+			defaultValue = int(value)
 		}
 
 	case int8, *int8:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseInt(tagDefaultValue, 10, 8); err != nil {
+			value, err := strconv.ParseInt(tagDefaultValue, 10, 8)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = int8(value)
 			}
+
+			defaultValue = int8(value)
 		}
 
 	case int16, *int16:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseInt(tagDefaultValue, 10, 16); err != nil {
+			value, err := strconv.ParseInt(tagDefaultValue, 10, 16)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = int16(value)
 			}
+
+			defaultValue = int16(value)
 		}
 
 	case int32, *int32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseInt(tagDefaultValue, 10, 32); err != nil {
+			value, err := strconv.ParseInt(tagDefaultValue, 10, 32)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = int32(value)
 			}
+
+			defaultValue = int32(value)
 		}
 
 	case int64, *int64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+			value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = value
 			}
+
+			defaultValue = value
 		}
 
 	case string, *string:
@@ -254,47 +263,52 @@ func getParameterValues(valueField reflect.Value, typeField reflect.StructField)
 
 	case uint, *uint:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+			value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = uint(value)
 			}
+
+			defaultValue = uint(value)
 		}
 
 	case uint8, *uint8:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseUint(tagDefaultValue, 10, 8); err != nil {
+			value, err := strconv.ParseUint(tagDefaultValue, 10, 8)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = uint8(value)
 			}
+
+			defaultValue = uint8(value)
 		}
 
 	case uint16, *uint16:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseUint(tagDefaultValue, 10, 16); err != nil {
+			value, err := strconv.ParseUint(tagDefaultValue, 10, 16)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = uint16(value)
 			}
+
+			defaultValue = uint16(value)
 		}
 
 	case uint32, *uint32:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseUint(tagDefaultValue, 10, 32); err != nil {
+			value, err := strconv.ParseUint(tagDefaultValue, 10, 32)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = uint32(value)
 			}
+
+			defaultValue = uint32(value)
 		}
 
 	case uint64, *uint64:
 		if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists {
-			if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+			value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+			if err != nil {
 				panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-			} else {
-				defaultValue = value
 			}
+
+			defaultValue = value
 		}
 
 	case []string:
