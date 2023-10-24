@@ -9,15 +9,16 @@ import (
 	"github.com/fjl/memsize"
 )
 
-const maxDepth = 10
+const maxDepth = 5
 
 // MemoryReport returns a human-readable report of the memory usage of the given struct pointer, useful to find leaks.
 // Please note that this function "stops the world" when scanning referenced memory from a specific struct field,
 // therefore it can produce significant hiccups when called on big, nested structures.
 func MemoryReport(ptr interface{}) string {
 	stringBuilder := &strings.Builder{}
+	visitedPtrs := make(map[uintptr]bool)
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80)+"\n")
-	memoryReport(reflect.ValueOf(ptr).Elem(), 0, stringBuilder)
+	memoryReport(reflect.ValueOf(ptr).Elem(), 0, stringBuilder, visitedPtrs)
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80))
 
 	return stringBuilder.String()
@@ -27,15 +28,36 @@ func MemSize(ptr interface{}) uintptr {
 	return memsize.Scan(ptr).Total
 }
 
-func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
-	if indent/2 > maxDepth {
+func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, visitedPtrs map[uintptr]bool) {
+	if indent/2 > maxDepth || visitedPtrs[v.UnsafeAddr()] {
 		return
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			if r == "bad indir" {
+				fmt.Println("Recovered from 'bad indir' panic. Ignoring it.")
+			} else {
+				// If it's a different kind of panic, you might want to re-panic.
+				panic(r)
+			}
+		}
+	}()
+
+	visitedPtrs[v.UnsafeAddr()] = true
+
 	t := v.Type()
 
+	if t.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return
+		}
+		v = v.Elem()
+		t = v.Type()
+	}
+
 	// dereference pointers to structs
-	if t.Kind() == reflect.Pointer || t.Kind() == reflect.Interface && t.Elem().Kind() == reflect.Struct {
+	if t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct {
 		if v.IsNil() {
 			return
 		}
@@ -67,7 +89,7 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
 
 			fmt.Fprintf(stringBuilder, "%*s%s %s = %s\n", indent, "", fT.Name, fT.Type, memsize.HumanSize(memsize.Scan(fV.Interface()).Total))
 
-			memoryReport(fV.Elem(), indent+2, stringBuilder)
+			memoryReport(fV.Elem(), indent+2, stringBuilder, visitedPtrs)
 		}
 	}
 }
