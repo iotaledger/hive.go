@@ -34,14 +34,8 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
 
 	t := v.Type()
 
-	// Handle interface types by getting their concrete value
-	if t.Kind() == reflect.Interface && !v.IsNil() {
-		v = v.Elem()
-		t = v.Type()
-	}
-
 	// dereference pointers to structs
-	if t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct {
+	if t.Kind() == reflect.Pointer || t.Kind() == reflect.Interface && t.Elem().Kind() == reflect.Struct {
 		if v.IsNil() {
 			return
 		}
