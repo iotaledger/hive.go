@@ -29,7 +29,7 @@ func MemSize(ptr interface{}) uintptr {
 }
 
 func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, visitedPtrs map[uintptr]bool) {
-	if indent/2 > maxDepth || visitedPtrs[v.UnsafeAddr()] {
+	if indent/2 > maxDepth || visitedPtrs[getPointer(v)] {
 		return
 	}
 
@@ -43,8 +43,6 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, v
 			}
 		}
 	}()
-
-	visitedPtrs[v.UnsafeAddr()] = true
 
 	t := v.Type()
 
@@ -87,9 +85,37 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, v
 				continue
 			}
 
+			if ptr := getPointer(fV); ptr != 0 {
+				visitedPtrs[ptr] = true
+			}
+
 			fmt.Fprintf(stringBuilder, "%*s%s %s = %s\n", indent, "", fT.Name, fT.Type, memsize.HumanSize(memsize.Scan(fV.Interface()).Total))
 
 			memoryReport(fV.Elem(), indent+2, stringBuilder, visitedPtrs)
 		}
+	}
+}
+
+func getPointer(value reflect.Value) uintptr {
+	switch value.Kind() {
+	case reflect.Ptr, reflect.UnsafePointer:
+		return value.Pointer()
+
+	case reflect.Struct:
+		if value.CanAddr() {
+			return value.Addr().Pointer()
+		} else {
+			return 0
+		}
+
+	case reflect.Interface:
+		if value.IsNil() {
+			return 0
+		}
+		return getPointer(value.Elem())
+
+	default:
+		// Unsupported types, you may want to extend this.
+		return 0
 	}
 }
