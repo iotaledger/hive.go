@@ -54,7 +54,7 @@ func (t *TypedStore[K, V]) Get(key K) (value V, err error) {
 
 	v, _, err := t.bytesToValue(valueBytes)
 	if err != nil {
-		return value, ierrors.Wrap(err, "failed to decode value")
+		return value, ierrors.Wrap(err, "failed to decode valueCached")
 	}
 
 	return v, nil
@@ -79,7 +79,7 @@ func (t *TypedStore[K, V]) Set(key K, value V) (err error) {
 
 	valueBytes, err := t.valueToBytes(value)
 	if err != nil {
-		return ierrors.Wrap(err, "failed to encode value")
+		return ierrors.Wrap(err, "failed to encode valueCached")
 	}
 
 	err = t.kv.Set(keyBytes, valueBytes)
