@@ -273,176 +273,193 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		switch defaultValue := valueField.Interface().(type) {
 		case bool:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseBool(tagDefaultValue); err != nil {
+				value, err := strconv.ParseBool(tagDefaultValue)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = value
 				}
+
+				defaultValue = value
 			}
 			flagset.BoolVarP(valueField.Addr().Interface().(*bool), name, shortHand, defaultValue, usage)
 
 		case *bool:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseBool(tagDefaultValue); err != nil {
+				value, err := strconv.ParseBool(tagDefaultValue)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = &value
 				}
+
+				defaultValue = &value
 			}
 			flagset.BoolVarP(valueField.Interface().(*bool), name, shortHand, *defaultValue, usage)
 
 		case time.Duration:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if parsedDuration, err := time.ParseDuration(tagDefaultValue); err != nil {
+				parsedDuration, err := time.ParseDuration(tagDefaultValue)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = parsedDuration
 				}
+
+				defaultValue = parsedDuration
 			}
 			flagset.DurationVarP(valueField.Addr().Interface().(*time.Duration), name, shortHand, defaultValue, usage)
 
 		case float32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseFloat(tagDefaultValue, 32); err != nil {
+				value, err := strconv.ParseFloat(tagDefaultValue, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = float32(value)
 				}
+
+				defaultValue = float32(value)
 			}
 			flagset.Float32VarP(valueField.Addr().Interface().(*float32), name, shortHand, defaultValue, usage)
 
 		case *float32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseFloat(tagDefaultValue, 32); err != nil {
+				value, err := strconv.ParseFloat(tagDefaultValue, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueFloat32 := float32(value)
-					defaultValue = &valueFloat32
 				}
+
+				valueFloat32 := float32(value)
+				defaultValue = &valueFloat32
 			}
 			flagset.Float32VarP(valueField.Interface().(*float32), name, shortHand, *defaultValue, usage)
 
 		case float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
+				value, err := strconv.ParseFloat(tagDefaultValue, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = value
 				}
+
+				defaultValue = value
 			}
 			flagset.Float64VarP(valueField.Addr().Interface().(*float64), name, shortHand, defaultValue, usage)
 
 		case *float64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseFloat(tagDefaultValue, 64); err != nil {
+				value, err := strconv.ParseFloat(tagDefaultValue, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = &value
 				}
+
+				defaultValue = &value
 			}
 			flagset.Float64VarP(valueField.Interface().(*float64), name, shortHand, *defaultValue, usage)
 
 		case int:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = int(value)
 				}
+
+				defaultValue = int(value)
 			}
 			flagset.IntVarP(valueField.Addr().Interface().(*int), name, shortHand, defaultValue, usage)
 
 		case *int:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueInt := int(value)
-					defaultValue = &valueInt
 				}
+
+				valueInt := int(value)
+				defaultValue = &valueInt
 			}
 			flagset.IntVarP(valueField.Interface().(*int), name, shortHand, *defaultValue, usage)
 
 		case int8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 8); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 8)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = int8(value)
 				}
+
+				defaultValue = int8(value)
 			}
 			flagset.Int8VarP(valueField.Addr().Interface().(*int8), name, shortHand, defaultValue, usage)
 
 		case *int8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 8); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 8)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueInt8 := int8(value)
-					defaultValue = &valueInt8
 				}
+
+				valueInt8 := int8(value)
+				defaultValue = &valueInt8
 			}
 			flagset.Int8VarP(valueField.Interface().(*int8), name, shortHand, *defaultValue, usage)
 
 		case int16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 16); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 16)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = int16(value)
 				}
+
+				defaultValue = int16(value)
 			}
 			flagset.Int16VarP(valueField.Addr().Interface().(*int16), name, shortHand, defaultValue, usage)
 
 		case *int16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 16); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 16)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueInt16 := int16(value)
-					defaultValue = &valueInt16
 				}
+
+				valueInt16 := int16(value)
+				defaultValue = &valueInt16
 			}
 			flagset.Int16VarP(valueField.Interface().(*int16), name, shortHand, *defaultValue, usage)
 
 		case int32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 32); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = int32(value)
 				}
+
+				defaultValue = int32(value)
 			}
 			flagset.Int32VarP(valueField.Addr().Interface().(*int32), name, shortHand, defaultValue, usage)
 
 		case *int32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 32); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueInt32 := int32(value)
-					defaultValue = &valueInt32
 				}
+
+				valueInt32 := int32(value)
+				defaultValue = &valueInt32
 			}
 			flagset.Int32VarP(valueField.Interface().(*int32), name, shortHand, *defaultValue, usage)
 
 		case int64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = value
 				}
+
+				defaultValue = value
 			}
 			flagset.Int64VarP(valueField.Addr().Interface().(*int64), name, shortHand, defaultValue, usage)
 
 		case *int64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseInt(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseInt(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = &value
 				}
+
+				defaultValue = &value
 			}
 			flagset.Int64VarP(valueField.Interface().(*int64), name, shortHand, *defaultValue, usage)
 
@@ -460,105 +477,115 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 		case uint:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = uint(value)
 				}
+
+				defaultValue = uint(value)
 			}
 			flagset.UintVarP(valueField.Addr().Interface().(*uint), name, shortHand, defaultValue, usage)
 
 		case *uint:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueUint := uint(value)
-					defaultValue = &valueUint
 				}
+
+				valueUint := uint(value)
+				defaultValue = &valueUint
 			}
 			flagset.UintVarP(valueField.Interface().(*uint), name, shortHand, *defaultValue, usage)
 
 		case uint8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 8); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 8)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = uint8(value)
 				}
+
+				defaultValue = uint8(value)
 			}
 			flagset.Uint8VarP(valueField.Addr().Interface().(*uint8), name, shortHand, defaultValue, usage)
 
 		case *uint8:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 8); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 8)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueUint8 := uint8(value)
-					defaultValue = &valueUint8
 				}
+
+				valueUint8 := uint8(value)
+				defaultValue = &valueUint8
 			}
 			flagset.Uint8VarP(valueField.Interface().(*uint8), name, shortHand, *defaultValue, usage)
 
 		case uint16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 16); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 16)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = uint16(value)
 				}
+
+				defaultValue = uint16(value)
 			}
 			flagset.Uint16VarP(valueField.Addr().Interface().(*uint16), name, shortHand, defaultValue, usage)
 
 		case *uint16:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 16); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 16)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueUint16 := uint16(value)
-					defaultValue = &valueUint16
 				}
+
+				valueUint16 := uint16(value)
+				defaultValue = &valueUint16
 			}
 			flagset.Uint16VarP(valueField.Interface().(*uint16), name, shortHand, *defaultValue, usage)
 
 		case uint32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 32); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = uint32(value)
 				}
+
+				defaultValue = uint32(value)
 			}
 			flagset.Uint32VarP(valueField.Addr().Interface().(*uint32), name, shortHand, defaultValue, usage)
 
 		case *uint32:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 32); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 32)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					valueUint32 := uint32(value)
-					defaultValue = &valueUint32
 				}
+
+				valueUint32 := uint32(value)
+				defaultValue = &valueUint32
 			}
 			flagset.Uint32VarP(valueField.Interface().(*uint32), name, shortHand, *defaultValue, usage)
 
 		case uint64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = value
 				}
+
+				defaultValue = value
 			}
 			flagset.Uint64VarP(valueField.Addr().Interface().(*uint64), name, shortHand, defaultValue, usage)
 
 		case *uint64:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
-				if value, err := strconv.ParseUint(tagDefaultValue, 10, 64); err != nil {
+				value, err := strconv.ParseUint(tagDefaultValue, 10, 64)
+				if err != nil {
 					panic(fmt.Sprintf("could not parse default value of '%s', error: %s", name, err))
-				} else {
-					defaultValue = &value
 				}
+
+				defaultValue = &value
 			}
 			flagset.Uint64VarP(valueField.Interface().(*uint64), name, shortHand, *defaultValue, usage)
 
