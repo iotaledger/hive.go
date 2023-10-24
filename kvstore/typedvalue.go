@@ -13,9 +13,9 @@ type TypedValue[V any] struct {
 	vToBytes ObjectToBytes[V]
 	bytesToV BytesToObject[V]
 
-	valueCached       *V
-	valueExistsCached *bool
-	mutex             syncutils.Mutex
+	valueCached *V
+	hasCached   *bool
+	mutex       syncutils.Mutex
 }
 
 // NewTypedValue is the constructor for TypedValue.
@@ -43,7 +43,7 @@ func (t *TypedValue[V]) Get() (value V, err error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	if t.valueExistsCached != nil && !*t.valueExistsCached {
+	if t.hasCached != nil && !*t.hasCached {
 		return value, ErrKeyNotFound
 	}
 
@@ -53,7 +53,7 @@ func (t *TypedValue[V]) Get() (value V, err error) {
 
 	if valueBytes, valueBytesErr := t.kv.Get(t.keyBytes); valueBytesErr != nil {
 		if ierrors.Is(valueBytesErr, ErrKeyNotFound) {
-			t.valueExistsCached = &falsePtr
+			t.hasCached = &falsePtr
 		}
 
 		return value, ierrors.Wrap(valueBytesErr, "failed to retrieve value from KV store")
@@ -62,7 +62,7 @@ func (t *TypedValue[V]) Get() (value V, err error) {
 	}
 
 	t.valueCached = &value
-	t.valueExistsCached = &truePtr
+	t.hasCached = &truePtr
 
 	return value, nil
 }
@@ -72,13 +72,13 @@ func (t *TypedValue[V]) Has() (has bool, err error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	if t.valueExistsCached != nil {
-		return *t.valueExistsCached, nil
+	if t.hasCached != nil {
+		return *t.hasCached, nil
 	} else if has, err = t.kv.Has(t.keyBytes); err != nil {
 		return false, ierrors.Wrap(err, "failed to check whether key exists")
 	}
 
-	t.valueExistsCached = &has
+	t.hasCached = &has
 
 	return has, nil
 }
@@ -88,13 +88,8 @@ func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (n
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	var currentValue V
-	var exists bool
-
-	if t.valueCached != nil {
-		currentValue = *t.valueCached
-		exists = true
-	} else if t.valueExistsCached == nil || *t.valueExistsCached {
+	currentValue, exists := t.cachedValue()
+	if !exists && t.hasCached == nil || *t.hasCached {
 		if valueBytes, valueBytesErr := t.kv.Get(t.keyBytes); valueBytesErr != nil {
 			if !ierrors.Is(valueBytesErr, ErrKeyNotFound) {
 				return newValue, ierrors.Wrap(valueBytesErr, "failed to retrieve value from KV store")
@@ -111,7 +106,7 @@ func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (n
 	}
 
 	t.valueCached = &newValue
-	t.valueExistsCached = &truePtr
+	t.hasCached = &truePtr
 
 	return newValue, nil
 }
@@ -128,7 +123,7 @@ func (t *TypedValue[V]) Set(value V) error {
 	}
 
 	t.valueCached = &value
-	t.valueExistsCached = &truePtr
+	t.hasCached = &truePtr
 
 	return nil
 }
@@ -143,9 +138,18 @@ func (t *TypedValue[V]) Delete() (err error) {
 	}
 
 	t.valueCached = nil
-	t.valueExistsCached = &falsePtr
+	t.hasCached = &falsePtr
 
 	return nil
+}
+
+// cachedValue returns the cached value and a boolean indicating whether the value is cached.
+func (t *TypedValue[V]) cachedValue() (value V, isCached bool) {
+	if t.valueCached == nil {
+		return value, false
+	}
+
+	return *t.valueCached, true
 }
 
 // truePtr is a pointer to a true value.
