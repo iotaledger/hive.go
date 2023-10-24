@@ -53,9 +53,9 @@ func (t *TypedValue[V]) Get() (value V, err error) {
 			t.valueExistsCached = &falsePtr
 		}
 
-		return value, ierrors.Wrap(valueBytesErr, "failed to retrieve valueCached from KV store")
+		return value, ierrors.Wrap(valueBytesErr, "failed to retrieve value from KV store")
 	} else if value, _, err = t.bytesToV(valueBytes); err != nil {
-		return value, ierrors.Wrap(err, "failed to decode valueCached")
+		return value, ierrors.Wrap(err, "failed to decode value")
 	}
 
 	t.valueCached = &value
@@ -94,17 +94,17 @@ func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (n
 	} else if t.valueExistsCached == nil || *t.valueExistsCached {
 		if valueBytes, valueBytesErr := t.kv.Get(t.keyBytes); valueBytesErr != nil {
 			if !ierrors.Is(valueBytesErr, ErrKeyNotFound) {
-				return newValue, ierrors.Wrap(valueBytesErr, "failed to retrieve valueCached from KV store")
+				return newValue, ierrors.Wrap(valueBytesErr, "failed to retrieve value from KV store")
 			}
 		} else if currentValue, _, err = t.bytesToV(valueBytes); err != nil {
-			return newValue, ierrors.Wrap(err, "failed to decode valueCached")
+			return newValue, ierrors.Wrap(err, "failed to decode value")
 		} else {
 			exists = true
 		}
 	}
 
 	if newValue, err = computeFunc(currentValue, exists); err != nil {
-		return newValue, ierrors.Wrap(err, "failed to compute new valueCached")
+		return newValue, ierrors.Wrap(err, "failed to compute new value")
 	}
 
 	t.valueCached = &newValue
@@ -119,7 +119,7 @@ func (t *TypedValue[V]) Set(value V) error {
 	defer t.mutex.Unlock()
 
 	if valueBytes, err := t.vToBytes(value); err != nil {
-		return ierrors.Wrap(err, "failed to encode valueCached")
+		return ierrors.Wrap(err, "failed to encode value")
 	} else if err = t.kv.Set(t.keyBytes, valueBytes); err != nil {
 		return ierrors.Wrap(err, "failed to store in KV store")
 	}
