@@ -9,7 +9,7 @@ import (
 	"github.com/fjl/memsize"
 )
 
-const maxDepth = 5
+const maxDepth = 10
 
 // MemoryReport returns a human-readable report of the memory usage of the given struct pointer, useful to find leaks.
 // Please note that this function "stops the world" when scanning referenced memory from a specific struct field,
