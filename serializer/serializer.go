@@ -467,17 +467,24 @@ func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *
 	return s
 }
 
-// TimeToUint64 converts times to uint64 unix timestamps with second precision.
+// TimeToUint64 converts times to uint64 unix timestamps with nanosecond-precision.
+// Times whose unix timestamp in seconds would be larger than what fits into a
+// nanosecond-precision int64 timestamp will be truncated to the max value.
 // Times before the Unix Epoch will be truncated to the Unix Epoch.
 func TimeToUint64(value time.Time) uint64 {
 	unixSeconds := value.Unix()
+	unixNano := value.UnixNano()
 
-	// We don't represent times before the Unix Epoch.
-	if unixSeconds < 0 {
-		unixSeconds = 0
+	// we need to check against Unix seconds here, because the UnixNano result is undefined if the Unix time
+	// in nanoseconds cannot be represented by an int64 (a date before the year 1678 or after 2262)
+	switch {
+	case unixSeconds > MaxNanoTimestampInt64Seconds:
+		unixNano = math.MaxInt64
+	case unixSeconds < 0 || unixNano < 0:
+		unixNano = 0
 	}
 
-	return uint64(unixSeconds)
+	return uint64(unixNano)
 }
 
 // WritePayload writes the given payload Serializable into the Serializer.
@@ -1311,15 +1318,15 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 		return d
 	}
 
-	seconds := binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize])
+	nanoseconds := binary.LittleEndian.Uint64(d.src[d.offset : d.offset+UInt64ByteSize])
 
-	// If the number of seconds in unit64 timestamp representation exceeds the max number of
-	// seconds that can be represented in a int64 timestamp truncate to max of int64.
-	if seconds > math.MaxInt64 {
-		seconds = math.MaxInt64
+	// If the number of seconds in the nanosecond timestamp exceeds the max number of
+	// seconds that can be represented in a nanosecond int64 timestamp truncate to max.
+	if nanoseconds/1_000_000_000 > MaxNanoTimestampInt64Seconds {
+		nanoseconds = math.MaxInt64
 	}
 
-	*dest = time.Unix(int64(seconds), 0).UTC()
+	*dest = time.Unix(0, int64(nanoseconds)).UTC()
 
 	d.offset += UInt64ByteSize
 

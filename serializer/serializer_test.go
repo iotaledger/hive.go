@@ -392,13 +392,13 @@ func TestReadWriteTime(t *testing.T) {
 		{
 			name:              "ok - now",
 			timeToWrite:       now,
-			expectedTimestamp: time.Unix(now.Unix(), 0),
+			expectedTimestamp: now,
 			expectedErr:       nil,
 		},
 		{
 			name:              "ok - maximum representable timestamp",
-			timeToWrite:       time.Unix(math.MaxInt64, 0),
-			expectedTimestamp: time.Unix(math.MaxInt64, 0),
+			timeToWrite:       time.Unix(0, math.MaxInt64),
+			expectedTimestamp: time.Unix(0, math.MaxInt64),
 			expectedErr:       nil,
 		},
 		{
@@ -415,8 +415,14 @@ func TestReadWriteTime(t *testing.T) {
 		},
 		{
 			name:              "ok - time before min representable is truncated",
-			timeToWrite:       time.Unix(-1, 0),
+			timeToWrite:       time.Unix(-(serializer.MaxNanoTimestampInt64Seconds + 1), 0),
 			expectedTimestamp: time.Unix(0, 0),
+			expectedErr:       nil,
+		},
+		{
+			name:              "ok - time after max representable is truncated to max",
+			timeToWrite:       time.Unix(serializer.MaxNanoTimestampInt64Seconds+1, 0),
+			expectedTimestamp: time.Unix(0, math.MaxInt64),
 			expectedErr:       nil,
 		},
 	}
@@ -446,16 +452,4 @@ func TestReadWriteTime(t *testing.T) {
 			require.True(t, tt.expectedTimestamp.Equal(timestamp))
 		})
 	}
-}
-
-func TestReadMaxTime(t *testing.T) {
-	// MaxUnit64
-	serializedBytes := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-
-	returnErr := func(err error) error { return err }
-	timestamp := time.Time{}
-	_, err := serializer.NewDeserializer(serializedBytes).ReadTime(&timestamp, returnErr).Done()
-
-	require.NoError(t, err)
-	require.True(t, timestamp.Equal(time.Unix(math.MaxInt64, 0)))
 }
