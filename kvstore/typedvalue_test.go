@@ -28,6 +28,14 @@ func TestTypedValue(t *testing.T) {
 	require.Equal(t, 0, value)
 	require.ErrorIs(t, err, kvstore.ErrKeyNotFound)
 
+	has, err := typedValue.Has()
+	require.False(t, has)
+	require.NoError(t, err)
+
+	value, err = typedValue.Get()
+	require.Equal(t, 0, value)
+	require.ErrorIs(t, err, kvstore.ErrKeyNotFound)
+
 	value, err = typedValue.Compute(increase)
 	require.Equal(t, 1337, value)
 	require.NoError(t, err)
@@ -44,11 +52,33 @@ func TestTypedValue(t *testing.T) {
 	require.Equal(t, 1339, value)
 	require.NoError(t, err)
 
+	has, err = typedValue.Has()
+	require.True(t, has)
+	require.NoError(t, err)
+
 	require.NoError(t, typedValue.Delete())
 
 	value, err = typedValue.Get()
 	require.Equal(t, 0, value)
 	require.ErrorIs(t, err, kvstore.ErrKeyNotFound)
+
+	has, err = typedValue.Has()
+	require.False(t, has)
+	require.NoError(t, err)
+
+	typedValue.Set(42)
+	value, err = typedValue.Get()
+	require.Equal(t, 42, value)
+	require.NoError(t, err)
+
+	typedValueRestored := kvstore.NewTypedValue[int](kvStore, []byte("key"), intToBytes, bytesToInt)
+	has, err = typedValueRestored.Has()
+	require.True(t, has)
+	require.NoError(t, err)
+
+	value, err = typedValueRestored.Get()
+	require.Equal(t, 42, value)
+	require.NoError(t, err)
 }
 
 func intToBytes(value int) (encoded []byte, err error) {
