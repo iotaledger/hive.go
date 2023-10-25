@@ -5,29 +5,29 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2/typeutils"
 )
-
-var errStopIteration = ierrors.New("stop")
 
 func TestSet(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newSet := newAuthenticatedSet[[32]byte](
 		store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
 
 	key := testKey([]byte{'a'})
-	newSet.Add(key)
+	require.NoError(t, newSet.Add(key))
 	exist, err := newSet.Has(key)
 	require.NoError(t, err)
 	require.True(t, exist)
 
 	// add the same key again
-	newSet.Add(key)
+	require.NoError(t, newSet.Add(key))
 	exist, err = newSet.Has(key)
 	require.NoError(t, err)
 	require.True(t, exist)
@@ -50,6 +50,8 @@ func TestSet(t *testing.T) {
 
 	// new set from old store, make sure the root is correct
 	newSet1 := newAuthenticatedSet[[32]byte](store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
@@ -59,14 +61,16 @@ func TestSet(t *testing.T) {
 func TestStreamSet(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newSet := newAuthenticatedSet[[32]byte](store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 	)
 
 	key1 := testKey([]byte{'b'})
 	key2 := testKey([]byte{'c'})
-	newSet.Add(key1)
-	newSet.Add(key2)
+	require.NoError(t, newSet.Add(key1))
+	require.NoError(t, newSet.Add(key2))
 	require.Equal(t, 2, newSet.Size())
 
 	seen := make(map[testKey]bool)

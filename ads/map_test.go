@@ -8,6 +8,7 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore/mapdb"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2/typeutils"
 )
 
 var ErrStopIteration = ierrors.New("stop")
@@ -15,6 +16,8 @@ var ErrStopIteration = ierrors.New("stop")
 func TestMap(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newMap := newAuthenticatedMap[[32]byte](store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -27,7 +30,7 @@ func TestMap(t *testing.T) {
 	require.False(t, newMap.WasRestoredFromStorage())
 
 	for i, k := range keys {
-		newMap.Set(k, values[i])
+		require.NoError(t, newMap.Set(k, values[i]))
 	}
 
 	for i, k := range keys {
@@ -53,7 +56,7 @@ func TestMap(t *testing.T) {
 
 	// overwrite the value of keys[0]
 	newValue := testValueFromString("test")
-	newMap.Set(keys[0], newValue)
+	require.NoError(t, newMap.Set(keys[0], newValue))
 	gotValue, exists, err = newMap.Get(keys[0])
 	require.NoError(t, err)
 	require.True(t, exists)
@@ -81,6 +84,8 @@ func TestMap(t *testing.T) {
 
 	// The root should be same if loading the same store to map
 	newMap1 := newAuthenticatedMap[[32]byte](store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -94,6 +99,8 @@ func TestMap(t *testing.T) {
 func TestStreamMap(t *testing.T) {
 	store := mapdb.NewMapDB()
 	newMap := newAuthenticatedMap[[32]byte, testKey, testValue](store,
+		typeutils.ByteArray32ToBytes,
+		typeutils.ByteArray32FromBytes,
 		testKey.Bytes,
 		testKeyFromBytes,
 		testValue.Bytes,
@@ -105,7 +112,7 @@ func TestStreamMap(t *testing.T) {
 		testKey([]byte{'c'}): testValueFromString("test value 2"),
 	}
 	for k, v := range kvMap {
-		newMap.Set(k, v)
+		require.NoError(t, newMap.Set(k, v))
 	}
 
 	seen := make(map[testKey]testValue)
