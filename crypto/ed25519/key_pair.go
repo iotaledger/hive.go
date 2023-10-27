@@ -6,12 +6,13 @@ type KeyPair struct {
 }
 
 func GenerateKeyPair() (keyPair KeyPair) {
-	if public, private, err := GenerateKey(); err != nil {
+	public, private, err := GenerateKey()
+	if err != nil {
 		panic(err)
-	} else {
-		keyPair.PublicKey = public
-		keyPair.PrivateKey = private
-
-		return
 	}
+
+	keyPair.PublicKey = public
+	keyPair.PrivateKey = private
+
+	return keyPair
 }

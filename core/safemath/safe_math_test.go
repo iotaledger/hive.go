@@ -318,3 +318,31 @@ func TestSafeMathMulInt64(t *testing.T) {
 	_, err = SafeMulInt64(int64(math.MinInt64/2)-1, 2)
 	require.ErrorIs(t, err, ErrIntegerOverflow)
 }
+
+func TestSafe64MulDiv(t *testing.T) {
+	var err error
+	var ures uint64
+
+	ures, err = Safe64MulDiv(uint64(0), uint64(10), uint64(2))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(0))
+
+	ures, err = Safe64MulDiv(uint64(10), uint64(10), uint64(8))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(12))
+
+	ures, err = Safe64MulDiv(uint64(1), uint64(1<<43-1), uint64(1<<37-1))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(64))
+
+	ures, err = Safe64MulDiv(uint64(1<<63-1), uint64(1<<13-1), uint64(1<<50-1))
+	require.NoError(t, err)
+	require.Equal(t, ures, uint64(67100672))
+
+	_, err = Safe64MulDiv(uint64(0), uint64(100), uint64(0))
+	require.ErrorIs(t, err, ErrIntegerDivisionByZero)
+
+	_, err = Safe64MulDiv(uint64(1<<63-1), uint64(1<<63-1), uint64(2))
+	require.ErrorIs(t, err, ErrIntegerOverflow)
+}
+

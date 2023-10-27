@@ -19,7 +19,7 @@
 
 ## About
 
-Hive.go is a shared library that is used in the GoShimmer and Hornet node software. This library contains shared:
+Hive.go is a shared library that is used in the [GoShimmer](https://github.com/iotaledger/goshimmer), [Hornet](https://github.com/iotaledger/hornet) and [IOTA Core](https://github.com/iotaledger/iota-core) node software. This library contains shared:
 * Data structures
 * Utility methods
 * Abstractions

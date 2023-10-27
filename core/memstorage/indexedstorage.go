@@ -65,3 +65,19 @@ func (e *IndexedStorage[IndexType, K, V]) ForEach(f func(index IndexType, storag
 		return true
 	})
 }
+
+// Clear clears the storage and returns the cleared elements.
+func (e *IndexedStorage[IndexType, K, V]) Clear() (clearedKeys []IndexType, clearedStorages []*shrinkingmap.ShrinkingMap[K, V]) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.cache.ForEach(func(index IndexType, storage *shrinkingmap.ShrinkingMap[K, V]) bool {
+		clearedKeys = append(clearedKeys, index)
+		clearedStorages = append(clearedStorages, storage)
+
+		return true
+	})
+	e.cache = shrinkingmap.New[IndexType, *shrinkingmap.ShrinkingMap[K, V]]()
+
+	return clearedKeys, clearedStorages
+}
