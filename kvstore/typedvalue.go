@@ -102,6 +102,10 @@ func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (n
 	}
 
 	if newValue, err = computeFunc(currentValue, exists); err != nil {
+		if ierrors.Is(err, ErrTypedValueNotChanged) {
+			return currentValue, nil
+		}
+
 		return newValue, ierrors.Wrap(err, "failed to compute new value")
 	}
 
