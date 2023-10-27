@@ -107,6 +107,10 @@ func (t *TypedValue[V]) Compute(computeFunc func(currentValue V, exists bool) (n
 		}
 
 		return newValue, ierrors.Wrap(err, "failed to compute new value")
+	} else if newValueBytes, newValueBytesErr := t.vToBytes(newValue); err != nil {
+		return currentValue, ierrors.Wrap(newValueBytesErr, "failed to encode new value")
+	} else if err = t.kv.Set(t.keyBytes, newValueBytes); err != nil {
+		return currentValue, ierrors.Wrap(err, "failed to store new value in KV store")
 	}
 
 	t.valueCached = &newValue
@@ -123,7 +127,7 @@ func (t *TypedValue[V]) Set(value V) error {
 	if valueBytes, err := t.vToBytes(value); err != nil {
 		return ierrors.Wrap(err, "failed to encode value")
 	} else if err = t.kv.Set(t.keyBytes, valueBytes); err != nil {
-		return ierrors.Wrap(err, "failed to store in KV store")
+		return ierrors.Wrap(err, "failed to store value in KV store")
 	}
 
 	t.valueCached = &value
