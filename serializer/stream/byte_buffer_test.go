@@ -4,16 +4,18 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestWrite(t *testing.T) {
-	ws := &ByteBuffer{}
+	ws := NewByteBuffer()
 	checkWrite(t, ws, "hello", "hello")
 	checkWrite(t, ws, " world", "hello world")
 }
 
 func TestSeek(t *testing.T) {
-	ws := &ByteBuffer{}
+	ws := NewByteBuffer()
 	checkWrite(t, ws, "hello", "hello")
 	checkWrite(t, ws, " world", "hello world")
 
@@ -33,19 +35,27 @@ func TestSeek(t *testing.T) {
 }
 
 func TestSeek_LargeGap(t *testing.T) {
-	ws := &ByteBuffer{}
+	ws := NewByteBuffer()
 	checkSeek(t, ws, 1024, io.SeekStart, 1024)
 	checkWrite(t, ws, "hello", strings.Repeat("\x00", 1024)+"hello")
 }
 
 // checkWrite passes data to ws.Write and compares the resulting buffer against exp.
-func checkWrite(t *testing.T, ws *ByteBuffer, data, exp string) {
-	if n, err := ws.Write([]byte(data)); err != nil {
+func checkWrite(t *testing.T, byteBuffer *ByteBuffer, data, exp string) {
+	nBytesWritten, err := byteBuffer.Write([]byte(data))
+	if err != nil {
 		t.Fatalf("Write(%q) failed: %v", data, err)
-	} else if ws.buf.String() != exp {
-		t.Fatalf("Write(%q) produced %q; want %q", data, ws.buf.String(), exp)
-	} else if n != len(data) {
-		t.Fatalf("Write(%q) = %v; want %q", data, n, len(data))
+	}
+
+	if nBytesWritten != len(data) {
+		t.Fatalf("Write(%q) = %v; want %q", data, nBytesWritten, len(data))
+	}
+
+	bytes, err := byteBuffer.Bytes()
+	require.NoError(t, err)
+
+	if string(bytes) != exp {
+		t.Fatalf("Write(%q) produced %q; want %q", data, string(bytes), exp)
 	}
 }
 

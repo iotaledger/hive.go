@@ -13,9 +13,14 @@ type ByteBuffer struct {
 	pos int
 }
 
-func New() *ByteBuffer {
+func NewByteBuffer(initialLength ...int) *ByteBuffer {
+	var length int
+	if len(initialLength) > 0 {
+		length = initialLength[0]
+	}
+
 	return &ByteBuffer{
-		buf: bytes.NewBuffer(make([]byte, 1024)),
+		buf: bytes.NewBuffer(make([]byte, length)),
 	}
 }
 

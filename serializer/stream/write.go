@@ -7,12 +7,17 @@ import (
 	"math"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 // Write writes one of the allowedGenericTypes basic type to the writer.
 func Write[T allowedGenericTypes](writer io.Writer, value T) error {
 	return binary.Write(writer, binary.LittleEndian, value)
+}
+
+func WriteBytes(writer io.Writer, bytes []byte) error {
+	return lo.Return2(writer.Write(bytes))
 }
 
 // WriteByteSlice writes bytes to the writer where lenType specifies the serialization length prefix type.

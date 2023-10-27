@@ -78,6 +78,24 @@ func ReadObject[T any](reader io.Reader, lenType serializer.SeriLengthPrefixType
 	return result, nil
 }
 
+func PeekCollectionSize(reader io.ReadSeeker, lenType serializer.SeriLengthPrefixType) (int, error) {
+	startOffset, err := Offset(reader)
+	if err != nil {
+		return 0, ierrors.Wrap(err, "failed to get start offset")
+	}
+
+	elementsCount, err := readFixedSize(reader, lenType)
+	if err != nil {
+		return 0, ierrors.Wrap(err, "failed to read collection count")
+	}
+
+	if _, err = GoTo(reader, startOffset); err != nil {
+		return 0, ierrors.Wrap(err, "failed to go back to start offset")
+	}
+
+	return elementsCount, nil
+}
+
 // ReadCollection reads a collection from the reader where lenType specifies the serialization length prefix type.
 func ReadCollection(reader io.Reader, lenType serializer.SeriLengthPrefixType, readCallback func(int) error) error {
 	elementsCount, err := readFixedSize(reader, lenType)
