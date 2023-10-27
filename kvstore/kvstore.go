@@ -9,6 +9,9 @@ import (
 var (
 	// ErrKeyNotFound is returned when an op. doesn't find the given key.
 	ErrKeyNotFound = ierrors.New("key not found")
+	// ErrTypedValueNotChanged is a sentinel error that can be returned by the TypedValue.Compute callback to indicate
+	// that the current value should not be changed.
+	ErrTypedValueNotChanged = ierrors.New("typed value not changed")
 	// ErrStoreClosed is returned when an op accesses the kvstore but it was already closed.
 	ErrStoreClosed = ierrors.New("trying to access closed kvstore")
 
