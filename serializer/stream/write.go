@@ -20,8 +20,8 @@ func WriteBytes(writer io.Writer, bytes []byte) error {
 	return lo.Return2(writer.Write(bytes))
 }
 
-// WriteByteSlice writes bytes to the writer where lenType specifies the serialization length prefix type.
-func WriteByteSlice(writer io.Writer, bytes []byte, lenType serializer.SeriLengthPrefixType) error {
+// WriteBytesWithSize writes bytes to the writer where lenType specifies the serialization length prefix type.
+func WriteBytesWithSize(writer io.Writer, bytes []byte, lenType serializer.SeriLengthPrefixType) error {
 	if err := writeFixedSize(writer, len(bytes), lenType); err != nil {
 		return ierrors.Wrap(err, "failed to write bytes length")
 	}
@@ -33,15 +33,11 @@ func WriteByteSlice(writer io.Writer, bytes []byte, lenType serializer.SeriLengt
 	return nil
 }
 
-// WriteFixedSizeObject writes a type to the writer as specified by the objectToBytesFunc. A fixed length for the serialized type must be specified.
-func WriteFixedSizeObject[T any](writer io.Writer, target T, fixedLen int, objectToBytesFunc func(T) ([]byte, error)) error {
+// WriteObject writes a type to the writer as specified by the objectToBytesFunc.
+func WriteObject[T any](writer io.Writer, target T, objectToBytesFunc func(T) ([]byte, error)) error {
 	serializedBytes, err := objectToBytesFunc(target)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize target")
-	}
-
-	if fixedLen != len(serializedBytes) {
-		return ierrors.Errorf("serialized bytes length (%d) != fixed size (%d)", len(serializedBytes), fixedLen)
 	}
 
 	if _, err = writer.Write(serializedBytes); err != nil {
@@ -51,14 +47,14 @@ func WriteFixedSizeObject[T any](writer io.Writer, target T, fixedLen int, objec
 	return nil
 }
 
-// WriteObject writes an object to the writer as specified by the objectToBytesFunc. The serialization length prefix type must be specified.
-func WriteObject[T any](writer io.Writer, target T, lenType serializer.SeriLengthPrefixType, objectToBytesFunc func(T) ([]byte, error)) error {
+// WriteObjectWithSize writes an object to the writer as specified by the objectToBytesFunc. The serialization length prefix type must be specified.
+func WriteObjectWithSize[T any](writer io.Writer, target T, lenType serializer.SeriLengthPrefixType, objectToBytesFunc func(T) ([]byte, error)) error {
 	serializedBytes, err := objectToBytesFunc(target)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize object")
 	}
 
-	if err = WriteByteSlice(writer, serializedBytes, lenType); err != nil {
+	if err = WriteBytesWithSize(writer, serializedBytes, lenType); err != nil {
 		return ierrors.Wrap(err, "failed to write serialized bytes")
 	}
 
