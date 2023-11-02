@@ -4,34 +4,6 @@ import (
 	"sync"
 )
 
-// WithValue is a utility function that allows to set up dynamic behavior based on the current value of a
-// ReadableVariable which is automatically torn down once the value of the ReadableVariable changes again.
-func WithValue[T comparable](variable ReadableVariable[T], setup func(value T) (teardown func())) (teardown func()) {
-	return variable.OnUpdateWithContext(func(_, value T, unsubscribeOnUpdate func(setup func() (teardown func()))) {
-		unsubscribeOnUpdate(func() func() { return setup(value) })
-	})
-}
-
-// WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the current (non-empty) value
-// of a ReadableVariable which is automatically torn down once the value of the ReadableVariable changes again.
-func WithNonEmptyValue[T comparable](setup func(value T) (teardown func()), variable ReadableVariable[T]) (teardown func()) {
-	return variable.OnUpdateWithContext(func(_, value T, unsubscribeOnUpdate func(setup func() (teardown func()))) {
-		if value != *new(T) {
-			unsubscribeOnUpdate(func() func() { return setup(value) })
-		}
-	})
-}
-
-// AssignDynamicValue is a utility function that allows to assign a dynamic value to a given Variable. It returns a tear
-// down function that can be used to unsubscribe the Variable from the dynamic value.
-func AssignDynamicValue[T comparable](variable Variable[T], dynamicValue DerivedVariable[T]) (teardown func()) {
-	// no need to unsubscribe variable from dynamic value (it will no longer change and get garbage collected after
-	// unsubscribing itself)
-	_ = variable.InheritFrom(dynamicValue)
-
-	return dynamicValue.Unsubscribe
-}
-
 // region callback /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // callback is an internal wrapper for a callback function that is extended by an ID and a mutex (for call order

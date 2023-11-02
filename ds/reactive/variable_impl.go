@@ -135,6 +135,24 @@ func (r *readableVariable[Type]) Read(readFunc func(currentValue Type)) {
 	readFunc(r.value)
 }
 
+// WithValue is a utility function that allows to set up dynamic behavior based on the latest value of the
+// ReadableVariable which is torn down once the value changes again (or the returned teardown function is called).
+// It accepts an optional condition that has to be satisfied for the setup function to be called.
+func (r *readableVariable[Type]) WithValue(setup func(value Type) (teardown func()), condition ...func(Type) bool) (teardown func()) {
+	return r.OnUpdateWithContext(func(_, value Type, unsubscribeOnUpdate func(setup func() (teardown func()))) {
+		if len(condition) == 0 || condition[0](value) {
+			unsubscribeOnUpdate(func() func() { return setup(value) })
+		}
+	})
+}
+
+// WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the latest (non-empty)
+// value of the ReadableVariable which is torn down once the value changes again (or the returned teardown function
+// is called).
+func (r *readableVariable[Type]) WithNonEmptyValue(setup func(value Type) (teardown func())) (teardown func()) {
+	return r.WithValue(setup, func(t Type) bool { return t != *new(Type) })
+}
+
 // OnUpdate registers the given callback that is triggered when the value changes.
 func (r *readableVariable[Type]) OnUpdate(callback func(prevValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	r.valueMutex.Lock()
