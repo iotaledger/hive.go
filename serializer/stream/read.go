@@ -78,7 +78,7 @@ func ReadObjectWithSize[T any](reader io.Reader, lenType serializer.SeriLengthPr
 	return result, nil
 }
 
-func ReadObjectFromReader[T any](reader io.Reader, objectFromReaderFunc func(reader io.Reader) (T, error)) (T, error) {
+func ReadObjectFromReader[T any](reader io.ReadSeeker, objectFromReaderFunc func(reader io.ReadSeeker) (T, error)) (T, error) {
 	var result T
 
 	result, err := objectFromReaderFunc(reader)
@@ -89,7 +89,7 @@ func ReadObjectFromReader[T any](reader io.Reader, objectFromReaderFunc func(rea
 	return result, nil
 }
 
-func PeekCollectionSize(reader io.ReadSeeker, lenType serializer.SeriLengthPrefixType) (int, error) {
+func Peek(reader io.ReadSeeker, lenType serializer.SeriLengthPrefixType) (int, error) {
 	startOffset, err := Offset(reader)
 	if err != nil {
 		return 0, ierrors.Wrap(err, "failed to get start offset")
