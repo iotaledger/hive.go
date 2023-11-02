@@ -67,6 +67,16 @@ func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe 
 	}, true)
 }
 
+// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
+// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
+func (v *variable[Type]) DeriveValueFrom(source DerivedVariable[Type]) (teardown func()) {
+	// no need to unsubscribe variable from source (it will no longer change and get garbage collected after
+	// unsubscribing from its inputs)
+	_ = v.InheritFrom(source)
+
+	return source.Unsubscribe
+}
+
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
 // the triggerID and the callbacks to trigger.
 func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValue, previousValue Type, triggerID uniqueID, callbacksToTrigger []*callback[func(prevValue, newValue Type)]) {

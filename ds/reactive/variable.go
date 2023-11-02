@@ -75,6 +75,10 @@ type WritableVariable[Type comparable] interface {
 
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
+
+	// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
+	// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
+	DeriveValueFrom(source DerivedVariable[Type]) (teardown func())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
