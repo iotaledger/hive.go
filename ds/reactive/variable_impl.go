@@ -3,6 +3,7 @@ package reactive
 import (
 	"log/slog"
 	"sync"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/lo"
@@ -249,7 +250,9 @@ func (r *readableVariable[Type]) LogUpdates(logger VariableLogReceiver, logLevel
 
 	return logger.OnLogLevelActive(logLevel, func() (shutdown func()) {
 		return r.OnUpdate(func(_, newValue Type) {
-			if len(stringer) != 0 {
+			if newValue == nil || (*[2]uintptr)(unsafe.Pointer(&newValue))[1] == 0 {
+				logger.LogAttrs(logMessage, logLevel, slog.String("set", "nil"))
+			} else if len(stringer) != 0 {
 				logger.LogAttrs(logMessage, logLevel, slog.String("set", stringer[0](newValue)))
 			} else {
 				logger.LogAttrs(logMessage, logLevel, slog.Any("set", newValue))
