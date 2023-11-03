@@ -408,20 +408,40 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	if value.IsNil() {
 		value.Set(reflect.MakeMap(valueType))
 	}
+
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		keyValue := reflect.New(valueType.Key()).Elem()
 		elemValue := reflect.New(valueType.Elem()).Elem()
-		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, opts)
+		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, ts, opts)
 		if err != nil {
 			return 0, ierrors.WithStack(err)
 		}
+
+		if value.MapIndex(keyValue).IsValid() {
+			// map entry already exists
+			return 0, ierrors.Wrapf(ErrMapValidationViolatesUniqueness, "map entry with key %v already exists", keyValue.Interface())
+		}
+
 		value.SetMapIndex(keyValue, elemValue)
 
 		return bytesRead, nil
 	}
 	ts = ts.ensureOrdering()
 
-	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	consumedBytes, err := api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	if err != nil {
+		return consumedBytes, err
+	}
+
+	if err := api.checkMapMinMaxBounds(value.Len(), ts); err != nil {
+		return consumedBytes, err
+	}
+
+	if err := api.checkMapMaxByteSize(consumedBytes, ts); err != nil {
+		return consumedBytes, err
+	}
+
+	return consumedBytes, nil
 }
 
 func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeFunc, valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
@@ -448,13 +468,20 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 	return deseri.Done()
 }
 
-func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
-	keyBytesRead, err := api.decode(ctx, b, key, TypeSettings{}, opts)
+func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, ts TypeSettings, opts *options) (int, error) {
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
+	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
 	if err != nil {
 		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
 	}
 	b = b[keyBytesRead:]
-	elemBytesRead, err := api.decode(ctx, b, val, TypeSettings{}, opts)
+	elemBytesRead, err := api.decode(ctx, b, val, valueTypeSettings, opts)
 	if err != nil {
 		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
 	}

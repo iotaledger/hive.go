@@ -30,6 +30,17 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
+var (
+	// ErrMapValidationMinElementsNotReached gets returned if the count of elements is too small.
+	ErrMapValidationMinElementsNotReached = ierrors.New("min count of elements within the map not reached")
+	// ErrMapValidationMaxElementsExceeded gets returned if the count of elements is too big.
+	ErrMapValidationMaxElementsExceeded = ierrors.New("max count of elements within the map exceeded")
+	// ErrMapValidationMaxBytesExceeded gets returned if the serialized byte size of the map is too big.
+	ErrMapValidationMaxBytesExceeded = ierrors.New("max bytes size of the map exceeded")
+	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
+	ErrMapValidationViolatesUniqueness = ierrors.New("map elements must be unique")
+)
+
 // Serializable is a type that can serialize itself.
 // Serix will call its .Encode() method instead of trying to serialize it in the default way.
 // The behavior is totally the same as in the standard "encoding/json" package and json.Marshaler interface.
@@ -149,10 +160,6 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
-// ArrayRules defines rules around a to be deserialized array.
-// Min and Max at 0 define an unbounded array.
-type ArrayRules serializer.ArrayRules
-
 // LengthPrefixType defines the type of the value denoting the length of a collection.
 type LengthPrefixType serializer.SeriLengthPrefixType
 
@@ -164,6 +171,43 @@ const (
 	// LengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
 	LengthPrefixTypeAsUint32 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32)
 )
+
+// ArrayRules defines rules around a to be deserialized array.
+// Min and Max at 0 define an unbounded array.
+type ArrayRules serializer.ArrayRules
+
+// MapElementRules defines rules around to be deserialized map elements (key or value).
+// MinLength and MaxLength at 0 define an unbounded map element.
+type MapElementRules struct {
+	LengthPrefixType *LengthPrefixType
+	MinLength        uint
+	MaxLength        uint
+}
+
+func (m *MapElementRules) ToTypeSettings() TypeSettings {
+	return TypeSettings{
+		lengthPrefixType: m.LengthPrefixType,
+		arrayRules: &ArrayRules{
+			Min: m.MinLength,
+			Max: m.MaxLength,
+		},
+	}
+}
+
+// MapRules defines rules around a to be deserialized map.
+type MapRules struct {
+	// MinEntries defines the min entries for the map.
+	MinEntries uint
+	// MaxEntries defines the max entries for the map. 0 means unbounded.
+	MaxEntries uint
+	// MaxByteSize defines the max serialized byte size for the map. 0 means unbounded.
+	MaxByteSize uint
+
+	// KeyRules define the rules applied to the keys of the map.
+	KeyRules *MapElementRules
+	// ValueRules define the rules applied to the values of the map.
+	ValueRules *MapElementRules
+}
 
 // TypeSettings holds various settings for a particular type.
 // Those settings determine how the object should be serialized/deserialized.
@@ -180,6 +224,7 @@ type TypeSettings struct {
 	lexicalOrdering  *bool
 	mapKey           *string
 	arrayRules       *ArrayRules
+	mapRules         *MapRules
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.
@@ -196,6 +241,37 @@ func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
 	}
 
 	return *ts.lengthPrefixType, true
+}
+
+// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
+// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
+// serix uses object type to actually encode the number
+// and to know its serializer.TypeDenotationType to be able to decode it.
+func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
+	ts.objectType = t
+
+	return ts
+}
+
+// ObjectType returns the object type as an uint8 or uint32 number.
+func (ts TypeSettings) ObjectType() interface{} {
+	return ts.objectType
+}
+
+// WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
+func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
+	ts.lexicalOrdering = &val
+
+	return ts
+}
+
+// LexicalOrdering returns lexical ordering flag.
+func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
+	if ts.lexicalOrdering == nil {
+		return false, false
+	}
+
+	return *ts.lexicalOrdering, true
 }
 
 // WithMapKey specifies the name for the map key.
@@ -221,6 +297,18 @@ func (ts TypeSettings) MustMapKey() string {
 	}
 
 	return *ts.mapKey
+}
+
+// WithArrayRules specifies serializer.ArrayRules.
+func (ts TypeSettings) WithArrayRules(rules *ArrayRules) TypeSettings {
+	ts.arrayRules = rules
+
+	return ts
+}
+
+// ArrayRules returns serializer.ArrayRules.
+func (ts TypeSettings) ArrayRules() *ArrayRules {
+	return ts.arrayRules
 }
 
 // WithMinLen specifies the min length for the object.
@@ -275,47 +363,124 @@ func (ts TypeSettings) MinMaxLen() (int, int) {
 	return min, max
 }
 
-// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
-// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
-// serix uses object type to actually encode the number
-// and to know its serializer.TypeDenotationType to be able to decode it.
-func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
-	ts.objectType = t
+// WithMapRules specifies the map rules.
+func (ts TypeSettings) WithMapRules(rules *MapRules) TypeSettings {
+	ts.mapRules = rules
 
 	return ts
 }
 
-// ObjectType returns the object type as an uint8 or uint32 number.
-func (ts TypeSettings) ObjectType() interface{} {
-	return ts.objectType
+// MapRules returns the map rules.
+func (ts TypeSettings) MapRules() *MapRules {
+	return ts.mapRules
 }
 
-// WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
-func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
-	ts.lexicalOrdering = &val
-
-	return ts
-}
-
-// LexicalOrdering returns lexical ordering flag.
-func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
-	if ts.lexicalOrdering == nil {
-		return false, false
+// WithMapMinEntries specifies the min entries for the map.
+func (ts TypeSettings) WithMapMinEntries(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
 	}
-
-	return *ts.lexicalOrdering, true
-}
-
-// WithArrayRules specifies serializer.ArrayRules.
-func (ts TypeSettings) WithArrayRules(rules *ArrayRules) TypeSettings {
-	ts.arrayRules = rules
+	ts.mapRules.MinEntries = l
 
 	return ts
 }
 
-// ArrayRules returns serializer.ArrayRules.
-func (ts TypeSettings) ArrayRules() *ArrayRules {
-	return ts.arrayRules
+// WithMapMaxEntries specifies the max entries for the map.
+func (ts TypeSettings) WithMapMaxEntries(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	ts.mapRules.MaxEntries = l
+
+	return ts
+}
+
+// WithMapMaxByteSize specifies max serialized byte size for the map. 0 means unbounded.
+func (ts TypeSettings) WithMapMaxByteSize(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	ts.mapRules.MaxByteSize = l
+
+	return ts
+}
+
+// WithMapKeyLengthPrefixType specifies MapKeyLengthPrefixType.
+func (ts TypeSettings) WithMapKeyLengthPrefixType(lpt LengthPrefixType) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.KeyRules == nil {
+		ts.mapRules.KeyRules = new(MapElementRules)
+	}
+	ts.mapRules.KeyRules.LengthPrefixType = &lpt
+
+	return ts
+}
+
+// WithMapKeyMinLen specifies the min length for the object in the map key.
+func (ts TypeSettings) WithMapKeyMinLen(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.KeyRules == nil {
+		ts.mapRules.KeyRules = new(MapElementRules)
+	}
+	ts.mapRules.KeyRules.MinLength = l
+
+	return ts
+}
+
+// WithMapKeyMaxLen specifies the max length for the object in the map key.
+func (ts TypeSettings) WithMapKeyMaxLen(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.KeyRules == nil {
+		ts.mapRules.KeyRules = new(MapElementRules)
+	}
+	ts.mapRules.KeyRules.MaxLength = l
+
+	return ts
+}
+
+// MapValueLengthPrefixType specifies MapValueLengthPrefixType.
+func (ts TypeSettings) WithMapValueLengthPrefixType(lpt LengthPrefixType) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.ValueRules == nil {
+		ts.mapRules.ValueRules = new(MapElementRules)
+	}
+	ts.mapRules.ValueRules.LengthPrefixType = &lpt
+
+	return ts
+}
+
+// WithMapValueMinLen specifies the min length for the object in the map value.
+func (ts TypeSettings) WithMapValueMinLen(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.ValueRules == nil {
+		ts.mapRules.ValueRules = new(MapElementRules)
+	}
+	ts.mapRules.ValueRules.MinLength = l
+
+	return ts
+}
+
+// WithMapValueMaxLen specifies the max length for the object in the map value.
+func (ts TypeSettings) WithMapValueMaxLen(l uint) TypeSettings {
+	if ts.mapRules == nil {
+		ts.mapRules = new(MapRules)
+	}
+	if ts.mapRules.ValueRules == nil {
+		ts.mapRules.ValueRules = new(MapElementRules)
+	}
+	ts.mapRules.ValueRules.MaxLength = l
+
+	return ts
 }
 
 func (ts TypeSettings) ensureOrdering() TypeSettings {
@@ -345,6 +510,9 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	}
 	if ts.mapKey == nil {
 		ts.mapKey = other.mapKey
+	}
+	if ts.mapRules == nil {
+		ts.mapRules = other.mapRules
 	}
 
 	return ts
@@ -886,6 +1054,55 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 	return structFields, nil
 }
 
+func parseStructTagValue(name string, keyValue []string, currentPart string) (string, error) {
+	if len(keyValue) != 2 {
+		return "", ierrors.Errorf("incorrect %s tag format: %s", name, currentPart)
+	}
+
+	return keyValue[1], nil
+}
+
+func parseStructTagValueUint(name string, keyValue []string, currentPart string) (uint, error) {
+	value, err := parseStructTagValue(name, keyValue, currentPart)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to parse %s %s", name, currentPart)
+	}
+
+	return uint(result), nil
+}
+
+func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
+	switch prefixTypeRaw {
+	case "byte", "uint8":
+		return LengthPrefixTypeAsByte, nil
+	case "uint16":
+		return LengthPrefixTypeAsUint16, nil
+	case "uint32":
+		return LengthPrefixTypeAsUint32, nil
+	default:
+		return LengthPrefixTypeAsByte, ierrors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+	}
+}
+
+func parseStructTagValuePrefixType(name string, keyValue []string, currentPart string) (LengthPrefixType, error) {
+	value, err := parseStructTagValue(name, keyValue, currentPart)
+	if err != nil {
+		return 0, err
+	}
+
+	lengthPrefixType, err := parseLengthPrefixType(value)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to parse %s %s", name, currentPart)
+	}
+
+	return lengthPrefixType, nil
+}
+
 func parseStructTag(tag string) (tagSettings, error) {
 	if tag == "" {
 		return tagSettings{}, ierrors.New("struct tag is empty")
@@ -900,51 +1117,115 @@ func parseStructTag(tag string) (tagSettings, error) {
 	settings.position = position
 	parts = parts[1:]
 	seenParts := map[string]struct{}{}
+
 	for _, currentPart := range parts {
 		if _, ok := seenParts[currentPart]; ok {
 			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
 		}
 		keyValue := strings.Split(currentPart, "=")
 		partName := keyValue[0]
+
 		switch partName {
 		case "optional":
 			settings.isOptional = true
+
 		case "nest":
 			settings.nest = true
+
 		case "omitempty":
 			settings.omitEmpty = true
+
 		case "mapKey":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect mapKey tag format: %s", currentPart)
+			value, err := parseStructTagValue("mapKey", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
 			}
-			settings.ts = settings.ts.WithMapKey(keyValue[1])
+			settings.ts = settings.ts.WithMapKey(value)
+
 		case "minLen":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect minLen tag format: %s", currentPart)
-			}
-			minLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			value, err := parseStructTagValueUint("minLen", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse minLen %s", currentPart)
+				return tagSettings{}, err
 			}
-			settings.ts = settings.ts.WithMinLen(uint(minLen))
+			settings.ts = settings.ts.WithMinLen(value)
+
 		case "maxLen":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect maxLen tag format: %s", currentPart)
-			}
-			maxLen, err := strconv.ParseUint(keyValue[1], 10, 64)
+			value, err := parseStructTagValueUint("maxLen", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse maxLen %s", currentPart)
+				return tagSettings{}, err
 			}
-			settings.ts = settings.ts.WithMaxLen(uint(maxLen))
+			settings.ts = settings.ts.WithMaxLen(value)
+
 		case "lengthPrefixType":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
-			}
-			lengthPrefixType, err := parseLengthPrefixType(keyValue[1])
+			value, err := parseStructTagValuePrefixType("lengthPrefixType", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
+				return tagSettings{}, err
 			}
-			settings.ts = settings.ts.WithLengthPrefixType(lengthPrefixType)
+			settings.ts = settings.ts.WithLengthPrefixType(value)
+
+		case "mapMinEntries":
+			value, err := parseStructTagValueUint("mapMinEntries", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapMinEntries(value)
+
+		case "mapMaxEntries":
+			value, err := parseStructTagValueUint("mapMaxEntries", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapMaxEntries(value)
+
+		case "mapMaxByteSize":
+			value, err := parseStructTagValueUint("mapMaxByteSize", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapMaxByteSize(value)
+
+		case "mapKeyLengthPrefixType":
+			value, err := parseStructTagValuePrefixType("mapKeyLengthPrefixType", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapKeyLengthPrefixType(value)
+
+		case "mapKeyMinLen":
+			value, err := parseStructTagValueUint("mapKeyMinLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapKeyMinLen(value)
+
+		case "mapKeyMaxLen":
+			value, err := parseStructTagValueUint("mapKeyMaxLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapKeyMaxLen(value)
+
+		case "mapValueLengthPrefixType":
+			value, err := parseStructTagValuePrefixType("mapValueLengthPrefixType", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapValueLengthPrefixType(value)
+
+		case "mapValueMinLen":
+			value, err := parseStructTagValueUint("mapValueMinLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapValueMinLen(value)
+
+		case "mapValueMaxLen":
+			value, err := parseStructTagValueUint("mapValueMaxLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMapValueMaxLen(value)
+
 		default:
 			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
 		}
@@ -952,19 +1233,6 @@ func parseStructTag(tag string) (tagSettings, error) {
 	}
 
 	return settings, nil
-}
-
-func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
-	switch prefixTypeRaw {
-	case "byte", "uint8":
-		return LengthPrefixTypeAsByte, nil
-	case "uint16":
-		return LengthPrefixTypeAsUint16, nil
-	case "uint32":
-		return LengthPrefixTypeAsUint32, nil
-	default:
-		return LengthPrefixTypeAsByte, ierrors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
-	}
 }
 
 func sliceFromArray(arrValue reflect.Value) reflect.Value {

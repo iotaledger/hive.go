@@ -268,7 +268,7 @@ func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefi
 		return s
 
 	case minLen > 0 && sliceLen < minLen:
-		s.err = errProducer(ierrors.Wrapf(ErrSliceLengthTooShort, "slice (len %d) is less than min length of %d ", sliceLen, maxLen))
+		s.err = errProducer(ierrors.Wrapf(ErrSliceLengthTooShort, "slice (len %d) is less than min length of %d ", sliceLen, minLen))
 
 		return s
 	}

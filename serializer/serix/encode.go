@@ -164,6 +164,30 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 	return nil
 }
 
+// checkMapMinMaxBounds checks whether the given map is within its defined bounds in case it has defined map rules.
+func (api *API) checkMapMinMaxBounds(length int, ts TypeSettings) error {
+	if ts.mapRules != nil {
+		switch {
+		case ts.mapRules.MaxEntries > 0 && uint(length) > ts.mapRules.MaxEntries:
+			return ierrors.Wrapf(ErrMapValidationMaxElementsExceeded, "map (len %d) exceeds max length of %d ", length, ts.mapRules.MaxEntries)
+
+		case ts.mapRules.MinEntries > 0 && uint(length) < ts.mapRules.MinEntries:
+			return ierrors.Wrapf(ErrMapValidationMinElementsNotReached, "map (len %d) is less than min length of %d ", length, ts.mapRules.MinEntries)
+		}
+	}
+
+	return nil
+}
+
+// checkMapMaxByteSize checks whether the given map is within its defined max byte size in case it has defined map rules.
+func (api *API) checkMapMaxByteSize(byteSize int, ts TypeSettings) error {
+	if ts.mapRules != nil && ts.mapRules.MaxByteSize > 0 && byteSize > int(ts.mapRules.MaxByteSize) {
+		return ierrors.Wrapf(ErrMapValidationMaxBytesExceeded, "map (len %d) exceeds max bytes of %d ", byteSize, ts.mapRules.MaxByteSize)
+	}
+
+	return nil
+}
+
 // checks whether the given value has the concept of a length.
 func hasLength(v reflect.Value) bool {
 	k := v.Kind()
@@ -355,12 +379,17 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
 	size := value.Len()
+
+	if err := api.checkMapMinMaxBounds(size, ts); err != nil {
+		return nil, err
+	}
+
 	data := make([][]byte, size)
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()
 		elem := iter.Value()
-		b, err := api.encodeMapKVPair(ctx, key, elem, opts)
+		b, err := api.encodeMapKVPair(ctx, key, elem, ts, opts)
 		if err != nil {
 			return nil, ierrors.WithStack(err)
 		}
@@ -368,18 +397,36 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 	ts = ts.ensureOrdering()
 
-	return encodeSliceOfBytes(data, valueType, ts, opts)
+	bytes, err := encodeSliceOfBytes(data, valueType, ts, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := api.checkMapMaxByteSize(len(bytes), ts); err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
 }
 
-func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
-	keyBytes, err := api.encode(ctx, key, TypeSettings{}, opts)
+func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
+	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
 		return nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
 	}
-	elemBytes, err := api.encode(ctx, val, TypeSettings{}, opts)
+
+	elemBytes, err := api.encode(ctx, val, valueTypeSettings, opts)
 	if err != nil {
 		return nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
 	}
+
 	buf := bytes.NewBuffer(keyBytes)
 	buf.Write(elemBytes)
 
@@ -391,13 +438,16 @@ func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, 
 	if !set {
 		return nil, ierrors.Errorf("no LengthPrefixType was provided for type %s", valueType)
 	}
+
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
 		arrayRules = new(ArrayRules)
 	}
+
 	serializationMode := ts.toMode(opts)
 	serializerArrayRules := serializer.ArrayRules(*arrayRules)
 	serializerArrayRulesPtr := &serializerArrayRules
+
 	seri := serializer.NewSerializer()
 	seri.WriteSliceOfByteSlices(data,
 		serializationMode,
