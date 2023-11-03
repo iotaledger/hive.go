@@ -250,7 +250,7 @@ func (r *readableVariable[Type]) LogUpdates(logger VariableLogReceiver, logLevel
 
 	return logger.OnLogLevelActive(logLevel, func() (shutdown func()) {
 		return r.OnUpdate(func(_, newValue Type) {
-			if newValue == nil || (*[2]uintptr)(unsafe.Pointer(&newValue))[1] == 0 {
+			if isNil(newValue) {
 				logger.LogAttrs(logMessage, logLevel, slog.String("set", "nil"))
 			} else if len(stringer) != 0 {
 				logger.LogAttrs(logMessage, logLevel, slog.String("set", stringer[0](newValue)))
@@ -259,6 +259,11 @@ func (r *readableVariable[Type]) LogUpdates(logger VariableLogReceiver, logLevel
 			}
 		})
 	})
+}
+
+// isNil returns true if the given value is nil.
+func isNil(value any) bool {
+	return value == nil || (*[2]uintptr)(unsafe.Pointer(&value))[1] == 0
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
