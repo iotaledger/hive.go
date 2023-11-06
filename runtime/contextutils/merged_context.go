@@ -71,6 +71,14 @@ func MergeContexts(ctxPrimary context.Context, ctxSecondary context.Context) (co
 		setCtxDoneFunc(ierrors.Join(context.Canceled, ErrMergedContextCanceled))
 	}
 
+	// check if the given contexts are already canceled during initialization
+	if mc.ctxPrimary.Err() != nil {
+		setCtxDoneFunc(mc.ctxPrimary.Err())
+	}
+	if mc.ctxSecondary.Err() != nil {
+		setCtxDoneFunc(mc.ctxSecondary.Err())
+	}
+
 	return mc, mergedCancelFunc
 }
 

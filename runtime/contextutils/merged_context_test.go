@@ -72,6 +72,55 @@ func TestMergedContextSecondaryCancel(t *testing.T) {
 
 	require.Equal(t, ctx2.Err(), mergedCtx.Err())
 }
+
+func TestMergedContextPrimaryCancelBefore(t *testing.T) {
+
+	ctx1, cancel1 := context.WithCancel(context.WithValue(context.Background(), "one", 1))
+	defer cancel1()
+
+	ctx2, cancel2 := context.WithCancel(context.WithValue(context.Background(), "two", 2))
+	defer cancel2()
+
+	cancel1()
+
+	mergedCtx, _ := MergeContexts(ctx1, ctx2)
+
+	require.True(t, func() bool {
+		select {
+		case <-mergedCtx.Done():
+			return true
+		default:
+			return false
+		}
+	}())
+
+	require.Equal(t, ctx1.Err(), mergedCtx.Err())
+}
+
+func TestMergedContextSecondaryCancelBefore(t *testing.T) {
+
+	ctx1, cancel1 := context.WithCancel(context.WithValue(context.Background(), "one", 1))
+	defer cancel1()
+
+	ctx2, cancel2 := context.WithCancel(context.WithValue(context.Background(), "two", 2))
+	defer cancel2()
+
+	cancel2()
+
+	mergedCtx, _ := MergeContexts(ctx1, ctx2)
+
+	require.True(t, func() bool {
+		select {
+		case <-mergedCtx.Done():
+			return true
+		default:
+			return false
+		}
+	}())
+
+	require.Equal(t, ctx2.Err(), mergedCtx.Err())
+}
+
 func TestMergedContextValues(t *testing.T) {
 
 	ctx1, cancel1 := context.WithCancel(context.WithValue(context.Background(), "one", 1))
