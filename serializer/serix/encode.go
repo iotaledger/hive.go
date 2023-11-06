@@ -143,66 +143,6 @@ func (api *API) encodeBasedOnType(
 	return nil, ierrors.Errorf("can't encode: unsupported type %T", valueI)
 }
 
-// checks whether the given value is within its defined bounds in case it has a length.
-func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
-	if has := hasLength(v); !has {
-		return nil
-	}
-
-	l := uint(v.Len())
-	if minLen, ok := ts.MinLen(); ok {
-		if l < minLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
-		}
-	}
-	if maxLen, ok := ts.MaxLen(); ok {
-		if l > maxLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
-		}
-	}
-
-	return nil
-}
-
-// checkMapMinMaxBounds checks whether the given map is within its defined bounds in case it has defined map rules.
-func (api *API) checkMapMinMaxBounds(length int, ts TypeSettings) error {
-	if ts.mapRules != nil {
-		switch {
-		case ts.mapRules.MaxEntries > 0 && uint(length) > ts.mapRules.MaxEntries:
-			return ierrors.Wrapf(ErrMapValidationMaxElementsExceeded, "map (len %d) exceeds max length of %d ", length, ts.mapRules.MaxEntries)
-
-		case ts.mapRules.MinEntries > 0 && uint(length) < ts.mapRules.MinEntries:
-			return ierrors.Wrapf(ErrMapValidationMinElementsNotReached, "map (len %d) is less than min length of %d ", length, ts.mapRules.MinEntries)
-		}
-	}
-
-	return nil
-}
-
-// checkMapMaxByteSize checks whether the given map is within its defined max byte size in case it has defined map rules.
-func (api *API) checkMapMaxByteSize(byteSize int, ts TypeSettings) error {
-	if ts.mapRules != nil && ts.mapRules.MaxByteSize > 0 && byteSize > int(ts.mapRules.MaxByteSize) {
-		return ierrors.Wrapf(ErrMapValidationMaxBytesExceeded, "map (len %d) exceeds max bytes of %d ", byteSize, ts.mapRules.MaxByteSize)
-	}
-
-	return nil
-}
-
-// checks whether the given value has the concept of a length.
-func hasLength(v reflect.Value) bool {
-	k := v.Kind()
-	switch k {
-	case reflect.Array:
-	case reflect.Map:
-	case reflect.Slice:
-	case reflect.String:
-	default:
-		return false
-	}
-
-	return true
-}
-
 func (api *API) encodeInterface(
 	ctx context.Context, value reflect.Value, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
