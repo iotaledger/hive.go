@@ -403,6 +403,27 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 	return bytesRead, nil
 }
 
+func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, ts TypeSettings, opts *options) (int, error) {
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
+	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
+	}
+	b = b[keyBytesRead:]
+	elemBytesRead, err := api.decode(ctx, b, val, valueTypeSettings, opts)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
+	}
+
+	return keyBytesRead + elemBytesRead, nil
+}
+
 func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	if value.IsNil() {
@@ -466,25 +487,4 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 		})
 
 	return deseri.Done()
-}
-
-func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, ts TypeSettings, opts *options) (int, error) {
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
-
-	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
-	if err != nil {
-		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
-	}
-	b = b[keyBytesRead:]
-	elemBytesRead, err := api.decode(ctx, b, val, valueTypeSettings, opts)
-	if err != nil {
-		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
-	}
-
-	return keyBytesRead + elemBytesRead, nil
 }

@@ -83,7 +83,7 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Slice:
 		return api.mapEncodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Map:
-		return api.mapEncodeMap(ctx, value, opts)
+		return api.mapEncodeMap(ctx, value, ts, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
@@ -259,13 +259,41 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	return data, nil
 }
 
-func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, opts *options) (*orderedmap.OrderedMap, error) {
+func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) (string, any, error) {
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
+	k, err := api.mapEncode(ctx, key, keyTypeSettings, opts)
+	if err != nil {
+		return "", nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+	}
+
+	v, err := api.mapEncode(ctx, val, valueTypeSettings, opts)
+	if err != nil {
+		return "", nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
+	}
+
+	//nolint:forcetypeassert // map keys are always strings
+	return k.(string), v, nil
+}
+
+func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
+	size := value.Len()
+
+	if err := api.checkMapMinMaxBounds(size, ts); err != nil {
+		return nil, err
+	}
+
 	m := orderedmap.New()
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()
 		elem := iter.Value()
-		k, v, err := api.mapEncodeMapKVPair(ctx, key, elem, opts)
+		k, v, err := api.mapEncodeMapKVPair(ctx, key, elem, ts, opts)
 		if err != nil {
 			return nil, ierrors.WithStack(err)
 		}
@@ -273,18 +301,4 @@ func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, opts *opt
 	}
 
 	return m, nil
-}
-
-func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
-	k, err := api.mapEncode(ctx, key, TypeSettings{}, opts)
-	if err != nil {
-		return "", nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
-	}
-	v, err := api.mapEncode(ctx, val, TypeSettings{}, opts)
-	if err != nil {
-		return "", nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
-	}
-
-	//nolint:forcetypeassert // map keys are always strings
-	return k.(string), v, nil
 }

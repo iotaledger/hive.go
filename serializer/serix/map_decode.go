@@ -127,7 +127,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 	case reflect.Slice:
 		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
 	case reflect.Map:
-		return api.mapDecodeMap(ctx, mapVal, value, valueType, opts)
+		return api.mapDecodeMap(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
@@ -426,7 +426,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 }
 
 func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, opts *options) error {
+	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	m, ok := mapVal.(map[string]any)
 	if !ok {
 		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
@@ -436,19 +436,35 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		value.Set(reflect.MakeMap(valueType))
 	}
 
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
 	for k, v := range m {
-		key := reflect.New(valueType.Key()).Elem()
-		val := reflect.New(valueType.Elem()).Elem()
+		keyValue := reflect.New(valueType.Key()).Elem()
+		elemValue := reflect.New(valueType.Elem()).Elem()
 
-		if err := api.mapDecode(ctx, k, key, TypeSettings{}, opts); err != nil {
-			return ierrors.Wrapf(err, "failed to map decode map key of type %s", key.Type())
+		if err := api.mapDecode(ctx, k, keyValue, keyTypeSettings, opts); err != nil {
+			return ierrors.Wrapf(err, "failed to map decode map key of type %s", keyValue.Type())
 		}
 
-		if err := api.mapDecode(ctx, v, val, TypeSettings{}, opts); err != nil {
-			return ierrors.Wrapf(err, "failed to map decode map element of type %s", val.Type())
+		if value.MapIndex(keyValue).IsValid() {
+			// map entry already exists
+			return ierrors.Wrapf(ErrMapValidationViolatesUniqueness, "map entry with key %v already exists", keyValue.Interface())
 		}
 
-		value.SetMapIndex(key, val)
+		if err := api.mapDecode(ctx, v, elemValue, valueTypeSettings, opts); err != nil {
+			return ierrors.Wrapf(err, "failed to map decode map element of type %s", elemValue.Type())
+		}
+
+		value.SetMapIndex(keyValue, elemValue)
+	}
+
+	if err := api.checkMapMinMaxBounds(value.Len(), ts); err != nil {
+		return err
 	}
 
 	return nil

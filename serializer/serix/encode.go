@@ -316,6 +316,30 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }
 
+func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
+	keyTypeSettings := TypeSettings{}
+	valueTypeSettings := TypeSettings{}
+	if ts.mapRules != nil {
+		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
+		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
+	}
+
+	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+	}
+
+	elemBytes, err := api.encode(ctx, val, valueTypeSettings, opts)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
+	}
+
+	buf := bytes.NewBuffer(keyBytes)
+	buf.Write(elemBytes)
+
+	return buf.Bytes(), nil
+}
+
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
 	size := value.Len()
@@ -347,30 +371,6 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 
 	return bytes, nil
-}
-
-func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
-
-	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
-	if err != nil {
-		return nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
-	}
-
-	elemBytes, err := api.encode(ctx, val, valueTypeSettings, opts)
-	if err != nil {
-		return nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
-	}
-
-	buf := bytes.NewBuffer(keyBytes)
-	buf.Write(elemBytes)
-
-	return buf.Bytes(), nil
 }
 
 func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, opts *options) ([]byte, error) {
