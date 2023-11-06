@@ -14,15 +14,15 @@ func Read[T allowedGenericTypes](reader io.Reader) (result T, err error) {
 	return result, binary.Read(reader, binary.LittleEndian, &result)
 }
 
-func ReadBytes(reader io.Reader, len int) ([]byte, error) {
-	readBytes := make([]byte, len)
+func ReadBytes(reader io.Reader, length int) ([]byte, error) {
+	readBytes := make([]byte, length)
 
 	nBytes, err := reader.Read(readBytes)
 	if err != nil {
 		return nil, ierrors.Wrap(err, "failed to read serialized bytes")
 	}
-	if nBytes != len {
-		return nil, ierrors.Errorf("failed to read serialized bytes: read bytes (%d) != size (%d)", nBytes, len)
+	if nBytes != length {
+		return nil, ierrors.Errorf("failed to read serialized bytes: read bytes (%d) != size (%d)", nBytes, length)
 	}
 
 	return readBytes, nil

@@ -2,8 +2,9 @@ package stream
 
 import (
 	"bytes"
-	"errors"
 	"io"
+
+	"github.com/iotaledger/hive.go/ierrors"
 )
 
 // ByteBuffer is an in-memory io.WriteSeeker implementation.
@@ -24,7 +25,7 @@ func NewByteBuffer(initialLength ...int) *ByteBuffer {
 	}
 }
 
-// Write writes to the buffer of this ByteBuffer instance
+// Write writes to the buffer of this ByteBuffer instance.
 func (w *ByteBuffer) Write(p []byte) (n int, err error) {
 	// If the offset is past the end of the buffer, grow the buffer with null bytes.
 	if extra := w.pos - w.buf.Len(); extra > 0 {
@@ -47,10 +48,11 @@ func (w *ByteBuffer) Write(p []byte) (n int, err error) {
 	}
 
 	w.pos += n
+
 	return n, err
 }
 
-// Seek seeks in the buffer of this ByteBuffer instance
+// Seek seeks in the buffer of this ByteBuffer instance.
 func (w *ByteBuffer) Seek(offset int64, whence int) (int64, error) {
 	newPos, offs := 0, int(offset)
 
@@ -64,7 +66,7 @@ func (w *ByteBuffer) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if newPos < 0 {
-		return 0, errors.New("negative result pos")
+		return 0, ierrors.New("negative result pos")
 	}
 	w.pos = newPos
 
@@ -75,7 +77,6 @@ func (w *ByteBuffer) Reader() *ByteReader {
 	return NewByteReader(w.buf.Bytes())
 }
 
-// Close :
 func (w *ByteBuffer) Close() error {
 	return nil
 }
