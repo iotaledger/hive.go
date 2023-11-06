@@ -59,7 +59,7 @@ func MergeContexts(ctxPrimary context.Context, ctxSecondary context.Context) (co
 	go func() {
 		select {
 		case <-mc.cancelCtx.Done():
-			setCtxDoneFunc(ErrMergedContextCanceled)
+			setCtxDoneFunc(ierrors.Join(context.Canceled, ErrMergedContextCanceled))
 		case <-mc.ctxPrimary.Done():
 			setCtxDoneFunc(mc.ctxPrimary.Err())
 		case <-mc.ctxSecondary.Done():
@@ -68,7 +68,7 @@ func MergeContexts(ctxPrimary context.Context, ctxSecondary context.Context) (co
 	}()
 
 	var mergedCancelFunc context.CancelFunc = func() {
-		setCtxDoneFunc(ErrMergedContextCanceled)
+		setCtxDoneFunc(ierrors.Join(context.Canceled, ErrMergedContextCanceled))
 	}
 
 	return mc, mergedCancelFunc
