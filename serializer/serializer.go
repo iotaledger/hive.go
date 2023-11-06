@@ -14,30 +14,6 @@ import (
 )
 
 type (
-	// ArrayOf12Bytes is an array of 12 bytes.
-	ArrayOf12Bytes = [12]byte
-
-	// ArrayOf20Bytes is an array of 20 bytes.
-	ArrayOf20Bytes = [20]byte
-
-	// ArrayOf32Bytes is an array of 32 bytes.
-	ArrayOf32Bytes = [32]byte
-
-	// ArrayOf38Bytes is an array of 38 bytes.
-	ArrayOf38Bytes = [38]byte
-
-	// ArrayOf64Bytes is an array of 64 bytes.
-	ArrayOf64Bytes = [64]byte
-
-	// ArrayOf49Bytes is an array of 49 bytes.
-	ArrayOf49Bytes = [49]byte
-
-	// SliceOfArraysOf32Bytes is a slice of arrays of which each is 32 bytes.
-	SliceOfArraysOf32Bytes = []ArrayOf32Bytes
-
-	// SliceOfArraysOf64Bytes is a slice of arrays of which each is 64 bytes.
-	SliceOfArraysOf64Bytes = []ArrayOf64Bytes
-
 	// ErrProducer might produce an error.
 	ErrProducer func(err error) error
 
@@ -59,11 +35,12 @@ type SeriLengthPrefixType byte
 
 const (
 	// SeriLengthPrefixTypeAsByte defines a collection length to be denoted by a byte.
-	SeriLengthPrefixTypeAsByte SeriLengthPrefixType = iota
+	SeriLengthPrefixTypeAsByte SeriLengthPrefixType = iota + 200
 	// SeriLengthPrefixTypeAsUint16 defines a collection length to be denoted by a uint16.
 	SeriLengthPrefixTypeAsUint16
 	// SeriLengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
 	SeriLengthPrefixTypeAsUint32
+	SeriLengthPrefixTypeAsUint64
 )
 
 // NewSerializer creates a new Serializer.
@@ -309,34 +286,6 @@ func (s *Serializer) WriteVariableByteSlice(data []byte, lenType SeriLengthPrefi
 	return s
 }
 
-// Write32BytesArraySlice writes a slice of arrays of 32 bytes to the Serializer.
-func (s *Serializer) Write32BytesArraySlice(slice SliceOfArraysOf32Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
-	if s.err != nil {
-		return s
-	}
-
-	data := make([][]byte, len(slice))
-	for i := range slice {
-		data[i] = slice[i][:]
-	}
-
-	return s.WriteSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
-}
-
-// Write64BytesArraySlice writes a slice of arrays of 64 bytes to the Serializer.
-func (s *Serializer) Write64BytesArraySlice(slice SliceOfArraysOf64Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
-	if s.err != nil {
-		return s
-	}
-
-	data := make([][]byte, len(slice))
-	for i := range slice {
-		data[i] = slice[i][:]
-	}
-
-	return s.WriteSliceOfByteSlices(data, deSeriMode, lenType, arrayRules, errProducer)
-}
-
 // WriteSliceOfObjects writes Serializables into the Serializer.
 // For every written Serializable, the given WrittenObjectConsumer is called if it isn't nil.
 func (s *Serializer) WriteSliceOfObjects(source interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Serializer {
@@ -454,7 +403,7 @@ func (s *Serializer) sourceToSerializables(source interface{}) Serializables {
 	return seris
 }
 
-// WriteTime writes a marshaled Time value to the internal buffer.
+// WriteTime writes a marshaled Slot value to the internal buffer.
 func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
@@ -852,126 +801,6 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 	return d
 }
 
-// ReadArrayOf12Bytes reads an array of 12 bytes.
-func (d *Deserializer) ReadArrayOf12Bytes(arr *ArrayOf12Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 12
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
-// ReadArrayOf20Bytes reads an array of 20 bytes.
-func (d *Deserializer) ReadArrayOf20Bytes(arr *ArrayOf20Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 20
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
-// ReadArrayOf32Bytes reads an array of 32 bytes.
-func (d *Deserializer) ReadArrayOf32Bytes(arr *ArrayOf32Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 32
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
-// ReadArrayOf38Bytes reads an array of 38 bytes.
-func (d *Deserializer) ReadArrayOf38Bytes(arr *ArrayOf38Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 38
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
-// ReadArrayOf64Bytes reads an array of 64 bytes.
-func (d *Deserializer) ReadArrayOf64Bytes(arr *ArrayOf64Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 64
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
-// ReadArrayOf49Bytes reads an array of 49 bytes.
-func (d *Deserializer) ReadArrayOf49Bytes(arr *ArrayOf49Bytes, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 49
-
-	l := len(d.src[d.offset:])
-	if l < length {
-		d.err = errProducer(ErrDeserializationNotEnoughData)
-
-		return d
-	}
-
-	copy(arr[:], d.src[d.offset:d.offset+length])
-	d.offset += length
-
-	return d
-}
-
 // reads the length of a slice.
 func (d *Deserializer) readSliceLength(lenType SeriLengthPrefixType, errProducer ErrProducer) (int, error) {
 	l := len(d.src[d.offset:])
@@ -1007,106 +836,6 @@ func (d *Deserializer) readSliceLength(lenType SeriLengthPrefixType, errProducer
 	d.offset += l
 
 	return sliceLength, nil
-}
-
-// ReadSliceOfArraysOf32Bytes reads a slice of arrays of 32 bytes.
-func (d *Deserializer) ReadSliceOfArraysOf32Bytes(slice *SliceOfArraysOf32Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 32
-
-	sliceLength, err := d.readSliceLength(lenType, errProducer)
-	if err != nil {
-		d.err = err
-
-		return d
-	}
-
-	var arrayElementValidator ElementValidationFunc
-	if arrayRules != nil && deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
-			d.err = errProducer(err)
-
-			return d
-		}
-
-		arrayElementValidator = arrayRules.ElementValidationFunc()
-	}
-
-	s := make(SliceOfArraysOf32Bytes, sliceLength)
-	for i := 0; i < sliceLength; i++ {
-		if len(d.src[d.offset:]) < length {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-
-			return d
-		}
-
-		if arrayElementValidator != nil {
-			if err := arrayElementValidator(i, d.src[d.offset:d.offset+length]); err != nil {
-				d.err = errProducer(err)
-
-				return d
-			}
-		}
-
-		copy(s[i][:], d.src[d.offset:d.offset+length])
-		d.offset += length
-	}
-
-	*slice = s
-
-	return d
-}
-
-// ReadSliceOfArraysOf64Bytes reads a slice of arrays of 64 bytes.
-func (d *Deserializer) ReadSliceOfArraysOf64Bytes(slice *SliceOfArraysOf64Bytes, deSeriMode DeSerializationMode, lenType SeriLengthPrefixType, arrayRules *ArrayRules, errProducer ErrProducer) *Deserializer {
-	if d.err != nil {
-		return d
-	}
-	const length = 64
-
-	sliceLength, err := d.readSliceLength(lenType, errProducer)
-	if err != nil {
-		d.err = err
-
-		return d
-	}
-
-	var arrayElementValidator ElementValidationFunc
-	if arrayRules != nil && deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
-			d.err = errProducer(err)
-
-			return d
-		}
-
-		arrayElementValidator = arrayRules.ElementValidationFunc()
-	}
-
-	s := make(SliceOfArraysOf64Bytes, sliceLength)
-	for i := 0; i < sliceLength; i++ {
-		if len(d.src[d.offset:]) < length {
-			d.err = errProducer(ErrDeserializationNotEnoughData)
-
-			return d
-		}
-
-		if arrayElementValidator != nil {
-			if err := arrayElementValidator(i, d.src[d.offset:d.offset+length]); err != nil {
-				d.err = errProducer(err)
-
-				return d
-			}
-		}
-
-		copy(s[i][:], d.src[d.offset:d.offset+length])
-		d.offset += length
-	}
-
-	*slice = s
-
-	return d
 }
 
 // ReadObject reads an object, using the given SerializableReadGuardFunc.
@@ -1305,7 +1034,7 @@ func (d *Deserializer) readSerializablesIntoTarget(target interface{}, seris Ser
 	}
 }
 
-// ReadTime reads a Time value from the internal buffer.
+// ReadTime reads a Slot value from the internal buffer.
 func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
