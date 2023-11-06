@@ -1,4 +1,4 @@
-package stream
+package stream_test
 
 import (
 	"io"
@@ -6,16 +6,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/iotaledger/hive.go/serializer/v2/stream"
 )
 
-func TestWrite(t *testing.T) {
-	ws := NewByteBuffer()
+func TestByteBuffer_Write(t *testing.T) {
+	ws := stream.NewByteBuffer()
 	checkWrite(t, ws, "hello", "hello")
 	checkWrite(t, ws, " world", "hello world")
 }
 
-func TestSeek(t *testing.T) {
-	ws := NewByteBuffer()
+func TestByteBuffer_Seek(t *testing.T) {
+	ws := stream.NewByteBuffer()
 	checkWrite(t, ws, "hello", "hello")
 	checkWrite(t, ws, " world", "hello world")
 
@@ -34,36 +36,29 @@ func TestSeek(t *testing.T) {
 	checkWrite(t, ws, "!", "hello golang fans\x00\x00\x00\x00!")
 }
 
-func TestSeek_LargeGap(t *testing.T) {
-	ws := NewByteBuffer()
+func TestByteBuffer_Seek_LargeGap(t *testing.T) {
+	ws := stream.NewByteBuffer()
 	checkSeek(t, ws, 1024, io.SeekStart, 1024)
 	checkWrite(t, ws, "hello", strings.Repeat("\x00", 1024)+"hello")
 }
 
 // checkWrite passes data to ws.Write and compares the resulting buffer against exp.
-func checkWrite(t *testing.T, byteBuffer *ByteBuffer, data, exp string) {
+func checkWrite(t *testing.T, byteBuffer *stream.ByteBuffer, data, exp string) {
 	nBytesWritten, err := byteBuffer.Write([]byte(data))
-	if err != nil {
-		t.Fatalf("Write(%q) failed: %v", data, err)
-	}
+	require.NoError(t, err)
 
-	if nBytesWritten != len(data) {
-		t.Fatalf("Write(%q) = %v; want %q", data, nBytesWritten, len(data))
-	}
+	require.EqualValues(t, len(data), nBytesWritten)
 
 	bytes, err := byteBuffer.Bytes()
 	require.NoError(t, err)
 
-	if string(bytes) != exp {
-		t.Fatalf("Write(%q) produced %q; want %q", data, string(bytes), exp)
-	}
+	require.EqualValues(t, exp, string(bytes))
 }
 
 // checkSeek calls ws.Seek with the supplied parameters and compares the returned offset against exp.
-func checkSeek(t *testing.T, ws *ByteBuffer, offset int64, whence, exp int) {
-	if newOffset, err := ws.Seek(offset, whence); err != nil {
-		t.Fatalf("Seek(%v, %v) failed: %v", offset, whence, err)
-	} else if newOffset != int64(exp) {
-		t.Fatalf("Seek(%v, %v) = %v; want %v", offset, whence, newOffset, exp)
-	}
+func checkSeek(t *testing.T, ws *stream.ByteBuffer, offset int64, whence, exp int) {
+	newOffset, err := ws.Seek(offset, whence)
+	require.NoError(t, err)
+
+	require.EqualValues(t, exp, newOffset)
 }
