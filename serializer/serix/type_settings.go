@@ -1,7 +1,13 @@
 package serix
 
 import (
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
+)
+
+var (
+	// ErrUnknownLengthPrefixType gets returned when an unknown LengthPrefixType is used.
+	ErrUnknownLengthPrefixType = ierrors.New("unknown length prefix type")
 )
 
 // LengthPrefixType defines the type of the value denoting the length of a collection.
@@ -15,6 +21,19 @@ const (
 	// LengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
 	LengthPrefixTypeAsUint32 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32)
 )
+
+func LengthPrefixTypeSize(t LengthPrefixType) (int, error) {
+	switch t {
+	case LengthPrefixTypeAsByte:
+		return 1, nil
+	case LengthPrefixTypeAsUint16:
+		return 2, nil
+	case LengthPrefixTypeAsUint32:
+		return 4, nil
+	default:
+		return 0, ErrUnknownLengthPrefixType
+	}
+}
 
 // ArrayRules defines rules around a to be deserialized array.
 // Min and Max at 0 define an unbounded array.

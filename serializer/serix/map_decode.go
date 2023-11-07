@@ -40,6 +40,10 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 		}
 	}
 
+	if err := api.checkMapSerializedSize(ctx, value, ts, opts); err != nil {
+		return err
+	}
+
 	return nil
 }
 

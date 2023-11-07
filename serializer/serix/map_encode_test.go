@@ -406,10 +406,10 @@ func TestMapEncodeDecode(t *testing.T) {
 					api: api,
 					in: &example{
 						Entries: map[serializableStruct]struct{}{
-							serializableStruct{
+							{
 								bytes: blake2b.Sum256([]byte("test")),
 								index: 1,
-							}: struct{}{},
+							}: {},
 						},
 					},
 				}

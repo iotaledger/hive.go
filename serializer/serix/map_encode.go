@@ -36,6 +36,10 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 		}
 	}
 
+	if err := api.checkMapSerializedSize(ctx, value, ts, opts); err != nil {
+		return nil, err
+	}
+
 	if serializable, ok := valueI.(SerializableJSON); ok {
 		ele, err = serializable.EncodeJSON()
 		if err != nil {

@@ -220,6 +220,23 @@ func (api *API) checkMapMaxByteSize(byteSize int, ts TypeSettings) error {
 	return nil
 }
 
+func (api *API) checkMapSerializedSize(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) error {
+	if ts.mapRules == nil || ts.mapRules.MaxByteSize == 0 {
+		return nil
+	}
+
+	if value.Kind() != reflect.Map {
+		return ierrors.Errorf("can't get map serialized size: value is not a map, got %s", value.Kind())
+	}
+
+	bytes, err := api.encode(ctx, value, ts, opts)
+	if err != nil {
+		return ierrors.Wrapf(err, "can't get map serialized size: failed to encode map")
+	}
+
+	return api.checkMapMaxByteSize(len(bytes), ts)
+}
+
 // Encode serializes the provided object obj into bytes.
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.
@@ -777,7 +794,7 @@ func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
 	case "uint32":
 		return LengthPrefixTypeAsUint32, nil
 	default:
-		return LengthPrefixTypeAsByte, ierrors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+		return LengthPrefixTypeAsByte, ierrors.Wrapf(ErrUnknownLengthPrefixType, "%s", prefixTypeRaw)
 	}
 }
 
