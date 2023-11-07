@@ -283,9 +283,9 @@ type derivedVariable[ValueType comparable] struct {
 }
 
 // newDerivedVariable creates a new derivedVariable instance.
-func newDerivedVariable[ValueType comparable](subscribe func(DerivedVariable[ValueType]) func()) *derivedVariable[ValueType] {
+func newDerivedVariable[ValueType comparable](subscribe func(DerivedVariable[ValueType]) func(), initialValue ...ValueType) *derivedVariable[ValueType] {
 	d := &derivedVariable[ValueType]{
-		Variable: NewVariable[ValueType](),
+		Variable: NewVariable[ValueType]().Init(lo.First(initialValue)),
 	}
 
 	d.unsubscribe = subscribe(d)
