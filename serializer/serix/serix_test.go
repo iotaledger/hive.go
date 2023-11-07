@@ -132,3 +132,169 @@ func TestMinMax(t *testing.T) {
 		})
 	}
 }
+
+type deSerializeTest struct {
+	name      string
+	source    any
+	target    any
+	size      int
+	seriErr   error
+	deSeriErr error
+}
+
+func (test *deSerializeTest) deSerialize(t *testing.T) {
+	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+	if test.seriErr != nil {
+		require.ErrorIs(t, err, test.seriErr)
+
+		return
+	}
+	require.NoError(t, err)
+
+	require.Equal(t, test.size, len(serixData))
+
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
+	if test.deSeriErr != nil {
+		require.ErrorIs(t, err, test.deSeriErr)
+
+		return
+	}
+	require.NoError(t, err)
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget)
+
+	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
+	require.NoError(t, err)
+
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest))
+
+	require.EqualValues(t, test.source, jsonDest)
+}
+
+func TestSerixMap(t *testing.T) {
+
+	type MyMapType map[string]string
+
+	type MapStruct struct {
+		MyMap MyMapType `serix:"0,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+	}
+
+	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{}.WithObjectType(uint8(0)))
+
+	tests := []deSerializeTest{
+		{
+			name: "ok",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+					"k2": "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      22,
+			seriErr:   nil,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - not enough entries",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serix.ErrMapValidationMinElementsNotReached,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - too many entries",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+					"k2": "v2",
+					"k3": "v3",
+					"k4": "v4",
+					"k5": "v5",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serix.ErrMapValidationMaxElementsExceeded,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - too big",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1000",
+					"k2": "v2000",
+					"k3": "v3000",
+					"k4": "v4000",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serix.ErrMapValidationMaxBytesExceeded,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - key too short",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+					"k":  "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serializer.ErrArrayValidationMinElementsNotReached,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - key too long",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1":     "v1",
+					"k20000": "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serializer.ErrArrayValidationMaxElementsExceeded,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - value too short",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+					"k2": "",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serializer.ErrArrayValidationMinElementsNotReached,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - value too long",
+			source: &MapStruct{
+				MyMap: map[string]string{
+					"k1": "v1",
+					"k2": "v200000",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			seriErr:   serializer.ErrArrayValidationMaxElementsExceeded,
+			deSeriErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.deSerialize)
+	}
+}
