@@ -39,7 +39,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - string in bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"str,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:"str,minLen=5,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -57,7 +57,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - string out of bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"str,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:"str,minLen=5,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -75,7 +75,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - slice in bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"slice,minLen=0,maxLen=10,lengthPrefixType=uint8"`
+					Slice []byte `serix:"slice,minLen=0,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -93,7 +93,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - slice out of bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"slice,minLen=0,maxLen=3,lengthPrefixType=uint8"`
+					Slice []byte `serix:"slice,minLen=0,maxLen=3,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -181,7 +181,7 @@ func TestSerixMapSerialize(t *testing.T) {
 	type MyMapType map[string]string
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:"myMap,lenPrefix=uint8,minLen=2,maxLen=4,mapMaxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
@@ -207,7 +207,7 @@ func TestSerixMapSerialize(t *testing.T) {
 			},
 			target:  &MapStruct{},
 			size:    0,
-			seriErr: serix.ErrMapValidationMinElementsNotReached,
+			seriErr: serializer.ErrArrayValidationMinElementsNotReached,
 		},
 		{
 			name: "fail - too many entries",
@@ -222,7 +222,7 @@ func TestSerixMapSerialize(t *testing.T) {
 			},
 			target:  &MapStruct{},
 			size:    0,
-			seriErr: serix.ErrMapValidationMaxElementsExceeded,
+			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
 		},
 		{
 			name: "fail - too big",
@@ -341,12 +341,12 @@ func TestSerixMapDeserialize(t *testing.T) {
 
 	// used to create test data
 	type TestVectorMapStruct struct {
-		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=1,mapMaxEntries=5,mapMaxByteSize=100,mapKeyLengthPrefixType=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLengthPrefixType=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
+		MyMap MyMapType `serix:"myMap,lenPrefix=uint8,minLen=1,maxLen=5,mapMaxByteSize=100,mapKeyLenPrefix=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLenPrefix=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
 	}
 	testAPI.RegisterTypeSettings(TestVectorMapStruct{}, serix.TypeSettings{})
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:"myMap,lenPrefix=uint8,minLen=2,maxLen=4,mapMaxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
@@ -372,7 +372,7 @@ func TestSerixMapDeserialize(t *testing.T) {
 			},
 			target:    &MapStruct{},
 			size:      0,
-			deSeriErr: serix.ErrMapValidationMinElementsNotReached,
+			deSeriErr: serializer.ErrArrayValidationMinElementsNotReached,
 		},
 		{
 			name: "fail - too many entries",
@@ -387,7 +387,7 @@ func TestSerixMapDeserialize(t *testing.T) {
 			},
 			target:    &MapStruct{},
 			size:      0,
-			deSeriErr: serix.ErrMapValidationMaxElementsExceeded,
+			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
 		},
 		{
 			name: "fail - too big",
@@ -455,5 +455,77 @@ func TestSerixMapDeserialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestSerixFieldKeyString(t *testing.T) {
+	type test struct {
+		name   string
+		source string
+		target string
+	}
+
+	tests := []*test{
+		{
+			name:   "single char",
+			source: "A",
+			target: "a",
+		},
+		{
+			name:   "all upper case",
+			source: "MYTEST",
+			target: "mYTEST",
+		},
+		{
+			name:   "all lower case",
+			source: "mytest",
+			target: "mytest",
+		},
+		{
+			name:   "mixed case",
+			source: "MyTest",
+			target: "myTest",
+		},
+		{
+			name:   "mixed case with numbers",
+			source: "MyTest123",
+			target: "myTest123",
+		},
+		{
+			name:   "mixed case with numbers and underscore",
+			source: "MyTest_123",
+			target: "myTest_123",
+		},
+		{
+			name:   "mixed case with numbers and underscore and dash",
+			source: "MyTest_123-",
+			target: "myTest_123-",
+		},
+		{
+			name:   "mixed case with special keyword 'id'",
+			source: "MyTestID",
+			target: "myTestId",
+		},
+		{
+			name:   "mixed case with special keyword 'URL'",
+			source: "MyTestURL",
+			target: "myTestUrl",
+		},
+		{
+			name:   "mixed case with special keyword 'ID' but lowercase",
+			source: "MyTestid",
+			target: "myTestid",
+		},
+		{
+			name:   "mixed case with special keyword 'URL' but lowercase",
+			source: "MyTesturl",
+			target: "myTesturl",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.target, serix.FieldKeyString(tt.source))
+		})
 	}
 }

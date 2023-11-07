@@ -472,7 +472,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 		return consumedBytes, err
 	}
 
-	if err := api.checkMapMinMaxBounds(value.Len(), ts); err != nil {
+	if err := api.checkMinMaxBounds(value, ts); err != nil {
 		return consumedBytes, err
 	}
 

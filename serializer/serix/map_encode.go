@@ -227,7 +227,7 @@ func (api *API) mapEncodeStructFields(
 				obj.Set(k, lo.Return1(castedEleOut.Get(k)))
 			}
 		default:
-			obj.Set(fieldKeyString(sField.name), eleOut)
+			obj.Set(FieldKeyString(sField.name), eleOut)
 		}
 	}
 
@@ -299,9 +299,7 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 }
 
 func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
-	size := value.Len()
-
-	if err := api.checkMapMinMaxBounds(size, ts); err != nil {
+	if err := api.checkMinMaxBounds(value, ts); err != nil {
 		return nil, err
 	}
 

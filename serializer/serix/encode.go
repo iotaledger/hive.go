@@ -342,13 +342,12 @@ func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts 
 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-	size := value.Len()
 
-	if err := api.checkMapMinMaxBounds(size, ts); err != nil {
+	if err := api.checkMinMaxBounds(value, ts); err != nil {
 		return nil, err
 	}
 
-	data := make([][]byte, size)
+	data := make([][]byte, value.Len())
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()

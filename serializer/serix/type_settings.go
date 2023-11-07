@@ -59,10 +59,6 @@ func (m *MapElementRules) ToTypeSettings() TypeSettings {
 
 // MapRules defines rules around a to be deserialized map.
 type MapRules struct {
-	// MinEntries defines the min entries for the map.
-	MinEntries uint
-	// MaxEntries defines the max entries for the map. 0 means unbounded.
-	MaxEntries uint
 	// MaxByteSize defines the max serialized byte size for the map. 0 means unbounded.
 	MaxByteSize uint
 
@@ -88,6 +84,31 @@ type TypeSettings struct {
 	lexicalOrdering  *bool
 	arrayRules       *ArrayRules
 	mapRules         *MapRules
+}
+
+// WithFieldKey specifies the key for the field.
+func (ts TypeSettings) WithFieldKey(fieldKey string) TypeSettings {
+	ts.fieldKey = &fieldKey
+
+	return ts
+}
+
+// FieldKey returns the key for the field.
+func (ts TypeSettings) FieldKey() (string, bool) {
+	if ts.fieldKey == nil {
+		return "", false
+	}
+
+	return *ts.fieldKey, true
+}
+
+// MustFieldKey must return a key for the field.
+func (ts TypeSettings) MustFieldKey() string {
+	if ts.fieldKey == nil {
+		panic("no field key set")
+	}
+
+	return *ts.fieldKey
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.
@@ -135,31 +156,6 @@ func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 	}
 
 	return *ts.lexicalOrdering, true
-}
-
-// WithFieldKey specifies the key for the field.
-func (ts TypeSettings) WithFieldKey(fieldKey string) TypeSettings {
-	ts.fieldKey = &fieldKey
-
-	return ts
-}
-
-// FieldKey returns the key for the field.
-func (ts TypeSettings) FieldKey() (string, bool) {
-	if ts.fieldKey == nil {
-		return "", false
-	}
-
-	return *ts.fieldKey, true
-}
-
-// MustFieldKey must return a key for the field.
-func (ts TypeSettings) MustFieldKey() string {
-	if ts.fieldKey == nil {
-		panic("no field key set")
-	}
-
-	return *ts.fieldKey
 }
 
 // WithArrayRules specifies serializer.ArrayRules.
@@ -236,26 +232,6 @@ func (ts TypeSettings) WithMapRules(rules *MapRules) TypeSettings {
 // MapRules returns the map rules.
 func (ts TypeSettings) MapRules() *MapRules {
 	return ts.mapRules
-}
-
-// WithMapMinEntries specifies the min entries for the map.
-func (ts TypeSettings) WithMapMinEntries(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	ts.mapRules.MinEntries = l
-
-	return ts
-}
-
-// WithMapMaxEntries specifies the max entries for the map.
-func (ts TypeSettings) WithMapMaxEntries(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	ts.mapRules.MaxEntries = l
-
-	return ts
 }
 
 // WithMapMaxByteSize specifies max serialized byte size for the map. 0 means unbounded.

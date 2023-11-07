@@ -382,7 +382,7 @@ func (api *API) mapDecodeStructFields(
 			continue
 		}
 
-		fieldKey := fieldKeyString(sField.name)
+		fieldKey := FieldKeyString(sField.name)
 		if sField.settings.ts.fieldKey != nil {
 			fieldKey = sField.settings.ts.MustFieldKey()
 		}
@@ -484,7 +484,7 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		value.SetMapIndex(keyValue, elemValue)
 	}
 
-	if err := api.checkMapMinMaxBounds(value.Len(), ts); err != nil {
+	if err := api.checkMinMaxBounds(value, ts); err != nil {
 		return err
 	}
 

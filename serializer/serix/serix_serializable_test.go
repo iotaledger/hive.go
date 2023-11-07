@@ -82,8 +82,8 @@ func (bs Bools) FromSerializables(seris serializer.Serializables) {
 type SimpleStruct struct {
 	Bool       bool      `serix:"bool"`
 	Uint       uint64    `serix:"uint"`
-	String     string    `serix:"string,lengthPrefixType=uint16"`
-	Bytes      []byte    `serix:"bytes,lengthPrefixType=uint32"`
+	String     string    `serix:"string,lenPrefix=uint16"`
+	Bytes      []byte    `serix:"bytes,lenPrefix=uint32"`
 	BytesArray [16]byte  `serix:"bytesarray"`
 	BigInt     *big.Int  `serix:"bigint"`
 	Time       time.Time `serix:"time"`

@@ -7,7 +7,7 @@ In order for a field to be detected by serix it must have `serix` struct tag set
 serix traverses all fields and handles them in the order specified in the struct.
 Apart from the required position you can provide the following settings to serix via struct tags:
 "optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"example,optional"`
-"lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"example,lengthPrefixType=unint32"`
+"lenPrefix=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"example,lenPrefix=unint32"`
 "nest" - handle embedded/anonymous field as a nested field: `serix:"example,nest"`
 See serix_text.go for more detail.
 */
@@ -31,10 +31,6 @@ import (
 )
 
 var (
-	// ErrMapValidationMinElementsNotReached gets returned if the count of elements is too small.
-	ErrMapValidationMinElementsNotReached = ierrors.New("min count of elements within the map not reached")
-	// ErrMapValidationMaxElementsExceeded gets returned if the count of elements is too big.
-	ErrMapValidationMaxElementsExceeded = ierrors.New("max count of elements within the map exceeded")
 	// ErrMapValidationMaxBytesExceeded gets returned if the serialized byte size of the map is too big.
 	ErrMapValidationMaxBytesExceeded = ierrors.New("max bytes size of the map exceeded")
 	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
@@ -199,21 +195,6 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 
 	if err := api.checkMinMaxBoundsLength(v.Len(), ts); err != nil {
 		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
-	}
-
-	return nil
-}
-
-// checkMapMinMaxBounds checks whether the given map is within its defined bounds in case it has defined map rules.
-func (api *API) checkMapMinMaxBounds(length int, ts TypeSettings) error {
-	if ts.mapRules != nil {
-		switch {
-		case ts.mapRules.MaxEntries > 0 && uint(length) > ts.mapRules.MaxEntries:
-			return ierrors.Wrapf(ErrMapValidationMaxElementsExceeded, "map (len %d) exceeds max length of %d ", length, ts.mapRules.MaxEntries)
-
-		case ts.mapRules.MinEntries > 0 && uint(length) < ts.mapRules.MinEntries:
-			return ierrors.Wrapf(ErrMapValidationMinElementsNotReached, "map (len %d) is less than min length of %d ", length, ts.mapRules.MinEntries)
-		}
 	}
 
 	return nil
@@ -863,6 +844,13 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 		case "omitempty":
 			settings.omitEmpty = true
 
+		case "lenPrefix":
+			value, err := parseStructTagValuePrefixType("lenPrefix", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithLengthPrefixType(value)
+
 		case "minLen":
 			value, err := parseStructTagValueUint("minLen", keyValue, currentPart)
 			if err != nil {
@@ -877,27 +865,6 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 			}
 			settings.ts = settings.ts.WithMaxLen(value)
 
-		case "lengthPrefixType":
-			value, err := parseStructTagValuePrefixType("lengthPrefixType", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithLengthPrefixType(value)
-
-		case "mapMinEntries":
-			value, err := parseStructTagValueUint("mapMinEntries", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapMinEntries(value)
-
-		case "mapMaxEntries":
-			value, err := parseStructTagValueUint("mapMaxEntries", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapMaxEntries(value)
-
 		case "mapMaxByteSize":
 			value, err := parseStructTagValueUint("mapMaxByteSize", keyValue, currentPart)
 			if err != nil {
@@ -905,8 +872,8 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 			}
 			settings.ts = settings.ts.WithMapMaxByteSize(value)
 
-		case "mapKeyLengthPrefixType":
-			value, err := parseStructTagValuePrefixType("mapKeyLengthPrefixType", keyValue, currentPart)
+		case "mapKeyLenPrefix":
+			value, err := parseStructTagValuePrefixType("mapKeyLenPrefix", keyValue, currentPart)
 			if err != nil {
 				return tagSettings{}, err
 			}
@@ -926,8 +893,8 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 			}
 			settings.ts = settings.ts.WithMapKeyMaxLen(value)
 
-		case "mapValueLengthPrefixType":
-			value, err := parseStructTagValuePrefixType("mapValueLengthPrefixType", keyValue, currentPart)
+		case "mapValueLenPrefix":
+			value, err := parseStructTagValuePrefixType("mapValueLenPrefix", keyValue, currentPart)
 			if err != nil {
 				return tagSettings{}, err
 			}
@@ -950,6 +917,7 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 		default:
 			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
 		}
+
 		seenParts[partName] = struct{}{}
 	}
 
@@ -1032,6 +1000,18 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	return bitSize, numberType, reflect.PointerTo(numberType)
 }
 
-func fieldKeyString(str string) string {
+// FieldKeyString converts the given string to camelCase.
+// Special keywords like ID or URL are converted to only first letter upper case.
+func FieldKeyString(str string) string {
+	for _, keyword := range []string{"ID", "URL"} {
+		if !strings.Contains(str, keyword) {
+			continue
+		}
+
+		// first keyword letter upper case, rest lower case
+		str = strings.ReplaceAll(str, keyword, string(keyword[0])+strings.ToLower(keyword)[1:])
+	}
+
+	// first letter lower case
 	return strings.ToLower(str[:1]) + str[1:]
 }
