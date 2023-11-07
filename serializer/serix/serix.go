@@ -3,12 +3,12 @@
 
 Structs serialization/deserialization
 
-In order for a field to be detected by serix it must have `serix` struct tag set with the position index: `serix:"0"`.
-serix traverses all fields and handles them in the order specified in the struct tags.
+In order for a field to be detected by serix it must have `serix` struct tag set with the name: `serix:"example" or empty name `serix:","`.
+serix traverses all fields and handles them in the order specified in the struct.
 Apart from the required position you can provide the following settings to serix via struct tags:
-"optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"1,optional"`
-"lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"2,lengthPrefixType=unint32"`
-"nest" - handle embedded/anonymous field as a nested field: `serix:"3,nest"`
+"optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"example,optional"`
+"lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"example,lengthPrefixType=unint32"`
+"nest" - handle embedded/anonymous field as a nested field: `serix:"example,nest"`
 See serix_text.go for more detail.
 */
 package serix
@@ -698,30 +698,33 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 	}
 
 	structFields = make([]structField, 0, structType.NumField())
-	seenPositions := make(map[int]struct{})
+
+	serixPosition := 0
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
+
 		isUnexported := field.PkgPath != ""
 		isEmbedded := field.Anonymous
 		isStruct := isUnderlyingStruct(field.Type)
 		isInterface := isUnderlyingInterface(field.Type)
 		isEmbeddedStruct := isEmbedded && isStruct
 		isEmbeddedInterface := isEmbedded && isInterface
+
 		if isUnexported && !isEmbeddedStruct {
 			continue
 		}
+
 		tag, ok := field.Tag.Lookup("serix")
 		if !ok {
 			continue
 		}
-		tSettings, err := parseStructTag(tag)
+
+		tSettings, err := parseStructTag(tag, serixPosition)
 		if err != nil {
 			return nil, ierrors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
 		}
-		if _, exists := seenPositions[tSettings.position]; exists {
-			return nil, ierrors.Errorf("struct field with duplicated position number %d", tSettings.position)
-		}
-		seenPositions[tSettings.position] = struct{}{}
+		serixPosition++
+
 		if tSettings.isOptional {
 			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
 				return nil, ierrors.Errorf(
@@ -729,27 +732,32 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 						"'optional' setting can only be used with pointers or interfaces, got %s",
 					field.Name, field.Type.Kind())
 			}
+
 			if isEmbeddedStruct {
 				return nil, ierrors.Errorf(
 					"struct field %s is invalid: 'optional' setting can't be used with embedded structs",
 					field.Name)
 			}
+
 			if isEmbeddedInterface {
 				return nil, ierrors.Errorf(
 					"struct field %s is invalid: 'optional' setting can't be used with embedded interfaces",
 					field.Name)
 			}
 		}
+
 		if tSettings.nest && isUnexported {
 			return nil, ierrors.Errorf(
 				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
 				field.Name)
 		}
+
 		if !tSettings.nest && isEmbeddedInterface {
 			return nil, ierrors.Errorf(
 				"struct field %s is invalid: 'nest' setting needs to be used for embedded interfaces",
 				field.Name)
 		}
+
 		structFields = append(structFields, structField{
 			name:         field.Name,
 			isUnexported: isUnexported,
@@ -820,21 +828,24 @@ func parseStructTagValuePrefixType(name string, keyValue []string, currentPart s
 	return lengthPrefixType, nil
 }
 
-func parseStructTag(tag string) (tagSettings, error) {
+func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 	if tag == "" {
 		return tagSettings{}, ierrors.New("struct tag is empty")
 	}
+
 	parts := strings.Split(tag, ",")
-	positionPart := parts[0]
-	position, err := strconv.Atoi(positionPart)
-	if err != nil {
-		return tagSettings{}, ierrors.Wrap(err, "failed to parse position number from the first part of the tag")
+	keyPart := parts[0]
+
+	if strings.ContainsAny(keyPart, "=") {
+		return tagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
 	}
+
 	settings := tagSettings{}
-	settings.position = position
+	settings.position = serixPosition
+	settings.ts = settings.ts.WithFieldKey(keyPart)
+
 	parts = parts[1:]
 	seenParts := map[string]struct{}{}
-
 	for _, currentPart := range parts {
 		if _, ok := seenParts[currentPart]; ok {
 			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
@@ -851,13 +862,6 @@ func parseStructTag(tag string) (tagSettings, error) {
 
 		case "omitempty":
 			settings.omitEmpty = true
-
-		case "mapKey":
-			value, err := parseStructTagValue("mapKey", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapKey(value)
 
 		case "minLen":
 			value, err := parseStructTagValueUint("minLen", keyValue, currentPart)
@@ -1028,6 +1032,6 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	return bitSize, numberType, reflect.PointerTo(numberType)
 }
 
-func mapStringKey(str string) string {
+func fieldKeyString(str string) string {
 	return strings.ToLower(str[:1]) + str[1:]
 }

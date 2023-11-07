@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	// the map key under which the object code is written.
-	mapTypeKeyName = "type"
-	// key used when no map key is defined for types which are slice/arrays of bytes.
-	mapSliceArrayDefaultKey = "data"
+	// the key under which the object code is written.
+	keyType = "type"
+	// the key used when no key is defined for types which are slice/arrays of bytes.
+	keyDefaultSliceArray = "data"
 )
 
 var (
@@ -163,7 +163,7 @@ func (api *API) mapEncodeStruct(
 
 	obj := orderedmap.New()
 	if ts.ObjectType() != nil {
-		obj.Set(mapTypeKeyName, ts.ObjectType())
+		obj.Set(keyType, ts.ObjectType())
 	}
 	if err := api.mapEncodeStructFields(ctx, obj, value, valueType, opts); err != nil {
 		return nil, ierrors.WithStack(err)
@@ -215,8 +215,8 @@ func (api *API) mapEncodeStructFields(
 		}
 
 		switch {
-		case sField.settings.ts.mapKey != nil:
-			obj.Set(*sField.settings.ts.mapKey, eleOut)
+		case sField.settings.ts.fieldKey != nil:
+			obj.Set(*sField.settings.ts.fieldKey, eleOut)
 		case sField.settings.nest:
 			castedEleOut, ok := eleOut.(*orderedmap.OrderedMap)
 			if !ok {
@@ -227,7 +227,7 @@ func (api *API) mapEncodeStructFields(
 				obj.Set(k, lo.Return1(castedEleOut.Get(k)))
 			}
 		default:
-			obj.Set(mapStringKey(sField.name), eleOut)
+			obj.Set(fieldKeyString(sField.name), eleOut)
 		}
 	}
 
@@ -239,12 +239,12 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	if ts.ObjectType() != nil {
 		m := orderedmap.New()
-		m.Set(mapTypeKeyName, ts.ObjectType())
-		mapKey := mapSliceArrayDefaultKey
-		if ts.mapKey != nil {
-			mapKey = *ts.mapKey
+		m.Set(keyType, ts.ObjectType())
+		fieldKey := keyDefaultSliceArray
+		if ts.fieldKey != nil {
+			fieldKey = *ts.fieldKey
 		}
-		m.Set(mapKey, EncodeHex(value.Bytes()))
+		m.Set(fieldKey, EncodeHex(value.Bytes()))
 
 		return m, nil
 	}

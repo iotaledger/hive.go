@@ -39,7 +39,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - string in bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"0,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:"str,minLen=5,maxLen=10,lengthPrefixType=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -57,7 +57,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - string out of bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"0,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:"str,minLen=5,maxLen=10,lengthPrefixType=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -75,7 +75,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - slice in bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"0,minLen=0,maxLen=10,lengthPrefixType=uint8"`
+					Slice []byte `serix:"slice,minLen=0,maxLen=10,lengthPrefixType=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -93,7 +93,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - slice out of bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"0,minLen=0,maxLen=3,lengthPrefixType=uint8"`
+					Slice []byte `serix:"slice,minLen=0,maxLen=3,lengthPrefixType=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -181,7 +181,7 @@ func TestSerixMapSerialize(t *testing.T) {
 	type MyMapType map[string]string
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:"0,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
@@ -341,12 +341,12 @@ func TestSerixMapDeserialize(t *testing.T) {
 
 	// used to create test data
 	type TestVectorMapStruct struct {
-		MyMap MyMapType `serix:"0,lengthPrefixType=uint8,mapMinEntries=1,mapMaxEntries=5,mapMaxByteSize=100,mapKeyLengthPrefixType=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLengthPrefixType=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
+		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=1,mapMaxEntries=5,mapMaxByteSize=100,mapKeyLengthPrefixType=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLengthPrefixType=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
 	}
 	testAPI.RegisterTypeSettings(TestVectorMapStruct{}, serix.TypeSettings{})
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:"0,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:"myMap,lengthPrefixType=uint8,mapMinEntries=2,mapMaxEntries=4,mapMaxByteSize=50,mapKeyLengthPrefixType=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLengthPrefixType=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 

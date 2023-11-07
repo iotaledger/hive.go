@@ -102,13 +102,13 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 					return ierrors.Errorf("missing type settings for interface %s", valueType)
 				}
 
-				mapKey := mapSliceArrayDefaultKey
-				if innerTS.mapKey != nil {
-					mapKey = *innerTS.mapKey
+				fieldKey := keyDefaultSliceArray
+				if innerTS.fieldKey != nil {
+					fieldKey = *innerTS.fieldKey
 				}
 
 				//nolint:forcetypeassert
-				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
+				fieldValStr := mapVal.(map[string]any)[fieldKey].(string)
 				byteSlice, err := DecodeHex(fieldValStr)
 				if err != nil {
 					return ierrors.Wrap(err, "failed to read byte slice from map")
@@ -277,7 +277,7 @@ func (api *API) mapDecodeInterface(
 		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
 	}
 
-	objectCodeAny, has := m[mapTypeKeyName]
+	objectCodeAny, has := m[keyType]
 	if !has {
 		return ierrors.Errorf("no object type defined in map for interface %s", valueType)
 	}
@@ -323,7 +323,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 		if err != nil {
 			return ierrors.WithStack(err)
 		}
-		mapObjectCode, has := m[mapTypeKeyName]
+		mapObjectCode, has := m[keyType]
 		if !has {
 			return ierrors.Wrap(err, "missing type key in struct")
 		}
@@ -382,12 +382,12 @@ func (api *API) mapDecodeStructFields(
 			continue
 		}
 
-		key := mapStringKey(sField.name)
-		if sField.settings.ts.mapKey != nil {
-			key = sField.settings.ts.MustMapKey()
+		fieldKey := fieldKeyString(sField.name)
+		if sField.settings.ts.fieldKey != nil {
+			fieldKey = sField.settings.ts.MustFieldKey()
 		}
 
-		mapVal, has := m[key]
+		mapVal, has := m[fieldKey]
 		if !has {
 			if sField.settings.isOptional || sField.settings.omitEmpty {
 				continue

@@ -82,10 +82,10 @@ type MapRules struct {
 // So the precedence is the following 1<2<3.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
+	fieldKey         *string
 	lengthPrefixType *LengthPrefixType
 	objectType       interface{}
 	lexicalOrdering  *bool
-	mapKey           *string
 	arrayRules       *ArrayRules
 	mapRules         *MapRules
 }
@@ -137,29 +137,29 @@ func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
 	return *ts.lexicalOrdering, true
 }
 
-// WithMapKey specifies the name for the map key.
-func (ts TypeSettings) WithMapKey(name string) TypeSettings {
-	ts.mapKey = &name
+// WithFieldKey specifies the key for the field.
+func (ts TypeSettings) WithFieldKey(fieldKey string) TypeSettings {
+	ts.fieldKey = &fieldKey
 
 	return ts
 }
 
-// MapKey returns the map key name.
-func (ts TypeSettings) MapKey() (string, bool) {
-	if ts.mapKey == nil {
+// FieldKey returns the key for the field.
+func (ts TypeSettings) FieldKey() (string, bool) {
+	if ts.fieldKey == nil {
 		return "", false
 	}
 
-	return *ts.mapKey, true
+	return *ts.fieldKey, true
 }
 
-// MustMapKey must return a map key name.
-func (ts TypeSettings) MustMapKey() string {
-	if ts.mapKey == nil {
-		panic("no map key set")
+// MustFieldKey must return a key for the field.
+func (ts TypeSettings) MustFieldKey() string {
+	if ts.fieldKey == nil {
+		panic("no field key set")
 	}
 
-	return *ts.mapKey
+	return *ts.fieldKey
 }
 
 // WithArrayRules specifies serializer.ArrayRules.
@@ -371,8 +371,8 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	if ts.arrayRules == nil {
 		ts.arrayRules = other.arrayRules
 	}
-	if ts.mapKey == nil {
-		ts.mapKey = other.mapKey
+	if ts.fieldKey == nil {
+		ts.fieldKey = other.fieldKey
 	}
 	if ts.mapRules == nil {
 		ts.mapRules = other.mapRules

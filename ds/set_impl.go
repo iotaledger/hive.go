@@ -145,7 +145,7 @@ func (s *set[ElementType]) apply(mutations SetMutations[ElementType]) (appliedMu
 //
 //nolint:tagliatelle // heck knows why this linter fails here
 type readableSet[T comparable] struct {
-	*orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
+	*orderedmap.OrderedMap[T, types.Empty] `serix:","`
 }
 
 // newReadableSet creates a new readable set with the given elements.
