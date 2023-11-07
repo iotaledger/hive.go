@@ -38,6 +38,16 @@ type ReadableVariable[Type comparable] interface {
 	// Read executes the given function with the current value while read locking the variable.
 	Read(readFunc func(currentValue Type))
 
+	// WithValue is a utility function that allows to set up dynamic behavior based on the latest value of the
+	// ReadableVariable which is torn down once the value changes again (or the returned teardown function is called).
+	// It accepts an optional condition that has to be satisfied for the setup function to be called.
+	WithValue(setup func(value Type) (teardown func()), condition ...func(Type) bool) (teardown func())
+
+	// WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the latest (non-empty)
+	// value of the ReadableVariable which is torn down once the value changes again (or the returned teardown function
+	// is called).
+	WithNonEmptyValue(setup func(value Type) (teardown func())) (teardown func())
+
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(consumer func(oldValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 
@@ -75,6 +85,10 @@ type WritableVariable[Type comparable] interface {
 
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
+
+	// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
+	// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
+	DeriveValueFrom(source DerivedVariable[Type]) (teardown func())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

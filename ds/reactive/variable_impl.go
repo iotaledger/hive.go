@@ -3,6 +3,7 @@ package reactive
 import (
 	"log/slog"
 	"sync"
+	"unsafe"
 
 	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/lo"
@@ -67,6 +68,16 @@ func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe 
 	}, true)
 }
 
+// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
+// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
+func (v *variable[Type]) DeriveValueFrom(source DerivedVariable[Type]) (teardown func()) {
+	// no need to unsubscribe variable from source (it will no longer change and get garbage collected after
+	// unsubscribing from its inputs)
+	_ = v.InheritFrom(source)
+
+	return source.Unsubscribe
+}
+
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
 // the triggerID and the callbacks to trigger.
 func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValue, previousValue Type, triggerID uniqueID, callbacksToTrigger []*callback[func(prevValue, newValue Type)]) {
@@ -123,6 +134,24 @@ func (r *readableVariable[Type]) Read(readFunc func(currentValue Type)) {
 	defer r.valueMutex.RUnlock()
 
 	readFunc(r.value)
+}
+
+// WithValue is a utility function that allows to set up dynamic behavior based on the latest value of the
+// ReadableVariable which is torn down once the value changes again (or the returned teardown function is called).
+// It accepts an optional condition that has to be satisfied for the setup function to be called.
+func (r *readableVariable[Type]) WithValue(setup func(value Type) (teardown func()), condition ...func(Type) bool) (teardown func()) {
+	return r.OnUpdateWithContext(func(_, value Type, unsubscribeOnUpdate func(setup func() (teardown func()))) {
+		if len(condition) == 0 || condition[0](value) {
+			unsubscribeOnUpdate(func() func() { return setup(value) })
+		}
+	})
+}
+
+// WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the latest (non-empty)
+// value of the ReadableVariable which is torn down once the value changes again (or the returned teardown function
+// is called).
+func (r *readableVariable[Type]) WithNonEmptyValue(setup func(value Type) (teardown func())) (teardown func()) {
+	return r.WithValue(setup, func(t Type) bool { return t != *new(Type) })
 }
 
 // OnUpdate registers the given callback that is triggered when the value changes.
@@ -221,13 +250,20 @@ func (r *readableVariable[Type]) LogUpdates(logger VariableLogReceiver, logLevel
 
 	return logger.OnLogLevelActive(logLevel, func() (shutdown func()) {
 		return r.OnUpdate(func(_, newValue Type) {
-			if len(stringer) != 0 {
+			if isNil(newValue) {
+				logger.LogAttrs(logMessage, logLevel, slog.String("set", "nil"))
+			} else if len(stringer) != 0 {
 				logger.LogAttrs(logMessage, logLevel, slog.String("set", stringer[0](newValue)))
 			} else {
 				logger.LogAttrs(logMessage, logLevel, slog.Any("set", newValue))
 			}
 		})
 	})
+}
+
+// isNil returns true if the given value is nil.
+func isNil(value any) bool {
+	return value == nil || (*[2]uintptr)(unsafe.Pointer(&value))[1] == 0
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
