@@ -175,22 +175,30 @@ func hasLength(v reflect.Value) bool {
 	return true
 }
 
-// checks whether the given value is within its defined bounds in case it has a length.
+// checkMinMaxBoundsLength checks whether the given length is within its defined bounds.
+func (api *API) checkMinMaxBoundsLength(length int, ts TypeSettings) error {
+	if minLen, ok := ts.MinLen(); ok {
+		if uint(length) < minLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "min length %d not reached (len %d)", minLen, length)
+		}
+	}
+	if maxLen, ok := ts.MaxLen(); ok {
+		if uint(length) > maxLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "max length %d exceeded (len %d)", maxLen, length)
+		}
+	}
+
+	return nil
+}
+
+// checkMinMaxBounds checks whether the given value is within its defined bounds in case it has a length.
 func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 	if has := hasLength(v); !has {
 		return nil
 	}
 
-	l := uint(v.Len())
-	if minLen, ok := ts.MinLen(); ok {
-		if l < minLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
-		}
-	}
-	if maxLen, ok := ts.MaxLen(); ok {
-		if l > maxLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
-		}
+	if err := api.checkMinMaxBoundsLength(v.Len(), ts); err != nil {
+		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
 	}
 
 	return nil

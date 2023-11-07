@@ -168,7 +168,16 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			addrValue.Interface().(*string),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return ierrors.Wrap(err, "failed to read string value from the deserializer")
+				err = ierrors.Wrap(err, "failed to read string value from the deserializer")
+
+				switch {
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMinNotReached):
+					return ierrors.Join(err, serializer.ErrArrayValidationMinElementsNotReached)
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMaxExceeded):
+					return ierrors.Join(err, serializer.ErrArrayValidationMaxElementsExceeded)
+				default:
+					return err
+				}
 			}, minLen, maxLen)
 
 		return deseri.Done()
@@ -373,7 +382,16 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 			addrValue.Interface().(*[]byte),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return ierrors.Wrap(err, "failed to read bytes from the deserializer")
+				err = ierrors.Wrap(err, "failed to read bytes from the deserializer")
+
+				switch {
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMinNotReached):
+					return ierrors.Join(err, serializer.ErrArrayValidationMinElementsNotReached)
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMaxExceeded):
+					return ierrors.Join(err, serializer.ErrArrayValidationMaxElementsExceeded)
+				default:
+					return err
+				}
 			}, minLen, maxLen)
 
 		return deseri.Done()

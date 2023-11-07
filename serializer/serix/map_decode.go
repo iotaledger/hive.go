@@ -113,13 +113,18 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				if err != nil {
 					return ierrors.Wrap(err, "failed to read byte slice from map")
 				}
+
+				if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+					return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+				}
+
 				copy(sliceValue.Bytes(), byteSlice)
 				fillArrayFromSlice(value.Elem(), sliceValue)
 
 				return nil
 			}
 
-			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
+			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 		}
 
 	case reflect.Struct:
@@ -129,7 +134,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 
 		return api.mapDecodeStruct(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Slice:
-		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
+		return api.mapDecodeSlice(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Map:
 		return api.mapDecodeMap(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Array:
@@ -146,7 +151,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			return nil
 		}
 
-		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
+		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.mapDecodeInterface(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.String:
@@ -159,6 +164,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		}
 		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
+
+		if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		}
 
 		return nil
 	case reflect.Bool:
@@ -396,13 +405,17 @@ func (api *API) mapDecodeStructFields(
 }
 
 func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, opts *options) error {
+	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	if valueType.AssignableTo(bytesType) {
 		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		fieldValStr := mapVal.(string)
 		byteSlice, err := DecodeHex(fieldValStr)
 		if err != nil {
 			return ierrors.Wrap(err, "failed to read byte slice from map")
+		}
+
+		if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 		}
 
 		addrValue := value.Addr().Convert(reflect.TypeOf((*[]byte)(nil)))
@@ -418,6 +431,10 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 			return ierrors.WithStack(err)
 		}
 		value.Set(reflect.Append(value, elemValue))
+	}
+
+	if err := api.checkMinMaxBounds(value, ts); err != nil {
+		return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 	}
 
 	// check if the slice is a nil pointer to the slice type (in case the sliceLength is zero and the slice was not initialized before)

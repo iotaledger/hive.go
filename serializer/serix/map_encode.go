@@ -101,6 +101,10 @@ func (api *API) mapEncodeBasedOnType(
 			return nil, ErrNonUTF8String
 		}
 
+		if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+
 		return value.String(), nil
 	case reflect.Bool:
 		return value.Bool(), nil
@@ -246,10 +250,19 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	}
 
 	if valueType.AssignableTo(bytesType) {
+		if err := api.checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+
 		return EncodeHex(value.Bytes()), nil
 	}
 
 	sliceLen := value.Len()
+
+	if err := api.checkMinMaxBoundsLength(sliceLen, ts); err != nil {
+		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+	}
+
 	data := make([]any, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		elemValue := value.Index(i)

@@ -776,9 +776,9 @@ func (d *Deserializer) ReadVariableByteSlice(slice *[]byte, lenType SeriLengthPr
 
 	switch {
 	case maxLen > 0 && sliceLength > maxLen:
-		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "denoted %d bytes, max allowed %d ", sliceLength, maxLen))
+		d.err = errProducer(ierrors.Join(ErrDeserializationLengthInvalid, ierrors.Wrapf(ErrDeserializationLengthMaxExceeded, "denoted %d bytes, max allowed %d ", sliceLength, maxLen)))
 	case minLen > 0 && sliceLength < minLen:
-		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "denoted %d bytes, min required %d ", sliceLength, minLen))
+		d.err = errProducer(ierrors.Join(ErrDeserializationLengthInvalid, ierrors.Wrapf(ErrDeserializationLengthMinNotReached, "denoted %d bytes, min required %d ", sliceLength, minLen)))
 	}
 
 	dest := make([]byte, sliceLength)
@@ -1158,9 +1158,9 @@ func (d *Deserializer) ReadString(s *string, lenType SeriLengthPrefixType, errPr
 
 	switch {
 	case maxLen > 0 && strLen > maxLen:
-		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "string defined to be of %d bytes length but max %d is allowed", strLen, maxLen))
+		d.err = errProducer(ierrors.Join(ErrDeserializationLengthInvalid, ierrors.Wrapf(ErrDeserializationLengthMaxExceeded, "string defined to be of %d bytes length but max %d is allowed", strLen, maxLen)))
 	case minLen > 0 && strLen < minLen:
-		d.err = errProducer(ierrors.Wrapf(ErrDeserializationLengthInvalid, "string defined to be of %d bytes length but min %d is required", strLen, minLen))
+		d.err = errProducer(ierrors.Join(ErrDeserializationLengthInvalid, ierrors.Wrapf(ErrDeserializationLengthMinNotReached, "string defined to be of %d bytes length but min %d is required", strLen, minLen)))
 	}
 
 	if len(d.src[d.offset:]) < strLen {
