@@ -700,9 +700,9 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 			continue
 		}
 
-		tSettings, err := parseStructTag(tag, serixPosition)
+		tSettings, err := parseSerixSettings(tag, serixPosition)
 		if err != nil {
-			return nil, ierrors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
+			return nil, ierrors.Wrapf(err, "failed to parse serix struct tag for field %s", field.Name)
 		}
 		serixPosition++
 
@@ -809,9 +809,13 @@ func parseStructTagValuePrefixType(name string, keyValue []string, currentPart s
 	return lengthPrefixType, nil
 }
 
-func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
+func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
+	settings := tagSettings{}
+	settings.position = serixPosition
+
 	if tag == "" {
-		return tagSettings{}, ierrors.New("struct tag is empty")
+		// empty struct tags are allowed
+		return settings, nil
 	}
 
 	parts := strings.Split(tag, ",")
@@ -821,8 +825,6 @@ func parseStructTag(tag string, serixPosition int) (tagSettings, error) {
 		return tagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
 	}
 
-	settings := tagSettings{}
-	settings.position = serixPosition
 	settings.ts = settings.ts.WithFieldKey(keyPart)
 
 	parts = parts[1:]
