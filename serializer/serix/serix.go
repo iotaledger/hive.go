@@ -25,6 +25,9 @@ You can provide the following settings to serix via struct tags:
 	- "omitempty": omit the field in json serialization if it's empty
 		`serix:"example,omitempty"`
 
+	- "maxByteSize": maximum serialized byte size for that field
+		`serix:"example,maxByteSize=100"`
+
 	- "lenPrefix": provide serializer.SeriLengthPrefixType for that field (string, slice, map)
 		`serix:"example,lenPrefix=uint32"`
 
@@ -33,9 +36,6 @@ You can provide the following settings to serix via struct tags:
 
 	- "maxLen": maximum length for that field (string, slice, map)
 		`serix:"example,maxLen=5"`
-
-	- "mapMaxByteSize": maximum serialized byte size for that map
-		`serix:"example,mapMaxByteSize=100"`
 
 	- "mapKeyLenPrefix": provide serializer.SeriLengthPrefixType for the keys of that map
 		`serix:"example,mapKeyLenPrefix=uint32"`
@@ -78,8 +78,8 @@ import (
 )
 
 var (
-	// ErrMapValidationMaxBytesExceeded gets returned if the serialized byte size of the map is too big.
-	ErrMapValidationMaxBytesExceeded = ierrors.New("max bytes size of the map exceeded")
+	// ErrValidationMaxBytesExceeded gets returned if the serialized byte size of the object too big.
+	ErrValidationMaxBytesExceeded = ierrors.New("max bytes size exceeded")
 	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
 	ErrMapValidationViolatesUniqueness = ierrors.New("map elements must be unique")
 )
@@ -247,30 +247,26 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 	return nil
 }
 
-// checkMapMaxByteSize checks whether the given map is within its defined max byte size in case it has defined map rules.
-func (api *API) checkMapMaxByteSize(byteSize int, ts TypeSettings) error {
-	if ts.mapRules != nil && ts.mapRules.MaxByteSize > 0 && byteSize > int(ts.mapRules.MaxByteSize) {
-		return ierrors.Wrapf(ErrMapValidationMaxBytesExceeded, "map (len %d) exceeds max bytes of %d ", byteSize, ts.mapRules.MaxByteSize)
+// checkMaxByteSize checks whether the given type is within its defined size in case it has a max byte size.
+func (api *API) checkMaxByteSize(byteSize int, ts TypeSettings) error {
+	if ts.maxByteSize > 0 && byteSize > int(ts.maxByteSize) {
+		return ierrors.Wrapf(ErrValidationMaxBytesExceeded, "serialized size (%d) exceeds max byte size of %d ", byteSize, ts.maxByteSize)
 	}
 
 	return nil
 }
 
-func (api *API) checkMapSerializedSize(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) error {
-	if ts.mapRules == nil || ts.mapRules.MaxByteSize == 0 {
+func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) error {
+	if ts.maxByteSize == 0 {
 		return nil
-	}
-
-	if value.Kind() != reflect.Map {
-		return ierrors.Errorf("can't get map serialized size: value is not a map, got %s", value.Kind())
 	}
 
 	bytes, err := api.encode(ctx, value, ts, opts)
 	if err != nil {
-		return ierrors.Wrapf(err, "can't get map serialized size: failed to encode map")
+		return ierrors.Wrapf(err, "can't get serialized size: failed to encode '%s' type", value.Kind())
 	}
 
-	return api.checkMapMaxByteSize(len(bytes), ts)
+	return api.checkMaxByteSize(len(bytes), ts)
 }
 
 // Encode serializes the provided object obj into bytes.
@@ -893,6 +889,13 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 		case "omitempty":
 			settings.omitEmpty = true
 
+		case "maxByteSize":
+			value, err := parseStructTagValueUint("maxByteSize", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMaxByteSize(value)
+
 		case "lenPrefix":
 			value, err := parseStructTagValuePrefixType("lenPrefix", keyValue, currentPart)
 			if err != nil {
@@ -913,13 +916,6 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 				return tagSettings{}, err
 			}
 			settings.ts = settings.ts.WithMaxLen(value)
-
-		case "mapMaxByteSize":
-			value, err := parseStructTagValueUint("mapMaxByteSize", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapMaxByteSize(value)
 
 		case "mapKeyLenPrefix":
 			value, err := parseStructTagValuePrefixType("mapKeyLenPrefix", keyValue, currentPart)

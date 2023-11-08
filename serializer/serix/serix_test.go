@@ -181,7 +181,7 @@ func TestSerixMapSerialize(t *testing.T) {
 	type MyMapType map[string]string
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,mapMaxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
@@ -236,7 +236,7 @@ func TestSerixMapSerialize(t *testing.T) {
 			},
 			target:  &MapStruct{},
 			size:    0,
-			seriErr: serix.ErrMapValidationMaxBytesExceeded,
+			seriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",
@@ -341,12 +341,12 @@ func TestSerixMapDeserialize(t *testing.T) {
 
 	// used to create test data
 	type TestVectorMapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=1,maxLen=5,mapMaxByteSize=100,mapKeyLenPrefix=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLenPrefix=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=1,maxLen=5,maxByteSize=100,mapKeyLenPrefix=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLenPrefix=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
 	}
 	testAPI.RegisterTypeSettings(TestVectorMapStruct{}, serix.TypeSettings{})
 
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,mapMaxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
 	}
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
@@ -401,7 +401,7 @@ func TestSerixMapDeserialize(t *testing.T) {
 			},
 			target:    &MapStruct{},
 			size:      0,
-			deSeriErr: serix.ErrMapValidationMaxBytesExceeded,
+			deSeriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",

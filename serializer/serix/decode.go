@@ -86,9 +86,14 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			return 0, ierrors.WithStack(err)
 		}
 	}
+
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
+		}
+
+		if err := api.checkMaxByteSize(bytesRead, ts); err != nil {
+			return bytesRead, err
 		}
 	}
 
@@ -472,12 +477,10 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 		return consumedBytes, err
 	}
 
-	if err := api.checkMinMaxBounds(value, ts); err != nil {
-		return consumedBytes, err
-	}
-
-	if err := api.checkMapMaxByteSize(consumedBytes, ts); err != nil {
-		return consumedBytes, err
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return consumedBytes, err
+		}
 	}
 
 	return consumedBytes, nil

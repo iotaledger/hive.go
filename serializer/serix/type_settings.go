@@ -59,9 +59,6 @@ func (m *MapElementRules) ToTypeSettings() TypeSettings {
 
 // MapRules defines rules around a to be deserialized map.
 type MapRules struct {
-	// MaxByteSize defines the max serialized byte size for the map. 0 means unbounded.
-	MaxByteSize uint
-
 	// KeyRules define the rules applied to the keys of the map.
 	KeyRules *MapElementRules
 	// ValueRules define the rules applied to the values of the map.
@@ -78,12 +75,19 @@ type MapRules struct {
 // So the precedence is the following 1<2<3.
 // See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
 type TypeSettings struct {
-	fieldKey         *string
+	// fieldKey defines the key for the field used in json serialization.
+	fieldKey *string
+	// objectType defines the object type. It can be either uint8 or uint32 number.
+	objectType interface{}
+	// maxByteSize defines the max serialized byte size. 0 means unbounded.
+	maxByteSize uint
+	// lengthPrefixType defines the type of the value denoting the length of a collection.
 	lengthPrefixType *LengthPrefixType
-	objectType       interface{}
-	lexicalOrdering  *bool
-	arrayRules       *ArrayRules
-	mapRules         *MapRules
+	// lexicalOrdering defines whether the collection must be lexically ordered during serialization.
+	lexicalOrdering *bool
+	// arrayRules defines rules around a to be deserialized array.
+	arrayRules *ArrayRules
+	mapRules   *MapRules
 }
 
 // WithFieldKey specifies the key for the field.
@@ -111,6 +115,28 @@ func (ts TypeSettings) MustFieldKey() string {
 	return *ts.fieldKey
 }
 
+// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
+// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
+// serix uses object type to actually encode the number
+// and to know its serializer.TypeDenotationType to be able to decode it.
+func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
+	ts.objectType = t
+
+	return ts
+}
+
+// ObjectType returns the object type as an uint8 or uint32 number.
+func (ts TypeSettings) ObjectType() interface{} {
+	return ts.objectType
+}
+
+// WithMaxByteSize specifies max serialized byte size for the type. 0 means unbounded.
+func (ts TypeSettings) WithMaxByteSize(l uint) TypeSettings {
+	ts.maxByteSize = l
+
+	return ts
+}
+
 // WithLengthPrefixType specifies LengthPrefixType.
 func (ts TypeSettings) WithLengthPrefixType(lpt LengthPrefixType) TypeSettings {
 	ts.lengthPrefixType = &lpt
@@ -125,21 +151,6 @@ func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
 	}
 
 	return *ts.lengthPrefixType, true
-}
-
-// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
-// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
-// serix uses object type to actually encode the number
-// and to know its serializer.TypeDenotationType to be able to decode it.
-func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
-	ts.objectType = t
-
-	return ts
-}
-
-// ObjectType returns the object type as an uint8 or uint32 number.
-func (ts TypeSettings) ObjectType() interface{} {
-	return ts.objectType
 }
 
 // WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
@@ -232,16 +243,6 @@ func (ts TypeSettings) WithMapRules(rules *MapRules) TypeSettings {
 // MapRules returns the map rules.
 func (ts TypeSettings) MapRules() *MapRules {
 	return ts.mapRules
-}
-
-// WithMapMaxByteSize specifies max serialized byte size for the map. 0 means unbounded.
-func (ts TypeSettings) WithMapMaxByteSize(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	ts.mapRules.MaxByteSize = l
-
-	return ts
 }
 
 // WithMapKeyLengthPrefixType specifies MapKeyLengthPrefixType.

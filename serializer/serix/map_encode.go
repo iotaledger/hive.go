@@ -36,8 +36,10 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 		}
 	}
 
-	if err := api.checkMapSerializedSize(ctx, value, ts, opts); err != nil {
-		return nil, err
+	if opts.validation {
+		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
+			return nil, err
+		}
 	}
 
 	if serializable, ok := valueI.(SerializableJSON); ok {
@@ -101,8 +103,10 @@ func (api *API) mapEncodeBasedOnType(
 			return nil, ErrNonUTF8String
 		}
 
-		if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
-			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+			}
 		}
 
 		return value.String(), nil
@@ -250,8 +254,10 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	}
 
 	if valueType.AssignableTo(bytesType) {
-		if err := api.checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
-			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
+				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+			}
 		}
 
 		return EncodeHex(value.Bytes()), nil
@@ -299,8 +305,10 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 }
 
 func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
-	if err := api.checkMinMaxBounds(value, ts); err != nil {
-		return nil, err
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return nil, err
+		}
 	}
 
 	m := orderedmap.New()

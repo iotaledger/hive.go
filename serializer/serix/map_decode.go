@@ -40,8 +40,10 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 		}
 	}
 
-	if err := api.checkMapSerializedSize(ctx, value, ts, opts); err != nil {
-		return err
+	if opts.validation {
+		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -114,8 +116,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 					return ierrors.Wrap(err, "failed to read byte slice from map")
 				}
 
-				if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
-					return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+				if opts.validation {
+					if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+						return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+					}
 				}
 
 				copy(sliceValue.Bytes(), byteSlice)
@@ -165,8 +169,10 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 
-		if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
-			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+			}
 		}
 
 		return nil
@@ -414,8 +420,10 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 			return ierrors.Wrap(err, "failed to read byte slice from map")
 		}
 
-		if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
-			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+			}
 		}
 
 		addrValue := value.Addr().Convert(reflect.TypeOf((*[]byte)(nil)))
@@ -433,8 +441,10 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		value.Set(reflect.Append(value, elemValue))
 	}
 
-	if err := api.checkMinMaxBounds(value, ts); err != nil {
-		return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
 	}
 
 	// check if the slice is a nil pointer to the slice type (in case the sliceLength is zero and the slice was not initialized before)
@@ -484,8 +494,10 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		value.SetMapIndex(keyValue, elemValue)
 	}
 
-	if err := api.checkMinMaxBounds(value, ts); err != nil {
-		return err
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return err
+		}
 	}
 
 	return nil

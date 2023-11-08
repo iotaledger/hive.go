@@ -52,9 +52,14 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 			return nil, ierrors.WithStack(err)
 		}
 	}
+
 	if opts.validation {
 		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
 			return nil, ierrors.Wrap(err, "post-serialization validation failed")
+		}
+
+		if err := api.checkMaxByteSize(len(b), ts); err != nil {
+			return nil, err
 		}
 	}
 
@@ -343,8 +348,10 @@ func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
 
-	if err := api.checkMinMaxBounds(value, ts); err != nil {
-		return nil, err
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return nil, err
+		}
 	}
 
 	data := make([][]byte, value.Len())
@@ -362,10 +369,6 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 
 	bytes, err := encodeSliceOfBytes(data, valueType, ts, opts)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := api.checkMapMaxByteSize(len(bytes), ts); err != nil {
 		return nil, err
 	}
 
