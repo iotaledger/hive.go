@@ -3,11 +3,11 @@ module github.com/iotaledger/hive.go/web
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231019081410-32f61b05bebe
-	github.com/iotaledger/hive.go/ds v0.0.0-20231019081410-32f61b05bebe
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019081410-32f61b05bebe
-	github.com/iotaledger/hive.go/logger v0.0.0-20231019081410-32f61b05bebe
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231019081410-32f61b05bebe
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231108044237-5731e50d3660
+	github.com/iotaledger/hive.go/ds v0.0.0-20231108044237-5731e50d3660
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231108044237-5731e50d3660
+	github.com/iotaledger/hive.go/logger v0.0.0-20231108044237-5731e50d3660
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231108044237-5731e50d3660
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.14.0
 	nhooyr.io/websocket v1.8.7
@@ -19,9 +19,9 @@ require (
 	github.com/gin-gonic/gin v1.8.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/lo v0.0.0-20231019081410-32f61b05bebe // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231019081410-32f61b05bebe // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20231019081410-32f61b05bebe // indirect
+	github.com/iotaledger/hive.go/lo v0.0.0-20231108044237-5731e50d3660 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231108044237-5731e50d3660 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20231108044237-5731e50d3660 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
