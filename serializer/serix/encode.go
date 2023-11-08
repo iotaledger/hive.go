@@ -114,7 +114,11 @@ func (api *API) encodeBasedOnType(
 		if !set {
 			return nil, ierrors.New("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
-		minLen, maxLen := ts.MinMaxLen()
+
+		var minLen, maxLen int
+		if opts.validation {
+			minLen, maxLen = ts.MinMaxLen()
+		}
 		seri := serializer.NewSerializer()
 
 		return seri.WriteString(
@@ -321,13 +325,9 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }
 
-func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) ([]byte, error) {
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
+func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
 
 	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
@@ -359,7 +359,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()
 		elem := iter.Value()
-		b, err := api.encodeMapKVPair(ctx, key, elem, ts, opts)
+		b, err := api.encodeMapKVPair(ctx, key, elem, opts)
 		if err != nil {
 			return nil, ierrors.WithStack(err)
 		}

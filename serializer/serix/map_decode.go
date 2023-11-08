@@ -467,16 +467,17 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		value.Set(reflect.MakeMap(valueType))
 	}
 
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
-
+	var typeSettingsSet bool
+	var keyTypeSettings, valueTypeSettings TypeSettings
 	for k, v := range m {
 		keyValue := reflect.New(valueType.Key()).Elem()
 		elemValue := reflect.New(valueType.Elem()).Elem()
+
+		if !typeSettingsSet {
+			keyTypeSettings = api.getTypeSettingsByValue(keyValue)
+			valueTypeSettings = api.getTypeSettingsByValue(elemValue)
+			typeSettingsSet = true
+		}
 
 		if err := api.mapDecode(ctx, k, keyValue, keyTypeSettings, opts); err != nil {
 			return ierrors.Wrapf(err, "failed to map decode map key of type %s", keyValue.Type())

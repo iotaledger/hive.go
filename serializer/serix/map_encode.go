@@ -282,13 +282,9 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	return data, nil
 }
 
-func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, ts TypeSettings, opts *options) (string, any, error) {
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
+func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
 
 	k, err := api.mapEncode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
@@ -316,7 +312,7 @@ func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSe
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()
 		elem := iter.Value()
-		k, v, err := api.mapEncodeMapKVPair(ctx, key, elem, ts, opts)
+		k, v, err := api.mapEncodeMapKVPair(ctx, key, elem, opts)
 		if err != nil {
 			return nil, ierrors.WithStack(err)
 		}

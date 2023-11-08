@@ -5,7 +5,12 @@ Structs serialization/deserialization
 
 In order for a field to be detected by serix it must have `serix:""` struct tag.
 The first part in the tag is the key used for json serialization.
-If the name is empty, serix uses the field name in camel case (Exceptions: "ID" => "Id", "URL" => "Url").
+If the name is empty, serix uses the field name in camel case.
+	Exceptions:
+		- "ID" => "Id"
+		- "NFT" => "Nft"
+		- "URL" => "Url"
+		- "HRP" => "Hrp"
 
 Examples:
 	- `serix:""
@@ -36,25 +41,6 @@ You can provide the following settings to serix via struct tags:
 
 	- "maxLen": maximum length for that field (string, slice, map)
 		`serix:"example,maxLen=5"`
-
-	- "mapKeyLenPrefix": provide serializer.SeriLengthPrefixType for the keys of that map
-		`serix:"example,mapKeyLenPrefix=uint32"`
-
-	- "mapKeyMinLen": minimum length for the keys of that map
-		`serix:"example,mapKeyMinLen=2"`
-
-	- "mapKeyMaxLen": maximum length for the keys of that map
-		`serix:"example,mapKeyMaxLen=5"`
-
-	- "mapValueLenPrefix": provide serializer.SeriLengthPrefixType for the values of that map
-		`serix:"example,mapValueLenPrefix=uint32"`
-
-	- "mapValueMinLen": minimum length for the values of that map
-		`serix:"example,mapValueMinLen=2"`
-
-	- "mapValueMaxLen": maximum length for the values of that map
-		`serix:"example,mapValueMaxLen=5"`
-
 
 See serix_text.go for more detail.
 */
@@ -556,6 +542,7 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	if objType == nil {
 		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
 	}
+
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
 	api.typeSettingsRegistry[objType] = ts
@@ -566,6 +553,7 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	api.typeSettingsRegistryMutex.RLock()
 	defer api.typeSettingsRegistryMutex.RUnlock()
+
 	ts, ok := api.typeSettingsRegistry[objType]
 	if ok {
 		return ts, true
@@ -578,6 +566,35 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	}
 
 	return TypeSettings{}, false
+}
+
+//nolint:unparam // false positive, we will use it later
+func (api *API) getTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+	api.typeSettingsRegistryMutex.RLock()
+	defer api.typeSettingsRegistryMutex.RUnlock()
+
+	for {
+		if ts, ok := api.typeSettingsRegistry[objValue.Type()]; ok {
+			if len(optTS) > 0 {
+				return optTS[0].merge(ts)
+			}
+
+			return ts
+		}
+
+		// resolve indirections
+		switch objValue.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			objValue = objValue.Elem()
+
+		default:
+			if len(optTS) > 0 {
+				return optTS[0]
+			}
+
+			return TypeSettings{}
+		}
+	}
 }
 
 // RegisterInterfaceObjects tells serix that when it encounters iType during serialization/deserialization
@@ -868,7 +885,9 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 		return tagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
 	}
 
-	settings.ts = settings.ts.WithFieldKey(keyPart)
+	if keyPart != "" {
+		settings.ts = settings.ts.WithFieldKey(keyPart)
+	}
 
 	parts = parts[1:]
 	seenParts := map[string]struct{}{}
@@ -916,48 +935,6 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 				return tagSettings{}, err
 			}
 			settings.ts = settings.ts.WithMaxLen(value)
-
-		case "mapKeyLenPrefix":
-			value, err := parseStructTagValuePrefixType("mapKeyLenPrefix", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapKeyLengthPrefixType(value)
-
-		case "mapKeyMinLen":
-			value, err := parseStructTagValueUint("mapKeyMinLen", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapKeyMinLen(value)
-
-		case "mapKeyMaxLen":
-			value, err := parseStructTagValueUint("mapKeyMaxLen", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapKeyMaxLen(value)
-
-		case "mapValueLenPrefix":
-			value, err := parseStructTagValuePrefixType("mapValueLenPrefix", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapValueLengthPrefixType(value)
-
-		case "mapValueMinLen":
-			value, err := parseStructTagValueUint("mapValueMinLen", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapValueMinLen(value)
-
-		case "mapValueMaxLen":
-			value, err := parseStructTagValueUint("mapValueMaxLen", keyValue, currentPart)
-			if err != nil {
-				return tagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMapValueMaxLen(value)
 
 		default:
 			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
@@ -1048,7 +1025,7 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 // FieldKeyString converts the given string to camelCase.
 // Special keywords like ID or URL are converted to only first letter upper case.
 func FieldKeyString(str string) string {
-	for _, keyword := range []string{"ID", "URL"} {
+	for _, keyword := range []string{"ID", "NFT", "URL", "HRP"} {
 		if !strings.Contains(str, keyword) {
 			continue
 		}

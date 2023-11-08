@@ -426,13 +426,9 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 	return bytesRead, nil
 }
 
-func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, ts TypeSettings, opts *options) (int, error) {
-	keyTypeSettings := TypeSettings{}
-	valueTypeSettings := TypeSettings{}
-	if ts.mapRules != nil {
-		keyTypeSettings = ts.mapRules.KeyRules.ToTypeSettings()
-		valueTypeSettings = ts.mapRules.ValueRules.ToTypeSettings()
-	}
+func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
 
 	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
 	if err != nil {
@@ -456,7 +452,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		keyValue := reflect.New(valueType.Key()).Elem()
 		elemValue := reflect.New(valueType.Elem()).Elem()
-		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, ts, opts)
+		bytesRead, err = api.decodeMapKVPair(ctx, b, keyValue, elemValue, opts)
 		if err != nil {
 			return 0, ierrors.WithStack(err)
 		}

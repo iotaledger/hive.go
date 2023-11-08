@@ -39,32 +39,6 @@ func LengthPrefixTypeSize(t LengthPrefixType) (int, error) {
 // Min and Max at 0 define an unbounded array.
 type ArrayRules serializer.ArrayRules
 
-// MapElementRules defines rules around to be deserialized map elements (key or value).
-// MinLength and MaxLength at 0 define an unbounded map element.
-type MapElementRules struct {
-	LengthPrefixType *LengthPrefixType
-	MinLength        uint
-	MaxLength        uint
-}
-
-func (m *MapElementRules) ToTypeSettings() TypeSettings {
-	return TypeSettings{
-		lengthPrefixType: m.LengthPrefixType,
-		arrayRules: &ArrayRules{
-			Min: m.MinLength,
-			Max: m.MaxLength,
-		},
-	}
-}
-
-// MapRules defines rules around a to be deserialized map.
-type MapRules struct {
-	// KeyRules define the rules applied to the keys of the map.
-	KeyRules *MapElementRules
-	// ValueRules define the rules applied to the values of the map.
-	ValueRules *MapElementRules
-}
-
 // TypeSettings holds various settings for a particular type.
 // Those settings determine how the object should be serialized/deserialized.
 // There are three ways to provide TypeSettings
@@ -87,7 +61,6 @@ type TypeSettings struct {
 	lexicalOrdering *bool
 	// arrayRules defines rules around a to be deserialized array.
 	arrayRules *ArrayRules
-	mapRules   *MapRules
 }
 
 // WithFieldKey specifies the key for the field.
@@ -233,96 +206,6 @@ func (ts TypeSettings) MinMaxLen() (int, int) {
 	return min, max
 }
 
-// WithMapRules specifies the map rules.
-func (ts TypeSettings) WithMapRules(rules *MapRules) TypeSettings {
-	ts.mapRules = rules
-
-	return ts
-}
-
-// MapRules returns the map rules.
-func (ts TypeSettings) MapRules() *MapRules {
-	return ts.mapRules
-}
-
-// WithMapKeyLengthPrefixType specifies MapKeyLengthPrefixType.
-func (ts TypeSettings) WithMapKeyLengthPrefixType(lpt LengthPrefixType) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.KeyRules == nil {
-		ts.mapRules.KeyRules = new(MapElementRules)
-	}
-	ts.mapRules.KeyRules.LengthPrefixType = &lpt
-
-	return ts
-}
-
-// WithMapKeyMinLen specifies the min length for the object in the map key.
-func (ts TypeSettings) WithMapKeyMinLen(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.KeyRules == nil {
-		ts.mapRules.KeyRules = new(MapElementRules)
-	}
-	ts.mapRules.KeyRules.MinLength = l
-
-	return ts
-}
-
-// WithMapKeyMaxLen specifies the max length for the object in the map key.
-func (ts TypeSettings) WithMapKeyMaxLen(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.KeyRules == nil {
-		ts.mapRules.KeyRules = new(MapElementRules)
-	}
-	ts.mapRules.KeyRules.MaxLength = l
-
-	return ts
-}
-
-// MapValueLengthPrefixType specifies MapValueLengthPrefixType.
-func (ts TypeSettings) WithMapValueLengthPrefixType(lpt LengthPrefixType) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.ValueRules == nil {
-		ts.mapRules.ValueRules = new(MapElementRules)
-	}
-	ts.mapRules.ValueRules.LengthPrefixType = &lpt
-
-	return ts
-}
-
-// WithMapValueMinLen specifies the min length for the object in the map value.
-func (ts TypeSettings) WithMapValueMinLen(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.ValueRules == nil {
-		ts.mapRules.ValueRules = new(MapElementRules)
-	}
-	ts.mapRules.ValueRules.MinLength = l
-
-	return ts
-}
-
-// WithMapValueMaxLen specifies the max length for the object in the map value.
-func (ts TypeSettings) WithMapValueMaxLen(l uint) TypeSettings {
-	if ts.mapRules == nil {
-		ts.mapRules = new(MapRules)
-	}
-	if ts.mapRules.ValueRules == nil {
-		ts.mapRules.ValueRules = new(MapElementRules)
-	}
-	ts.mapRules.ValueRules.MaxLength = l
-
-	return ts
-}
-
 func (ts TypeSettings) ensureOrdering() TypeSettings {
 	newTS := ts.WithLexicalOrdering(true)
 	arrayRules := newTS.ArrayRules()
@@ -350,9 +233,6 @@ func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
 	}
 	if ts.fieldKey == nil {
 		ts.fieldKey = other.fieldKey
-	}
-	if ts.mapRules == nil {
-		ts.mapRules = other.mapRules
 	}
 
 	return ts

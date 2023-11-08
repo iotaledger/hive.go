@@ -178,18 +178,22 @@ func (test *serializeTest) run(t *testing.T) {
 
 func TestSerixMapSerialize(t *testing.T) {
 
-	type MyMapType map[string]string
-
+	type MyMapTypeKey string
+	type MyMapTypeValue string
+	type MyMapType map[MyMapTypeKey]MyMapTypeValue
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
 	}
+
+	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
+	testAPI.RegisterTypeSettings(MyMapTypeValue(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint32).WithMinLen(1).WithMaxLen(6))
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
 	tests := []serializeTest{
 		{
 			name: "ok",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 					"k2": "v2",
 				},
@@ -201,7 +205,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - not enough entries",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 				},
 			},
@@ -212,7 +216,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - too many entries",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 					"k2": "v2",
 					"k3": "v3",
@@ -227,7 +231,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - too big",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1000",
 					"k2": "v2000",
 					"k3": "v3000",
@@ -241,7 +245,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - key too short",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 					"k":  "v2",
 				},
@@ -253,7 +257,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - key too long",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1":     "v1",
 					"k20000": "v2",
 				},
@@ -265,7 +269,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - value too short",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 					"k2": "",
 				},
@@ -277,7 +281,7 @@ func TestSerixMapSerialize(t *testing.T) {
 		{
 			name: "fail - value too long",
 			source: &MapStruct{
-				MyMap: map[string]string{
+				MyMap: MyMapType{
 					"k1": "v1",
 					"k2": "v200000",
 				},
@@ -303,11 +307,11 @@ type deSerializeTest struct {
 
 func (test *deSerializeTest) run(t *testing.T) {
 	// binary serialize test data
-	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+	serixData, err := testAPI.Encode(context.Background(), test.source)
 	require.NoError(t, err)
 
 	// json serialize test data
-	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
+	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
 	require.NoError(t, err)
 
 	// binary deserialize
@@ -337,24 +341,21 @@ func (test *deSerializeTest) run(t *testing.T) {
 
 func TestSerixMapDeserialize(t *testing.T) {
 
-	type MyMapType map[string]string
-
-	// used to create test data
-	type TestVectorMapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=1,maxLen=5,maxByteSize=100,mapKeyLenPrefix=uint16,mapKeyMinLen=1,mapKeyMaxLen=7,mapValueLenPrefix=uint32,mapValueMinLen=0,mapValueMaxLen=10"`
-	}
-	testAPI.RegisterTypeSettings(TestVectorMapStruct{}, serix.TypeSettings{})
-
+	type MyMapTypeKey string
+	type MyMapTypeValue string
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50,mapKeyLenPrefix=uint16,mapKeyMinLen=2,mapKeyMaxLen=5,mapValueLenPrefix=uint32,mapValueMinLen=1,mapValueMaxLen=6"`
+		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
 	}
+
+	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
+	testAPI.RegisterTypeSettings(MyMapTypeValue(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint32).WithMinLen(1).WithMaxLen(6))
 	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
 
 	tests := []deSerializeTest{
 		{
 			name: "ok",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 					"k2": "v2",
 				},
@@ -365,8 +366,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - not enough entries",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 				},
 			},
@@ -376,8 +377,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - too many entries",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 					"k2": "v2",
 					"k3": "v3",
@@ -391,8 +392,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - too big",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1000",
 					"k2": "v2000",
 					"k3": "v3000",
@@ -405,8 +406,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - key too short",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 					"k":  "v2",
 				},
@@ -417,8 +418,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - key too long",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1":     "v1",
 					"k20000": "v2",
 				},
@@ -429,8 +430,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - value too short",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 					"k2": "",
 				},
@@ -441,8 +442,8 @@ func TestSerixMapDeserialize(t *testing.T) {
 		},
 		{
 			name: "fail - value too long",
-			source: &TestVectorMapStruct{
-				MyMap: map[string]string{
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
 					"k1": "v1",
 					"k2": "v200000",
 				},
