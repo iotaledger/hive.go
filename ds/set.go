@@ -47,7 +47,7 @@ type ReadableSet[ElementType comparable] interface {
 	// Equals returns true if the set contains the same elements as the given set.
 	Equals(other ReadableSet[ElementType]) bool
 
-	// Any returns a random element from the set.
+	// Any returns a random element from the set (and if one exists).
 	Any() (element ElementType, exists bool)
 
 	// Is returns true if the given element is the only element in the set.
