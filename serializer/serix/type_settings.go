@@ -20,6 +20,8 @@ const (
 	LengthPrefixTypeAsUint16 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint16)
 	// LengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
 	LengthPrefixTypeAsUint32 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32)
+	// LengthPrefixTypeAsUint64 defines a collection length to be denoted by a uint64.
+	LengthPrefixTypeAsUint64 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint64)
 )
 
 func LengthPrefixTypeSize(t LengthPrefixType) (int, error) {
@@ -30,6 +32,8 @@ func LengthPrefixTypeSize(t LengthPrefixType) (int, error) {
 		return 2, nil
 	case LengthPrefixTypeAsUint32:
 		return 4, nil
+	case LengthPrefixTypeAsUint64:
+		return 8, nil
 	default:
 		return 0, ErrUnknownLengthPrefixType
 	}

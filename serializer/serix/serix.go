@@ -850,6 +850,8 @@ func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
 		return LengthPrefixTypeAsUint16, nil
 	case "uint32":
 		return LengthPrefixTypeAsUint32, nil
+	case "uint64":
+		return LengthPrefixTypeAsUint64, nil
 	default:
 		return LengthPrefixTypeAsByte, ierrors.Wrapf(ErrUnknownLengthPrefixType, "%s", prefixTypeRaw)
 	}
