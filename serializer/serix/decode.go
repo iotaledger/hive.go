@@ -281,7 +281,7 @@ func (api *API) decodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {

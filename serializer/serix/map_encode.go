@@ -182,7 +182,7 @@ func (api *API) mapEncodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldValue.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -217,10 +217,10 @@ func (api *API) mapEncodeStructFields(
 		switch {
 		case sField.settings.ts.fieldKey != nil:
 			obj.Set(*sField.settings.ts.fieldKey, eleOut)
-		case sField.settings.nest:
+		case sField.settings.inlined:
 			castedEleOut, ok := eleOut.(*orderedmap.OrderedMap)
 			if !ok {
-				return ierrors.Errorf("failed to cast nested struct field %s to map", sField.name)
+				return ierrors.Errorf("failed to cast inlined struct field %s to map", sField.name)
 			}
 
 			for _, k := range castedEleOut.Keys() {

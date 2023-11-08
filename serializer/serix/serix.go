@@ -19,8 +19,8 @@ You can provide the following settings to serix via struct tags:
 				  It will be prepended with the serialized size of the field.
 		`serix:"example,optional"`
 
-	- "nest": handle embedded/anonymous field as a nested field
-		`serix:"example,nest"`
+	- "inlined": handle embedded/anonymous field as a nested field
+		`serix:"example,inlined"`
 
 	- "omitempty": omit the field in json serialization if it's empty
 		`serix:"example,omitempty"`
@@ -712,7 +712,7 @@ type structField struct {
 type tagSettings struct {
 	position   int
 	isOptional bool
-	nest       bool
+	inlined    bool
 	omitEmpty  bool
 	ts         TypeSettings
 }
@@ -774,15 +774,15 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 			}
 		}
 
-		if tSettings.nest && isUnexported {
+		if tSettings.inlined && isUnexported {
 			return nil, ierrors.Errorf(
-				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
+				"struct field %s is invalid: 'inlined' setting can't be used with unexported types",
 				field.Name)
 		}
 
-		if !tSettings.nest && isEmbeddedInterface {
+		if !tSettings.inlined && isEmbeddedInterface {
 			return nil, ierrors.Errorf(
-				"struct field %s is invalid: 'nest' setting needs to be used for embedded interfaces",
+				"struct field %s is invalid: 'inlined' setting needs to be used for embedded interfaces",
 				field.Name)
 		}
 
@@ -887,8 +887,8 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 		case "optional":
 			settings.isOptional = true
 
-		case "nest":
-			settings.nest = true
+		case "inlined":
+			settings.inlined = true
 
 		case "omitempty":
 			settings.omitEmpty = true

@@ -248,7 +248,7 @@ func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializatio
 
 type StructWithEmbeddedStructs struct {
 	unexportedStruct `serix:""`
-	ExportedStruct   `serix:",nest"`
+	ExportedStruct   `serix:",inlined"`
 }
 
 func (se StructWithEmbeddedStructs) MarshalJSON() ([]byte, error) {

@@ -352,7 +352,7 @@ func (api *API) mapDecodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := structVal.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -374,9 +374,9 @@ func (api *API) mapDecodeStructFields(
 			continue
 		}
 
-		if sField.settings.nest {
+		if sField.settings.inlined {
 			if err := api.mapDecode(ctx, m, fieldValue, sField.settings.ts, opts); err != nil {
-				return ierrors.Wrapf(err, "failed to deserialize nested struct field %s", sField.name)
+				return ierrors.Wrapf(err, "failed to deserialize inlined struct field %s", sField.name)
 			}
 
 			continue
