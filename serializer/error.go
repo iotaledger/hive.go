@@ -32,6 +32,10 @@ var (
 	ErrDeserializationInvalidBoolValue = ierrors.New("invalid bool value")
 	// ErrDeserializationLengthInvalid gets returned if a length denotation exceeds a specified limit.
 	ErrDeserializationLengthInvalid = ierrors.New("length denotation invalid")
+	// ErrDeserializationLengthMinNotReached gets returned if a length denotation is less than a specified limit.
+	ErrDeserializationLengthMinNotReached = ierrors.Wrap(ErrDeserializationLengthInvalid, "min length not reached")
+	// ErrDeserializationLengthMaxExceeded gets returned if a length denotation is more than a specified limit.
+	ErrDeserializationLengthMaxExceeded = ierrors.Wrap(ErrDeserializationLengthInvalid, "max length exceeded")
 	// ErrDeserializationNotAllConsumed gets returned if not all bytes were consumed during deserialization of a given type.
 	ErrDeserializationNotAllConsumed = ierrors.New("not all data has been consumed but should have been")
 	// ErrUint256NumNegative gets returned if a supposed uint256 has a sign bit.

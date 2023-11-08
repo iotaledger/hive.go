@@ -34,6 +34,12 @@ type Set[IdentifierType types.IdentifierType, K any] interface {
 }
 
 // NewSet creates a new sparse merkle tree based set.
-func NewSet[IdentifierType types.IdentifierType, K any](store kvstore.KVStore, keyToBytes kvstore.ObjectToBytes[K], bytesToKey kvstore.BytesToObject[K]) Set[IdentifierType, K] {
-	return newAuthenticatedSet[IdentifierType](store, keyToBytes, bytesToKey)
+func NewSet[IdentifierType types.IdentifierType, K any](
+	store kvstore.KVStore,
+	identifierToBytes kvstore.ObjectToBytes[IdentifierType],
+	bytesToIdentifier kvstore.BytesToObject[IdentifierType],
+	keyToBytes kvstore.ObjectToBytes[K],
+	bytesToKey kvstore.BytesToObject[K],
+) Set[IdentifierType, K] {
+	return newAuthenticatedSet[IdentifierType](store, identifierToBytes, bytesToIdentifier, keyToBytes, bytesToKey)
 }

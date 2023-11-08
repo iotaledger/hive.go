@@ -3,8 +3,8 @@ module github.com/iotaledger/hive.go/lo
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231019081410-32f61b05bebe
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231019081410-32f61b05bebe
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231108044237-5731e50d3660
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231108044237-5731e50d3660
 	github.com/stretchr/testify v1.8.4
 )
 

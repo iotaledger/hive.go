@@ -2,97 +2,142 @@ package stream
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"math"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
-// Write writes a generic basic type from the stream.
-func Write[T any](writer io.WriteSeeker, value T) (err error) {
+// Write writes one of the allowedGenericTypes basic type to the writer.
+func Write[T allowedGenericTypes](writer io.Writer, value T) error {
 	return binary.Write(writer, binary.LittleEndian, value)
 }
 
-// WriteSerializable writes a serializable type to the stream (if the serialized field is of fixed size, we can provide
-// the length to omit additional information about the length of the serializable).
-func WriteSerializable[T serializer.Byter](writer io.WriteSeeker, target T, optFixedSize ...int) (err error) {
-	serializedBytes, err := target.Bytes()
+func WriteBytes(writer io.Writer, bytes []byte) error {
+	return lo.Return2(writer.Write(bytes))
+}
+
+// WriteBytesWithSize writes bytes to the writer where lenType specifies the serialization length prefix type.
+func WriteBytesWithSize(writer io.Writer, bytes []byte, lenType serializer.SeriLengthPrefixType) error {
+	if err := writeFixedSize(writer, len(bytes), lenType); err != nil {
+		return ierrors.Wrap(err, "failed to write bytes length")
+	}
+
+	if _, err := writer.Write(bytes); err != nil {
+		return ierrors.Wrap(err, "failed to write bytes")
+	}
+
+	return nil
+}
+
+// WriteObject writes a type to the writer as specified by the objectToBytesFunc.
+func WriteObject[T any](writer io.Writer, target T, objectToBytesFunc func(T) ([]byte, error)) error {
+	serializedBytes, err := objectToBytesFunc(target)
 	if err != nil {
 		return ierrors.Wrap(err, "failed to serialize target")
 	}
 
-	if len(optFixedSize) == 0 {
-		if err = WriteBlob(writer, serializedBytes); err != nil {
-			return ierrors.Wrap(err, "failed to write serialized bytes")
-		}
-
-		return
-	}
-
-	if len(serializedBytes) != optFixedSize[0] {
-		return ierrors.Errorf("serialized bytes length (%d) != fixed size (%d)", len(serializedBytes), optFixedSize[0])
-	} else if err = Write(writer, serializedBytes); err != nil {
+	if _, err = writer.Write(serializedBytes); err != nil {
 		return ierrors.Wrap(err, "failed to write target")
 	}
 
-	return
+	return nil
 }
 
-// WriteFunc writes a type to the stream as specified by the writeFunc. If the serialized type is of fixed size, we can provide
-// the length to omit additional information about the length to be prepended.
-func WriteFunc[T any](writer io.WriteSeeker, target T, writeFunc func(T) ([]byte, error), optFixedSize ...int) (err error) {
-	serializedBytes, err := writeFunc(target)
+// WriteObjectWithSize writes an object to the writer as specified by the objectToBytesFunc. The serialization length prefix type must be specified.
+func WriteObjectWithSize[T any](writer io.Writer, target T, lenType serializer.SeriLengthPrefixType, objectToBytesFunc func(T) ([]byte, error)) error {
+	serializedBytes, err := objectToBytesFunc(target)
 	if err != nil {
-		return ierrors.Wrap(err, "failed to serialize target")
+		return ierrors.Wrap(err, "failed to serialize object")
 	}
 
-	if len(optFixedSize) == 0 {
-		if err = WriteBlob(writer, serializedBytes); err != nil {
-			return ierrors.Wrap(err, "failed to write serialized bytes")
-		}
-
-		return
+	if err = WriteBytesWithSize(writer, serializedBytes, lenType); err != nil {
+		return ierrors.Wrap(err, "failed to write serialized bytes")
 	}
 
-	if len(serializedBytes) != optFixedSize[0] {
-		return ierrors.Errorf("serialized bytes length (%d) != fixed size (%d)", len(serializedBytes), optFixedSize[0])
-	} else if err = Write(writer, serializedBytes); err != nil {
-		return ierrors.Wrap(err, "failed to write target")
-	}
-
-	return
+	return nil
 }
 
-// WriteBlob writes a byte slice to the stream (the first 8 bytes are the length of the blob).
-func WriteBlob(writer io.WriteSeeker, blob []byte) (err error) {
-	if err = Write(writer, uint64(len(blob))); err != nil {
-		err = ierrors.Wrap(err, "failed to write blob length")
-	} else if err = Write(writer, blob); err != nil {
-		err = ierrors.Wrap(err, "failed to write blob")
-	}
-
-	return
-}
-
-// WriteCollection writes a collection to the stream (the first 8 bytes are the length of the collection).
-func WriteCollection(writer io.WriteSeeker, writeCollection func() (elementsCount uint64, err error)) (err error) {
-	var elementsCount uint64
+// WriteCollection writes a collection to the writer where lenType specifies the serialization length prefix type.
+func WriteCollection(writer io.WriteSeeker, lenType serializer.SeriLengthPrefixType, writeCallback func() (elementsCount int, err error)) error {
+	var elementsCount int
 	var startOffset, endOffset int64
+	var err error
+
 	if startOffset, err = Offset(writer); err != nil {
-		err = ierrors.Wrap(err, "failed to get start offset")
-	} else if _, err = Skip(writer, 8); err != nil {
-		err = ierrors.Wrap(err, "failed to skip elements count")
-	} else if elementsCount, err = writeCollection(); err != nil {
-		err = ierrors.Wrap(err, "failed to write collection")
-	} else if endOffset, err = Offset(writer); err != nil {
-		err = ierrors.Wrap(err, "failed to read end offset of collection")
-	} else if _, err = GoTo(writer, startOffset); err != nil {
-		err = ierrors.Wrap(err, "failed to seek to start of attestors")
-	} else if err = Write(writer, elementsCount); err != nil {
-		err = ierrors.Wrap(err, "failed to write attestors count")
-	} else if _, err = GoTo(writer, endOffset); err != nil {
-		err = ierrors.Wrap(err, "failed to seek to end of attestors")
+		return ierrors.Wrap(err, "failed to get start offset")
 	}
 
-	return
+	if err = writeFixedSize(writer, 0, lenType); err != nil {
+		return ierrors.Wrap(err, "failed to skip elements count")
+	}
+
+	if elementsCount, err = writeCallback(); err != nil {
+		return ierrors.Wrap(err, "failed to write collection")
+	}
+
+	if endOffset, err = Offset(writer); err != nil {
+		return ierrors.Wrap(err, "failed to read end offset of collection")
+	}
+
+	if _, err = GoTo(writer, startOffset); err != nil {
+		return ierrors.Wrap(err, "failed to seek to start of attestors")
+	}
+
+	if err = writeFixedSize(writer, elementsCount, lenType); err != nil {
+		return ierrors.Wrap(err, "failed to write elements count")
+	}
+
+	if _, err = GoTo(writer, endOffset); err != nil {
+		return ierrors.Wrap(err, "failed to seek to end of attestors")
+	}
+
+	return nil
+}
+
+func writeFixedSize(writer io.Writer, l int, lenType serializer.SeriLengthPrefixType) error {
+	switch lenType {
+	case serializer.SeriLengthPrefixTypeAsByte:
+		if l > math.MaxUint8 {
+			return ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint8)
+		}
+		if err := Write(writer, uint8(l)); err != nil {
+			return ierrors.Wrap(err, "unable to write length")
+		}
+
+		return nil
+
+	case serializer.SeriLengthPrefixTypeAsUint16:
+		if l > math.MaxUint16 {
+			return ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint16)
+		}
+		if err := Write(writer, uint16(l)); err != nil {
+			return ierrors.Wrap(err, "unable to write length")
+		}
+
+		return nil
+
+	case serializer.SeriLengthPrefixTypeAsUint32:
+		if l > math.MaxUint32 {
+			return ierrors.Errorf("unable to serialize collection length: length %d is out of range (0-%d)", l, math.MaxUint32)
+		}
+		if err := Write(writer, uint32(l)); err != nil {
+			return ierrors.Wrap(err, "unable to write length")
+		}
+
+		return nil
+
+	case serializer.SeriLengthPrefixTypeAsUint64:
+		if err := Write(writer, uint64(l)); err != nil {
+			return ierrors.Wrap(err, "unable to write length")
+		}
+
+		return nil
+
+	default:
+		panic(fmt.Sprintf("unknown slice length type %v", lenType))
+	}
 }

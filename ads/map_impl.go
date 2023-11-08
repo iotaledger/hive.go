@@ -9,8 +9,8 @@ import (
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/kvstore"
-	"github.com/iotaledger/hive.go/kvstore/typedkey"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2/typeutils"
 )
 
 const (
@@ -24,8 +24,8 @@ const (
 type authenticatedMap[IdentifierType types.IdentifierType, K, V any] struct {
 	rawKeysStore *kvstore.TypedStore[K, types.Empty]
 	tree         *smt.SMT
-	size         *typedkey.Number[uint64]
-	root         *typedkey.Bytes
+	size         *kvstore.TypedValue[uint64]
+	root         *kvstore.TypedValue[IdentifierType]
 	mutex        sync.RWMutex
 
 	keyToBytes   kvstore.ObjectToBytes[K]
@@ -36,6 +36,8 @@ type authenticatedMap[IdentifierType types.IdentifierType, K, V any] struct {
 // NewAuthenticatedMap creates a new authenticated map.
 func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 	store kvstore.KVStore,
+	identifierToBytes kvstore.ObjectToBytes[IdentifierType],
+	bytesToIdentifier kvstore.BytesToObject[IdentifierType],
 	keyToBytes kvstore.ObjectToBytes[K],
 	bytesToKey kvstore.BytesToObject[K],
 	valueToBytes kvstore.ObjectToBytes[V],
@@ -43,16 +45,16 @@ func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 ) *authenticatedMap[IdentifierType, K, V] {
 	newMap := &authenticatedMap[IdentifierType, K, V]{
 		rawKeysStore: kvstore.NewTypedStore(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixRawKeysStorage})), keyToBytes, bytesToKey, types.Empty.Bytes, types.EmptyFromBytes),
-		size:         typedkey.NewNumber[uint64](store, prefixSizeKey),
-		root:         typedkey.NewBytes(store, prefixRootKey),
+		size:         kvstore.NewTypedValue(store, []byte{prefixSizeKey}, typeutils.Uint64ToBytes, typeutils.Uint64FromBytes),
+		root:         kvstore.NewTypedValue(store, []byte{prefixRootKey}, identifierToBytes, bytesToIdentifier),
 
 		keyToBytes:   keyToBytes,
 		valueToBytes: valueToBytes,
 		bytesToValue: bytesToValue,
 	}
 
-	if root := newMap.root.Get(); len(root) != 0 {
-		newMap.tree = smt.ImportSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), root, smt.WithValueHasher(nil))
+	if root, err := newMap.root.Get(); err == nil {
+		newMap.tree = smt.ImportSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), root[:], smt.WithValueHasher(nil))
 	} else {
 		newMap.tree = smt.NewSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), smt.WithValueHasher(nil))
 	}
@@ -62,7 +64,8 @@ func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 
 // WasRestoredFromStorage returns true if the map has been restored from storage.
 func (m *authenticatedMap[IdentifierType, K, V]) WasRestoredFromStorage() bool {
-	return len(m.root.Get()) != 0
+	_, err := m.root.Get()
+	return !ierrors.Is(err, kvstore.ErrKeyNotFound)
 }
 
 // Root returns the root of the state sparse merkle tree at the latest committed slot.
@@ -70,9 +73,7 @@ func (m *authenticatedMap[IdentifierType, K, V]) Root() (root IdentifierType) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	copy(root[:], m.tree.Root())
-
-	return
+	return IdentifierType(m.tree.Root())
 }
 
 // Set sets the output to unspent outputs set.
@@ -104,7 +105,9 @@ func (m *authenticatedMap[IdentifierType, K, V]) Set(key K, value V) error {
 	}
 
 	if !has {
-		m.size.Inc()
+		if err := m.addSize(1); err != nil {
+			return ierrors.Wrap(err, "failed to increase size")
+		}
 	}
 
 	return nil
@@ -115,7 +118,12 @@ func (m *authenticatedMap[IdentifierType, K, V]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	return int(m.size.Get())
+	size, err := m.size.Get()
+	if err != nil {
+		return 0
+	}
+
+	return int(size)
 }
 
 // Commit persists the current state of the map to the storage.
@@ -123,7 +131,9 @@ func (m *authenticatedMap[IdentifierType, K, V]) Commit() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	m.root.Set(m.tree.Root())
+	if err := m.root.Set(IdentifierType(m.tree.Root())); err != nil {
+		return ierrors.Wrap(err, "failed to set root")
+	}
 
 	return m.tree.Commit()
 }
@@ -156,7 +166,9 @@ func (m *authenticatedMap[IdentifierType, K, V]) Delete(key K) (deleted bool, er
 	}
 
 	if has {
-		m.size.Dec()
+		if err := m.addSize(-1); err != nil {
+			return false, ierrors.Wrap(err, "failed to decrease size")
+		}
 	}
 
 	return true, nil
@@ -256,4 +268,17 @@ func (m *authenticatedMap[IdentifierType, K, V]) has(keyBytes []byte) (has bool,
 	}
 
 	return value != nil, nil
+}
+
+func (m *authenticatedMap[IdentifierType, K, V]) addSize(delta int) error {
+	size, err := m.size.Get()
+	if err != nil && !ierrors.Is(err, kvstore.ErrKeyNotFound) {
+		return ierrors.Wrap(err, "failed to get size")
+	}
+
+	if err := m.size.Set(uint64(int(size) + delta)); err != nil {
+		return ierrors.Wrap(err, "failed to set size")
+	}
+
+	return nil
 }
