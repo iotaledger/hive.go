@@ -86,9 +86,14 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			return 0, ierrors.WithStack(err)
 		}
 	}
+
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
+		}
+
+		if err := api.checkMaxByteSize(bytesRead, ts); err != nil {
+			return bytesRead, err
 		}
 	}
 
@@ -168,7 +173,16 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 			addrValue.Interface().(*string),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return ierrors.Wrap(err, "failed to read string value from the deserializer")
+				err = ierrors.Wrap(err, "failed to read string value from the deserializer")
+
+				switch {
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMinNotReached):
+					return ierrors.Join(err, serializer.ErrArrayValidationMinElementsNotReached)
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMaxExceeded):
+					return ierrors.Join(err, serializer.ErrArrayValidationMaxElementsExceeded)
+				default:
+					return err
+				}
 			}, minLen, maxLen)
 
 		return deseri.Done()
@@ -272,7 +286,7 @@ func (api *API) decodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -373,7 +387,16 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 			addrValue.Interface().(*[]byte),
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
-				return ierrors.Wrap(err, "failed to read bytes from the deserializer")
+				err = ierrors.Wrap(err, "failed to read bytes from the deserializer")
+
+				switch {
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMinNotReached):
+					return ierrors.Join(err, serializer.ErrArrayValidationMinElementsNotReached)
+				case ierrors.Is(err, serializer.ErrDeserializationLengthMaxExceeded):
+					return ierrors.Join(err, serializer.ErrArrayValidationMaxElementsExceeded)
+				default:
+					return err
+				}
 			}, minLen, maxLen)
 
 		return deseri.Done()
@@ -403,11 +426,29 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 	return bytesRead, nil
 }
 
+func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
+
+	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
+	}
+	b = b[keyBytesRead:]
+	elemBytesRead, err := api.decode(ctx, b, val, valueTypeSettings, opts)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
+	}
+
+	return keyBytesRead + elemBytesRead, nil
+}
+
 func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
 	if value.IsNil() {
 		value.Set(reflect.MakeMap(valueType))
 	}
+
 	deserializeItem := func(b []byte) (bytesRead int, err error) {
 		keyValue := reflect.New(valueType.Key()).Elem()
 		elemValue := reflect.New(valueType.Elem()).Elem()
@@ -415,13 +456,30 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 		if err != nil {
 			return 0, ierrors.WithStack(err)
 		}
+
+		if value.MapIndex(keyValue).IsValid() {
+			// map entry already exists
+			return 0, ierrors.Wrapf(ErrMapValidationViolatesUniqueness, "map entry with key %v already exists", keyValue.Interface())
+		}
+
 		value.SetMapIndex(keyValue, elemValue)
 
 		return bytesRead, nil
 	}
 	ts = ts.ensureOrdering()
 
-	return api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	consumedBytes, err := api.decodeSequence(b, deserializeItem, valueType, ts, opts)
+	if err != nil {
+		return consumedBytes, err
+	}
+
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return consumedBytes, err
+		}
+	}
+
+	return consumedBytes, nil
 }
 
 func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeFunc, valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
@@ -446,18 +504,4 @@ func (api *API) decodeSequence(b []byte, deserializeItem serializer.DeserializeF
 		})
 
 	return deseri.Done()
-}
-
-func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
-	keyBytesRead, err := api.decode(ctx, b, key, TypeSettings{}, opts)
-	if err != nil {
-		return 0, ierrors.Wrapf(err, "failed to decode map key of type %s", key.Type())
-	}
-	b = b[keyBytesRead:]
-	elemBytesRead, err := api.decode(ctx, b, val, TypeSettings{}, opts)
-	if err != nil {
-		return 0, ierrors.Wrapf(err, "failed to decode map element of type %s", val.Type())
-	}
-
-	return keyBytesRead + elemBytesRead, nil
 }

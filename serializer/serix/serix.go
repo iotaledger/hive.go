@@ -3,12 +3,45 @@
 
 Structs serialization/deserialization
 
-In order for a field to be detected by serix it must have `serix` struct tag set with the position index: `serix:"0"`.
-serix traverses all fields and handles them in the order specified in the struct tags.
-Apart from the required position you can provide the following settings to serix via struct tags:
-"optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"1,optional"`
-"lengthPrefixType=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"2,lengthPrefixType=unint32"`
-"nest" - handle embedded/anonymous field as a nested field: `serix:"3,nest"`
+In order for a field to be detected by serix it must have `serix:""` struct tag.
+The first part in the tag is the key used for json serialization.
+If the name is empty, serix uses the field name in camel case.
+	Exceptions:
+		- "ID" => "Id"
+		- "NFT" => "Nft"
+		- "URL" => "Url"
+		- "HRP" => "Hrp"
+
+Examples:
+	- `serix:""
+	- `serix:"example"
+	- `serix:","`
+
+serix traverses all fields and handles them in the order specified in the struct.
+You can provide the following settings to serix via struct tags:
+
+	- "optional": means the field might be nil. Only valid for pointers or interfaces.
+				  It will be prepended with the serialized size of the field.
+		`serix:"example,optional"`
+
+	- "inlined": handle embedded/anonymous field as a nested field
+		`serix:"example,inlined"`
+
+	- "omitempty": omit the field in json serialization if it's empty
+		`serix:"example,omitempty"`
+
+	- "maxByteSize": maximum serialized byte size for that field
+		`serix:"example,maxByteSize=100"`
+
+	- "lenPrefix": provide serializer.SeriLengthPrefixType for that field (string, slice, map)
+		`serix:"example,lenPrefix=uint32"`
+
+	- "minLen": minimum length for that field (string, slice, map)
+		`serix:"example,minLen=2"`
+
+	- "maxLen": maximum length for that field (string, slice, map)
+		`serix:"example,maxLen=5"`
+
 See serix_text.go for more detail.
 */
 package serix
@@ -29,6 +62,24 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
+
+var (
+	// ErrValidationMaxBytesExceeded gets returned if the serialized byte size of the object too big.
+	ErrValidationMaxBytesExceeded = ierrors.New("max bytes size exceeded")
+	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
+	ErrMapValidationViolatesUniqueness = ierrors.New("map elements must be unique")
+)
+
+var (
+	bytesType     = reflect.TypeOf([]byte(nil))
+	bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
+	timeType      = reflect.TypeOf(time.Time{})
+	errorType     = reflect.TypeOf((*error)(nil)).Elem()
+	ctxType       = reflect.TypeOf((*context.Context)(nil)).Elem()
+)
+
+// DefaultAPI is the default instance of the API type.
+var DefaultAPI = NewAPI()
 
 // Serializable is a type that can serialize itself.
 // Serix will call its .Encode() method instead of trying to serialize it in the default way.
@@ -63,25 +114,6 @@ type DeserializableJSON interface {
 	DecodeJSON(b any) error
 }
 
-// API is the main object of the package that provides the methods for client to use.
-// It holds all the settings and configuration. It also stores the cache.
-// Most often you will need a single object of API for the whole program.
-// You register all type settings and interfaces on the program start or in init() function.
-// Instead of creating a new API object you can also use the default singleton API object: DefaultAPI.
-type API struct {
-	interfacesRegistryMutex sync.RWMutex
-	interfacesRegistry      map[reflect.Type]*interfaceObjects
-
-	typeSettingsRegistryMutex sync.RWMutex
-	typeSettingsRegistry      map[reflect.Type]TypeSettings
-
-	validatorsRegistryMutex sync.RWMutex
-	validatorsRegistry      map[reflect.Type]validators
-
-	typeCacheMutex sync.RWMutex
-	typeCache      map[reflect.Type][]structField
-}
-
 type validators struct {
 	bytesValidator     reflect.Value
 	syntacticValidator reflect.Value
@@ -92,29 +124,6 @@ type interfaceObjects struct {
 	fromTypeToCode map[reflect.Type]uint32
 	typeDenotation serializer.TypeDenotationType
 }
-
-// DefaultAPI is the default instance of the API type.
-var DefaultAPI = NewAPI()
-
-// NewAPI creates a new instance of the API type.
-func NewAPI() *API {
-	api := &API{
-		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
-		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
-		validatorsRegistry:   map[reflect.Type]validators{},
-		typeCache:            map[reflect.Type][]structField{},
-	}
-
-	return api
-}
-
-var (
-	bytesType     = reflect.TypeOf([]byte(nil))
-	bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
-	timeType      = reflect.TypeOf(time.Time{})
-	errorType     = reflect.TypeOf((*error)(nil)).Elem()
-	ctxType       = reflect.TypeOf((*context.Context)(nil)).Elem()
-)
 
 // Option is an option for Encode/Decode methods.
 type Option func(o *options)
@@ -149,215 +158,101 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
-// ArrayRules defines rules around a to be deserialized array.
-// Min and Max at 0 define an unbounded array.
-type ArrayRules serializer.ArrayRules
+// API is the main object of the package that provides the methods for client to use.
+// It holds all the settings and configuration. It also stores the cache.
+// Most often you will need a single object of API for the whole program.
+// You register all type settings and interfaces on the program start or in init() function.
+// Instead of creating a new API object you can also use the default singleton API object: DefaultAPI.
+type API struct {
+	interfacesRegistryMutex sync.RWMutex
+	interfacesRegistry      map[reflect.Type]*interfaceObjects
 
-// LengthPrefixType defines the type of the value denoting the length of a collection.
-type LengthPrefixType serializer.SeriLengthPrefixType
+	typeSettingsRegistryMutex sync.RWMutex
+	typeSettingsRegistry      map[reflect.Type]TypeSettings
 
-const (
-	// LengthPrefixTypeAsByte defines a collection length to be denoted by a byte.
-	LengthPrefixTypeAsByte = LengthPrefixType(serializer.SeriLengthPrefixTypeAsByte)
-	// LengthPrefixTypeAsUint16 defines a collection length to be denoted by a uint16.
-	LengthPrefixTypeAsUint16 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint16)
-	// LengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
-	LengthPrefixTypeAsUint32 = LengthPrefixType(serializer.SeriLengthPrefixTypeAsUint32)
-)
+	validatorsRegistryMutex sync.RWMutex
+	validatorsRegistry      map[reflect.Type]validators
 
-// TypeSettings holds various settings for a particular type.
-// Those settings determine how the object should be serialized/deserialized.
-// There are three ways to provide TypeSettings
-// 1. Via global registry: API.RegisterTypeSettings().
-// 2. Parse from struct tags.
-// 3. Pass as an option to API.Encode/API.Decode methods.
-// The type settings provided via struct tags or an option override the type settings from the registry.
-// So the precedence is the following 1<2<3.
-// See API.RegisterTypeSettings() and WithTypeSettings() for more detail.
-type TypeSettings struct {
-	lengthPrefixType *LengthPrefixType
-	objectType       interface{}
-	lexicalOrdering  *bool
-	mapKey           *string
-	arrayRules       *ArrayRules
+	typeCacheMutex sync.RWMutex
+	typeCache      map[reflect.Type][]structField
 }
 
-// WithLengthPrefixType specifies LengthPrefixType.
-func (ts TypeSettings) WithLengthPrefixType(lpt LengthPrefixType) TypeSettings {
-	ts.lengthPrefixType = &lpt
-
-	return ts
-}
-
-// LengthPrefixType returns LengthPrefixType.
-func (ts TypeSettings) LengthPrefixType() (LengthPrefixType, bool) {
-	if ts.lengthPrefixType == nil {
-		return 0, false
+// NewAPI creates a new instance of the API type.
+func NewAPI() *API {
+	api := &API{
+		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
+		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
+		validatorsRegistry:   map[reflect.Type]validators{},
+		typeCache:            map[reflect.Type][]structField{},
 	}
 
-	return *ts.lengthPrefixType, true
+	return api
 }
 
-// WithMapKey specifies the name for the map key.
-func (ts TypeSettings) WithMapKey(name string) TypeSettings {
-	ts.mapKey = &name
-
-	return ts
-}
-
-// MapKey returns the map key name.
-func (ts TypeSettings) MapKey() (string, bool) {
-	if ts.mapKey == nil {
-		return "", false
+// checks whether the given value has the concept of a length.
+func hasLength(v reflect.Value) bool {
+	k := v.Kind()
+	switch k {
+	case reflect.Array:
+	case reflect.Map:
+	case reflect.Slice:
+	case reflect.String:
+	default:
+		return false
 	}
 
-	return *ts.mapKey, true
+	return true
 }
 
-// MustMapKey must return a map key name.
-func (ts TypeSettings) MustMapKey() string {
-	if ts.mapKey == nil {
-		panic("no map key set")
+// checkMinMaxBoundsLength checks whether the given length is within its defined bounds.
+func (api *API) checkMinMaxBoundsLength(length int, ts TypeSettings) error {
+	if minLen, ok := ts.MinLen(); ok {
+		if uint(length) < minLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "min length %d not reached (len %d)", minLen, length)
+		}
+	}
+	if maxLen, ok := ts.MaxLen(); ok {
+		if uint(length) > maxLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "max length %d exceeded (len %d)", maxLen, length)
+		}
 	}
 
-	return *ts.mapKey
+	return nil
 }
 
-// WithMinLen specifies the min length for the object.
-func (ts TypeSettings) WithMinLen(l uint) TypeSettings {
-	if ts.arrayRules == nil {
-		ts.arrayRules = new(ArrayRules)
+// checkMinMaxBounds checks whether the given value is within its defined bounds in case it has a length.
+func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
+	if has := hasLength(v); !has {
+		return nil
 	}
-	ts.arrayRules.Min = l
 
-	return ts
+	if err := api.checkMinMaxBoundsLength(v.Len(), ts); err != nil {
+		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
+	}
+
+	return nil
 }
 
-// MinLen returns min length for the object.
-func (ts TypeSettings) MinLen() (uint, bool) {
-	if ts.arrayRules == nil || ts.arrayRules.Min == 0 {
-		return 0, false
+// checkMaxByteSize checks whether the given type is within its defined size in case it has a max byte size.
+func (api *API) checkMaxByteSize(byteSize int, ts TypeSettings) error {
+	if ts.maxByteSize > 0 && byteSize > int(ts.maxByteSize) {
+		return ierrors.Wrapf(ErrValidationMaxBytesExceeded, "serialized size (%d) exceeds max byte size of %d ", byteSize, ts.maxByteSize)
 	}
 
-	return ts.arrayRules.Min, true
+	return nil
 }
 
-// WithMaxLen specifies the max length for the object.
-func (ts TypeSettings) WithMaxLen(l uint) TypeSettings {
-	if ts.arrayRules == nil {
-		ts.arrayRules = new(ArrayRules)
-	}
-	ts.arrayRules.Max = l
-
-	return ts
-}
-
-// MaxLen returns max length for the object.
-func (ts TypeSettings) MaxLen() (uint, bool) {
-	if ts.arrayRules == nil || ts.arrayRules.Max == 0 {
-		return 0, false
+func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) error {
+	if ts.maxByteSize == 0 {
+		return nil
 	}
 
-	return ts.arrayRules.Max, true
-}
-
-// MinMaxLen returns min/max lengths for the object.
-// Returns 0 for either value if they are not set.
-func (ts TypeSettings) MinMaxLen() (int, int) {
-	var min, max int
-	if ts.arrayRules != nil {
-		min = int(ts.arrayRules.Min)
-	}
-	if ts.arrayRules != nil {
-		max = int(ts.arrayRules.Max)
+	bytes, err := api.encode(ctx, value, ts, opts)
+	if err != nil {
+		return ierrors.Wrapf(err, "can't get serialized size: failed to encode '%s' type", value.Kind())
 	}
 
-	return min, max
-}
-
-// WithObjectType specifies the object type. It can be either uint8 or uint32 number.
-// The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
-// serix uses object type to actually encode the number
-// and to know its serializer.TypeDenotationType to be able to decode it.
-func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
-	ts.objectType = t
-
-	return ts
-}
-
-// ObjectType returns the object type as an uint8 or uint32 number.
-func (ts TypeSettings) ObjectType() interface{} {
-	return ts.objectType
-}
-
-// WithLexicalOrdering specifies whether the type must be lexically ordered during serialization.
-func (ts TypeSettings) WithLexicalOrdering(val bool) TypeSettings {
-	ts.lexicalOrdering = &val
-
-	return ts
-}
-
-// LexicalOrdering returns lexical ordering flag.
-func (ts TypeSettings) LexicalOrdering() (val bool, set bool) {
-	if ts.lexicalOrdering == nil {
-		return false, false
-	}
-
-	return *ts.lexicalOrdering, true
-}
-
-// WithArrayRules specifies serializer.ArrayRules.
-func (ts TypeSettings) WithArrayRules(rules *ArrayRules) TypeSettings {
-	ts.arrayRules = rules
-
-	return ts
-}
-
-// ArrayRules returns serializer.ArrayRules.
-func (ts TypeSettings) ArrayRules() *ArrayRules {
-	return ts.arrayRules
-}
-
-func (ts TypeSettings) ensureOrdering() TypeSettings {
-	newTS := ts.WithLexicalOrdering(true)
-	arrayRules := newTS.ArrayRules()
-	newArrayRules := new(ArrayRules)
-	if arrayRules != nil {
-		*newArrayRules = *arrayRules
-	}
-	newArrayRules.ValidationMode |= serializer.ArrayValidationModeLexicalOrdering
-
-	return newTS.WithArrayRules(newArrayRules)
-}
-
-func (ts TypeSettings) merge(other TypeSettings) TypeSettings {
-	if ts.lengthPrefixType == nil {
-		ts.lengthPrefixType = other.lengthPrefixType
-	}
-	if ts.objectType == nil {
-		ts.objectType = other.objectType
-	}
-	if ts.lexicalOrdering == nil {
-		ts.lexicalOrdering = other.lexicalOrdering
-	}
-	if ts.arrayRules == nil {
-		ts.arrayRules = other.arrayRules
-	}
-	if ts.mapKey == nil {
-		ts.mapKey = other.mapKey
-	}
-
-	return ts
-}
-
-func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
-	mode := opts.toMode()
-	lexicalOrdering, set := ts.LexicalOrdering()
-	if set && lexicalOrdering {
-		mode |= serializer.DeSeriModePerformLexicalOrdering
-	}
-
-	return mode
+	return api.checkMaxByteSize(len(bytes), ts)
 }
 
 // Encode serializes the provided object obj into bytes.
@@ -647,6 +542,7 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	if objType == nil {
 		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
 	}
+
 	api.typeSettingsRegistryMutex.Lock()
 	defer api.typeSettingsRegistryMutex.Unlock()
 	api.typeSettingsRegistry[objType] = ts
@@ -657,6 +553,7 @@ func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	api.typeSettingsRegistryMutex.RLock()
 	defer api.typeSettingsRegistryMutex.RUnlock()
+
 	ts, ok := api.typeSettingsRegistry[objType]
 	if ok {
 		return ts, true
@@ -669,6 +566,35 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 	}
 
 	return TypeSettings{}, false
+}
+
+//nolint:unparam // false positive, we will use it later
+func (api *API) getTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+	api.typeSettingsRegistryMutex.RLock()
+	defer api.typeSettingsRegistryMutex.RUnlock()
+
+	for {
+		if ts, ok := api.typeSettingsRegistry[objValue.Type()]; ok {
+			if len(optTS) > 0 {
+				return optTS[0].merge(ts)
+			}
+
+			return ts
+		}
+
+		// resolve indirections
+		switch objValue.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			objValue = objValue.Elem()
+
+		default:
+			if len(optTS) > 0 {
+				return optTS[0]
+			}
+
+			return TypeSettings{}
+		}
+	}
 }
 
 // RegisterInterfaceObjects tells serix that when it encounters iType during serialization/deserialization
@@ -799,7 +725,7 @@ type structField struct {
 type tagSettings struct {
 	position   int
 	isOptional bool
-	nest       bool
+	inlined    bool
 	omitEmpty  bool
 	ts         TypeSettings
 }
@@ -813,30 +739,33 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 	}
 
 	structFields = make([]structField, 0, structType.NumField())
-	seenPositions := make(map[int]struct{})
+
+	serixPosition := 0
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
+
 		isUnexported := field.PkgPath != ""
 		isEmbedded := field.Anonymous
 		isStruct := isUnderlyingStruct(field.Type)
 		isInterface := isUnderlyingInterface(field.Type)
 		isEmbeddedStruct := isEmbedded && isStruct
 		isEmbeddedInterface := isEmbedded && isInterface
-		if isUnexported && !isEmbeddedStruct {
+
+		if isUnexported && !isEmbeddedStruct && !isEmbeddedInterface {
 			continue
 		}
+
 		tag, ok := field.Tag.Lookup("serix")
 		if !ok {
 			continue
 		}
-		tSettings, err := parseStructTag(tag)
+
+		tSettings, err := parseSerixSettings(tag, serixPosition)
 		if err != nil {
-			return nil, ierrors.Wrapf(err, "failed to parse struct tag %s for field %s", tag, field.Name)
+			return nil, ierrors.Wrapf(err, "failed to parse serix struct tag for field %s", field.Name)
 		}
-		if _, exists := seenPositions[tSettings.position]; exists {
-			return nil, ierrors.Errorf("struct field with duplicated position number %d", tSettings.position)
-		}
-		seenPositions[tSettings.position] = struct{}{}
+		serixPosition++
+
 		if tSettings.isOptional {
 			if field.Type.Kind() != reflect.Ptr && field.Type.Kind() != reflect.Interface {
 				return nil, ierrors.Errorf(
@@ -844,27 +773,32 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 						"'optional' setting can only be used with pointers or interfaces, got %s",
 					field.Name, field.Type.Kind())
 			}
+
 			if isEmbeddedStruct {
 				return nil, ierrors.Errorf(
 					"struct field %s is invalid: 'optional' setting can't be used with embedded structs",
 					field.Name)
 			}
+
 			if isEmbeddedInterface {
 				return nil, ierrors.Errorf(
 					"struct field %s is invalid: 'optional' setting can't be used with embedded interfaces",
 					field.Name)
 			}
 		}
-		if tSettings.nest && isUnexported {
+
+		if tSettings.inlined && isUnexported {
 			return nil, ierrors.Errorf(
-				"struct field %s is invalid: 'nest' setting can't be used with unexported types",
+				"struct field %s is invalid: 'inlined' setting can't be used with unexported types",
 				field.Name)
 		}
-		if !tSettings.nest && isEmbeddedInterface {
+
+		if !tSettings.inlined && isEmbeddedInterface {
 			return nil, ierrors.Errorf(
-				"struct field %s is invalid: 'nest' setting needs to be used for embedded interfaces",
+				"struct field %s is invalid: 'inlined' setting needs to be used for embedded interfaces",
 				field.Name)
 		}
+
 		structFields = append(structFields, structField{
 			name:         field.Name,
 			isUnexported: isUnexported,
@@ -886,72 +820,26 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 	return structFields, nil
 }
 
-func parseStructTag(tag string) (tagSettings, error) {
-	if tag == "" {
-		return tagSettings{}, ierrors.New("struct tag is empty")
-	}
-	parts := strings.Split(tag, ",")
-	positionPart := parts[0]
-	position, err := strconv.Atoi(positionPart)
-	if err != nil {
-		return tagSettings{}, ierrors.Wrap(err, "failed to parse position number from the first part of the tag")
-	}
-	settings := tagSettings{}
-	settings.position = position
-	parts = parts[1:]
-	seenParts := map[string]struct{}{}
-	for _, currentPart := range parts {
-		if _, ok := seenParts[currentPart]; ok {
-			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
-		}
-		keyValue := strings.Split(currentPart, "=")
-		partName := keyValue[0]
-		switch partName {
-		case "optional":
-			settings.isOptional = true
-		case "nest":
-			settings.nest = true
-		case "omitempty":
-			settings.omitEmpty = true
-		case "mapKey":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect mapKey tag format: %s", currentPart)
-			}
-			settings.ts = settings.ts.WithMapKey(keyValue[1])
-		case "minLen":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect minLen tag format: %s", currentPart)
-			}
-			minLen, err := strconv.ParseUint(keyValue[1], 10, 64)
-			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse minLen %s", currentPart)
-			}
-			settings.ts = settings.ts.WithMinLen(uint(minLen))
-		case "maxLen":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect maxLen tag format: %s", currentPart)
-			}
-			maxLen, err := strconv.ParseUint(keyValue[1], 10, 64)
-			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse maxLen %s", currentPart)
-			}
-			settings.ts = settings.ts.WithMaxLen(uint(maxLen))
-		case "lengthPrefixType":
-			if len(keyValue) != 2 {
-				return tagSettings{}, ierrors.Errorf("incorrect lengthPrefixType tag format: %s", currentPart)
-			}
-			lengthPrefixType, err := parseLengthPrefixType(keyValue[1])
-			if err != nil {
-				return tagSettings{}, ierrors.Wrapf(err, "failed to parse lengthPrefixType %s", currentPart)
-			}
-			settings.ts = settings.ts.WithLengthPrefixType(lengthPrefixType)
-		default:
-			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
-		}
-		seenParts[partName] = struct{}{}
+func parseStructTagValue(name string, keyValue []string, currentPart string) (string, error) {
+	if len(keyValue) != 2 {
+		return "", ierrors.Errorf("incorrect %s tag format: %s", name, currentPart)
 	}
 
-	return settings, nil
+	return keyValue[1], nil
+}
+
+func parseStructTagValueUint(name string, keyValue []string, currentPart string) (uint, error) {
+	value, err := parseStructTagValue(name, keyValue, currentPart)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to parse %s %s", name, currentPart)
+	}
+
+	return uint(result), nil
 }
 
 func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
@@ -962,9 +850,102 @@ func parseLengthPrefixType(prefixTypeRaw string) (LengthPrefixType, error) {
 		return LengthPrefixTypeAsUint16, nil
 	case "uint32":
 		return LengthPrefixTypeAsUint32, nil
+	case "uint64":
+		return LengthPrefixTypeAsUint64, nil
 	default:
-		return LengthPrefixTypeAsByte, ierrors.Errorf("unknown length prefix type: %s", prefixTypeRaw)
+		return LengthPrefixTypeAsByte, ierrors.Wrapf(ErrUnknownLengthPrefixType, "%s", prefixTypeRaw)
 	}
+}
+
+func parseStructTagValuePrefixType(name string, keyValue []string, currentPart string) (LengthPrefixType, error) {
+	value, err := parseStructTagValue(name, keyValue, currentPart)
+	if err != nil {
+		return 0, err
+	}
+
+	lengthPrefixType, err := parseLengthPrefixType(value)
+	if err != nil {
+		return 0, ierrors.Wrapf(err, "failed to parse %s %s", name, currentPart)
+	}
+
+	return lengthPrefixType, nil
+}
+
+func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
+	settings := tagSettings{}
+	settings.position = serixPosition
+
+	if tag == "" {
+		// empty struct tags are allowed
+		return settings, nil
+	}
+
+	parts := strings.Split(tag, ",")
+	keyPart := parts[0]
+
+	if strings.ContainsAny(keyPart, "=") {
+		return tagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
+	}
+
+	if keyPart != "" {
+		settings.ts = settings.ts.WithFieldKey(keyPart)
+	}
+
+	parts = parts[1:]
+	seenParts := map[string]struct{}{}
+	for _, currentPart := range parts {
+		if _, ok := seenParts[currentPart]; ok {
+			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
+		}
+		keyValue := strings.Split(currentPart, "=")
+		partName := keyValue[0]
+
+		switch partName {
+		case "optional":
+			settings.isOptional = true
+
+		case "inlined":
+			settings.inlined = true
+
+		case "omitempty":
+			settings.omitEmpty = true
+
+		case "maxByteSize":
+			value, err := parseStructTagValueUint("maxByteSize", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMaxByteSize(value)
+
+		case "lenPrefix":
+			value, err := parseStructTagValuePrefixType("lenPrefix", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithLengthPrefixType(value)
+
+		case "minLen":
+			value, err := parseStructTagValueUint("minLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMinLen(value)
+
+		case "maxLen":
+			value, err := parseStructTagValueUint("maxLen", keyValue, currentPart)
+			if err != nil {
+				return tagSettings{}, err
+			}
+			settings.ts = settings.ts.WithMaxLen(value)
+
+		default:
+			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
+		}
+
+		seenParts[partName] = struct{}{}
+	}
+
+	return settings, nil
 }
 
 func sliceFromArray(arrValue reflect.Value) reflect.Value {
@@ -1043,6 +1024,18 @@ func getNumberTypeToConvert(kind reflect.Kind) (int, reflect.Type, reflect.Type)
 	return bitSize, numberType, reflect.PointerTo(numberType)
 }
 
-func mapStringKey(str string) string {
+// FieldKeyString converts the given string to camelCase.
+// Special keywords like ID or URL are converted to only first letter upper case.
+func FieldKeyString(str string) string {
+	for _, keyword := range []string{"ID", "NFT", "URL", "HRP"} {
+		if !strings.Contains(str, keyword) {
+			continue
+		}
+
+		// first keyword letter upper case, rest lower case
+		str = strings.ReplaceAll(str, keyword, string(keyword[0])+strings.ToLower(keyword)[1:])
+	}
+
+	// first letter lower case
 	return strings.ToLower(str[:1]) + str[1:]
 }
