@@ -1,5 +1,10 @@
 package module
 
+import (
+	"github.com/iotaledger/hive.go/ds/reactive"
+	"github.com/iotaledger/hive.go/log"
+)
+
 // Interface defines the interface of a module.
 type Interface interface {
 	// TriggerConstructed triggers the constructed event.
@@ -40,4 +45,21 @@ type Interface interface {
 
 	// HookStopped registers a callback for the stopped event.
 	HookStopped(func()) (unsubscribe func())
+}
+
+type ReactiveInterface interface {
+	// ConstructedEvent returns a reactive.Event that is triggered when the module was constructed.
+	ConstructedEvent() reactive.Event
+
+	// InitializedEvent returns a reactive.Event that is triggered when the module was initialized.
+	InitializedEvent() reactive.Event
+
+	// ShutdownEvent returns a reactive.Event that is triggered when the module begins its shutdown process.
+	ShutdownEvent() reactive.Event
+
+	// StoppedEvent returns a reactive.Event that is triggered when the module finishes its shutdown process.
+	StoppedEvent() reactive.Event
+
+	// Logger is the logger of the module.
+	log.Logger
 }
