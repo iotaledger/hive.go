@@ -738,7 +738,7 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 		isEmbeddedStruct := isEmbedded && isStruct
 		isEmbeddedInterface := isEmbedded && isInterface
 
-		if isUnexported && !isEmbeddedStruct {
+		if isUnexported && !isEmbeddedStruct && !isEmbeddedInterface {
 			continue
 		}
 
