@@ -36,10 +36,11 @@ type SeriLengthPrefixType byte
 const (
 	// SeriLengthPrefixTypeAsByte defines a collection length to be denoted by a byte.
 	SeriLengthPrefixTypeAsByte SeriLengthPrefixType = iota + 200
-	// SeriLengthPrefixTypeAsUint16 defines a collection length to be denoted by a uint16.
+	// SeriLengthPrefixTypeAsUint16 defines a collection length to be denoted by an uint16.
 	SeriLengthPrefixTypeAsUint16
-	// SeriLengthPrefixTypeAsUint32 defines a collection length to be denoted by a uint32.
+	// SeriLengthPrefixTypeAsUint32 defines a collection length to be denoted by an uint32.
 	SeriLengthPrefixTypeAsUint32
+	// SeriLengthPrefixTypeAsUint64 defines a collection length to be denoted by an uint64.
 	SeriLengthPrefixTypeAsUint64
 )
 
@@ -403,7 +404,7 @@ func (s *Serializer) sourceToSerializables(source interface{}) Serializables {
 	return seris
 }
 
-// WriteTime writes a marshaled Slot value to the internal buffer.
+// WriteTime writes a marshaled Time value to the internal buffer.
 func (s *Serializer) WriteTime(timeToWrite time.Time, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
@@ -1034,7 +1035,7 @@ func (d *Deserializer) readSerializablesIntoTarget(target interface{}, seris Ser
 	}
 }
 
-// ReadTime reads a Slot value from the internal buffer.
+// ReadTime reads a Time value from the internal buffer.
 func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d

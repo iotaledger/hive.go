@@ -71,7 +71,7 @@ func TestReadObjectFromReader(t *testing.T) {
 func TestPeek(t *testing.T) {
 	buffer := bytes.NewReader([]byte{3, 0, 0, 0, 1, 0, 2, 0, 3, 0})
 
-	elementsCount, err := stream.Peek(buffer, serializer.SeriLengthPrefixTypeAsUint32)
+	elementsCount, err := stream.PeekSize(buffer, serializer.SeriLengthPrefixTypeAsUint32)
 	require.NoError(t, err)
 	require.EqualValues(t, 3, elementsCount)
 }
@@ -79,7 +79,7 @@ func TestPeek(t *testing.T) {
 func TestReadCollection(t *testing.T) {
 	buffer := bytes.NewReader([]byte{3, 0, 0, 0, 1, 0, 2, 0, 3, 0})
 
-	count, err := stream.Peek(buffer, serializer.SeriLengthPrefixTypeAsUint32)
+	count, err := stream.PeekSize(buffer, serializer.SeriLengthPrefixTypeAsUint32)
 	require.NoError(t, err)
 	require.EqualValues(t, 3, count)
 

@@ -32,7 +32,7 @@ func ReadBytes(reader io.Reader, length int) ([]byte, error) {
 func ReadBytesWithSize(reader io.Reader, lenType serializer.SeriLengthPrefixType) ([]byte, error) {
 	size, err := readFixedSize(reader, lenType)
 	if err != nil {
-		return nil, ierrors.Wrap(err, "failed to read blob size")
+		return nil, ierrors.Wrap(err, "failed to read bytes size")
 	}
 
 	return ReadBytes(reader, size)
@@ -62,20 +62,12 @@ func ReadObject[T any](reader io.Reader, fixedLen int, objectFromBytesFunc func(
 func ReadObjectWithSize[T any](reader io.Reader, lenType serializer.SeriLengthPrefixType, objectFromBytesFunc func(bytes []byte) (T, int, error)) (T, error) {
 	var result T
 
-	readBytes, err := ReadBytesWithSize(reader, lenType)
+	size, err := readFixedSize(reader, lenType)
 	if err != nil {
-		return result, ierrors.Wrap(err, "failed to read serialized bytes")
+		return result, ierrors.Wrap(err, "failed to read object size")
 	}
 
-	result, consumedBytes, err := objectFromBytesFunc(readBytes)
-	if err != nil {
-		return result, ierrors.Wrap(err, "failed to parse bytes of objectFromBytesFunc")
-	}
-	if consumedBytes != len(readBytes) {
-		return result, ierrors.Errorf("failed to parse objectFromBytesFunc: consumed bytes (%d) != read bytes (%d)", consumedBytes, len(readBytes))
-	}
-
-	return result, nil
+	return ReadObject(reader, size, objectFromBytesFunc)
 }
 
 func ReadObjectFromReader[T any](reader io.ReadSeeker, objectFromReaderFunc func(reader io.ReadSeeker) (T, error)) (T, error) {
@@ -89,7 +81,7 @@ func ReadObjectFromReader[T any](reader io.ReadSeeker, objectFromReaderFunc func
 	return result, nil
 }
 
-func Peek(reader io.ReadSeeker, lenType serializer.SeriLengthPrefixType) (int, error) {
+func PeekSize(reader io.ReadSeeker, lenType serializer.SeriLengthPrefixType) (int, error) {
 	startOffset, err := Offset(reader)
 	if err != nil {
 		return 0, ierrors.Wrap(err, "failed to get start offset")

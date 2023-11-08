@@ -271,7 +271,6 @@ func (m *authenticatedMap[IdentifierType, K, V]) has(keyBytes []byte) (has bool,
 }
 
 func (m *authenticatedMap[IdentifierType, K, V]) addSize(delta int) error {
-
 	size, err := m.size.Get()
 	if err != nil && !ierrors.Is(err, kvstore.ErrKeyNotFound) {
 		return ierrors.Wrap(err, "failed to get size")
