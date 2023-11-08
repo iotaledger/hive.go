@@ -3,12 +3,59 @@
 
 Structs serialization/deserialization
 
-In order for a field to be detected by serix it must have `serix` struct tag set with the name: `serix:"example" or empty name `serix:","`.
+In order for a field to be detected by serix it must have `serix:""` struct tag.
+The first part in the tag is the key used for json serialization.
+If the name is empty, serix uses the field name in camel case (Exceptions: "ID" => "Id", "URL" => "Url").
+
+Examples:
+	- `serix:""
+	- `serix:"example"
+	- `serix:","`
+
 serix traverses all fields and handles them in the order specified in the struct.
-Apart from the required position you can provide the following settings to serix via struct tags:
-"optional" - means that field might be nil. Only valid for pointers or interfaces: `serix:"example,optional"`
-"lenPrefix=uint32" - provide serializer.SeriLengthPrefixType for that field: `serix:"example,lenPrefix=unint32"`
-"nest" - handle embedded/anonymous field as a nested field: `serix:"example,nest"`
+You can provide the following settings to serix via struct tags:
+
+	- "optional": means the field might be nil. Only valid for pointers or interfaces.
+				  It will be prepended with the serialized size of the field.
+		`serix:"example,optional"`
+
+	- "nest": handle embedded/anonymous field as a nested field
+		`serix:"example,nest"`
+
+	- "omitempty": omit the field in json serialization if it's empty
+		`serix:"example,omitempty"`
+
+	- "lenPrefix": provide serializer.SeriLengthPrefixType for that field (string, slice, map)
+		`serix:"example,lenPrefix=uint32"`
+
+	- "minLen": minimum length for that field (string, slice, map)
+		`serix:"example,minLen=2"`
+
+	- "maxLen": maximum length for that field (string, slice, map)
+		`serix:"example,maxLen=5"`
+
+	- "mapMaxByteSize": maximum serialized byte size for that map
+		`serix:"example,mapMaxByteSize=100"`
+
+	- "mapKeyLenPrefix": provide serializer.SeriLengthPrefixType for the keys of that map
+		`serix:"example,mapKeyLenPrefix=uint32"`
+
+	- "mapKeyMinLen": minimum length for the keys of that map
+		`serix:"example,mapKeyMinLen=2"`
+
+	- "mapKeyMaxLen": maximum length for the keys of that map
+		`serix:"example,mapKeyMaxLen=5"`
+
+	- "mapValueLenPrefix": provide serializer.SeriLengthPrefixType for the values of that map
+		`serix:"example,mapValueLenPrefix=uint32"`
+
+	- "mapValueMinLen": minimum length for the values of that map
+		`serix:"example,mapValueMinLen=2"`
+
+	- "mapValueMaxLen": maximum length for the values of that map
+		`serix:"example,mapValueMaxLen=5"`
+
+
 See serix_text.go for more detail.
 */
 package serix

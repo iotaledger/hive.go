@@ -80,15 +80,15 @@ func (bs Bools) FromSerializables(seris serializer.Serializables) {
 }
 
 type SimpleStruct struct {
-	Bool       bool      `serix:"bool"`
-	Uint       uint64    `serix:"uint"`
-	String     string    `serix:"string,lenPrefix=uint16"`
-	Bytes      []byte    `serix:"bytes,lenPrefix=uint32"`
-	BytesArray [16]byte  `serix:"bytesarray"`
-	BigInt     *big.Int  `serix:"bigint"`
-	Time       time.Time `serix:"time"`
-	Int        uint64    `serix:"int"`
-	Float      float64   `serix:"float"`
+	Bool       bool      `serix:""`
+	Uint       uint64    `serix:""`
+	String     string    `serix:",lenPrefix=uint16"`
+	Bytes      []byte    `serix:",lenPrefix=uint32"`
+	BytesArray [16]byte  `serix:""`
+	BigInt     *big.Int  `serix:""`
+	Time       time.Time `serix:""`
+	Int        uint64    `serix:""`
+	Float      float64   `serix:""`
 }
 
 func NewSimpleStruct() SimpleStruct {
@@ -146,7 +146,7 @@ type Interface interface {
 }
 
 type InterfaceImpl struct {
-	interfaceImpl `serix:"interfaceImpl"`
+	interfaceImpl `serix:""`
 }
 
 func (ii *InterfaceImpl) SetDeserializationContext(ctx context.Context) {
@@ -154,8 +154,8 @@ func (ii *InterfaceImpl) SetDeserializationContext(ctx context.Context) {
 }
 
 type interfaceImpl struct {
-	A uint8 `serix:"a"`
-	B uint8 `serix:"b"`
+	A uint8 `serix:""`
+	B uint8 `serix:""`
 }
 
 func (ii *InterfaceImpl) Encode() ([]byte, error) {
@@ -195,7 +195,7 @@ func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, de
 }
 
 type StructWithInterface struct {
-	Interface Interface `serix:"interface"`
+	Interface Interface `serix:""`
 }
 
 func (si StructWithInterface) MarshalJSON() ([]byte, error) {
@@ -221,7 +221,7 @@ func (si StructWithInterface) Serialize(deSeriMode serializer.DeSerializationMod
 }
 
 type StructWithOptionalField struct {
-	Optional *ExportedStruct `serix:"optional,optional"`
+	Optional *ExportedStruct `serix:",optional"`
 }
 
 func (so StructWithOptionalField) MarshalJSON() ([]byte, error) {
@@ -247,8 +247,8 @@ func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializatio
 }
 
 type StructWithEmbeddedStructs struct {
-	unexportedStruct `serix:"unexportedstruct"`
-	ExportedStruct   `serix:"exportedstruct,nest"`
+	unexportedStruct `serix:""`
+	ExportedStruct   `serix:",nest"`
 }
 
 func (se StructWithEmbeddedStructs) MarshalJSON() ([]byte, error) {
@@ -276,11 +276,11 @@ func (se StructWithEmbeddedStructs) Serialize(deSeriMode serializer.DeSerializat
 }
 
 type unexportedStruct struct {
-	Foo uint64 `serix:"foo"`
+	Foo uint64 `serix:""`
 }
 
 type ExportedStruct struct {
-	Bar uint64 `serix:"bar"`
+	Bar uint64 `serix:""`
 }
 
 func (e ExportedStruct) SetDeserializationContext(ctx context.Context) {

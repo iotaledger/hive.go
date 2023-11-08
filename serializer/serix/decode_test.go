@@ -143,7 +143,7 @@ func TestDecode_ArrayRules(t *testing.T) {
 	ts := serix.TypeSettings{}.WithLengthPrefixType(boolsLenType).WithArrayRules(rules)
 	bytesRead, err := testAPI.Decode(ctx, bytes, testObj, serix.WithValidation(), serix.WithTypeSettings(ts))
 	require.Zero(t, bytesRead)
-	assert.Contains(t, err.Error(), serializer.ErrArrayValidationMinElementsNotReached.Error())
+	require.ErrorIs(t, err, serializer.ErrArrayValidationMinElementsNotReached)
 }
 
 func testDecode(t testing.TB, ctx context.Context, expected serializer.Serializable, opts ...serix.Option) {
