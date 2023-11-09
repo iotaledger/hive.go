@@ -34,7 +34,7 @@ type ReadableSet[ElementType comparable] interface {
 	SubtractReactive(others ...ReadableSet[ElementType]) Set[ElementType]
 
 	// WithElements is a utility function that allows to set up dynamic behavior based on the elements of the Set which
-	// is torn down once the element is removed  (or the returned teardown function is called). It accepts an optional
+	// is torn down once the element is removed gi(or the returned teardown function is called). It accepts an optional
 	// condition that has to be satisfied for the setup function to be called.
 	WithElements(setup func(element ElementType) (teardown func()), condition ...func(ElementType) bool) (teardown func())
 
