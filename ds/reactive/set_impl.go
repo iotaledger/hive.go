@@ -216,7 +216,7 @@ func (r *readableSet[ElementType]) SubtractReactive(others ...ReadableSet[Elemen
 // torn down once the element is removed (or the returned teardown function is called). It accepts an optional
 // condition that has to be satisfied for the setup function to be called.
 func (r *readableSet[ElementType]) WithElements(setup func(element ElementType) (teardown func()), condition ...func(ElementType) bool) (teardown func()) {
-	var teardownFunctions map[ElementType]func()
+	teardownFunctions := make(map[ElementType]func())
 
 	return lo.Batch(
 		r.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
