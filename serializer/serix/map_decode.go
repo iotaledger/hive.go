@@ -163,17 +163,19 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		if !ok {
 			return ierrors.New("non string value for string field")
 		}
-		if !utf8.ValidString(str) {
-			return ErrNonUTF8String
-		}
-		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
-		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 
 		if opts.validation {
 			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
 				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 			}
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return ErrNonUTF8String
+			}
 		}
+
+		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
+		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 
 		return nil
 	case reflect.Bool:

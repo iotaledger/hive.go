@@ -22,11 +22,6 @@ const (
 	keyDefaultSliceArray = "data"
 )
 
-var (
-	// ErrNonUTF8String gets returned when a non UTF-8 string is being encoded/decoded.
-	ErrNonUTF8String = ierrors.New("non UTF-8 string value")
-)
-
 func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (ele any, err error) {
 	valueI := value.Interface()
 	valueType := value.Type()
@@ -99,13 +94,14 @@ func (api *API) mapEncodeBasedOnType(
 		return api.mapEncodeInterface(ctx, value, valueType, opts)
 	case reflect.String:
 		str := value.String()
-		if !utf8.ValidString(str) {
-			return nil, ErrNonUTF8String
-		}
 
 		if opts.validation {
 			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
 				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+			}
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return nil, ErrNonUTF8String
 			}
 		}
 

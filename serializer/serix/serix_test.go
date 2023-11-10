@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -145,38 +146,38 @@ func (test *serializeTest) run(t *testing.T) {
 	// binary serialize
 	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
 	if test.seriErr != nil {
-		require.ErrorIs(t, err, test.seriErr)
+		require.ErrorIs(t, err, test.seriErr, "binary serialization failed")
 
 		// we also need to check the json serialization
 		_, err := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
-		require.ErrorIs(t, err, test.seriErr)
+		require.ErrorIs(t, err, test.seriErr, "json serialization failed")
 
 		return
 	}
-	require.NoError(t, err)
+	require.NoError(t, err, "binary serialization failed")
 
 	require.Equal(t, test.size, len(serixData))
 
 	// binary deserialize
 	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
 	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
-	require.NoError(t, err)
+	require.NoError(t, err, "binary deserialization failed")
 
 	require.Len(t, serixData, bytesRead)
-	require.EqualValues(t, test.source, serixTarget)
+	require.EqualValues(t, test.source, serixTarget, "binary")
 
 	// json serialize
 	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
-	require.NoError(t, err)
+	require.NoError(t, err, "json serialization failed")
 
 	// json deserialize
 	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
-	require.NoError(t, testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation()))
+	require.NoError(t, testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation()), "json deserialization failed")
 
-	require.EqualValues(t, test.source, jsonDest)
+	require.EqualValues(t, test.source, jsonDest, "json")
 }
 
-func TestSerixMapSerialize(t *testing.T) {
+func TestSerixSerializeMap(t *testing.T) {
 
 	type MyMapTypeKey string
 	type MyMapTypeValue string
@@ -297,6 +298,40 @@ func TestSerixMapSerialize(t *testing.T) {
 	}
 }
 
+func TestSerixSerializeString(t *testing.T) {
+
+	type TestStruct struct {
+		TestString string `serix:",lenPrefix=uint8"`
+	}
+
+	testAPI.RegisterTypeSettings(TestStruct{}, serix.TypeSettings{})
+
+	tests := []serializeTest{
+		{
+			name: "ok",
+			source: &TestStruct{
+				TestString: "hello world!",
+			},
+			target:  &TestStruct{},
+			size:    13,
+			seriErr: nil,
+		},
+		{
+			name: "fail - invalid utf8 string",
+			source: &TestStruct{
+				TestString: string([]byte{0xff, 0xfe, 0xfd}),
+			},
+			target:  &TestStruct{},
+			size:    0,
+			seriErr: serix.ErrNonUTF8String,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
 type deSerializeTest struct {
 	name      string
 	source    any
@@ -305,41 +340,56 @@ type deSerializeTest struct {
 	deSeriErr error
 }
 
-func (test *deSerializeTest) run(t *testing.T) {
-	// binary serialize test data
-	serixData, err := testAPI.Encode(context.Background(), test.source)
-	require.NoError(t, err)
+// convert all *orderedmap.OrderedMap to map[string]interface{}
+func convertOrderedMapToMap(m *orderedmap.OrderedMap) map[string]interface{} {
+	for k, v := range m.Values() {
+		if v, ok := v.(*orderedmap.OrderedMap); ok {
+			m.Set(k, convertOrderedMapToMap(v))
+		}
+	}
 
-	// json serialize test data
-	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
-	require.NoError(t, err)
+	return m.Values()
+}
+
+func (test *deSerializeTest) run(t *testing.T) {
+	// binary serialize test data (without validation)
+	serixData, err := testAPI.Encode(context.Background(), test.source)
+	require.NoError(t, err, "binary serialization failed")
+
+	// "map" serialize test data (without validation)
+	// we don't use the json serialization here, because we want to test serix, and be able to inject malicous data
+	serixMapData, err := testAPI.MapEncode(context.Background(), test.source)
+	require.NoError(t, err, "map serialization failed")
+
+	// convert all *orderedmap.OrderedMap in serixMapData to map[string]interface{}
+	serixMapDataUnordered := convertOrderedMapToMap(serixMapData)
 
 	// binary deserialize
 	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
 	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget, serix.WithValidation())
 	if test.deSeriErr != nil {
-		require.ErrorIs(t, err, test.deSeriErr)
+		require.ErrorIs(t, err, test.deSeriErr, "binary deserialization failed")
 
-		// we also need to check the json deserialization
-		jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
-		err := testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation())
-		require.ErrorIs(t, err, test.deSeriErr)
+		// we also need to check the "map" deserialization
+		mapDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+		err := testAPI.MapDecode(context.Background(), serixMapDataUnordered, mapDest, serix.WithValidation())
+		require.ErrorIs(t, err, test.deSeriErr, "map deserialization failed")
 
 		return
 	}
-	require.NoError(t, err)
+	require.NoError(t, err, "binary deserialization failed")
 
 	require.Equal(t, test.size, bytesRead)
-	require.EqualValues(t, test.source, serixTarget)
+	require.EqualValues(t, test.source, serixTarget, "binary")
 
-	// json deserialize
-	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
-	require.NoError(t, testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation()))
+	// "map" deserialize
+	mapDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.MapDecode(context.Background(), serixMapDataUnordered, mapDest, serix.WithValidation()), "map deserialization failed")
 
-	require.EqualValues(t, test.source, jsonDest)
+	require.EqualValues(t, test.source, mapDest, "map")
 }
 
-func TestSerixMapDeserialize(t *testing.T) {
+func TestSerixDeserializeMap(t *testing.T) {
 
 	type MyMapTypeKey string
 	type MyMapTypeValue string
@@ -451,6 +501,40 @@ func TestSerixMapDeserialize(t *testing.T) {
 			target:    &MapStruct{},
 			size:      0,
 			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestSerixDeserializeString(t *testing.T) {
+
+	type TestStruct struct {
+		TestString string `serix:",lenPrefix=uint8"`
+	}
+
+	testAPI.RegisterTypeSettings(TestStruct{}, serix.TypeSettings{})
+
+	tests := []deSerializeTest{
+		{
+			name: "ok",
+			source: &TestStruct{
+				TestString: "hello world!",
+			},
+			target:    &TestStruct{},
+			size:      13,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - invalid utf8 string",
+			source: &TestStruct{
+				TestString: string([]byte{0xff, 0xfe, 0xfd}),
+			},
+			target:    &TestStruct{},
+			size:      0,
+			deSeriErr: serix.ErrNonUTF8String,
 		},
 	}
 
