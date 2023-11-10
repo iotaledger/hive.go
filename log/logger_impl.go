@@ -224,20 +224,14 @@ func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func(
 	return nestedLoggerInstance, nestedLoggerInstance.reactiveLevel.InheritFrom(l.reactiveLevel)
 }
 
-// NewEntityLogger creates a new logger for an entity with the given name. The logger is automatically shut down when
-// the given shutdown event is triggered. The initLogging function is called with the new logger instance and can be
-// used to configure the logger.
-func (l *logger) NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger {
+// NewEntityLogger is identical to NewChildLogger with the difference that the name of the logger is automatically
+// extended with a unique identifier to avoid name collisions.
+func (l *logger) NewEntityLogger(entityName string) (entityLogger Logger, shutdown func()) {
 	if l == nil {
-		return l
+		return l, func() {}
 	}
 
-	embeddedLogger, shutdown := l.NewChildLogger(l.uniqueEntityName(entityName))
-	shutdownEvent.OnTrigger(shutdown)
-
-	initLogging(embeddedLogger)
-
-	return embeddedLogger
+	return l.NewChildLogger(l.uniqueEntityName(entityName))
 }
 
 // uniqueEntityName returns the name of an embedded instance of the given type.
