@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"reflect"
 	"time"
+	"unicode/utf8"
 
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -166,7 +167,11 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
 		addrValue = addrValue.Convert(reflect.TypeOf((*string)(nil)))
-		minLen, maxLen := ts.MinMaxLen()
+
+		var minLen, maxLen int
+		if opts.validation {
+			minLen, maxLen = ts.MinMaxLen()
+		}
 
 		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadString(
@@ -184,6 +189,13 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 					return err
 				}
 			}, minLen, maxLen)
+
+		if opts.validation {
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(value.String()) {
+				return 0, ierrors.Errorf("can't deserialize 'string' type: %w", ErrNonUTF8String)
+			}
+		}
 
 		return deseri.Done()
 

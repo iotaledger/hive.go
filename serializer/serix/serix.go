@@ -68,6 +68,8 @@ var (
 	ErrValidationMaxBytesExceeded = ierrors.New("max bytes size exceeded")
 	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
 	ErrMapValidationViolatesUniqueness = ierrors.New("map elements must be unique")
+	// ErrNonUTF8String gets returned when a non UTF-8 string is being encoded/decoded.
+	ErrNonUTF8String = ierrors.New("non UTF-8 string value")
 )
 
 var (

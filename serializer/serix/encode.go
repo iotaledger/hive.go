@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"reflect"
 	"time"
+	"unicode/utf8"
 
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -110,6 +111,8 @@ func (api *API) encodeBasedOnType(
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
+		str := value.String()
+
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
 			return nil, ierrors.New("can't serialize 'string' type: no LengthPrefixType was provided")
@@ -118,11 +121,16 @@ func (api *API) encodeBasedOnType(
 		var minLen, maxLen int
 		if opts.validation {
 			minLen, maxLen = ts.MinMaxLen()
+
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return nil, ierrors.Errorf("can't serialize 'string' type: %w", ErrNonUTF8String)
+			}
 		}
 		seri := serializer.NewSerializer()
 
 		return seri.WriteString(
-			value.String(),
+			str,
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return ierrors.Wrap(err, "failed to write string value to serializer")
