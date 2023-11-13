@@ -144,7 +144,7 @@ func (r *readableVariable[Type]) WithValue(setup func(value Type) (teardown func
 		if len(condition) == 0 || condition[0](value) {
 			unsubscribeOnUpdate(func() func() { return setup(value) })
 		}
-	})
+	}, true)
 }
 
 // WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the latest (non-empty)

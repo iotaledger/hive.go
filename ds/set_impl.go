@@ -228,6 +228,20 @@ func (r *readableSet[T]) Equals(other ReadableSet[T]) (equal bool) {
 	return r == other || (r != nil && other != nil && r.Size() == other.Size() && r.HasAll(other))
 }
 
+// Any returns a random element from the set (and if one exists).
+func (r *readableSet[T]) Any() (element T, exists bool) {
+	if r != nil {
+		r.OrderedMap.ForEach(func(firstElement T, _ types.Empty) bool {
+			element = firstElement
+			exists = true
+
+			return false
+		})
+	}
+
+	return element, exists
+}
+
 // Is returns true if the given element is the only element in the set.
 func (r *readableSet[T]) Is(element T) bool {
 	return r.Size() == 1 && r.Has(element)
