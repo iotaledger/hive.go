@@ -3,7 +3,6 @@ package serix_test
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -146,7 +145,6 @@ type serializeTest struct {
 func (test *serializeTest) run(t *testing.T) {
 	// binary serialize
 	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
-	fmt.Println("serialize ", serixData)
 	if test.seriErr != nil {
 		require.ErrorIs(t, err, test.seriErr, "binary serialization failed")
 
