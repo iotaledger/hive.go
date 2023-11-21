@@ -257,6 +257,47 @@ func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts
 	return api.checkMaxByteSize(len(bytes), ts)
 }
 
+func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error {
+	if ts.arrayRules == nil || len(ts.arrayRules.MustOccur) == 0 {
+		return nil
+	}
+
+	var mustOccurPrefixes *serializer.TypePrefixes
+	mustOccurPrefixesInner := make(serializer.TypePrefixes, len(ts.arrayRules.MustOccur))
+
+	for key, value := range ts.arrayRules.MustOccur {
+		mustOccurPrefixesInner[key] = value
+	}
+	mustOccurPrefixes = &mustOccurPrefixesInner
+
+	sliceLen := slice.Len()
+
+	for i := 0; i < sliceLen; i++ {
+		elemValue := slice.Index(i)
+
+		// Get the type prefix of the element by retrieving the type settings.
+		if elemValue.Kind() == reflect.Ptr || elemValue.Kind() == reflect.Interface {
+			elemValue = reflect.Indirect(elemValue.Elem())
+		}
+
+		elemTypeSettings, exists := api.getTypeSettings(elemValue.Type())
+		if !exists {
+			return ierrors.Errorf("missing type settings for %s; needed to check Must Occur rules", elemValue)
+		}
+		_, typePrefix, err := getTypeDenotationAndCode(elemTypeSettings.objectType)
+		if err != nil {
+			return ierrors.WithStack(err)
+		}
+		delete(*mustOccurPrefixes, typePrefix)
+	}
+
+	if len(*mustOccurPrefixes) != 0 {
+		return ierrors.Wrapf(serializer.ErrArrayValidationTypesNotOccurred, "expected type prefixes that did not occur: %v", mustOccurPrefixes)
+	}
+
+	return nil
+}
+
 // Encode serializes the provided object obj into bytes.
 // serix traverses the object recursively and serializes everything based on the type.
 // If a type implements the custom Serializable interface serix delegates the serialization to that type.

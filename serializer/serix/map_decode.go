@@ -455,6 +455,12 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		value.Set(reflect.MakeSlice(valueType, 0, 0))
 	}
 
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		}
+	}
+
 	return nil
 }
 

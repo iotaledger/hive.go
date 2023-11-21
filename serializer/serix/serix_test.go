@@ -3,12 +3,14 @@ package serix_test
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
 
+	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -145,6 +147,7 @@ type serializeTest struct {
 func (test *serializeTest) run(t *testing.T) {
 	// binary serialize
 	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+	fmt.Println("serialize ", serixData)
 	if test.seriErr != nil {
 		require.ErrorIs(t, err, test.seriErr, "binary serialization failed")
 
@@ -613,4 +616,211 @@ func TestSerixFieldKeyString(t *testing.T) {
 			require.Equal(t, tt.target, serix.FieldKeyString(tt.source))
 		})
 	}
+}
+
+type Shape interface {
+	constraints.Equalable[Shape]
+}
+
+type Square struct {
+	Size uint8 `serix:""`
+}
+
+func (s *Square) Equal(other Shape) bool {
+	otherSquare, is := other.(*Square)
+	if !is {
+		return false
+	}
+	return s.Size == otherSquare.Size
+}
+
+type Triangle struct {
+	Size uint16 `serix:""`
+}
+
+func (t *Triangle) Equal(other Shape) bool {
+	otherTriangle, is := other.(*Triangle)
+	if !is {
+		return false
+	}
+	return t.Size == otherTriangle.Size
+}
+
+func TestSerixMustOccur(t *testing.T) {
+	const (
+		ShapeSquare   byte = 100
+		ShapeTriangle byte = 101
+	)
+
+	type (
+		Shapes[T Shape] []T
+		ContainerShape  = interface{ Shape }
+		ContainerShapes = Shapes[ContainerShape]
+	)
+
+	type Container struct {
+		MyShapes ContainerShapes `serix:",omitempty"`
+	}
+
+	var containerShapesArrRules = &serix.ArrayRules{
+		Min: 0,
+		Max: 10,
+		MustOccur: serializer.TypePrefixes{
+			uint32(ShapeSquare): struct{}{},
+		},
+		ValidationMode: serializer.ArrayValidationModeNoDuplicates |
+			serializer.ArrayValidationModeLexicalOrdering |
+			serializer.ArrayValidationModeAtMostOneOfEachTypeByte,
+	}
+
+	must(testAPI.RegisterTypeSettings(Triangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeTriangle))))
+	must(testAPI.RegisterTypeSettings(Square{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeSquare))))
+	must(testAPI.RegisterTypeSettings(Container{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
+
+	must(testAPI.RegisterTypeSettings(ContainerShapes{},
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte).WithArrayRules(containerShapesArrRules),
+	))
+
+	must(testAPI.RegisterInterfaceObjects((*ContainerShape)(nil), (*Triangle)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*ContainerShape)(nil), (*Square)(nil)))
+
+	tests := []encodingTest{
+		{
+			name: "ok encoding",
+			source: &Container{
+				MyShapes: ContainerShapes{
+					&Square{Size: 10},
+					&Triangle{Size: 3},
+				},
+			},
+			target:  &Container{},
+			seriErr: nil,
+		},
+		{
+			name: "fail encoding - square must occur",
+			source: &Container{
+				MyShapes: ContainerShapes{
+					&Triangle{Size: 3},
+				},
+			},
+			target:  &Container{},
+			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+		{
+			name: "fail encoding - square must occur - empty slice",
+			source: &Container{
+				MyShapes: ContainerShapes{},
+			},
+			target:  &Container{},
+			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+
+	deSeriTests := []decodingTest{
+		{
+			name: "ok decoding",
+			source: &Container{
+				MyShapes: ContainerShapes{
+					&Square{Size: 10},
+					&Triangle{Size: 3},
+				},
+			},
+			target:    &Container{},
+			deSeriErr: nil,
+		},
+		{
+			name: "fail decoding - square must occur",
+			source: &Container{
+				MyShapes: ContainerShapes{
+					&Triangle{Size: 3},
+				},
+			},
+			target:    &Container{},
+			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+		{
+			name: "fail decoding - square must occur - empty slice",
+			source: &Container{
+				MyShapes: ContainerShapes{},
+			},
+			target:    &Container{},
+			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+	}
+
+	for _, tt := range deSeriTests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+type encodingTest struct {
+	name    string
+	source  any
+	target  any
+	seriErr error
+}
+
+func (test *encodingTest) run(t *testing.T) {
+	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+
+	jsonData, jsonErr := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
+
+	if test.seriErr != nil {
+		require.ErrorIs(t, err, test.seriErr)
+		require.ErrorIs(t, jsonErr, test.seriErr)
+
+		return
+	}
+	require.NoError(t, err)
+	require.NoError(t, jsonErr)
+
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
+	require.NoError(t, err)
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget)
+
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.JSONDecode(context.Background(), jsonData, jsonDest))
+
+	require.EqualValues(t, test.source, jsonDest)
+}
+
+type decodingTest struct {
+	name      string
+	source    any
+	target    any
+	deSeriErr error
+}
+
+func (test *decodingTest) run(t *testing.T) {
+	serixData, err := testAPI.Encode(context.Background(), test.source)
+	require.NoError(t, err)
+
+	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
+	require.NoError(t, err)
+
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget, serix.WithValidation())
+
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	jsonErr := testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation())
+
+	if test.deSeriErr != nil {
+		require.ErrorIs(t, err, test.deSeriErr)
+		require.ErrorIs(t, jsonErr, test.deSeriErr)
+
+		return
+	}
+	require.NoError(t, err)
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget)
+
+	require.NoError(t, jsonErr)
+
+	require.EqualValues(t, test.source, jsonDest)
 }
