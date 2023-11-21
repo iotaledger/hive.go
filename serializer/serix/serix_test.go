@@ -10,7 +10,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -618,34 +617,6 @@ func TestSerixFieldKeyString(t *testing.T) {
 	}
 }
 
-type Shape interface {
-	constraints.Equalable[Shape]
-}
-
-type Square struct {
-	Size uint8 `serix:""`
-}
-
-func (s *Square) Equal(other Shape) bool {
-	otherSquare, is := other.(*Square)
-	if !is {
-		return false
-	}
-	return s.Size == otherSquare.Size
-}
-
-type Triangle struct {
-	Size uint16 `serix:""`
-}
-
-func (t *Triangle) Equal(other Shape) bool {
-	otherTriangle, is := other.(*Triangle)
-	if !is {
-		return false
-	}
-	return t.Size == otherTriangle.Size
-}
-
 func TestSerixMustOccur(t *testing.T) {
 	const (
 		ShapeSquare   byte = 100
@@ -653,16 +624,20 @@ func TestSerixMustOccur(t *testing.T) {
 	)
 
 	type (
-		Shapes[T Shape] []T
-		ContainerShape  = interface{ Shape }
-		ContainerShapes = Shapes[ContainerShape]
+		Shape interface {
+		}
+		Square struct {
+			Size uint8 `serix:""`
+		}
+		Triangle struct {
+			Size uint16 `serix:""`
+		}
+		Container struct {
+			Shapes []Shape `serix:""`
+		}
 	)
 
-	type Container struct {
-		MyShapes ContainerShapes `serix:",omitempty"`
-	}
-
-	var containerShapesArrRules = &serix.ArrayRules{
+	var shapesArrRules = &serix.ArrayRules{
 		Min: 0,
 		Max: 10,
 		MustOccur: serializer.TypePrefixes{
@@ -677,18 +652,18 @@ func TestSerixMustOccur(t *testing.T) {
 	must(testAPI.RegisterTypeSettings(Square{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeSquare))))
 	must(testAPI.RegisterTypeSettings(Container{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
 
-	must(testAPI.RegisterTypeSettings(ContainerShapes{},
-		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte).WithArrayRules(containerShapesArrRules),
+	must(testAPI.RegisterTypeSettings([]Shape{},
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte).WithArrayRules(shapesArrRules),
 	))
 
-	must(testAPI.RegisterInterfaceObjects((*ContainerShape)(nil), (*Triangle)(nil)))
-	must(testAPI.RegisterInterfaceObjects((*ContainerShape)(nil), (*Square)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Triangle)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Square)(nil)))
 
 	tests := []encodingTest{
 		{
 			name: "ok encoding",
 			source: &Container{
-				MyShapes: ContainerShapes{
+				Shapes: []Shape{
 					&Square{Size: 10},
 					&Triangle{Size: 3},
 				},
@@ -699,7 +674,7 @@ func TestSerixMustOccur(t *testing.T) {
 		{
 			name: "fail encoding - square must occur",
 			source: &Container{
-				MyShapes: ContainerShapes{
+				Shapes: []Shape{
 					&Triangle{Size: 3},
 				},
 			},
@@ -709,7 +684,7 @@ func TestSerixMustOccur(t *testing.T) {
 		{
 			name: "fail encoding - square must occur - empty slice",
 			source: &Container{
-				MyShapes: ContainerShapes{},
+				Shapes: []Shape{},
 			},
 			target:  &Container{},
 			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
@@ -724,7 +699,7 @@ func TestSerixMustOccur(t *testing.T) {
 		{
 			name: "ok decoding",
 			source: &Container{
-				MyShapes: ContainerShapes{
+				Shapes: []Shape{
 					&Square{Size: 10},
 					&Triangle{Size: 3},
 				},
@@ -735,7 +710,7 @@ func TestSerixMustOccur(t *testing.T) {
 		{
 			name: "fail decoding - square must occur",
 			source: &Container{
-				MyShapes: ContainerShapes{
+				Shapes: []Shape{
 					&Triangle{Size: 3},
 				},
 			},
@@ -745,7 +720,7 @@ func TestSerixMustOccur(t *testing.T) {
 		{
 			name: "fail decoding - square must occur - empty slice",
 			source: &Container{
-				MyShapes: ContainerShapes{},
+				Shapes: []Shape{},
 			},
 			target:    &Container{},
 			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
@@ -766,7 +741,6 @@ type encodingTest struct {
 
 func (test *encodingTest) run(t *testing.T) {
 	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
-
 	jsonData, jsonErr := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
 
 	if test.seriErr != nil {
@@ -780,6 +754,7 @@ func (test *encodingTest) run(t *testing.T) {
 
 	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
 	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
+
 	require.NoError(t, err)
 	require.Len(t, serixData, bytesRead)
 	require.EqualValues(t, test.source, serixTarget)
