@@ -226,8 +226,8 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 		unsubscribedEvent := NewEvent()
 		withinContext := func(subscribe func() func()) {
 			if !unsubscribedEvent.WasTriggered() {
-				if unsubscribe = subscribe(); unsubscribe != nil {
-					unsubscribedEvent.OnTrigger(unsubscribe)
+				if teardownSubscription := subscribe(); teardownSubscription != nil {
+					unsubscribedEvent.OnTrigger(teardownSubscription)
 				}
 			}
 		}
