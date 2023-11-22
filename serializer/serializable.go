@@ -122,7 +122,9 @@ type ArrayRules struct {
 	Min uint
 	// The max array bound.
 	Max uint
-	// A map of types which must occur within the array.
+	// A map of object types which must occur within the array.
+	// This is only checked on slices of types with an object type set.
+	// In particular, this means this is not checked for byte slices.
 	MustOccur TypePrefixes
 	// The guards applied while de/serializing Serializables.
 	Guards SerializableGuard
