@@ -265,6 +265,12 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 	}
 
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+	}
+
 	data := make([]any, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		elemValue := value.Index(i)
