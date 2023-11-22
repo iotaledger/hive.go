@@ -257,7 +257,12 @@ func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts
 	return api.checkMaxByteSize(len(bytes), ts)
 }
 
+// Checks the "Must Occur" array rules in the given slice.
 func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error {
+	if slice.Kind() != reflect.Slice {
+		return ierrors.Errorf("must occur can only be checked for a slice, got value of kind %v", slice.Kind())
+	}
+
 	if ts.arrayRules == nil || len(ts.arrayRules.MustOccur) == 0 {
 		return nil
 	}
