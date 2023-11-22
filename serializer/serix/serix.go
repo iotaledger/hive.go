@@ -267,16 +267,12 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 		return nil
 	}
 
-	var mustOccurPrefixes *serializer.TypePrefixes
-	mustOccurPrefixesInner := make(serializer.TypePrefixes, len(ts.arrayRules.MustOccur))
-
+	mustOccurPrefixes := make(serializer.TypePrefixes, len(ts.arrayRules.MustOccur))
 	for key, value := range ts.arrayRules.MustOccur {
-		mustOccurPrefixesInner[key] = value
+		mustOccurPrefixes[key] = value
 	}
-	mustOccurPrefixes = &mustOccurPrefixesInner
 
 	sliceLen := slice.Len()
-
 	for i := 0; i < sliceLen; i++ {
 		elemValue := slice.Index(i)
 
@@ -293,10 +289,10 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 		if err != nil {
 			return ierrors.WithStack(err)
 		}
-		delete(*mustOccurPrefixes, typePrefix)
+		delete(mustOccurPrefixes, typePrefix)
 	}
 
-	if len(*mustOccurPrefixes) != 0 {
+	if len(mustOccurPrefixes) != 0 {
 		return ierrors.Wrapf(serializer.ErrArrayValidationTypesNotOccurred, "expected type prefixes that did not occur: %v", mustOccurPrefixes)
 	}
 
