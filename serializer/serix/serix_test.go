@@ -617,14 +617,18 @@ func TestSerixFieldKeyString(t *testing.T) {
 
 func TestSerixMustOccur(t *testing.T) {
 	const (
-		ShapeSquare   byte = 100
-		ShapeTriangle byte = 101
+		ShapeSquare    byte = 100
+		ShapeRectangle byte = 101
+		ShapeTriangle  byte = 102
 	)
 
 	type (
 		Shape interface {
 		}
 		Square struct {
+			Size uint8 `serix:""`
+		}
+		Rectangle struct {
 			Size uint8 `serix:""`
 		}
 		Triangle struct {
@@ -639,7 +643,8 @@ func TestSerixMustOccur(t *testing.T) {
 		Min: 0,
 		Max: 10,
 		MustOccur: serializer.TypePrefixes{
-			uint32(ShapeSquare): struct{}{},
+			uint32(ShapeSquare):    struct{}{},
+			uint32(ShapeRectangle): struct{}{},
 		},
 		ValidationMode: serializer.ArrayValidationModeNoDuplicates |
 			serializer.ArrayValidationModeLexicalOrdering |
@@ -648,6 +653,7 @@ func TestSerixMustOccur(t *testing.T) {
 
 	must(testAPI.RegisterTypeSettings(Triangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeTriangle))))
 	must(testAPI.RegisterTypeSettings(Square{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeSquare))))
+	must(testAPI.RegisterTypeSettings(Rectangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeRectangle))))
 	must(testAPI.RegisterTypeSettings(Container{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
 
 	must(testAPI.RegisterTypeSettings([]Shape{},
@@ -656,6 +662,7 @@ func TestSerixMustOccur(t *testing.T) {
 
 	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Triangle)(nil)))
 	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Square)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Rectangle)(nil)))
 
 	tests := []encodingTest{
 		{
@@ -663,6 +670,7 @@ func TestSerixMustOccur(t *testing.T) {
 			source: &Container{
 				Shapes: []Shape{
 					&Square{Size: 10},
+					&Rectangle{Size: 5},
 					&Triangle{Size: 3},
 				},
 			},
@@ -673,6 +681,7 @@ func TestSerixMustOccur(t *testing.T) {
 			name: "fail encoding - square must occur",
 			source: &Container{
 				Shapes: []Shape{
+					&Rectangle{Size: 5},
 					&Triangle{Size: 3},
 				},
 			},
@@ -680,7 +689,7 @@ func TestSerixMustOccur(t *testing.T) {
 			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
 		},
 		{
-			name: "fail encoding - square must occur - empty slice",
+			name: "fail encoding - square & rectangle must occur - empty slice",
 			source: &Container{
 				Shapes: []Shape{},
 			},
@@ -699,6 +708,7 @@ func TestSerixMustOccur(t *testing.T) {
 			source: &Container{
 				Shapes: []Shape{
 					&Square{Size: 10},
+					&Rectangle{Size: 5},
 					&Triangle{Size: 3},
 				},
 			},
@@ -709,6 +719,7 @@ func TestSerixMustOccur(t *testing.T) {
 			name: "fail decoding - square must occur",
 			source: &Container{
 				Shapes: []Shape{
+					&Rectangle{Size: 5},
 					&Triangle{Size: 3},
 				},
 			},
@@ -716,7 +727,7 @@ func TestSerixMustOccur(t *testing.T) {
 			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
 		},
 		{
-			name: "fail decoding - square must occur - empty slice",
+			name: "fail decoding - square & rectangle must occur - empty slice",
 			source: &Container{
 				Shapes: []Shape{},
 			},
