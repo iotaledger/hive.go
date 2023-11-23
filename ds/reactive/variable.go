@@ -83,6 +83,11 @@ type WritableVariable[Type comparable] interface {
 	// callbacks if the value has changed.
 	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
 
+	// DefaultTo atomically sets the new value to the default value if the current value is the zero value and triggers
+	// the registered callbacks if the value has changed. It returns the new value and a boolean flag that indicates if
+	// the value was updated.
+	DefaultTo(defaultValue Type) (newValue Type, updated bool)
+
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
 

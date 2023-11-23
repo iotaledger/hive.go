@@ -61,6 +61,23 @@ func (v *variable[Type]) Compute(computeFunc func(currentValue Type) Type) (prev
 	return previousValue
 }
 
+// DefaultTo atomically sets the new value to the given default value if the current value is the zero value and
+// triggers the registered callbacks if the value has changed. It returns the new value and a boolean flag that
+// indicates if the value was updated.
+func (v *variable[Type]) DefaultTo(defaultValue Type) (newValue Type, updated bool) {
+	v.Compute(func(currentValue Type) Type {
+		if updated = currentValue == *new(Type); updated {
+			newValue = defaultValue
+		} else {
+			newValue = currentValue
+		}
+
+		return newValue
+	})
+
+	return newValue, updated
+}
+
 // InheritFrom inherits the value from the given ReadableVariable.
 func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe func()) {
 	return other.OnUpdate(func(_, newValue Type) {
