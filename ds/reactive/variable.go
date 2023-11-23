@@ -94,6 +94,9 @@ type WritableVariable[Type comparable] interface {
 	// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
 	// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
 	DeriveValueFrom(source DerivedVariable[Type]) (teardown func())
+
+	// ToggleValue sets the value to the given value and returns a function that resets the value to its zero value.
+	ToggleValue(value Type) (reset func())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

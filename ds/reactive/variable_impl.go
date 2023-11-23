@@ -95,6 +95,15 @@ func (v *variable[Type]) DeriveValueFrom(source DerivedVariable[Type]) (teardown
 	return source.Unsubscribe
 }
 
+// ToggleValue sets the value to the given value and returns a function that resets the value to its zero value.
+func (v *variable[Type]) ToggleValue(value Type) (reset func()) {
+	v.Set(value)
+
+	return func() {
+		v.Set(*new(Type))
+	}
+}
+
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
 // the triggerID and the callbacks to trigger.
 func (v *variable[Type]) updateValue(newValueGenerator func(Type) Type) (newValue, previousValue Type, triggerID uniqueID, callbacksToTrigger []*callback[func(prevValue, newValue Type)]) {
