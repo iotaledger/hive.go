@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
@@ -13,7 +14,7 @@ import (
 type OrderedMap[K comparable, V any] struct {
 	head       *Element[K, V]
 	tail       *Element[K, V]
-	dictionary map[K]*Element[K, V]
+	dictionary *shrinkingmap.ShrinkingMap[K, *Element[K, V]]
 	size       int
 	mutex      sync.RWMutex
 }
@@ -30,7 +31,8 @@ func New[K comparable, V any]() *OrderedMap[K, V] {
 func (o *OrderedMap[K, V]) Initialize() {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
-	o.dictionary = make(map[K]*Element[K, V])
+
+	o.dictionary = shrinkingmap.New[K, *Element[K, V]]()
 }
 
 // Head returns the first map entry.
@@ -66,9 +68,7 @@ func (o *OrderedMap[K, V]) Has(key K) (has bool) {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
-	_, has = o.dictionary[key]
-
-	return
+	return o.dictionary.Has(key)
 }
 
 // Get returns the value mapped to the given key if exists.
@@ -76,7 +76,7 @@ func (o *OrderedMap[K, V]) Get(key K) (value V, exists bool) {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
-	orderedMapElement, orderedMapElementExists := o.dictionary[key]
+	orderedMapElement, orderedMapElementExists := o.dictionary.Get(key)
 	if !orderedMapElementExists {
 		var result V
 		return result, false
@@ -90,7 +90,7 @@ func (o *OrderedMap[K, V]) Set(key K, newValue V) (previousValue V, previousValu
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
-	if oldValue, oldValueExists := o.dictionary[key]; oldValueExists {
+	if oldValue, oldValueExists := o.dictionary.Get(key); oldValueExists {
 		previousValue = oldValue.value
 		oldValue.value = newValue
 
@@ -110,7 +110,7 @@ func (o *OrderedMap[K, V]) Set(key K, newValue V) (previousValue V, previousValu
 	o.tail = newElement
 	o.size++
 
-	o.dictionary[key] = newElement
+	o.dictionary.Set(key, newElement)
 
 	return previousValue, false
 }
@@ -171,7 +171,7 @@ func (o *OrderedMap[K, V]) Clear() {
 	o.head = nil
 	o.tail = nil
 	o.size = 0
-	o.dictionary = make(map[K]*Element[K, V])
+	o.dictionary = shrinkingmap.New[K, *Element[K, V]]()
 }
 
 // Delete deletes the given key (and related value) from the orderedMap.
@@ -184,12 +184,12 @@ func (o *OrderedMap[K, V]) Delete(key K) bool {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
-	value, valueExists := o.dictionary[key]
+	value, valueExists := o.dictionary.Get(key)
 	if !valueExists {
 		return false
 	}
 
-	delete(o.dictionary, key)
+	o.dictionary.Delete(key)
 	o.size--
 
 	if value.prev != nil {
