@@ -35,8 +35,22 @@ func TestOrderedMap_Size(t *testing.T) {
 
 	require.Equal(t, 2, orderedMap.Size())
 
+	expectedMap := map[int]int{}
+	orderedMap.ForEach(func(key int, value int) bool {
+		expectedMap[key] = value
+		return true
+	})
+
 	clone := orderedMap.Clone()
-	require.EqualValues(t, orderedMap, clone)
+
+	clonedMap := map[int]int{}
+	clone.ForEach(func(key int, value int) bool {
+		clonedMap[key] = value
+		return true
+	})
+
+	// We compare the maps because EqualValues does a deep compare and the original has a deleted items count inside the ShrinkingMap
+	require.EqualValues(t, expectedMap, clonedMap)
 
 	clone.Clear()
 	require.True(t, clone.IsEmpty())
