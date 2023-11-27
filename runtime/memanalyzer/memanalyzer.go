@@ -9,16 +9,14 @@ import (
 	"github.com/fjl/memsize"
 )
 
-const maxDepth = 10
-
 // MemoryReport returns a human-readable report of the memory usage of the given struct pointer, useful to find leaks.
 // Please note that this function "stops the world" when scanning referenced memory from a specific struct field,
 // therefore it can produce significant hiccups when called on big, nested structures.
-func MemoryReport(ptr interface{}) string {
+func MemoryReport(ptr interface{}, maxDepth int) string {
 	stringBuilder := &strings.Builder{}
 	visitedPtrs := make(map[uintptr]bool)
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80)+"\n")
-	memoryReport(reflect.ValueOf(ptr).Elem(), 0, stringBuilder, visitedPtrs)
+	memoryReport(reflect.ValueOf(ptr).Elem(), 0, stringBuilder, visitedPtrs, maxDepth)
 	fmt.Fprint(stringBuilder, strings.Repeat("-", 80))
 
 	return stringBuilder.String()
@@ -28,7 +26,7 @@ func MemSize(ptr interface{}) uintptr {
 	return memsize.Scan(ptr).Total
 }
 
-func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, visitedPtrs map[uintptr]bool) {
+func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, visitedPtrs map[uintptr]bool, maxDepth int) {
 	if indent/2 > maxDepth || visitedPtrs[getPointer(v)] {
 		return
 	}
@@ -91,7 +89,7 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder, v
 
 			fmt.Fprintf(stringBuilder, "%*s%s %s = %s\n", indent, "", fT.Name, fT.Type, memsize.HumanSize(memsize.Scan(fV.Interface()).Total))
 
-			memoryReport(fV.Elem(), indent+2, stringBuilder, visitedPtrs)
+			memoryReport(fV.Elem(), indent+2, stringBuilder, visitedPtrs, maxDepth)
 		}
 	}
 }
