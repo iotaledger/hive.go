@@ -435,6 +435,12 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 		value.Set(reflect.MakeSlice(valueType, 0, 0))
 	}
 
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return bytesRead, ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		}
+	}
+
 	return bytesRead, nil
 }
 

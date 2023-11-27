@@ -319,6 +319,13 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 
 		return seri.Serialize()
 	}
+
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+	}
+
 	sliceLen := value.Len()
 	data := make([][]byte, sliceLen)
 	for i := 0; i < sliceLen; i++ {
