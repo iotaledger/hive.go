@@ -217,11 +217,6 @@ func (t testID) Bytes() ([]byte, error) {
 	return t[:], nil
 }
 
-func (t *testID) FromBytes(b []byte) (int, error) {
-	copy(t[:], b)
-	return len(t), nil
-}
-
 func (t testID) Index() index {
 	return index(binary.LittleEndian.Uint64(t[1:]))
 }

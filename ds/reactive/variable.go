@@ -38,6 +38,16 @@ type ReadableVariable[Type comparable] interface {
 	// Read executes the given function with the current value while read locking the variable.
 	Read(readFunc func(currentValue Type))
 
+	// WithValue is a utility function that allows to set up dynamic behavior based on the latest value of the
+	// ReadableVariable which is torn down once the value changes again (or the returned teardown function is called).
+	// It accepts an optional condition that has to be satisfied for the setup function to be called.
+	WithValue(setup func(value Type) (teardown func()), condition ...func(Type) bool) (teardown func())
+
+	// WithNonEmptyValue is a utility function that allows to set up dynamic behavior based on the latest (non-empty)
+	// value of the ReadableVariable which is torn down once the value changes again (or the returned teardown function
+	// is called).
+	WithNonEmptyValue(setup func(value Type) (teardown func())) (teardown func())
+
 	// OnUpdate registers the given callback that is triggered when the value changes.
 	OnUpdate(consumer func(oldValue, newValue Type), triggerWithInitialZeroValue ...bool) (unsubscribe func())
 
@@ -75,6 +85,10 @@ type WritableVariable[Type comparable] interface {
 
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
+
+	// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
+	// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
+	DeriveValueFrom(source DerivedVariable[Type]) (teardown func())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,69 +105,77 @@ type DerivedVariable[Type comparable] interface {
 }
 
 // NewDerivedVariable creates a DerivedVariable that transforms an input value into a different one.
-func NewDerivedVariable[Type, InputType1 comparable, InputValueType1 ReadableVariable[InputType1]](compute func(InputType1) Type, input1 InputValueType1) DerivedVariable[Type] {
+func NewDerivedVariable[Type, InputType1 comparable, InputValueType1 ReadableVariable[InputType1]](compute func(currentValue Type, inputValue1 InputType1) Type, input1 InputValueType1, initialValue ...Type) DerivedVariable[Type] {
 	return newDerivedVariable[Type](func(d DerivedVariable[Type]) func() {
 		return input1.OnUpdate(func(_, input1 InputType1) {
-			d.Compute(func(_ Type) Type { return compute(input1) })
+			d.Compute(func(currentValue Type) Type { return compute(currentValue, input1) })
 		}, true)
-	})
+	}, initialValue...)
 }
 
 // NewDerivedVariable2 creates a DerivedVariable that transforms two input values into a different one.
-func NewDerivedVariable2[Type, InputType1, InputType2 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2]](compute func(InputType1, InputType2) Type, input1 InputValueType1, input2 InputValueType2) DerivedVariable[Type] {
+func NewDerivedVariable2[Type, InputType1, InputType2 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2]](compute func(currentValue Type, inputValue1 InputType1, inputValue2 InputType2) Type, input1 InputValueType1, input2 InputValueType2, initialValue ...Type) DerivedVariable[Type] {
 	return newDerivedVariable[Type](func(d DerivedVariable[Type]) func() {
 		return lo.Batch(
 			input1.OnUpdate(func(_, input1 InputType1) {
-				d.Compute(func(_ Type) Type { return compute(input1, input2.Get()) })
+				d.Compute(func(currentValue Type) Type { return compute(currentValue, input1, input2.Get()) })
 			}, true),
 
 			input2.OnUpdate(func(_, input2 InputType2) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2) })
+				d.Compute(func(currentValue Type) Type { return compute(currentValue, input1.Get(), input2) })
 			}, true),
 		)
-	})
+	}, initialValue...)
 }
 
 // NewDerivedVariable3 creates a DerivedVariable that transforms three input values into a different one.
-func NewDerivedVariable3[Type, InputType1, InputType2, InputType3 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2], InputValueType3 ReadableVariable[InputType3]](compute func(InputType1, InputType2, InputType3) Type, input1 InputValueType1, input2 InputValueType2, input3 InputValueType3) DerivedVariable[Type] {
+func NewDerivedVariable3[Type, InputType1, InputType2, InputType3 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2], InputValueType3 ReadableVariable[InputType3]](compute func(currentValue Type, inputValue1 InputType1, inputValue2 InputType2, inputValue3 InputType3) Type, input1 InputValueType1, input2 InputValueType2, input3 InputValueType3, initialValue ...Type) DerivedVariable[Type] {
 	return newDerivedVariable[Type](func(d DerivedVariable[Type]) func() {
 		return lo.Batch(
 			input1.OnUpdate(func(_, input1 InputType1) {
-				d.Compute(func(_ Type) Type { return compute(input1, input2.Get(), input3.Get()) })
+				d.Compute(func(currentValue Type) Type { return compute(currentValue, input1, input2.Get(), input3.Get()) })
 			}, true),
 
 			input2.OnUpdate(func(_, input2 InputType2) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2, input3.Get()) })
+				d.Compute(func(currentValue Type) Type { return compute(currentValue, input1.Get(), input2, input3.Get()) })
 			}, true),
 
 			input3.OnUpdate(func(_, input3 InputType3) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2.Get(), input3) })
+				d.Compute(func(currentValue Type) Type { return compute(currentValue, input1.Get(), input2.Get(), input3) })
 			}, true),
 		)
-	})
+	}, initialValue...)
 }
 
 // NewDerivedVariable4 creates a DerivedVariable that transforms four input values into a different one.
-func NewDerivedVariable4[Type, InputType1, InputType2, InputType3, InputType4 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2], InputValueType3 ReadableVariable[InputType3], InputValueType4 ReadableVariable[InputType4]](compute func(InputType1, InputType2, InputType3, InputType4) Type, input1 InputValueType1, input2 InputValueType2, input3 InputValueType3, input4 InputValueType4) DerivedVariable[Type] {
+func NewDerivedVariable4[Type, InputType1, InputType2, InputType3, InputType4 comparable, InputValueType1 ReadableVariable[InputType1], InputValueType2 ReadableVariable[InputType2], InputValueType3 ReadableVariable[InputType3], InputValueType4 ReadableVariable[InputType4]](compute func(currentValue Type, inputValue1 InputType1, inputValue2 InputType2, inputValue3 InputType3, inputValue4 InputType4) Type, input1 InputValueType1, input2 InputValueType2, input3 InputValueType3, input4 InputValueType4, initialValue ...Type) DerivedVariable[Type] {
 	return newDerivedVariable[Type](func(d DerivedVariable[Type]) func() {
 		return lo.Batch(
 			input1.OnUpdate(func(_, input1 InputType1) {
-				d.Compute(func(_ Type) Type { return compute(input1, input2.Get(), input3.Get(), input4.Get()) })
+				d.Compute(func(currentValue Type) Type {
+					return compute(currentValue, input1, input2.Get(), input3.Get(), input4.Get())
+				})
 			}, true),
 
 			input2.OnUpdate(func(_, input2 InputType2) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2, input3.Get(), input4.Get()) })
+				d.Compute(func(currentValue Type) Type {
+					return compute(currentValue, input1.Get(), input2, input3.Get(), input4.Get())
+				})
 			}, true),
 
 			input3.OnUpdate(func(_, input3 InputType3) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2.Get(), input3, input4.Get()) })
+				d.Compute(func(currentValue Type) Type {
+					return compute(currentValue, input1.Get(), input2.Get(), input3, input4.Get())
+				})
 			}, true),
 
 			input4.OnUpdate(func(_, input4 InputType4) {
-				d.Compute(func(_ Type) Type { return compute(input1.Get(), input2.Get(), input3.Get(), input4) })
+				d.Compute(func(currentValue Type) Type {
+					return compute(currentValue, input1.Get(), input2.Get(), input3.Get(), input4)
+				})
 			}, true),
 		)
-	})
+	}, initialValue...)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -212,6 +212,41 @@ func (r *readableSet[ElementType]) SubtractReactive(others ...ReadableSet[Elemen
 	return s
 }
 
+// WithElements is a utility function that allows to set up dynamic behavior based on the elements of the Set which is
+// torn down once the element is removed (or the returned teardown function is called). It accepts an optional
+// condition that has to be satisfied for the setup function to be called.
+func (r *readableSet[ElementType]) WithElements(setup func(element ElementType) (teardown func()), condition ...func(ElementType) bool) (teardown func()) {
+	teardownFunctions := make(map[ElementType]func())
+
+	return lo.Batch(
+		r.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
+			appliedMutations.AddedElements().Range(func(element ElementType) {
+				if len(condition) == 0 || condition[0](element) {
+					if teardownFunc := setup(element); teardownFunc != nil {
+						teardownFunctions[element] = teardownFunc
+					}
+				}
+			})
+
+			appliedMutations.DeletedElements().Range(func(element ElementType) {
+				if teardownFunc, exists := teardownFunctions[element]; exists {
+					delete(teardownFunctions, element)
+
+					teardownFunc()
+				}
+			})
+		}),
+
+		func() {
+			for element, teardownFunc := range teardownFunctions {
+				delete(teardownFunctions, element)
+
+				teardownFunc()
+			}
+		},
+	)
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region derivedSet ///////////////////////////////////////////////////////////////////////////////////////////////////

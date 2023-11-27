@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"reflect"
 	"time"
+	"unicode/utf8"
 
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -52,9 +53,14 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 			return nil, ierrors.WithStack(err)
 		}
 	}
+
 	if opts.validation {
 		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
 			return nil, ierrors.Wrap(err, "post-serialization validation failed")
+		}
+
+		if err := api.checkMaxByteSize(len(b), ts); err != nil {
+			return nil, err
 		}
 	}
 
@@ -105,15 +111,26 @@ func (api *API) encodeBasedOnType(
 	case reflect.Interface:
 		return api.encodeInterface(ctx, value, valueType, ts, opts)
 	case reflect.String:
+		str := value.String()
+
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
 			return nil, ierrors.New("can't serialize 'string' type: no LengthPrefixType was provided")
 		}
-		minLen, maxLen := ts.MinMaxLen()
+
+		var minLen, maxLen int
+		if opts.validation {
+			minLen, maxLen = ts.MinMaxLen()
+
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return nil, ierrors.Errorf("can't serialize 'string' type: %w", ErrNonUTF8String)
+			}
+		}
 		seri := serializer.NewSerializer()
 
 		return seri.WriteString(
-			value.String(),
+			str,
 			serializer.SeriLengthPrefixType(lengthPrefixType),
 			func(err error) error {
 				return ierrors.Wrap(err, "failed to write string value to serializer")
@@ -141,42 +158,6 @@ func (api *API) encodeBasedOnType(
 	}
 
 	return nil, ierrors.Errorf("can't encode: unsupported type %T", valueI)
-}
-
-// checks whether the given value is within its defined bounds in case it has a length.
-func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
-	if has := hasLength(v); !has {
-		return nil
-	}
-
-	l := uint(v.Len())
-	if minLen, ok := ts.MinLen(); ok {
-		if l < minLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "can't serialize '%s' type: min length %d not reached (len %d)", v.Kind(), minLen, l)
-		}
-	}
-	if maxLen, ok := ts.MaxLen(); ok {
-		if l > maxLen {
-			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "can't serialize '%s' type: max length %d exceeded (len %d)", v.Kind(), maxLen, l)
-		}
-	}
-
-	return nil
-}
-
-// checks whether the given value has the concept of a length.
-func hasLength(v reflect.Value) bool {
-	k := v.Kind()
-	switch k {
-	case reflect.Array:
-	case reflect.Map:
-	case reflect.Slice:
-	case reflect.String:
-	default:
-		return false
-	}
-
-	return true
 }
 
 func (api *API) encodeInterface(
@@ -239,7 +220,7 @@ func (api *API) encodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldValue.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -338,6 +319,13 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 
 		return seri.Serialize()
 	}
+
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+	}
+
 	sliceLen := value.Len()
 	data := make([][]byte, sliceLen)
 	for i := 0; i < sliceLen; i++ {
@@ -352,10 +340,36 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 	return encodeSliceOfBytes(data, valueType, ts, opts)
 }
 
+func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
+
+	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+	}
+
+	elemBytes, err := api.encode(ctx, val, valueTypeSettings, opts)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
+	}
+
+	buf := bytes.NewBuffer(keyBytes)
+	buf.Write(elemBytes)
+
+	return buf.Bytes(), nil
+}
+
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-	size := value.Len()
-	data := make([][]byte, size)
+
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return nil, err
+		}
+	}
+
+	data := make([][]byte, value.Len())
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {
 		key := iter.Key()
@@ -368,22 +382,12 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	}
 	ts = ts.ensureOrdering()
 
-	return encodeSliceOfBytes(data, valueType, ts, opts)
-}
-
-func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
-	keyBytes, err := api.encode(ctx, key, TypeSettings{}, opts)
+	bytes, err := encodeSliceOfBytes(data, valueType, ts, opts)
 	if err != nil {
-		return nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+		return nil, err
 	}
-	elemBytes, err := api.encode(ctx, val, TypeSettings{}, opts)
-	if err != nil {
-		return nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
-	}
-	buf := bytes.NewBuffer(keyBytes)
-	buf.Write(elemBytes)
 
-	return buf.Bytes(), nil
+	return bytes, nil
 }
 
 func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, opts *options) ([]byte, error) {
@@ -391,13 +395,16 @@ func encodeSliceOfBytes(data [][]byte, valueType reflect.Type, ts TypeSettings, 
 	if !set {
 		return nil, ierrors.Errorf("no LengthPrefixType was provided for type %s", valueType)
 	}
+
 	arrayRules := ts.ArrayRules()
 	if arrayRules == nil {
 		arrayRules = new(ArrayRules)
 	}
+
 	serializationMode := ts.toMode(opts)
 	serializerArrayRules := serializer.ArrayRules(*arrayRules)
 	serializerArrayRulesPtr := &serializerArrayRules
+
 	seri := serializer.NewSerializer()
 	seri.WriteSliceOfByteSlices(data,
 		serializationMode,

@@ -145,7 +145,7 @@ func (s *set[ElementType]) apply(mutations SetMutations[ElementType]) (appliedMu
 //
 //nolint:tagliatelle // heck knows why this linter fails here
 type readableSet[T comparable] struct {
-	*orderedmap.OrderedMap[T, types.Empty] `serix:"0"`
+	*orderedmap.OrderedMap[T, types.Empty] `serix:""`
 }
 
 // newReadableSet creates a new readable set with the given elements.
@@ -226,6 +226,20 @@ func (r *readableSet[T]) Filter(predicate func(element T) bool) (filtered Set[T]
 // Equals returns true if the set contains the same elements as the given set.
 func (r *readableSet[T]) Equals(other ReadableSet[T]) (equal bool) {
 	return r == other || (r != nil && other != nil && r.Size() == other.Size() && r.HasAll(other))
+}
+
+// Any returns a random element from the set (and if one exists).
+func (r *readableSet[T]) Any() (element T, exists bool) {
+	if r != nil {
+		r.OrderedMap.ForEach(func(firstElement T, _ types.Empty) bool {
+			element = firstElement
+			exists = true
+
+			return false
+		})
+	}
+
+	return element, exists
 }
 
 // Is returns true if the given element is the only element in the set.

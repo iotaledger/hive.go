@@ -4,7 +4,6 @@ package serializer_test
 import (
 	"fmt"
 	"math/rand"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -201,98 +200,6 @@ func TestDeserializeA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(seriA), bytesRead)
 	assert.Equal(t, seriA[serializer.SmallTypeDenotationByteSize:], objA.Key[:])
-}
-
-func TestLexicalOrderedByteSlices(t *testing.T) {
-	type test struct {
-		name   string
-		source serializer.LexicalOrderedByteSlices
-		target serializer.LexicalOrderedByteSlices
-	}
-	tests := []test{
-		{
-			name: "ok - order by first ele",
-			source: serializer.LexicalOrderedByteSlices{
-				{3, 2, 1},
-				{2, 3, 1},
-				{1, 2, 3},
-			},
-			target: serializer.LexicalOrderedByteSlices{
-				{1, 2, 3},
-				{2, 3, 1},
-				{3, 2, 1},
-			},
-		},
-		{
-			name: "ok - order by last ele",
-			source: serializer.LexicalOrderedByteSlices{
-				{1, 1, 3},
-				{1, 1, 2},
-				{1, 1, 1},
-			},
-			target: serializer.LexicalOrderedByteSlices{
-				{1, 1, 1},
-				{1, 1, 2},
-				{1, 1, 3},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sort.Sort(tt.source)
-			assert.Equal(t, tt.target, tt.source)
-		})
-	}
-}
-
-func TestRemoveDupsAndSortByLexicalOrderArrayOf32Bytes(t *testing.T) {
-	type test struct {
-		name   string
-		source serializer.LexicalOrdered32ByteArrays
-		target serializer.LexicalOrdered32ByteArrays
-	}
-	tests := []test{
-		{
-			name: "ok - dups removed and order by first ele",
-			source: serializer.LexicalOrdered32ByteArrays{
-				{3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-			},
-			target: serializer.LexicalOrdered32ByteArrays{
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-			},
-		},
-		{
-			name: "ok - dups removed and order by last ele",
-			source: serializer.LexicalOrdered32ByteArrays{
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-			},
-			target: serializer.LexicalOrdered32ByteArrays{
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33},
-				{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.source = serializer.RemoveDupsAndSortByLexicalOrderArrayOf32Bytes(tt.source)
-			assert.Equal(t, tt.target, tt.source)
-		})
-	}
 }
 
 func TestSerializationMode_HasMode(t *testing.T) {

@@ -3,17 +3,12 @@ package serix_test
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"math/big"
-	"os"
 	"reflect"
 	"testing"
-	"time"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
@@ -27,412 +22,6 @@ var (
 	defaultErrProducer = func(err error) error { return err }
 	defaultWriteGuard  = func(seri serializer.Serializable) error { return nil }
 )
-
-type Bool bool
-
-func (b Bool) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (b Bool) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (b Bool) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (b Bool) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	ser := serializer.NewSerializer()
-	ser.WriteBool(bool(b), defaultErrProducer)
-
-	return ser.Serialize()
-}
-
-type Bools []Bool
-
-var boolsLenType = serix.LengthPrefixTypeAsUint16
-
-func (bs Bools) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (bs Bools) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (bs Bools) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (bs Bools) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WriteSliceOfObjects(bs, deSeriMode, deSeriCtx, serializer.SeriLengthPrefixType(boolsLenType), defaultArrayRules, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-func (bs Bools) ToSerializables() serializer.Serializables {
-	serializables := make(serializer.Serializables, len(bs))
-	for i, b := range bs {
-		serializables[i] = b
-	}
-
-	return serializables
-}
-
-func (bs Bools) FromSerializables(seris serializer.Serializables) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-type SimpleStruct struct {
-	Bool       bool      `serix:"0"`
-	Uint       uint64    `serix:"1"`
-	String     string    `serix:"2,lengthPrefixType=uint16"`
-	Bytes      []byte    `serix:"3,lengthPrefixType=uint32"`
-	BytesArray [16]byte  `serix:"4"`
-	BigInt     *big.Int  `serix:"5"`
-	Time       time.Time `serix:"6"`
-	Int        uint64    `serix:"7"`
-	Float      float64   `serix:"8"`
-}
-
-func NewSimpleStruct() SimpleStruct {
-	return SimpleStruct{
-		Bool:       true,
-		Uint:       10,
-		String:     "foo",
-		Bytes:      []byte{1, 2, 3},
-		BytesArray: [16]byte{3, 2, 1},
-		BigInt:     big.NewInt(8),
-		Time:       time.Unix(1000, 1000).UTC(),
-		Int:        23,
-		Float:      4.44,
-	}
-}
-
-var simpleStructObjectCode = uint32(0)
-
-func (ss SimpleStruct) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ss SimpleStruct) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ss SimpleStruct) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ss SimpleStruct) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WriteNum(simpleStructObjectCode, defaultErrProducer)
-	seri.WriteBool(ss.Bool, defaultErrProducer)
-	seri.WriteNum(ss.Uint, defaultErrProducer)
-	seri.WriteString(ss.String, serializer.SeriLengthPrefixTypeAsUint16, defaultErrProducer, 0, 0)
-	seri.WriteVariableByteSlice(ss.Bytes, serializer.SeriLengthPrefixTypeAsUint32, defaultErrProducer, 0, 0)
-	seri.WriteBytes(ss.BytesArray[:], defaultErrProducer)
-	seri.WriteUint256(ss.BigInt, defaultErrProducer)
-	seri.WriteTime(ss.Time, defaultErrProducer)
-	seri.WriteNum(ss.Int, defaultErrProducer)
-	seri.WriteNum(ss.Float, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type Interface interface {
-	Method()
-
-	serix.Serializable
-	serix.Deserializable
-}
-
-type InterfaceImpl struct {
-	interfaceImpl `serix:"0"`
-}
-
-func (ii *InterfaceImpl) SetDeserializationContext(ctx context.Context) {
-	ctx.Value("contextValue").(func())()
-}
-
-type interfaceImpl struct {
-	A uint8 `serix:"0"`
-	B uint8 `serix:"1"`
-}
-
-func (ii *InterfaceImpl) Encode() ([]byte, error) {
-	return testAPI.Encode(context.Background(), ii.interfaceImpl, serix.WithValidation())
-}
-
-func (ii *InterfaceImpl) Decode(b []byte) (consumedBytes int, err error) {
-	return testAPI.Decode(context.Background(), b, &ii.interfaceImpl, serix.WithValidation())
-}
-
-var interfaceImplObjectCode = uint32(1)
-
-func (ii *InterfaceImpl) Method() {}
-
-func (ii *InterfaceImpl) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ii *InterfaceImpl) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ii *InterfaceImpl) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (ii *InterfaceImpl) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WriteNum(interfaceImplObjectCode, defaultErrProducer)
-	seri.WriteNum(ii.A, defaultErrProducer)
-	seri.WriteNum(ii.B, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type StructWithInterface struct {
-	Interface Interface `serix:"0"`
-}
-
-func (si StructWithInterface) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (si StructWithInterface) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (si StructWithInterface) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (si StructWithInterface) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WriteObject(si.Interface.(serializer.Serializable), defaultSeriMode, deSeriCtx, defaultWriteGuard, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type StructWithOptionalField struct {
-	Optional *ExportedStruct `serix:"0,optional"`
-}
-
-func (so StructWithOptionalField) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (so StructWithOptionalField) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (so StructWithOptionalField) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (so StructWithOptionalField) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WritePayloadLength(0, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type StructWithEmbeddedStructs struct {
-	unexportedStruct `serix:"0"`
-	ExportedStruct   `serix:"1,nest"`
-}
-
-func (se StructWithEmbeddedStructs) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (se StructWithEmbeddedStructs) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (se StructWithEmbeddedStructs) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (se StructWithEmbeddedStructs) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	seri := serializer.NewSerializer()
-	seri.WriteNum(se.unexportedStruct.Foo, defaultErrProducer)
-	seri.WriteNum(exportedStructObjectCode, defaultErrProducer)
-	seri.WriteNum(se.ExportedStruct.Bar, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type unexportedStruct struct {
-	Foo uint64 `serix:"0"`
-}
-
-type ExportedStruct struct {
-	Bar uint64 `serix:"0"`
-}
-
-func (e ExportedStruct) SetDeserializationContext(ctx context.Context) {
-	ctx.Value("contextValue").(func())()
-}
-
-var exportedStructObjectCode = uint32(3)
-
-type Map map[uint64]uint64
-
-var mapLenType = serix.LengthPrefixTypeAsUint32
-
-func (m Map) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (m Map) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (m Map) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (m Map) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	bytes := make([][]byte, len(m))
-	var i int
-	for k, v := range m {
-		seri := serializer.NewSerializer()
-		seri.WriteNum(k, defaultErrProducer)
-		seri.WriteNum(v, defaultErrProducer)
-		b, err := seri.Serialize()
-		if err != nil {
-			return nil, err
-		}
-		bytes[i] = b
-		i++
-	}
-	seri := serializer.NewSerializer()
-	mode := defaultSeriMode | serializer.DeSeriModePerformLexicalOrdering
-	arrayRules := &serializer.ArrayRules{ValidationMode: serializer.ArrayValidationModeLexicalOrdering}
-	seri.WriteSliceOfByteSlices(bytes, mode, serializer.SeriLengthPrefixType(mapLenType), arrayRules, defaultErrProducer)
-
-	return seri.Serialize()
-}
-
-type CustomSerializable int
-
-func (cs CustomSerializable) SetDeserializationContext(ctx context.Context) {
-	ctx.Value("contextValue").(func())()
-}
-
-func (cs CustomSerializable) MarshalJSON() ([]byte, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (cs CustomSerializable) UnmarshalJSON(bytes []byte) error {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (cs CustomSerializable) Deserialize(data []byte, deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) (int, error) {
-	// ToDo: implement me
-	panic("implement me")
-}
-
-func (cs CustomSerializable) Serialize(deSeriMode serializer.DeSerializationMode, deSeriCtx interface{}) ([]byte, error) {
-	return cs.Encode()
-}
-
-func (cs CustomSerializable) Encode() ([]byte, error) {
-	b := []byte(fmt.Sprintf("int: %d", cs))
-
-	return b, nil
-}
-
-func (cs *CustomSerializable) Decode(b []byte) (int, error) {
-	_, err := fmt.Sscanf(string(b), "int: %d", cs)
-	if err != nil {
-		return 0, err
-	}
-
-	return len(b), nil
-}
-
-type ObjectForSyntacticValidation struct{}
-
-var errSyntacticValidation = ierrors.New("syntactic validation failed")
-
-func SyntacticValidation(ctx context.Context, obj ObjectForSyntacticValidation) error {
-	return errSyntacticValidation
-}
-
-type ObjectForBytesValidation struct{}
-
-var errBytesValidation = ierrors.New("bytes validation failed")
-
-func BytesValidation(ctx context.Context, b []byte) error {
-	return errBytesValidation
-}
-
-func TestMain(m *testing.M) {
-	exitCode := func() int {
-		if err := testAPI.RegisterTypeSettings(
-			SimpleStruct{},
-			serix.TypeSettings{}.WithObjectType(simpleStructObjectCode),
-		); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterTypeSettings(
-			InterfaceImpl{},
-			serix.TypeSettings{}.WithObjectType(interfaceImplObjectCode),
-		); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterTypeSettings(
-			ExportedStruct{},
-			serix.TypeSettings{}.WithObjectType(exportedStructObjectCode),
-		); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil)); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterValidators(ObjectForSyntacticValidation{}, nil, SyntacticValidation); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
-			log.Panic(err)
-		}
-
-		return m.Run()
-	}()
-	os.Exit(exitCode)
-}
 
 func TestMinMax(t *testing.T) {
 	type paras struct {
@@ -451,7 +40,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - string in bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"0,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:",minLen=5,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -469,7 +58,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - string out of bounds",
 			paras: func() paras {
 				type example struct {
-					Str string `serix:"0,minLen=5,maxLen=10,lengthPrefixType=uint8"`
+					Str string `serix:",minLen=5,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -487,7 +76,7 @@ func TestMinMax(t *testing.T) {
 			name: "ok - slice in bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"0,minLen=0,maxLen=10,lengthPrefixType=uint8"`
+					Slice []byte `serix:",minLen=0,maxLen=10,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -505,7 +94,7 @@ func TestMinMax(t *testing.T) {
 			name: "err - slice out of bounds",
 			paras: func() paras {
 				type example struct {
-					Slice []byte `serix:"0,minLen=0,maxLen=3,lengthPrefixType=uint8"`
+					Slice []byte `serix:",minLen=0,maxLen=3,lenPrefix=uint8"`
 				}
 
 				api := serix.NewAPI()
@@ -545,20 +134,677 @@ func TestMinMax(t *testing.T) {
 	}
 }
 
-func BenchmarkEncode(b *testing.B) {
-	simpleStruct := NewSimpleStruct()
-	for i := 0; i < b.N; i++ {
-		testAPI.Encode(context.Background(), simpleStruct)
+type serializeTest struct {
+	name    string
+	source  any
+	target  any
+	size    int
+	seriErr error
+}
+
+func (test *serializeTest) run(t *testing.T) {
+	// binary serialize
+	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+	if test.seriErr != nil {
+		require.ErrorIs(t, err, test.seriErr, "binary serialization failed")
+
+		// we also need to check the json serialization
+		_, err := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
+		require.ErrorIs(t, err, test.seriErr, "json serialization failed")
+
+		return
+	}
+	require.NoError(t, err, "binary serialization failed")
+
+	require.Equal(t, test.size, len(serixData))
+
+	// binary deserialize
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
+	require.NoError(t, err, "binary deserialization failed")
+
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget, "binary")
+
+	// json serialize
+	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
+	require.NoError(t, err, "json serialization failed")
+
+	// json deserialize
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation()), "json deserialization failed")
+
+	require.EqualValues(t, test.source, jsonDest, "json")
+}
+
+func TestSerixSerializeMap(t *testing.T) {
+
+	type MyMapTypeKey string
+	type MyMapTypeValue string
+	type MyMapType map[MyMapTypeKey]MyMapTypeValue
+	type MapStruct struct {
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+	}
+
+	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
+	testAPI.RegisterTypeSettings(MyMapTypeValue(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint32).WithMinLen(1).WithMaxLen(6))
+	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
+
+	tests := []serializeTest{
+		{
+			name: "ok",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+					"k2": "v2",
+				},
+			},
+			target:  &MapStruct{},
+			size:    21,
+			seriErr: nil,
+		},
+		{
+			name: "fail - not enough entries",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - too many entries",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+					"k2": "v2",
+					"k3": "v3",
+					"k4": "v4",
+					"k5": "v5",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+		{
+			name: "fail - too big",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1000",
+					"k2": "v2000",
+					"k3": "v3000",
+					"k4": "v4000",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serix.ErrValidationMaxBytesExceeded,
+		},
+		{
+			name: "fail - key too short",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+					"k":  "v2",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - key too long",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1":     "v1",
+					"k20000": "v2",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+		{
+			name: "fail - value too short",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+					"k2": "",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - value too long",
+			source: &MapStruct{
+				MyMap: MyMapType{
+					"k1": "v1",
+					"k2": "v200000",
+				},
+			},
+			target:  &MapStruct{},
+			size:    0,
+			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
 	}
 }
 
-func BenchmarkDecode(b *testing.B) {
-	simpleStruct := NewSimpleStruct()
-	encoded, err := testAPI.Encode(context.Background(), simpleStruct)
-	if err != nil {
-		b.Fatal(err)
+func TestSerixSerializeString(t *testing.T) {
+
+	type TestStruct struct {
+		TestString string `serix:",lenPrefix=uint8"`
 	}
-	for i := 0; i < b.N; i++ {
-		testAPI.Decode(context.Background(), encoded, new(SimpleStruct))
+
+	testAPI.RegisterTypeSettings(TestStruct{}, serix.TypeSettings{})
+
+	tests := []serializeTest{
+		{
+			name: "ok",
+			source: &TestStruct{
+				TestString: "hello world!",
+			},
+			target:  &TestStruct{},
+			size:    13,
+			seriErr: nil,
+		},
+		{
+			name: "fail - invalid utf8 string",
+			source: &TestStruct{
+				TestString: string([]byte{0xff, 0xfe, 0xfd}),
+			},
+			target:  &TestStruct{},
+			size:    0,
+			seriErr: serix.ErrNonUTF8String,
+		},
 	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+type deSerializeTest struct {
+	name      string
+	source    any
+	target    any
+	size      int
+	deSeriErr error
+}
+
+// convert all *orderedmap.OrderedMap to map[string]interface{}
+func convertOrderedMapToMap(m *orderedmap.OrderedMap) map[string]interface{} {
+	for k, v := range m.Values() {
+		if v, ok := v.(*orderedmap.OrderedMap); ok {
+			m.Set(k, convertOrderedMapToMap(v))
+		}
+	}
+
+	return m.Values()
+}
+
+func (test *deSerializeTest) run(t *testing.T) {
+	// binary serialize test data (without validation)
+	serixData, err := testAPI.Encode(context.Background(), test.source)
+	require.NoError(t, err, "binary serialization failed")
+
+	// "map" serialize test data (without validation)
+	// we don't use the json serialization here, because we want to test serix, and be able to inject malicous data
+	serixMapData, err := testAPI.MapEncode(context.Background(), test.source)
+	require.NoError(t, err, "map serialization failed")
+
+	// convert all *orderedmap.OrderedMap in serixMapData to map[string]interface{}
+	serixMapDataUnordered := convertOrderedMapToMap(serixMapData)
+
+	// binary deserialize
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget, serix.WithValidation())
+	if test.deSeriErr != nil {
+		require.ErrorIs(t, err, test.deSeriErr, "binary deserialization failed")
+
+		// we also need to check the "map" deserialization
+		mapDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+		err := testAPI.MapDecode(context.Background(), serixMapDataUnordered, mapDest, serix.WithValidation())
+		require.ErrorIs(t, err, test.deSeriErr, "map deserialization failed")
+
+		return
+	}
+	require.NoError(t, err, "binary deserialization failed")
+
+	require.Equal(t, test.size, bytesRead)
+	require.EqualValues(t, test.source, serixTarget, "binary")
+
+	// "map" deserialize
+	mapDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.MapDecode(context.Background(), serixMapDataUnordered, mapDest, serix.WithValidation()), "map deserialization failed")
+
+	require.EqualValues(t, test.source, mapDest, "map")
+}
+
+func TestSerixDeserializeMap(t *testing.T) {
+
+	type MyMapTypeKey string
+	type MyMapTypeValue string
+	type MapStruct struct {
+		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+	}
+
+	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
+	testAPI.RegisterTypeSettings(MyMapTypeValue(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint32).WithMinLen(1).WithMaxLen(6))
+	testAPI.RegisterTypeSettings(MapStruct{}, serix.TypeSettings{})
+
+	tests := []deSerializeTest{
+		{
+			name: "ok",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+					"k2": "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      21,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - not enough entries",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - too many entries",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+					"k2": "v2",
+					"k3": "v3",
+					"k4": "v4",
+					"k5": "v5",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+		{
+			name: "fail - too big",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1000",
+					"k2": "v2000",
+					"k3": "v3000",
+					"k4": "v4000",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serix.ErrValidationMaxBytesExceeded,
+		},
+		{
+			name: "fail - key too short",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+					"k":  "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - key too long",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1":     "v1",
+					"k20000": "v2",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+		{
+			name: "fail - value too short",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+					"k2": "",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMinElementsNotReached,
+		},
+		{
+			name: "fail - value too long",
+			source: &MapStruct{
+				MyMap: map[MyMapTypeKey]MyMapTypeValue{
+					"k1": "v1",
+					"k2": "v200000",
+				},
+			},
+			target:    &MapStruct{},
+			size:      0,
+			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestSerixDeserializeString(t *testing.T) {
+
+	type TestStruct struct {
+		TestString string `serix:",lenPrefix=uint8"`
+	}
+
+	testAPI.RegisterTypeSettings(TestStruct{}, serix.TypeSettings{})
+
+	tests := []deSerializeTest{
+		{
+			name: "ok",
+			source: &TestStruct{
+				TestString: "hello world!",
+			},
+			target:    &TestStruct{},
+			size:      13,
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - invalid utf8 string",
+			source: &TestStruct{
+				TestString: string([]byte{0xff, 0xfe, 0xfd}),
+			},
+			target:    &TestStruct{},
+			size:      0,
+			deSeriErr: serix.ErrNonUTF8String,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestSerixFieldKeyString(t *testing.T) {
+	type test struct {
+		name   string
+		source string
+		target string
+	}
+
+	tests := []*test{
+		{
+			name:   "single char",
+			source: "A",
+			target: "a",
+		},
+		{
+			name:   "all upper case",
+			source: "MYTEST",
+			target: "mYTEST",
+		},
+		{
+			name:   "all lower case",
+			source: "mytest",
+			target: "mytest",
+		},
+		{
+			name:   "mixed case",
+			source: "MyTest",
+			target: "myTest",
+		},
+		{
+			name:   "mixed case with numbers",
+			source: "MyTest123",
+			target: "myTest123",
+		},
+		{
+			name:   "mixed case with numbers and underscore",
+			source: "MyTest_123",
+			target: "myTest_123",
+		},
+		{
+			name:   "mixed case with numbers and underscore and dash",
+			source: "MyTest_123-",
+			target: "myTest_123-",
+		},
+		{
+			name:   "mixed case with special keyword 'id'",
+			source: "MyTestID",
+			target: "myTestId",
+		},
+		{
+			name:   "mixed case with special keyword 'URL'",
+			source: "MyTestURL",
+			target: "myTestUrl",
+		},
+		{
+			name:   "mixed case with special keyword 'ID' but lowercase",
+			source: "MyTestid",
+			target: "myTestid",
+		},
+		{
+			name:   "mixed case with special keyword 'URL' but lowercase",
+			source: "MyTesturl",
+			target: "myTesturl",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.target, serix.FieldKeyString(tt.source))
+		})
+	}
+}
+
+func TestSerixMustOccur(t *testing.T) {
+	const (
+		ShapeSquare    byte = 100
+		ShapeRectangle byte = 101
+		ShapeTriangle  byte = 102
+	)
+
+	type (
+		Shape interface {
+		}
+		Square struct {
+			Size uint8 `serix:""`
+		}
+		Rectangle struct {
+			Size uint8 `serix:""`
+		}
+		Triangle struct {
+			Size uint16 `serix:""`
+		}
+		Container struct {
+			Shapes []Shape `serix:""`
+		}
+	)
+
+	var shapesArrRules = &serix.ArrayRules{
+		Min: 0,
+		Max: 10,
+		MustOccur: serializer.TypePrefixes{
+			uint32(ShapeSquare):    struct{}{},
+			uint32(ShapeRectangle): struct{}{},
+		},
+		ValidationMode: serializer.ArrayValidationModeNoDuplicates |
+			serializer.ArrayValidationModeLexicalOrdering |
+			serializer.ArrayValidationModeAtMostOneOfEachTypeByte,
+	}
+
+	must(testAPI.RegisterTypeSettings(Triangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeTriangle))))
+	must(testAPI.RegisterTypeSettings(Square{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeSquare))))
+	must(testAPI.RegisterTypeSettings(Rectangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeRectangle))))
+	must(testAPI.RegisterTypeSettings(Container{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
+
+	must(testAPI.RegisterTypeSettings([]Shape{},
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte).WithArrayRules(shapesArrRules),
+	))
+
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Triangle)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Square)(nil)))
+	must(testAPI.RegisterInterfaceObjects((*Shape)(nil), (*Rectangle)(nil)))
+
+	tests := []encodingTest{
+		{
+			name: "ok encoding",
+			source: &Container{
+				Shapes: []Shape{
+					&Square{Size: 10},
+					&Rectangle{Size: 5},
+					&Triangle{Size: 3},
+				},
+			},
+			target:  &Container{},
+			seriErr: nil,
+		},
+		{
+			name: "fail encoding - square must occur",
+			source: &Container{
+				Shapes: []Shape{
+					&Rectangle{Size: 5},
+					&Triangle{Size: 3},
+				},
+			},
+			target:  &Container{},
+			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+		{
+			name: "fail encoding - square & rectangle must occur - empty slice",
+			source: &Container{
+				Shapes: []Shape{},
+			},
+			target:  &Container{},
+			seriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+
+	deSeriTests := []decodingTest{
+		{
+			name: "ok decoding",
+			source: &Container{
+				Shapes: []Shape{
+					&Square{Size: 10},
+					&Rectangle{Size: 5},
+					&Triangle{Size: 3},
+				},
+			},
+			target:    &Container{},
+			deSeriErr: nil,
+		},
+		{
+			name: "fail decoding - square must occur",
+			source: &Container{
+				Shapes: []Shape{
+					&Rectangle{Size: 5},
+					&Triangle{Size: 3},
+				},
+			},
+			target:    &Container{},
+			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+		{
+			name: "fail decoding - square & rectangle must occur - empty slice",
+			source: &Container{
+				Shapes: []Shape{},
+			},
+			target:    &Container{},
+			deSeriErr: serializer.ErrArrayValidationTypesNotOccurred,
+		},
+	}
+
+	for _, tt := range deSeriTests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+type encodingTest struct {
+	name    string
+	source  any
+	target  any
+	seriErr error
+}
+
+func (test *encodingTest) run(t *testing.T) {
+	serixData, err := testAPI.Encode(context.Background(), test.source, serix.WithValidation())
+	jsonData, jsonErr := testAPI.JSONEncode(context.Background(), test.source, serix.WithValidation())
+
+	if test.seriErr != nil {
+		require.ErrorIs(t, err, test.seriErr)
+		require.ErrorIs(t, jsonErr, test.seriErr)
+
+		return
+	}
+	require.NoError(t, err)
+	require.NoError(t, jsonErr)
+
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget)
+
+	require.NoError(t, err)
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget)
+
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	require.NoError(t, testAPI.JSONDecode(context.Background(), jsonData, jsonDest))
+
+	require.EqualValues(t, test.source, jsonDest)
+}
+
+type decodingTest struct {
+	name      string
+	source    any
+	target    any
+	deSeriErr error
+}
+
+func (test *decodingTest) run(t *testing.T) {
+	serixData, err := testAPI.Encode(context.Background(), test.source)
+	require.NoError(t, err)
+
+	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
+	require.NoError(t, err)
+
+	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	bytesRead, err := testAPI.Decode(context.Background(), serixData, serixTarget, serix.WithValidation())
+
+	jsonDest := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
+	jsonErr := testAPI.JSONDecode(context.Background(), sourceJSON, jsonDest, serix.WithValidation())
+
+	if test.deSeriErr != nil {
+		require.ErrorIs(t, err, test.deSeriErr)
+		require.ErrorIs(t, jsonErr, test.deSeriErr)
+
+		return
+	}
+	require.NoError(t, err)
+	require.Len(t, serixData, bytesRead)
+	require.EqualValues(t, test.source, serixTarget)
+
+	require.NoError(t, jsonErr)
+
+	require.EqualValues(t, test.source, jsonDest)
 }

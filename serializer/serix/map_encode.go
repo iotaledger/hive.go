@@ -16,15 +16,10 @@ import (
 )
 
 const (
-	// the map key under which the object code is written.
-	mapTypeKeyName = "type"
-	// key used when no map key is defined for types which are slice/arrays of bytes.
-	mapSliceArrayDefaultKey = "data"
-)
-
-var (
-	// ErrNonUTF8String gets returned when a non UTF-8 string is being encoded/decoded.
-	ErrNonUTF8String = ierrors.New("non UTF-8 string value")
+	// the key under which the object code is written.
+	keyType = "type"
+	// the key used when no key is defined for types which are slice/arrays of bytes.
+	keyDefaultSliceArray = "data"
 )
 
 func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (ele any, err error) {
@@ -33,6 +28,12 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
 			return nil, ierrors.Wrap(err, "pre-serialization validation failed")
+		}
+	}
+
+	if opts.validation {
+		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
+			return nil, err
 		}
 	}
 
@@ -83,7 +84,7 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Slice:
 		return api.mapEncodeSlice(ctx, value, valueType, ts, opts)
 	case reflect.Map:
-		return api.mapEncodeMap(ctx, value, opts)
+		return api.mapEncodeMap(ctx, value, ts, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
@@ -93,8 +94,15 @@ func (api *API) mapEncodeBasedOnType(
 		return api.mapEncodeInterface(ctx, value, valueType, opts)
 	case reflect.String:
 		str := value.String()
-		if !utf8.ValidString(str) {
-			return nil, ErrNonUTF8String
+
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+			}
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return nil, ErrNonUTF8String
+			}
 		}
 
 		return value.String(), nil
@@ -155,7 +163,7 @@ func (api *API) mapEncodeStruct(
 
 	obj := orderedmap.New()
 	if ts.ObjectType() != nil {
-		obj.Set(mapTypeKeyName, ts.ObjectType())
+		obj.Set(keyType, ts.ObjectType())
 	}
 	if err := api.mapEncodeStructFields(ctx, obj, value, valueType, opts); err != nil {
 		return nil, ierrors.WithStack(err)
@@ -174,7 +182,7 @@ func (api *API) mapEncodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := value.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldValue.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -207,19 +215,19 @@ func (api *API) mapEncodeStructFields(
 		}
 
 		switch {
-		case sField.settings.ts.mapKey != nil:
-			obj.Set(*sField.settings.ts.mapKey, eleOut)
-		case sField.settings.nest:
+		case sField.settings.ts.fieldKey != nil:
+			obj.Set(*sField.settings.ts.fieldKey, eleOut)
+		case sField.settings.inlined:
 			castedEleOut, ok := eleOut.(*orderedmap.OrderedMap)
 			if !ok {
-				return ierrors.Errorf("failed to cast nested struct field %s to map", sField.name)
+				return ierrors.Errorf("failed to cast inlined struct field %s to map", sField.name)
 			}
 
 			for _, k := range castedEleOut.Keys() {
 				obj.Set(k, lo.Return1(castedEleOut.Get(k)))
 			}
 		default:
-			obj.Set(mapStringKey(sField.name), eleOut)
+			obj.Set(FieldKeyString(sField.name), eleOut)
 		}
 	}
 
@@ -231,21 +239,38 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	if ts.ObjectType() != nil {
 		m := orderedmap.New()
-		m.Set(mapTypeKeyName, ts.ObjectType())
-		mapKey := mapSliceArrayDefaultKey
-		if ts.mapKey != nil {
-			mapKey = *ts.mapKey
+		m.Set(keyType, ts.ObjectType())
+		fieldKey := keyDefaultSliceArray
+		if ts.fieldKey != nil {
+			fieldKey = *ts.fieldKey
 		}
-		m.Set(mapKey, EncodeHex(value.Bytes()))
+		m.Set(fieldKey, EncodeHex(value.Bytes()))
 
 		return m, nil
 	}
 
 	if valueType.AssignableTo(bytesType) {
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
+				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+			}
+		}
+
 		return EncodeHex(value.Bytes()), nil
 	}
 
 	sliceLen := value.Len()
+
+	if err := api.checkMinMaxBoundsLength(sliceLen, ts); err != nil {
+		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+	}
+
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+	}
+
 	data := make([]any, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		elemValue := value.Index(i)
@@ -259,7 +284,31 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	return data, nil
 }
 
-func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, opts *options) (*orderedmap.OrderedMap, error) {
+func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
+	keyTypeSettings := api.getTypeSettingsByValue(key)
+	valueTypeSettings := api.getTypeSettingsByValue(val)
+
+	k, err := api.mapEncode(ctx, key, keyTypeSettings, opts)
+	if err != nil {
+		return "", nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
+	}
+
+	v, err := api.mapEncode(ctx, val, valueTypeSettings, opts)
+	if err != nil {
+		return "", nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
+	}
+
+	//nolint:forcetypeassert // map keys are always strings
+	return k.(string), v, nil
+}
+
+func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return nil, err
+		}
+	}
+
 	m := orderedmap.New()
 	iter := value.MapRange()
 	for i := 0; iter.Next(); i++ {
@@ -273,18 +322,4 @@ func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, opts *opt
 	}
 
 	return m, nil
-}
-
-func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
-	k, err := api.mapEncode(ctx, key, TypeSettings{}, opts)
-	if err != nil {
-		return "", nil, ierrors.Wrapf(err, "failed to encode map key of type %s", key.Type())
-	}
-	v, err := api.mapEncode(ctx, val, TypeSettings{}, opts)
-	if err != nil {
-		return "", nil, ierrors.Wrapf(err, "failed to encode map element of type %s", val.Type())
-	}
-
-	//nolint:forcetypeassert // map keys are always strings
-	return k.(string), v, nil
 }

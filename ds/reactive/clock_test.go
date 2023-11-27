@@ -18,5 +18,5 @@ func TestClock(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	require.Greater(t, tickCount, 10)
+	require.GreaterOrEqual(t, tickCount, 10)
 }

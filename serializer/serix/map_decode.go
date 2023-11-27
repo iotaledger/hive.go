@@ -40,6 +40,12 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 		}
 	}
 
+	if opts.validation {
+		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -98,24 +104,31 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 					return ierrors.Errorf("missing type settings for interface %s", valueType)
 				}
 
-				mapKey := mapSliceArrayDefaultKey
-				if innerTS.mapKey != nil {
-					mapKey = *innerTS.mapKey
+				fieldKey := keyDefaultSliceArray
+				if innerTS.fieldKey != nil {
+					fieldKey = *innerTS.fieldKey
 				}
 
 				//nolint:forcetypeassert
-				fieldValStr := mapVal.(map[string]any)[mapKey].(string)
+				fieldValStr := mapVal.(map[string]any)[fieldKey].(string)
 				byteSlice, err := DecodeHex(fieldValStr)
 				if err != nil {
 					return ierrors.Wrap(err, "failed to read byte slice from map")
 				}
+
+				if opts.validation {
+					if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+						return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+					}
+				}
+
 				copy(sliceValue.Bytes(), byteSlice)
 				fillArrayFromSlice(value.Elem(), sliceValue)
 
 				return nil
 			}
 
-			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
+			return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 		}
 
 	case reflect.Struct:
@@ -125,9 +138,9 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 
 		return api.mapDecodeStruct(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Slice:
-		return api.mapDecodeSlice(ctx, mapVal, value, valueType, opts)
+		return api.mapDecodeSlice(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Map:
-		return api.mapDecodeMap(ctx, mapVal, value, valueType, opts)
+		return api.mapDecodeMap(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.Array:
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
@@ -142,7 +155,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			return nil
 		}
 
-		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, opts)
+		return api.mapDecodeSlice(ctx, mapVal, sliceValue, sliceValueType, ts, opts)
 	case reflect.Interface:
 		return api.mapDecodeInterface(ctx, mapVal, value, valueType, ts, opts)
 	case reflect.String:
@@ -150,9 +163,17 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		if !ok {
 			return ierrors.New("non string value for string field")
 		}
-		if !utf8.ValidString(str) {
-			return ErrNonUTF8String
+
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+			}
+			// check the string for UTF-8 validity
+			if !utf8.ValidString(str) {
+				return ErrNonUTF8String
+			}
 		}
+
 		addrValue := value.Addr().Convert(reflect.TypeOf((*string)(nil)))
 		addrValue.Elem().Set(reflect.ValueOf(mapVal))
 
@@ -264,7 +285,7 @@ func (api *API) mapDecodeInterface(
 		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
 	}
 
-	objectCodeAny, has := m[mapTypeKeyName]
+	objectCodeAny, has := m[keyType]
 	if !has {
 		return ierrors.Errorf("no object type defined in map for interface %s", valueType)
 	}
@@ -310,7 +331,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 		if err != nil {
 			return ierrors.WithStack(err)
 		}
-		mapObjectCode, has := m[mapTypeKeyName]
+		mapObjectCode, has := m[keyType]
 		if !has {
 			return ierrors.Wrap(err, "missing type key in struct")
 		}
@@ -339,7 +360,7 @@ func (api *API) mapDecodeStructFields(
 
 	for _, sField := range structFields {
 		fieldValue := structVal.Field(sField.index)
-		if sField.isEmbedded && !sField.settings.nest {
+		if sField.isEmbedded && !sField.settings.inlined {
 			fieldType := sField.fType
 			if fieldType.Kind() == reflect.Ptr {
 				if fieldValue.IsNil() {
@@ -361,20 +382,20 @@ func (api *API) mapDecodeStructFields(
 			continue
 		}
 
-		if sField.settings.nest {
+		if sField.settings.inlined {
 			if err := api.mapDecode(ctx, m, fieldValue, sField.settings.ts, opts); err != nil {
-				return ierrors.Wrapf(err, "failed to deserialize nested struct field %s", sField.name)
+				return ierrors.Wrapf(err, "failed to deserialize inlined struct field %s", sField.name)
 			}
 
 			continue
 		}
 
-		key := mapStringKey(sField.name)
-		if sField.settings.ts.mapKey != nil {
-			key = sField.settings.ts.MustMapKey()
+		fieldKey := FieldKeyString(sField.name)
+		if sField.settings.ts.fieldKey != nil {
+			fieldKey = sField.settings.ts.MustFieldKey()
 		}
 
-		mapVal, has := m[key]
+		mapVal, has := m[fieldKey]
 		if !has {
 			if sField.settings.isOptional || sField.settings.omitEmpty {
 				continue
@@ -392,13 +413,19 @@ func (api *API) mapDecodeStructFields(
 }
 
 func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, opts *options) error {
+	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	if valueType.AssignableTo(bytesType) {
 		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		fieldValStr := mapVal.(string)
 		byteSlice, err := DecodeHex(fieldValStr)
 		if err != nil {
 			return ierrors.Wrap(err, "failed to read byte slice from map")
+		}
+
+		if opts.validation {
+			if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+			}
 		}
 
 		addrValue := value.Addr().Convert(reflect.TypeOf((*[]byte)(nil)))
@@ -416,17 +443,29 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		value.Set(reflect.Append(value, elemValue))
 	}
 
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+	}
+
 	// check if the slice is a nil pointer to the slice type (in case the sliceLength is zero and the slice was not initialized before)
 	if value.IsNil() {
 		// initialize a new empty slice
 		value.Set(reflect.MakeSlice(valueType, 0, 0))
 	}
 
+	if opts.validation {
+		if err := api.checkArrayMustOccur(value, ts); err != nil {
+			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
+		}
+	}
+
 	return nil
 }
 
 func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Value,
-	valueType reflect.Type, opts *options) error {
+	valueType reflect.Type, ts TypeSettings, opts *options) error {
 	m, ok := mapVal.(map[string]any)
 	if !ok {
 		return ierrors.Errorf("non map[string]any in struct map decode, got %T instead", mapVal)
@@ -436,19 +475,38 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		value.Set(reflect.MakeMap(valueType))
 	}
 
+	var typeSettingsSet bool
+	var keyTypeSettings, valueTypeSettings TypeSettings
 	for k, v := range m {
-		key := reflect.New(valueType.Key()).Elem()
-		val := reflect.New(valueType.Elem()).Elem()
+		keyValue := reflect.New(valueType.Key()).Elem()
+		elemValue := reflect.New(valueType.Elem()).Elem()
 
-		if err := api.mapDecode(ctx, k, key, TypeSettings{}, opts); err != nil {
-			return ierrors.Wrapf(err, "failed to map decode map key of type %s", key.Type())
+		if !typeSettingsSet {
+			keyTypeSettings = api.getTypeSettingsByValue(keyValue)
+			valueTypeSettings = api.getTypeSettingsByValue(elemValue)
+			typeSettingsSet = true
 		}
 
-		if err := api.mapDecode(ctx, v, val, TypeSettings{}, opts); err != nil {
-			return ierrors.Wrapf(err, "failed to map decode map element of type %s", val.Type())
+		if err := api.mapDecode(ctx, k, keyValue, keyTypeSettings, opts); err != nil {
+			return ierrors.Wrapf(err, "failed to map decode map key of type %s", keyValue.Type())
 		}
 
-		value.SetMapIndex(key, val)
+		if value.MapIndex(keyValue).IsValid() {
+			// map entry already exists
+			return ierrors.Wrapf(ErrMapValidationViolatesUniqueness, "map entry with key %v already exists", keyValue.Interface())
+		}
+
+		if err := api.mapDecode(ctx, v, elemValue, valueTypeSettings, opts); err != nil {
+			return ierrors.Wrapf(err, "failed to map decode map element of type %s", elemValue.Type())
+		}
+
+		value.SetMapIndex(keyValue, elemValue)
+	}
+
+	if opts.validation {
+		if err := api.checkMinMaxBounds(value, ts); err != nil {
+			return err
+		}
 	}
 
 	return nil

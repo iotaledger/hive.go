@@ -3,8 +3,6 @@ package log
 import (
 	"log/slog"
 	"os"
-
-	"github.com/iotaledger/hive.go/ds/reactive"
 )
 
 // Logger is a reactive logger that can be used to log messages with different log levels.
@@ -86,7 +84,7 @@ type Logger interface {
 	// NewEntityLogger creates a new logger for an entity with the given name. The logger is automatically shut down
 	// when the given shutdown event is triggered. The initLogging function is called with the new logger instance and
 	// can be used to configure the logger.
-	NewEntityLogger(entityName string, shutdownEvent reactive.Event, initLogging func(entityLogger Logger)) Logger
+	NewEntityLogger(entityName string) (entityLogger Logger, shutdown func())
 }
 
 // NewLogger creates a new logger with the given name and an optional handler. If no handler is provided, the logger

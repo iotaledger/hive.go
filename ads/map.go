@@ -37,6 +37,14 @@ type Map[IdentifierType types.IdentifierType, K, V any] interface {
 }
 
 // NewMap creates a new AuthenticatedMap.
-func NewMap[IdentifierType types.IdentifierType, K, V any](store kvstore.KVStore, keyToBytes kvstore.ObjectToBytes[K], bytesToKey kvstore.BytesToObject[K], valueToBytes kvstore.ObjectToBytes[V], bytesToValue kvstore.BytesToObject[V]) Map[IdentifierType, K, V] {
-	return newAuthenticatedMap[IdentifierType](store, keyToBytes, bytesToKey, valueToBytes, bytesToValue)
+func NewMap[IdentifierType types.IdentifierType, K, V any](
+	store kvstore.KVStore,
+	identifierToBytes kvstore.ObjectToBytes[IdentifierType],
+	bytesToIdentifier kvstore.BytesToObject[IdentifierType],
+	keyToBytes kvstore.ObjectToBytes[K],
+	bytesToKey kvstore.BytesToObject[K],
+	valueToBytes kvstore.ObjectToBytes[V],
+	bytesToValue kvstore.BytesToObject[V],
+) Map[IdentifierType, K, V] {
+	return newAuthenticatedMap[IdentifierType](store, identifierToBytes, bytesToIdentifier, keyToBytes, bytesToKey, valueToBytes, bytesToValue)
 }

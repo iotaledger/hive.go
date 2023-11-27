@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/iotaledger/hive.go/ierrors"
 )
@@ -123,7 +122,9 @@ type ArrayRules struct {
 	Min uint
 	// The max array bound.
 	Max uint
-	// A map of types which must occur within the array.
+	// A map of object types which must occur within the array.
+	// This is only checked on slices of types with an object type set.
+	// In particular, this means this is not checked for byte slices.
 	MustOccur TypePrefixes
 	// The guards applied while de/serializing Serializables.
 	Guards SerializableGuard
@@ -367,27 +368,6 @@ func (l LexicalOrdered40ByteArrays) Less(i, j int) bool {
 
 func (l LexicalOrdered40ByteArrays) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
-}
-
-// RemoveDupsAndSortByLexicalOrderArrayOf32Bytes returns a new SliceOfArraysOf32Bytes sorted by lexical order and without duplicates.
-func RemoveDupsAndSortByLexicalOrderArrayOf32Bytes(slice SliceOfArraysOf32Bytes) SliceOfArraysOf32Bytes {
-	seen := make(map[string]struct{})
-	orderedArray := make(LexicalOrdered32ByteArrays, len(slice))
-
-	uniqueElements := 0
-	for _, v := range slice {
-		k := string(v[:])
-		if _, has := seen[k]; has {
-			continue
-		}
-		seen[k] = struct{}{}
-		orderedArray[uniqueElements] = v
-		uniqueElements++
-	}
-	orderedArray = orderedArray[:uniqueElements]
-	sort.Sort(orderedArray)
-
-	return orderedArray
 }
 
 // SortedSerializables are Serializables sorted by their serialized form.

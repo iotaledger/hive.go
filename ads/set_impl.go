@@ -11,9 +11,15 @@ type authenticatedSet[IdentifierType types.IdentifierType, K any] struct {
 }
 
 // NewAuthenticatedSet creates a new sparse merkle tree based set.
-func newAuthenticatedSet[IdentifierType types.IdentifierType, K any](store kvstore.KVStore, keyToBytes kvstore.ObjectToBytes[K], bytesToKey kvstore.BytesToObject[K]) *authenticatedSet[IdentifierType, K] {
+func newAuthenticatedSet[IdentifierType types.IdentifierType, K any](
+	store kvstore.KVStore,
+	identifierToBytes kvstore.ObjectToBytes[IdentifierType],
+	bytesToIdentifier kvstore.BytesToObject[IdentifierType],
+	keyToBytes kvstore.ObjectToBytes[K],
+	bytesToKey kvstore.BytesToObject[K],
+) Set[IdentifierType, K] {
 	return &authenticatedSet[IdentifierType, K]{
-		authenticatedMap: newAuthenticatedMap[IdentifierType](store, keyToBytes, bytesToKey, types.Empty.Bytes, types.EmptyFromBytes),
+		authenticatedMap: newAuthenticatedMap[IdentifierType](store, identifierToBytes, bytesToIdentifier, keyToBytes, bytesToKey, types.Empty.Bytes, types.EmptyFromBytes),
 	}
 }
 
