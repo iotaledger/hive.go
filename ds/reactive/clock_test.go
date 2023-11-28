@@ -35,8 +35,8 @@ func TestClockInitialization(t *testing.T) {
 	}
 }
 
-// TestClockDefaultTime tests the default time set in the clock struct
-func TestClockDefaultTime(t *testing.T) {
+// TestClockInitialTime tests the default time set in the clock struct
+func TestClockInitialTime(t *testing.T) {
 	clk := newClock(1 * time.Millisecond)
 	initialTime := time.Now()
 
@@ -55,8 +55,13 @@ func TestClockShutdown(t *testing.T) {
 	// Send a shutdown signal
 	clk.Shutdown()
 
-	// Wait for longer than the update interval to ensure no further updates
+	// Wait for a short time to ensure the clock is not advancing after shutdown
 	time.Sleep(1 * time.Second)
 
-	require.Equal(t, initialTime.Truncate(1*time.Second), clk.variable.Get().Truncate(1*time.Second), "Expected clock time to not update after shutdown")
+	// Wait for longer than the update interval to ensure no further updates
+	diff := initialTime.Sub(clk.variable.Get())
+	if diff < 0 {
+		diff = -diff
+	}
+	require.True(t, diff < 100*time.Millisecond, "Expected clock time to not update after shutdown")
 }
