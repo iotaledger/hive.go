@@ -14,7 +14,7 @@ func TestClock(t *testing.T) {
 	clock := NewClock(100 * time.Millisecond)
 	clock.OnTick(func(now time.Time) {
 		tickCount.Add(1)
-		require.Less(t, time.Now().Sub(now), 100*time.Millisecond)
+		require.Less(t, time.Now().Sub(now), 30*time.Millisecond)
 	})
 
 	time.Sleep(time.Second)
@@ -37,10 +37,14 @@ func TestClockInitialization(t *testing.T) {
 
 // TestClockDefaultTime tests the default time set in the clock struct
 func TestClockDefaultTime(t *testing.T) {
-	clk := newClock(1 * time.Second)
+	clk := newClock(1 * time.Millisecond)
 	initialTime := time.Now()
 
-	require.Equal(t, initialTime.Truncate(1*time.Second), clk.variable.Get().Truncate(1*time.Second), "Expected initial time to be current time")
+	diff := initialTime.Sub(clk.variable.Get())
+	if diff < 0 {
+		diff = -diff
+	}
+	require.True(t, diff <= 10*time.Millisecond, "Expected initial time to be within 10ms of current time")
 }
 
 // TestClockShutdown tests the shutdown functionality of the clock

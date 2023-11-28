@@ -49,11 +49,11 @@ func TestEvict(t *testing.T) {
 }
 
 // TestEvictPrivate tests the private evict method
-func TestEvictPrivate(t *testing.T) {
+func TestEvictTriggered(t *testing.T) {
 	state := newEvictionState[int]()
 
 	// Test with a slot less than the current lastEvictedSlotIndex
-	state.lastEvictedSlot.Set(2) // Set the last evicted slot to 2
+	state.lastEvictedSlot.Set(2)      // Set the last evicted slot to 2
 	eventsToTrigger := state.evict(1) // Try to evict slot 1, which is less than the last evicted slot
 	require.Len(t, eventsToTrigger, 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
 
@@ -64,9 +64,7 @@ func TestEvictPrivate(t *testing.T) {
 	// Test with a slot greater than the current lastEvictedSlotIndex
 	slotToEvict := 3
 	state.evictionEvents.Set(slotToEvict, NewEvent())
-	eventsToTrigger = state.evict(slotToEvict)
-	require.Len(t, eventsToTrigger, 1, "evict should return one event to trigger when slot is greater than lastEvictedSlotIndex")
+	eventToTrigger := state.EvictionEvent(slotToEvict)
+	state.Evict(slotToEvict)
+	require.True(t, eventToTrigger.WasTriggered(), "evicted event should have been triggered")
 }
-
-
-// Note: Additional test cases may be added to cover more scenarios based on your application's needs and logic.

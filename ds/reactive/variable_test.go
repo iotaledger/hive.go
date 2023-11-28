@@ -151,6 +151,7 @@ func TestVariable_InheritFrom(t *testing.T) {
 	unsubscribe := childVar.InheritFrom(parentVar)
 	defer unsubscribe()
 
+	require.Equal(t, 10, childVar.Get())
 	parentVar.Set(20)
 	require.Equal(t, 20, childVar.Get())
 }
@@ -173,53 +174,125 @@ func TestVariable_WithValue(t *testing.T) {
 	rVar := newVariable[int]()
 	rVar.Set(10)
 
-	setupCalled := false
-	teardownCalled := false
+	var setupElement int
+	setupCalledTimes := 0
+	var teardownElement int
+	teardownCalledTimes := 0
 
 	teardown := rVar.WithValue(
 		func(value int) (teardown func()) {
-			setupCalled = true
-			return func() { teardownCalled = true }
+			setupElement = value
+			setupCalledTimes++
+			return func() {
+				teardownElement = value
+				teardownCalledTimes++
+			}
 		},
 	)
 	defer teardown()
 
+	require.Equal(t, 1, setupCalledTimes)
+	require.Equal(t, 0, teardownCalledTimes)
+	require.Equal(t, 10, setupElement)
 	rVar.Set(20)
-	require.True(t, setupCalled)
-	require.True(t, teardownCalled)
+	require.Equal(t, 2, setupCalledTimes)
+	require.Equal(t, 1, teardownCalledTimes)
+	require.Equal(t, 20, setupElement)
+	require.Equal(t, 10, teardownElement)
+	rVar.Set(0)
+	require.Equal(t, 3, setupCalledTimes)
+	require.Equal(t, 2, teardownCalledTimes)
+	require.Equal(t, 0, setupElement)
+	require.Equal(t, 20, teardownElement)
 }
 
 // TestVariable_WithNonEmptyValue tests the WithNonEmptyValue method of the variable type
 func TestVariable_WithNonEmptyValue(t *testing.T) {
 	rVar := newVariable[int]()
 	rVar.Set(10)
-	setupCalled := false
+
+	var setupElement int
+	setupCalledTimes := 0
+	var teardownElement int
+	teardownCalledTimes := 0
 
 	teardown := rVar.WithNonEmptyValue(
 		func(value int) (teardown func()) {
-			setupCalled = true
-			return func() {}
+			setupElement = value
+			setupCalledTimes++
+			return func() {
+				teardownElement = value
+				teardownCalledTimes++
+			}
 		},
 	)
 	defer teardown()
 
+	// The setup and teardown callbacks are only called when the variable is not empty
+	require.Equal(t, 1, setupCalledTimes)
+	require.Equal(t, 0, teardownCalledTimes)
+	require.Equal(t, 10, setupElement)
 	rVar.Set(20)
-	require.True(t, setupCalled)
+	require.Equal(t, 2, setupCalledTimes)
+	require.Equal(t, 1, teardownCalledTimes)
+	require.Equal(t, 20, setupElement)
+	require.Equal(t, 10, teardownElement)
+	rVar.Set(0)
+	// The setup is not called for the new empty value, but the teardown for the previous non-empty value is.
+	require.Equal(t, 2, setupCalledTimes)
+	require.Equal(t, 2, teardownCalledTimes)
+	require.Equal(t, 20, setupElement)
+	require.Equal(t, 20, teardownElement)
+	rVar.Set(0)
+	// The setup and teardown callback is not called when the variable is empty
+	require.Equal(t, 2, setupCalledTimes)
+	require.Equal(t, 2, teardownCalledTimes)
+	require.Equal(t, 20, setupElement)
+	require.Equal(t, 20, teardownElement)
+	rVar.Set(1)
+	// The setup is called for the new non-empty value, but the callback for the previous empty value isn't.
+	require.Equal(t, 3, setupCalledTimes)
+	require.Equal(t, 2, teardownCalledTimes)
+	require.Equal(t, 1, setupElement)
+	require.Equal(t, 20, teardownElement)
+	rVar.Set(2)
+	// Both are called
+	require.Equal(t, 4, setupCalledTimes)
+	require.Equal(t, 3, teardownCalledTimes)
+	require.Equal(t, 2, setupElement)
+	require.Equal(t, 1, teardownElement)
+	rVar.Set(0)
+	// Only the teardown is called, as it was non-empty.
+	require.Equal(t, 4, setupCalledTimes)
+	require.Equal(t, 4, teardownCalledTimes)
+	require.Equal(t, 2, setupElement)
+	require.Equal(t, 2, teardownElement)
 }
 
 // TestVariable_OnUpdateOnce tests the OnUpdateOnce method of the variable type
 func TestVariable_OnUpdateOnce(t *testing.T) {
 	rVar := newVariable[int]()
+	callbackCalledCounter := 0
+
 	rVar.Set(10)
-	callbackCalled := false
 
 	unsubscribe := rVar.OnUpdateOnce(func(oldValue, newValue int) {
-		callbackCalled = true
+		callbackCalledCounter++
 	})
 	defer unsubscribe()
 
+	// It should have been already called once, when the callback was registered, as the variable was already updated even
+	// before the callback was registered.
+	require.Equal(t, 1, callbackCalledCounter)
 	rVar.Set(20)
-	require.True(t, callbackCalled)
+	require.Equal(t, 1, callbackCalledCounter)
+
+	// These should not trigger the callback, as it was only subscribed for a single update.
+	rVar.Set(20)
+	rVar.Set(1)
+	rVar.Set(99)
+
+	require.Equal(t, 1, callbackCalledCounter)
 }
 
 // TestReadableVariable_OnUpdateOnce_WithCondition tests OnUpdateOnce with a condition
@@ -228,7 +301,7 @@ func TestReadableVariable_OnUpdateOnce_WithCondition(t *testing.T) {
 	rv.Set(0)
 
 	var oldValue, newValue int
-	conditionNotMet := true
+	conditionMetCounter := 0
 
 	// Define a condition that is not met
 	condition := func(oldVal, newVal int) bool {
@@ -239,17 +312,25 @@ func TestReadableVariable_OnUpdateOnce_WithCondition(t *testing.T) {
 	unsubscribe := rv.OnUpdateOnce(func(o, n int) {
 		oldValue = o
 		newValue = n
-		conditionNotMet = false
+		conditionMetCounter++
 	}, condition)
 	defer unsubscribe()
 
 	// Set a value that does not meet the condition
 	rv.Set(3)
-	require.True(t, conditionNotMet, "Callback should not have been triggered")
+	require.Equal(t, 0, conditionMetCounter, "Callback should not have been triggered")
 
 	// Set a value that meets the condition
 	rv.Set(6)
-	require.False(t, conditionNotMet, "Callback should have been triggered")
+	require.Equal(t, 1, conditionMetCounter, "Callback should have been triggered only once")
 	require.Equal(t, 3, oldValue)
 	require.Equal(t, 6, newValue)
+
+	// These meet the condition to update the variable but should not trigger the callback, as it was only subscribed for a single update.
+	rv.Set(8)
+	rv.Set(11)
+	rv.Set(10)
+	rv.Set(15)
+
+	require.Equal(t, 1, conditionMetCounter, "Callback should have been triggered only once")
 }

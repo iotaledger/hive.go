@@ -107,6 +107,7 @@ func TestSet_AddAll(t *testing.T) {
 	// Test adding duplicate elements
 	addedElements = s.AddAll(otherSet.ReadOnly())
 	require.Equal(t, 0, addedElements.Size())
+	require.Equal(t, 2, s.Size())
 }
 
 func TestSet_Delete(t *testing.T) {
@@ -118,6 +119,7 @@ func TestSet_Delete(t *testing.T) {
 	// Test deleting a non-existent element
 	deleted = s.Delete(4)
 	require.False(t, deleted)
+	require.Equal(t, 2, s.Size())
 }
 
 func TestSet_DeleteAll(t *testing.T) {
@@ -128,11 +130,6 @@ func TestSet_DeleteAll(t *testing.T) {
 	require.Equal(t, 2, deletedElements.Size())
 	require.Equal(t, 2, s.Size())
 }
-
-// Similar tests for Apply, Compute, Replace, Decode, ReadOnly
-// Note: Mocking or stubbing may be required for some methods
-
-// --- Tests for readableSet type ---
 
 func TestNewReadableSet(t *testing.T) {
 	r := newReadableSet[int](1, 2, 3)
@@ -153,48 +150,59 @@ func TestReadableSet_SubtractReactive(t *testing.T) {
 	result := mainSet.SubtractReactive(subtractSet)
 
 	// Initially, 2 should be subtracted from mainSet
+	require.Equal(t, 3, mainSet.Size())
 	require.False(t, result.Has(2))
 	require.True(t, result.Has(1))
 	require.True(t, result.Has(3))
+	require.Equal(t, 1, subtractSet.Size())
+	require.Equal(t, 2, result.Size())
 
 	// Update subtractSet and check if result set is updated
 	subtractSet.Add(3)
 	require.False(t, result.Has(3)) // Now 3 should also be subtracted
+	require.Equal(t, 1, result.Size())
+	require.Equal(t, 3, mainSet.Size())
+	require.Equal(t, 2, subtractSet.Size())
 }
 
 // TestReadableSet_WithElements tests the WithElements method
 func TestReadableSet_WithElements(t *testing.T) {
 	rSet := newSet[int](1, 2, 3)
 
-	setupCalled := false
-	teardownCalled := false
+	setupCalledTimes := 0
+	teardownCalledTimes := 0
 
 	teardown := rSet.WithElements(
 		func(element int) (teardown func()) {
-			setupCalled = true
+			setupCalledTimes++
 			return func() {
-				teardownCalled = true
+				teardownCalledTimes++
 			}
 		},
 	)
 	defer teardown()
 
 	rSet.Add(4) // Trigger setup
-	require.True(t, setupCalled)
+	rSet.Add(4) // Should not trigger setup again as it is a duplicate
+	rSet.Add(1) // Should not trigger setup again as it is a duplicate
+	require.Equal(t, 4, setupCalledTimes)
 
 	rSet.Delete(4) // Trigger teardown
-	require.True(t, teardownCalled)
+	require.Equal(t, 1, teardownCalledTimes)
 }
 
 // TestDerivedSet_inheritMutations tests the inheritMutations method
 func TestDerivedSet_inheritMutations(t *testing.T) {
 	dSet := newDerivedSet[int]()
-	mutations := ds.NewSetMutations[int]().WithAddedElements(newSet(1, 2))
+	mutations := ds.NewSetMutations[int]().WithAddedElements(newSet(1, 2, 2))
 
 	// Apply mutations
 	appliedMutations := dSet.inheritMutations(mutations)
 	require.True(t, appliedMutations.AddedElements().Has(1))
 	require.True(t, appliedMutations.AddedElements().Has(2))
+	require.Equal(t, 2, dSet.Size())
+	require.Equal(t, 2, appliedMutations.AddedElements().Size())
+	require.Equal(t, 0, appliedMutations.DeletedElements().Size())
 }
 
 // TestDerivedSet_applyInheritedMutations tests the applyInheritedMutations method
@@ -206,6 +214,7 @@ func TestDerivedSet_applyInheritedMutations(t *testing.T) {
 	inheritedMutations, triggerID, _ := dSet.applyInheritedMutations(mutations)
 	require.True(t, inheritedMutations.AddedElements().Has(1))
 	require.True(t, inheritedMutations.AddedElements().Has(2))
+	require.Equal(t, 2, dSet.Size())
 	require.NotNil(t, triggerID)
 }
 
@@ -229,15 +238,18 @@ func TestSet_Compute(t *testing.T) {
 	// Check if the mutations are applied correctly
 	require.False(t, s.Has(2), "Element 2 should be deleted")
 	require.True(t, s.Has(4), "Element 4 should be added")
+	require.Equal(t, 3, s.Size(), "Set size should be 3")
 	require.True(t, appliedMutations.DeletedElements().Has(2))
 	require.True(t, appliedMutations.AddedElements().Has(4))
+	require.Equal(t, 1, appliedMutations.DeletedElements().Size())
+	require.Equal(t, 1, appliedMutations.AddedElements().Size())
 }
 
 func TestSet_EmptyApply(t *testing.T) {
 	appliedMutations := newSet[int](1, 2, 3).Apply(ds.NewSetMutations[int]())
 
-	require.Equal(t, appliedMutations.AddedElements().Size(), 0)
-	require.Equal(t, appliedMutations.DeletedElements().Size(), 0)
+	require.Equal(t, 0, appliedMutations.AddedElements().Size())
+	require.Equal(t, 0, appliedMutations.DeletedElements().Size())
 	require.True(t, appliedMutations.IsEmpty())
 }
 
