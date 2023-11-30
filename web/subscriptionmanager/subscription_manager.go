@@ -141,6 +141,7 @@ func (s *SubscriptionManager[C, T]) Events() *Events[C, T] {
 	return s.events
 }
 
+// Connect connects the client.
 func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 
 	wasConnected := false
@@ -174,7 +175,9 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 	s.events.ClientConnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 }
 
-func (s *SubscriptionManager[C, T]) Disconnect(clientID C) {
+// Disconnect disconnects the client.
+// Returns true if the client was connected.
+func (s *SubscriptionManager[C, T]) Disconnect(clientID C) bool {
 
 	// cleanup the client
 	if wasConnected, removedTopics, unsubscribedTopics := s.cleanupClient(clientID); wasConnected {
@@ -185,10 +188,16 @@ func (s *SubscriptionManager[C, T]) Disconnect(clientID C) {
 			s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
 		}
 		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
+
+		return true
 	}
+
+	return false
 }
 
-func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
+// Subscribe subscribes the client to the topic.
+// Returns true if the client successfully subscribed to the topic.
+func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) bool {
 
 	clientDropped := false
 	var removedTopics, unsubscribedTopics []T
@@ -248,7 +257,7 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 		s.events.ClientDisconnected.Trigger(&ClientEvent[C]{ClientID: clientID})
 
 		// do not fire the subscribed events
-		return
+		return false
 	}
 
 	if topicAdded {
@@ -256,9 +265,13 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) {
 	}
 
 	s.events.TopicSubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+
+	return true
 }
 
-func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) {
+// Unsubscribe unsubscribes the client from the topic.
+// Returns true if the client successfully unsubscribed from the topic.
+func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) bool {
 
 	topicRemoved := false
 	topicUnsubscribed := false
@@ -306,7 +319,7 @@ func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) {
 
 	if !topicUnsubscribed {
 		// do not fire the unsubscribed events
-		return
+		return false
 	}
 
 	if topicRemoved {
@@ -314,6 +327,8 @@ func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) {
 	}
 
 	s.events.TopicUnsubscribed.Trigger(&ClientTopicEvent[C, T]{ClientID: clientID, Topic: topic})
+
+	return true
 }
 
 func (s *SubscriptionManager[C, T]) TopicHasSubscribers(topic T) bool {
