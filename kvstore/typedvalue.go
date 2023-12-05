@@ -15,7 +15,7 @@ type TypedValue[V any] struct {
 
 	valueCached *V
 	hasCached   *bool
-	mutex       syncutils.Mutex
+	mutex       syncutils.RWMutex
 }
 
 // NewTypedValue is the constructor for TypedValue.
@@ -40,6 +40,24 @@ func (t *TypedValue[V]) KVStore() KVStore {
 
 // Get gets the given key or an error if an error occurred.
 func (t *TypedValue[V]) Get() (value V, err error) {
+	// First check the cache without getting a write lock
+	t.mutex.RLock()
+	if t.hasCached != nil && !*t.hasCached {
+		defer t.mutex.RUnlock()
+
+		return value, ErrKeyNotFound
+	}
+
+	if t.valueCached != nil {
+		defer t.mutex.RUnlock()
+
+		return *t.valueCached, nil
+	}
+
+	t.mutex.RUnlock()
+
+	// If we have a cache miss, get lock and check again
+
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -69,6 +87,17 @@ func (t *TypedValue[V]) Get() (value V, err error) {
 
 // Has checks whether the given key exists.
 func (t *TypedValue[V]) Has() (has bool, err error) {
+	// First read lock to check the cache
+	t.mutex.RLock()
+	if t.hasCached != nil {
+		defer t.mutex.RUnlock()
+
+		return *t.hasCached, nil
+	}
+
+	t.mutex.RUnlock()
+
+	// If we have a cache miss, get lock and check again
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
