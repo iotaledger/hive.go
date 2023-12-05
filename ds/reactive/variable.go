@@ -83,12 +83,20 @@ type WritableVariable[Type comparable] interface {
 	// callbacks if the value has changed.
 	Compute(computeFunc func(currentValue Type) Type) (previousValue Type)
 
+	// DefaultTo atomically sets the new value to the default value if the current value is the zero value and triggers
+	// the registered callbacks if the value has changed. It returns the new value and a boolean flag that indicates if
+	// the value was updated.
+	DefaultTo(defaultValue Type) (newValue Type, updated bool)
+
 	// InheritFrom inherits the value from the given ReadableVariable.
 	InheritFrom(other ReadableVariable[Type]) (unsubscribe func())
 
 	// DeriveValueFrom is a utility function that allows to derive a value from a newly created DerivedVariable.
 	// It returns a teardown function that unsubscribes the DerivedVariable from its inputs.
 	DeriveValueFrom(source DerivedVariable[Type]) (teardown func())
+
+	// ToggleValue sets the value to the given value and returns a function that resets the value to its zero value.
+	ToggleValue(value Type) (reset func())
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

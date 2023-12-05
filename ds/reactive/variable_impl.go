@@ -61,6 +61,23 @@ func (v *variable[Type]) Compute(computeFunc func(currentValue Type) Type) (prev
 	return previousValue
 }
 
+// DefaultTo atomically sets the new value to the given default value if the current value is the zero value and
+// triggers the registered callbacks if the value has changed. It returns the new value and a boolean flag that
+// indicates if the value was updated.
+func (v *variable[Type]) DefaultTo(defaultValue Type) (newValue Type, updated bool) {
+	v.Compute(func(currentValue Type) Type {
+		if updated = currentValue == *new(Type); updated {
+			newValue = defaultValue
+		} else {
+			newValue = currentValue
+		}
+
+		return newValue
+	})
+
+	return newValue, updated
+}
+
 // InheritFrom inherits the value from the given ReadableVariable.
 func (v *variable[Type]) InheritFrom(other ReadableVariable[Type]) (unsubscribe func()) {
 	return other.OnUpdate(func(_, newValue Type) {
@@ -76,6 +93,15 @@ func (v *variable[Type]) DeriveValueFrom(source DerivedVariable[Type]) (teardown
 	_ = v.InheritFrom(source)
 
 	return source.Unsubscribe
+}
+
+// ToggleValue sets the value to the given value and returns a function that resets the value to its zero value.
+func (v *variable[Type]) ToggleValue(value Type) (reset func()) {
+	v.Set(value)
+
+	return func() {
+		v.Set(*new(Type))
+	}
 }
 
 // updateValue atomically prepares the trigger by setting the new value and returning the new value, the previous value,
@@ -213,8 +239,9 @@ func (r *readableVariable[Type]) OnUpdateOnce(callback func(oldValue Type, newVa
 
 // OnUpdateWithContext registers the given callback that is triggered when the value changes. In contrast to the
 // normal OnUpdate method, this method provides the old and new value as well as a withinContext function that can
-// be used to create subscriptions that are automatically unsubscribed when the callback is triggered again.
-func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscriptionFactory func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
+// be used to create subscriptions that are automatically unsubscribed when the callback is triggered again. It is
+// possible to return nil from withinContext to indicate that nothing should happen when the value changes again.
+func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, newValue Type, withinContext func(subscribe func() (unsubscribe func()))), triggerWithInitialZeroValue ...bool) (unsubscribe func()) {
 	var previousUnsubscribedEvent Event
 
 	unsubscribeFromVariable := r.OnUpdate(func(oldValue, newValue Type) {
@@ -223,9 +250,11 @@ func (r *readableVariable[Type]) OnUpdateWithContext(callback func(oldValue, new
 		}
 
 		unsubscribedEvent := NewEvent()
-		withinContext := func(subscription func() func()) {
+		withinContext := func(subscribe func() func()) {
 			if !unsubscribedEvent.WasTriggered() {
-				unsubscribedEvent.OnTrigger(subscription())
+				if teardownSubscription := subscribe(); teardownSubscription != nil {
+					unsubscribedEvent.OnTrigger(teardownSubscription)
+				}
 			}
 		}
 
