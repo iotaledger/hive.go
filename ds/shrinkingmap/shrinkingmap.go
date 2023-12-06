@@ -97,9 +97,18 @@ func (s *ShrinkingMap[K, V]) Get(key K) (value V, exists bool) {
 	return
 }
 
-// GetOrCreate returns the value mapped to the given key and the boolean flag that indicated if the values was created.
-// If the value does not exist the passed func will be called and the provided value will be set.
+// GetOrCreate returns the value mapped to the given key and the boolean flag that indicated if the values were created.
+// If the value does not exist, the passed func will be called and the provided value will be set.
 func (s *ShrinkingMap[K, V]) GetOrCreate(key K, defaultValueFunc func() V) (value V, created bool) {
+	// Check if value exists in the map without acquiring a write-lock to reduce contention in happy cases.
+	s.mutex.RLock()
+	if existingValue, exists := s.m[key]; exists {
+		s.mutex.RUnlock()
+
+		return existingValue, false
+	}
+	s.mutex.RUnlock()
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
