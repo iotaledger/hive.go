@@ -35,6 +35,11 @@ func ReadBytesWithSize(reader io.Reader, lenType serializer.SeriLengthPrefixType
 		return nil, ierrors.Wrap(err, "failed to read bytes size")
 	}
 
+	// in case the size is 0, we return an empty byte slice
+	if size == 0 {
+		return []byte{}, nil
+	}
+
 	return ReadBytes(reader, size)
 }
 
