@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // SaltGenerator generates a crypto-secure random salt.
@@ -43,6 +44,7 @@ func VerifyPassword(password []byte, salt []byte, storedPasswordKey []byte) (boo
 	return bytes.Equal(dk, storedPasswordKey), nil
 }
 
+// BasicAuth is a basic authentication implementation for a single user.
 type BasicAuth struct {
 	username     string
 	passwordHash []byte
@@ -54,23 +56,14 @@ func NewBasicAuth(username string, passwordHashHex string, passwordSaltHex strin
 		return nil, ierrors.New("username must not be empty")
 	}
 
-	if len(passwordHashHex) != 64 {
-		return nil, ierrors.New("password hash must be 64 (hex encoded scrypt hash) in length")
-	}
-
-	if len(passwordSaltHex) != 64 {
-		return nil, ierrors.New("password salt must be 64 (hex encoded) in length")
-	}
-
-	var err error
-	passwordHash, err := hex.DecodeString(passwordHashHex)
+	passwordHash, err := decodePasswordHash(passwordHashHex)
 	if err != nil {
-		return nil, ierrors.New("password hash must be hex encoded")
+		return nil, err
 	}
 
-	passwordSalt, err := hex.DecodeString(passwordSaltHex)
+	passwordSalt, err := decodePasswordSalt(passwordSaltHex)
 	if err != nil {
-		return nil, ierrors.New("password salt must be hex encoded")
+		return nil, err
 	}
 
 	return &BasicAuth{
@@ -86,7 +79,79 @@ func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) 
 	}
 
 	// error is ignored because it returns false in case it can't be derived
-	valid, _ := VerifyPassword([]byte(password), b.passwordSalt, b.passwordHash)
+	return lo.Return1(VerifyPassword([]byte(password), b.passwordSalt, b.passwordHash))
+}
 
-	return valid
+// BasicAuthManager is the same as BasicAuth but for multiple users.
+type BasicAuthManager struct {
+	usersWithHashedPasswords map[string][]byte
+	passwordSalt             []byte
+}
+
+func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
+	usersWithHashedPasswords := make(map[string][]byte)
+	for username, passwordHashHex := range usersWithPasswordsHex {
+		if len(username) == 0 {
+			return nil, ierrors.New("username must not be empty")
+		}
+
+		password, err := decodePasswordHash(passwordHashHex)
+		if err != nil {
+			return nil, ierrors.Errorf("parsing password hash for user %s failed: %w", username, err)
+		}
+		usersWithHashedPasswords[username] = password
+	}
+
+	passwordSalt, err := decodePasswordSalt(passwordSaltHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BasicAuthManager{
+		usersWithHashedPasswords: make(map[string][]byte),
+		passwordSalt:             passwordSalt,
+	}, nil
+}
+
+func (b *BasicAuthManager) UserExists(username string) bool {
+	_, exists := b.usersWithHashedPasswords[username]
+	return exists
+}
+
+func (b *BasicAuthManager) VerifyUsernameAndPassword(username string, password string) bool {
+	passwordHash, exists := b.usersWithHashedPasswords[username]
+	if !exists {
+		return false
+	}
+
+	// error is ignored because it returns false in case it can't be derived
+	return lo.Return1(VerifyPassword([]byte(password), b.passwordSalt, passwordHash))
+}
+
+func decodePasswordSalt(passwordSaltHex string) ([]byte, error) {
+	if len(passwordSaltHex) != 64 {
+		return nil, ierrors.New("password salt must be 64 (hex encoded) in length")
+	}
+
+	var err error
+	passwordSalt, err := hex.DecodeString(passwordSaltHex)
+	if err != nil {
+		return nil, ierrors.Wrap(err, "password salt must be hex encoded")
+	}
+
+	return passwordSalt, nil
+}
+
+func decodePasswordHash(passwordHashHex string) ([]byte, error) {
+	if len(passwordHashHex) != 64 {
+		return nil, ierrors.New("password hash must be 64 (hex encoded scrypt hash) in length")
+	}
+
+	var err error
+	passwordHash, err := hex.DecodeString(passwordHashHex)
+	if err != nil {
+		return nil, ierrors.Wrap(err, "password hash must be hex encoded")
+	}
+
+	return passwordHash, nil
 }
