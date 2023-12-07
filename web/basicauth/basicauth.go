@@ -73,13 +73,17 @@ func NewBasicAuth(username string, passwordHashHex string, passwordSaltHex strin
 	}, nil
 }
 
-func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) bool {
+func (b *BasicAuth) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
 	if username != b.username {
 		return false
 	}
 
 	// error is ignored because it returns false in case it can't be derived
-	return lo.Return1(VerifyPassword([]byte(password), b.passwordSalt, b.passwordHash))
+	return lo.Return1(VerifyPassword(passwordBytes, b.passwordSalt, b.passwordHash))
+}
+
+func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) bool {
+	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
 // BasicAuthManager is the same as BasicAuth but for multiple users.
@@ -89,7 +93,7 @@ type BasicAuthManager struct {
 }
 
 func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
-	usersWithHashedPasswords := make(map[string][]byte)
+	usersWithHashedPasswords := make(map[string][]byte, len(usersWithPasswordsHex))
 	for username, passwordHashHex := range usersWithPasswordsHex {
 		if len(username) == 0 {
 			return nil, ierrors.New("username must not be empty")
@@ -108,24 +112,28 @@ func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHe
 	}
 
 	return &BasicAuthManager{
-		usersWithHashedPasswords: make(map[string][]byte),
+		usersWithHashedPasswords: usersWithHashedPasswords,
 		passwordSalt:             passwordSalt,
 	}, nil
 }
 
-func (b *BasicAuthManager) UserExists(username string) bool {
+func (b *BasicAuthManager) Exists(username string) bool {
 	_, exists := b.usersWithHashedPasswords[username]
 	return exists
 }
 
-func (b *BasicAuthManager) VerifyUsernameAndPassword(username string, password string) bool {
+func (b *BasicAuthManager) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
 	passwordHash, exists := b.usersWithHashedPasswords[username]
 	if !exists {
 		return false
 	}
 
 	// error is ignored because it returns false in case it can't be derived
-	return lo.Return1(VerifyPassword([]byte(password), b.passwordSalt, passwordHash))
+	return lo.Return1(VerifyPassword(passwordBytes, b.passwordSalt, passwordHash))
+}
+
+func (b *BasicAuthManager) VerifyUsernameAndPassword(username string, password string) bool {
+	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
 func decodePasswordSalt(passwordSaltHex string) ([]byte, error) {
