@@ -6,6 +6,7 @@ require (
 	github.com/iotaledger/hive.go/constraints v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/ds v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20231206114623-a5922818daa4
+	github.com/iotaledger/hive.go/lo v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/logger v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/runtime v0.0.0-20231206114623-a5922818daa4
 	github.com/stretchr/testify v1.8.4
@@ -19,7 +20,6 @@ require (
 	github.com/gin-gonic/gin v1.8.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/lo v0.0.0-20231206114623-a5922818daa4 // indirect
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231206114623-a5922818daa4 // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20231206114623-a5922818daa4 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
