@@ -3,7 +3,9 @@ package serix_test
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/iancoleman/orderedmap"
@@ -807,4 +809,57 @@ func (test *decodingTest) run(t *testing.T) {
 	require.NoError(t, jsonErr)
 
 	require.EqualValues(t, test.source, jsonDest)
+}
+
+func TestSerixOmitEmpty(t *testing.T) {
+	type Numbers struct {
+		Bytes []uint8 `serix:",omitempty"`
+	}
+	type omitEmptyTest struct {
+		name        string
+		expectEmpty bool
+		source      Numbers
+	}
+
+	tests := []omitEmptyTest{
+		{
+			name:        "ok - slice empty",
+			expectEmpty: true,
+			source: Numbers{
+				Bytes: []uint8{},
+			},
+		},
+		{
+			name:        "ok - nil slice",
+			expectEmpty: true,
+			source: Numbers{
+				Bytes: nil,
+			},
+		},
+		{
+			name:        "ok - non-empty slice",
+			expectEmpty: false,
+			source: Numbers{
+				Bytes: []uint8{0xff},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			encodedJson, err := testAPI.JSONEncode(context.Background(), test.source)
+			require.NoError(t, err)
+
+			dec := json.NewDecoder(strings.NewReader(string(encodedJson)))
+			var decoded Numbers
+			err = dec.Decode(&decoded)
+			require.NoError(t, err)
+
+			if test.expectEmpty {
+				require.Empty(t, decoded.Bytes)
+			} else {
+				require.NotEmpty(t, decoded.Bytes)
+			}
+		})
+	}
 }
