@@ -142,12 +142,12 @@ func (c *Component) LogWarnf(template string, args ...interface{}) {
 	c.Logger().LogWarnf(template, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message.
+// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit(1).
 func (c *Component) LogFatal(msg string, args ...interface{}) {
 	c.Logger().LogFatal(msg, args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message.
+// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit(1).
 func (c *Component) LogFatalf(template string, args ...interface{}) {
 	c.Logger().LogFatalf(template, args...)
 }

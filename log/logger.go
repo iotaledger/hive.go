@@ -72,13 +72,13 @@ type Logger interface {
 	// LogErrorAttrs emits a log message with the ERROR level and the given attributes.
 	LogErrorAttrs(msg string, args ...slog.Attr)
 
-	// LogFatal emits a log message with the FATAL level.
+	// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
 	LogFatal(msg string, args ...any)
 
-	// LogFatalf emits a formatted log message with the FATAL level.
+	// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
 	LogFatalf(fmtString string, args ...any)
 
-	// LogFatalAttrs emits a log message with the FATAL level and the given attributes.
+	// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
 	LogFatalAttrs(fmtString string, args ...slog.Attr)
 
 	// Log emits a log message with the given level.

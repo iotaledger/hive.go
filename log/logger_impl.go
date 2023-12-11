@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -192,19 +193,22 @@ func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
 	l.LogAttrs(msg, LevelError, args...)
 }
 
-// LogFatal emits a log message with the FATAL level.
+// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
 func (l *logger) LogFatal(msg string, args ...any) {
 	l.Log(msg, LevelPanic, args...)
+	os.Exit(1)
 }
 
-// LogFatalf emits a formatted log message with the FATAL level.
+// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
 func (l *logger) LogFatalf(fmtString string, args ...any) {
 	l.Logf(fmtString, LevelPanic, args...)
+	os.Exit(1)
 }
 
-// LogFatalAttrs emits a log message with the FATAL level and the given attributes.
+// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
 func (l *logger) LogFatalAttrs(msg string, args ...slog.Attr) {
 	l.LogAttrs(msg, LevelPanic, args...)
+	os.Exit(1)
 }
 
 // Log emits a log message with the given level.
