@@ -169,7 +169,8 @@ func (gs *ShutdownHandler) Run() error {
 
 		go func() {
 			ts := time.Now()
-			for range time.Tick(1 * time.Second) {
+			ticker := time.NewTicker(1 * time.Second)
+			for range ticker.C {
 				secondsSinceStart := int(time.Since(ts).Seconds())
 
 				if secondsSinceStart <= int(gs.stopGracePeriod.Seconds()) {

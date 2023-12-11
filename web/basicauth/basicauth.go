@@ -86,13 +86,13 @@ func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) 
 	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
-// BasicAuthManager is the same as BasicAuth but for multiple users.
-type BasicAuthManager struct {
+// Manager is the same as BasicAuth but for multiple users.
+type Manager struct {
 	usersWithHashedPasswords map[string][]byte
 	passwordSalt             []byte
 }
 
-func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
+func NewManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*Manager, error) {
 	usersWithHashedPasswords := make(map[string][]byte, len(usersWithPasswordsHex))
 	for username, passwordHashHex := range usersWithPasswordsHex {
 		if len(username) == 0 {
@@ -111,18 +111,18 @@ func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHe
 		return nil, err
 	}
 
-	return &BasicAuthManager{
+	return &Manager{
 		usersWithHashedPasswords: usersWithHashedPasswords,
 		passwordSalt:             passwordSalt,
 	}, nil
 }
 
-func (b *BasicAuthManager) Exists(username string) bool {
+func (b *Manager) Exists(username string) bool {
 	_, exists := b.usersWithHashedPasswords[username]
 	return exists
 }
 
-func (b *BasicAuthManager) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
+func (b *Manager) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
 	passwordHash, exists := b.usersWithHashedPasswords[username]
 	if !exists {
 		return false
@@ -132,7 +132,7 @@ func (b *BasicAuthManager) VerifyUsernameAndPasswordBytes(username string, passw
 	return lo.Return1(VerifyPassword(passwordBytes, b.passwordSalt, passwordHash))
 }
 
-func (b *BasicAuthManager) VerifyUsernameAndPassword(username string, password string) bool {
+func (b *Manager) VerifyUsernameAndPassword(username string, password string) bool {
 	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
