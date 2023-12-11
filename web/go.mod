@@ -7,7 +7,7 @@ require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20231206114623-a5922818daa4
 	github.com/iotaledger/hive.go/lo v0.0.0-20231206114623-a5922818daa4
-	github.com/iotaledger/hive.go/logger v0.0.0-20231206114623-a5922818daa4
+	github.com/iotaledger/hive.go/log v0.0.0-20231206113509-4b4ff95ac61c
 	github.com/iotaledger/hive.go/runtime v0.0.0-20231206114623-a5922818daa4
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.14.0
@@ -28,8 +28,6 @@ require (
 	github.com/petermattis/goid v0.0.0-20231126143041-f558c26febf5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
 	google.golang.org/protobuf v1.29.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

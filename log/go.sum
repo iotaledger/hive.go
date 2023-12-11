@@ -18,6 +18,8 @@ github.com/iotaledger/hive.go/ierrors v0.0.0-20231206113406-03e4322c1d9e h1:3VU4
 github.com/iotaledger/hive.go/ierrors v0.0.0-20231206113406-03e4322c1d9e/go.mod h1:HcE8B5lP96enc/OALTb2/rIIi+yOLouRoHOKRclKmC8=
 github.com/iotaledger/hive.go/lo v0.0.0-20231206113406-03e4322c1d9e h1:EI7P9NdbF3gabbbaB1l1uG4KKc0x4Rdg47nvCyG4dSM=
 github.com/iotaledger/hive.go/lo v0.0.0-20231206113406-03e4322c1d9e/go.mod h1:ETXGXymFyNcUq2t4I9e7ZK18f9bxUWYat4pjZ9W0rWc=
+github.com/iotaledger/hive.go/runtime v0.0.0-20231108044237-5731e50d3660 h1:FGlELFpJCAhSVKJ/TlANoe9Bg4mafcBwXQfocY0jG6s=
+github.com/iotaledger/hive.go/runtime v0.0.0-20231108044237-5731e50d3660/go.mod h1:6WKyYAkvdY08iW4/w30goNq0GaBTljT0MXXilnQ33wk=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231206113406-03e4322c1d9e h1:02aRHy1N/Zdv8R8dB5ScDlPVtIy2MS3Y70DxNUjn/6Q=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20231206113406-03e4322c1d9e/go.mod h1:FoH3T6yKlZJp8xm8K+zsQiibSynp32v21CpWx8xkek8=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=

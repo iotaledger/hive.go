@@ -122,9 +122,9 @@ func (l *logger) LogTrace(msg string, args ...any) {
 	l.Log(msg, LevelTrace, args...)
 }
 
-// LogTraceF emits a formatted log message with the TRACE level.
-func (l *logger) LogTraceF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelTrace, args...)
+// LogTracef emits a formatted log message with the TRACE level.
+func (l *logger) LogTracef(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelTrace, args...)
 }
 
 // LogTraceAttrs emits a log message with the TRACE level and the given attributes.
@@ -137,9 +137,9 @@ func (l *logger) LogDebug(msg string, args ...any) {
 	l.Log(msg, LevelDebug, args...)
 }
 
-// LogDebugF emits a formatted log message with the DEBUG level.
-func (l *logger) LogDebugF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelDebug, args...)
+// LogDebugf emits a formatted log message with the DEBUG level.
+func (l *logger) LogDebugf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelDebug, args...)
 }
 
 // LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
@@ -152,9 +152,9 @@ func (l *logger) LogInfo(msg string, args ...any) {
 	l.Log(msg, LevelInfo, args...)
 }
 
-// LogInfoF emits a formatted log message with the INFO level.
-func (l *logger) LogInfoF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelInfo, args...)
+// LogInfof emits a formatted log message with the INFO level.
+func (l *logger) LogInfof(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelInfo, args...)
 }
 
 // LogInfoAttrs emits a log message with the INFO level and the given attributes.
@@ -167,9 +167,9 @@ func (l *logger) LogWarn(msg string, args ...any) {
 	l.Log(msg, LevelWarning, args...)
 }
 
-// LogWarnF emits a formatted log message with the WARN level.
-func (l *logger) LogWarnF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelWarning, args...)
+// LogWarnf emits a formatted log message with the WARN level.
+func (l *logger) LogWarnf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelWarning, args...)
 }
 
 // LogWarnAttrs emits a log message with the WARN level and the given attributes.
@@ -182,14 +182,29 @@ func (l *logger) LogError(msg string, args ...any) {
 	l.Log(msg, LevelError, args...)
 }
 
-// LogErrorF emits a formatted log message with the ERROR level.
-func (l *logger) LogErrorF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelError, args...)
+// LogErrorf emits a formatted log message with the ERROR level.
+func (l *logger) LogErrorf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelError, args...)
 }
 
 // LogErrorAttrs emits a log message with the ERROR level and the given attributes.
 func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
 	l.LogAttrs(msg, LevelError, args...)
+}
+
+// LogFatal emits a log message with the FATAL level.
+func (l *logger) LogFatal(msg string, args ...any) {
+	l.Log(msg, LevelPanic, args...)
+}
+
+// LogFatalf emits a formatted log message with the FATAL level.
+func (l *logger) LogFatalf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelPanic, args...)
+}
+
+// LogFatalAttrs emits a log message with the FATAL level and the given attributes.
+func (l *logger) LogFatalAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelPanic, args...)
 }
 
 // Log emits a log message with the given level.
@@ -199,8 +214,8 @@ func (l *logger) Log(msg string, level Level, args ...any) {
 	}
 }
 
-// LogF emits a formatted log message with the given level.
-func (l *logger) LogF(fmtString string, level Level, args ...any) {
+// Logf emits a formatted log message with the given level.
+func (l *logger) Logf(fmtString string, level Level, args ...any) {
 	if l != nil && l.level.Level() <= level {
 		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...))
 	}

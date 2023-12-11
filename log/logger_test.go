@@ -11,7 +11,7 @@ import (
 // TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
 // ability to create nested loggers with individual log levels.
 func TestLogger(t *testing.T) {
-	logger := log.NewLogger("node1")
+	logger := log.NewLogger(log.WithName("node1"))
 	logger.LogDebug("some log (invisible due to log level)")
 	logger.SetLogLevel(log.LevelTrace)
 	logger.LogTrace("created chain")
@@ -32,7 +32,7 @@ func TestLogger(t *testing.T) {
 
 // TestEntityBasedLogging tests the entity based logging.
 func TestEntityBasedLogging(t *testing.T) {
-	logger := log.NewLogger("node1")
+	logger := log.NewLogger(log.WithName("node1"))
 
 	testObject0 := NewTestObject(logger)
 	testObject0.ImportantValue1.Set(1)      // will produce a log message

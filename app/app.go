@@ -19,7 +19,7 @@ import (
 	"github.com/iotaledger/hive.go/app/version"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
@@ -45,8 +45,8 @@ type App struct {
 	componentsMap          map[string]*Component
 	components             []*Component
 	container              *dig.Container
-	loggerRoot             *logger.Logger
-	logger                 *logger.Logger
+	loggerRoot             log.Logger
+	logger                 log.Logger
 	appFlagSet             *flag.FlagSet
 	appConfig              *configuration.Configuration
 	appParams              *ParametersApp
@@ -128,8 +128,8 @@ func (a *App) init() {
 	a.appParams = &ParametersApp{}
 	a.appConfig.BindParameters(a.appFlagSet, "app", a.appParams)
 
-	loggerParams := &logger.Config{}
-	a.appConfig.BindParameters(a.appFlagSet, "logger", loggerParams)
+	loggerConfig := &LoggerConfig{}
+	a.appConfig.BindParameters(a.appFlagSet, "logger", loggerConfig)
 
 	// provide the app params in the container
 	if err := a.container.Provide(func() *ParametersApp {
@@ -300,14 +300,14 @@ Command line flags:
 	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
 	// initialize the root logger
-	loggerRoot, err := logger.NewRootLogger(*loggerParams)
+	loggerRoot, err := newLoggerFromConfig(loggerConfig)
 	if err != nil {
 		panic(err)
 	}
 	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.logger = loggerRoot.Named("App")
+	a.logger, _ = a.loggerRoot.NewChildLogger("App")
 }
 
 // printAppInfo prints app name and version info.
@@ -368,14 +368,16 @@ func (a *App) printConfig() {
 func (a *App) initConfig() {
 	if a.options.initComponent.InitConfigParams != nil {
 		if err := a.options.initComponent.InitConfigParams(a.container); err != nil {
-			a.LogPanicf("failed to initialize init component config parameters: %s", err)
+			a.LogFatalf("failed to initialize init component config parameters: %s", err)
+			os.Exit(1)
 		}
 	}
 
 	forEachComponent(a.options.components, func(component *Component) bool {
 		if component.InitConfigParams != nil {
 			if err := component.InitConfigParams(a.container); err != nil {
-				a.LogPanicf("failed to initialize component (%s) config parameters: %s", component.Name, err)
+				a.LogFatalf("failed to initialize component (%s) config parameters: %s", component.Name, err)
+				os.Exit(1)
 			}
 		}
 
@@ -412,14 +414,16 @@ func (a *App) addComponents() {
 func (a *App) provide() {
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
-			a.LogPanicf("provide init component failed: %s", err)
+			a.LogFatalf("provide init component failed: %s", err)
+			os.Exit(1)
 		}
 	}
 
 	a.ForEachComponent(func(component *Component) bool {
 		if component.Provide != nil {
 			if err := component.Provide(a.container); err != nil {
-				a.LogPanicf("provide component (%s) failed: %s", component.Name, err)
+				a.LogFatalf("provide component (%s) failed: %s", component.Name, err)
+				os.Exit(1)
 			}
 		}
 
@@ -431,14 +435,16 @@ func (a *App) provide() {
 func (a *App) invoke() {
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
-			a.LogPanicf("invoke init component failed: %s", err)
+			a.LogFatalf("invoke init component failed: %s", err)
+			os.Exit(1)
 		}
 	}
 
 	a.ForEachComponent(func(component *Component) bool {
 		if component.DepsFunc != nil {
 			if err := a.container.Invoke(component.DepsFunc); err != nil {
-				a.LogPanicf("invoke component (%s) failed: %s", component.Name, err)
+				a.LogFatalf("invoke component (%s) failed: %s", component.Name, err)
+				os.Exit(1)
 			}
 		}
 
@@ -452,14 +458,16 @@ func (a *App) configure() {
 
 	if a.options.initComponent.Configure != nil {
 		if err := a.options.initComponent.Configure(); err != nil {
-			a.LogPanicf("configure init component failed: %s", err)
+			a.LogFatalf("configure init component failed: %s", err)
+			os.Exit(1)
 		}
 	}
 
 	a.ForEachComponent(func(component *Component) bool {
 		if component.Configure != nil {
 			if err := component.Configure(); err != nil {
-				a.LogPanicf("configure component (%s) failed: %s", component.Name, err)
+				a.LogFatalf("configure component (%s) failed: %s", component.Name, err)
+				os.Exit(1)
 			}
 		}
 		a.LogInfof("Loading components: %s ... done", component.Name)
@@ -505,7 +513,8 @@ func (a *App) initializeVersionCheck() {
 		ticker := timeutil.NewTicker(checkLatestVersion, 1*time.Hour, ctx)
 		ticker.WaitForGracefulShutdown()
 	}, math.MaxInt16); err != nil {
-		a.LogPanicf("failed to start worker: %s", err)
+		a.LogFatalf("failed to start worker: %s", err)
+		os.Exit(1)
 	}
 }
 
@@ -515,7 +524,8 @@ func (a *App) run() {
 
 	if a.options.initComponent.Run != nil {
 		if err := a.options.initComponent.Run(); err != nil {
-			a.LogPanicf("run init component failed: %s", err)
+			a.LogFatalf("run init component failed: %s", err)
+			os.Exit(1)
 		}
 	}
 
@@ -524,7 +534,8 @@ func (a *App) run() {
 		component.WorkerPool.Start()
 		if component.Run != nil {
 			if err := component.Run(); err != nil {
-				a.LogPanicf("run component (%s) failed: %s", component.Name, err)
+				a.LogFatalf("run component (%s) failed: %s", component.Name, err)
+				os.Exit(1)
 			}
 		}
 
@@ -557,9 +568,11 @@ func (a *App) Run() {
 		r := recover()
 		if r != nil {
 			if err, ok := r.(error); ok {
-				a.LogPanicf("application panic, err: %s \n %s", err.Error(), string(debug.Stack()))
+				a.LogFatalf("application panic, err: %s \n %s", err.Error(), string(debug.Stack()))
+				os.Exit(1)
 			}
-			a.LogPanicf("application panic: %v \n %s", r, string(debug.Stack()))
+			a.LogFatalf("application panic: %v \n %s", r, string(debug.Stack()))
+			os.Exit(1)
 		}
 	}()
 	a.initializeApp()
@@ -648,84 +661,74 @@ func (a *App) ForEachComponent(f ComponentForEachFunc) {
 //
 
 // NewLogger returns a new named child of the app's root logger.
-func (a *App) NewLogger(name string) *logger.Logger {
+func (a *App) NewLogger(name string) (logger log.Logger, shutdown func()) {
 	if a.loggerRoot == nil {
 		panic("app root logger not initialized")
 	}
 
-	return a.loggerRoot.Named(name)
+	return a.loggerRoot.NewChildLogger(name)
 }
 
 // LogDebug uses fmt.Sprint to construct and log a message.
-func (a *App) LogDebug(args ...interface{}) {
-	a.logger.Debug(args...)
+func (a *App) LogDebug(msg string, args ...interface{}) {
+	a.logger.LogDebug(msg, args...)
 }
 
 // LogDebugf uses fmt.Sprintf to log a templated message.
 func (a *App) LogDebugf(template string, args ...interface{}) {
-	a.logger.Debugf(template, args...)
+	a.logger.LogDebugf(template, args...)
 }
 
 // LogError uses fmt.Sprint to construct and log a message.
-func (a *App) LogError(args ...interface{}) {
-	a.logger.Error(args...)
+func (a *App) LogError(msg string, args ...interface{}) {
+	a.logger.LogError(msg, args...)
 }
 
 // LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogErrorAndExit(args ...interface{}) {
-	a.logger.Error(args...)
-	a.logger.Error("Exiting...")
+func (a *App) LogErrorAndExit(msg string, args ...interface{}) {
+	a.logger.LogError(msg, args...)
+	a.logger.LogError("Exiting...")
 	os.Exit(1)
 }
 
 // LogErrorf uses fmt.Sprintf to log a templated message.
 func (a *App) LogErrorf(template string, args ...interface{}) {
-	a.logger.Errorf(template, args...)
+	a.logger.LogErrorf(template, args...)
 }
 
 // LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
 func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
-	a.logger.Errorf(template, args...)
-	a.logger.Error("Exiting...")
+	a.logger.LogErrorf(template, args...)
+	a.logger.LogError("Exiting...")
 	os.Exit(1)
 }
 
-// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogFatalAndExit(args ...interface{}) {
-	a.logger.Fatal(args...)
-}
-
-// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (a *App) LogFatalfAndExit(template string, args ...interface{}) {
-	a.logger.Fatalf(template, args...)
-}
-
 // LogInfo uses fmt.Sprint to construct and log a message.
-func (a *App) LogInfo(args ...interface{}) {
-	a.logger.Info(args...)
+func (a *App) LogInfo(msg string, args ...interface{}) {
+	a.logger.LogInfo(msg, args...)
 }
 
 // LogInfof uses fmt.Sprintf to log a templated message.
 func (a *App) LogInfof(template string, args ...interface{}) {
-	a.logger.Infof(template, args...)
+	a.logger.LogInfof(template, args...)
 }
 
 // LogWarn uses fmt.Sprint to construct and log a message.
-func (a *App) LogWarn(args ...interface{}) {
-	a.logger.Warn(args...)
+func (a *App) LogWarn(msg string, args ...interface{}) {
+	a.logger.LogWarn(msg, args...)
 }
 
 // LogWarnf uses fmt.Sprintf to log a templated message.
 func (a *App) LogWarnf(template string, args ...interface{}) {
-	a.logger.Warnf(template, args...)
+	a.logger.LogWarnf(template, args...)
 }
 
-// LogPanic uses fmt.Sprint to construct and log a message, then panics.
-func (a *App) LogPanic(args ...interface{}) {
-	a.logger.Panic(args...)
+// LogFatal uses fmt.Sprint to construct and log a message.
+func (a *App) LogFatal(msg string, args ...interface{}) {
+	a.logger.LogFatal(msg, args...)
 }
 
-// LogPanicf uses fmt.Sprintf to log a templated message, then panics.
-func (a *App) LogPanicf(template string, args ...interface{}) {
-	a.logger.Panicf(template, args...)
+// LogFatalf uses fmt.Sprintf to log a templated message.
+func (a *App) LogFatalf(template string, args ...interface{}) {
+	a.logger.LogFatalf(template, args...)
 }

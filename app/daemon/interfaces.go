@@ -3,7 +3,7 @@ package daemon
 import (
 	"context"
 
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 )
 
 // WorkerFunc is the function to run a worker accepting its context.
@@ -20,7 +20,7 @@ type Daemon interface {
 	BackgroundWorker(name string, handler WorkerFunc, order ...int) error
 
 	// DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
-	DebugLogger(logger *logger.Logger)
+	DebugLogger(logger log.Logger)
 
 	// Start starts the daemon.
 	Start()

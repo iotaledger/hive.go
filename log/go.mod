@@ -6,6 +6,7 @@ require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20231206113406-03e4322c1d9e
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20231206113406-03e4322c1d9e
 	github.com/iotaledger/hive.go/lo v0.0.0-20231206113406-03e4322c1d9e
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231108044237-5731e50d3660
 )
 
 require (

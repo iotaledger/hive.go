@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20231206114140-d740a71150ee
 	github.com/iotaledger/hive.go/lo v0.0.0-20231206114140-d740a71150ee
-	github.com/iotaledger/hive.go/logger v0.0.0-20231206114140-d740a71150ee
+	github.com/iotaledger/hive.go/log v0.0.0-20231206113509-4b4ff95ac61c
 	github.com/iotaledger/hive.go/runtime v0.0.0-20231206114140-d740a71150ee
 	github.com/knadh/koanf v1.5.0
 	github.com/spf13/cast v1.5.1
@@ -39,8 +39,6 @@ require (
 	github.com/petermattis/goid v0.0.0-20231126143041-f558c26febf5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

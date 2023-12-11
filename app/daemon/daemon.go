@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ierrors"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
@@ -33,7 +33,7 @@ func BackgroundWorker(name string, handler WorkerFunc, priority ...int) error {
 }
 
 // DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
-func DebugLogger(logger *logger.Logger) {
+func DebugLogger(logger log.Logger) {
 	defaultDaemon.DebugLogger(logger)
 }
 
@@ -99,7 +99,7 @@ type OrderedDaemon struct {
 	shutdownOrderWorker    []string
 	wgPerSameShutdownOrder map[int]*sync.WaitGroup
 	lock                   syncutils.RWMutex
-	logger                 *logger.Logger
+	logger                 log.Logger
 }
 
 type worker struct {
@@ -155,7 +155,7 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 	worker.running.Store(true)
 	go func() {
 		if d.logger != nil {
-			d.logger.Debugf("Starting Background Worker: %s ...", name)
+			d.logger.LogDebugf("Starting Background Worker: %s ...", name)
 		}
 
 		backgroundWorker(worker.ctx)
@@ -173,7 +173,7 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 		worker.running.Store(false)
 
 		if d.logger != nil {
-			d.logger.Debugf("Stopping Background Worker: %s ... done", name)
+			d.logger.LogDebugf("Stopping Background Worker: %s ... done", name)
 		}
 	}()
 }
@@ -240,7 +240,7 @@ func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order 
 }
 
 // DebugLogger allows to pass a logger to the daemon to issue log messages for debugging purposes.
-func (d *OrderedDaemon) DebugLogger(logger *logger.Logger) {
+func (d *OrderedDaemon) DebugLogger(logger log.Logger) {
 	defaultDaemon.logger = logger
 }
 
@@ -297,7 +297,7 @@ func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 
 func (d *OrderedDaemon) shutdown() {
 	if d.logger != nil {
-		d.logger.Debugf("Shutting down ...")
+		d.logger.LogDebugf("Shutting down ...")
 	}
 
 	d.stopped.Store(true)
@@ -333,7 +333,7 @@ func (d *OrderedDaemon) stopWorkers() {
 				prevPriority = worker.shutdownOrder
 			}
 			if d.logger != nil {
-				d.logger.Debugf("Stopping Background Worker: %s ...", name)
+				d.logger.LogDebugf("Stopping Background Worker: %s ...", name)
 			}
 			worker.ctxCancel()
 		}
