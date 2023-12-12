@@ -183,7 +183,6 @@ func (gs *ShutdownHandler) Run() error {
 					gs.LogWarnf("Received shutdown request - waiting (max %d seconds) to finish processing %s...", int(gs.stopGracePeriod.Seconds())-secondsSinceStart, processList)
 				} else {
 					gs.LogFatal("Background processes did not terminate in time! Forcing shutdown ...")
-					os.Exit(1)
 				}
 			}
 		}()

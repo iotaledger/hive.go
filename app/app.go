@@ -369,7 +369,6 @@ func (a *App) initConfig() {
 	if a.options.initComponent.InitConfigParams != nil {
 		if err := a.options.initComponent.InitConfigParams(a.container); err != nil {
 			a.LogFatalf("failed to initialize init component config parameters: %s", err)
-			os.Exit(1)
 		}
 	}
 
@@ -377,7 +376,6 @@ func (a *App) initConfig() {
 		if component.InitConfigParams != nil {
 			if err := component.InitConfigParams(a.container); err != nil {
 				a.LogFatalf("failed to initialize component (%s) config parameters: %s", component.Name, err)
-				os.Exit(1)
 			}
 		}
 
@@ -415,7 +413,6 @@ func (a *App) provide() {
 	if a.options.initComponent.Provide != nil {
 		if err := a.options.initComponent.Provide(a.container); err != nil {
 			a.LogFatalf("provide init component failed: %s", err)
-			os.Exit(1)
 		}
 	}
 
@@ -423,7 +420,6 @@ func (a *App) provide() {
 		if component.Provide != nil {
 			if err := component.Provide(a.container); err != nil {
 				a.LogFatalf("provide component (%s) failed: %s", component.Name, err)
-				os.Exit(1)
 			}
 		}
 
@@ -436,7 +432,6 @@ func (a *App) invoke() {
 	if a.options.initComponent.DepsFunc != nil {
 		if err := a.container.Invoke(a.options.initComponent.DepsFunc); err != nil {
 			a.LogFatalf("invoke init component failed: %s", err)
-			os.Exit(1)
 		}
 	}
 
@@ -444,7 +439,6 @@ func (a *App) invoke() {
 		if component.DepsFunc != nil {
 			if err := a.container.Invoke(component.DepsFunc); err != nil {
 				a.LogFatalf("invoke component (%s) failed: %s", component.Name, err)
-				os.Exit(1)
 			}
 		}
 
@@ -459,7 +453,6 @@ func (a *App) configure() {
 	if a.options.initComponent.Configure != nil {
 		if err := a.options.initComponent.Configure(); err != nil {
 			a.LogFatalf("configure init component failed: %s", err)
-			os.Exit(1)
 		}
 	}
 
@@ -467,7 +460,6 @@ func (a *App) configure() {
 		if component.Configure != nil {
 			if err := component.Configure(); err != nil {
 				a.LogFatalf("configure component (%s) failed: %s", component.Name, err)
-				os.Exit(1)
 			}
 		}
 		a.LogInfof("Loading components: %s ... done", component.Name)
@@ -514,7 +506,6 @@ func (a *App) initializeVersionCheck() {
 		ticker.WaitForGracefulShutdown()
 	}, math.MaxInt16); err != nil {
 		a.LogFatalf("failed to start worker: %s", err)
-		os.Exit(1)
 	}
 }
 
@@ -525,7 +516,6 @@ func (a *App) run() {
 	if a.options.initComponent.Run != nil {
 		if err := a.options.initComponent.Run(); err != nil {
 			a.LogFatalf("run init component failed: %s", err)
-			os.Exit(1)
 		}
 	}
 
@@ -535,7 +525,6 @@ func (a *App) run() {
 		if component.Run != nil {
 			if err := component.Run(); err != nil {
 				a.LogFatalf("run component (%s) failed: %s", component.Name, err)
-				os.Exit(1)
 			}
 		}
 
@@ -569,10 +558,8 @@ func (a *App) Run() {
 		if r != nil {
 			if err, ok := r.(error); ok {
 				a.LogFatalf("application panic, err: %s \n %s", err.Error(), string(debug.Stack()))
-				os.Exit(1)
 			}
 			a.LogFatalf("application panic: %v \n %s", r, string(debug.Stack()))
-			os.Exit(1)
 		}
 	}()
 	a.initializeApp()
@@ -723,12 +710,12 @@ func (a *App) LogWarnf(template string, args ...interface{}) {
 	a.logger.LogWarnf(template, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message.
+// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit(1).
 func (a *App) LogFatal(msg string, args ...interface{}) {
 	a.logger.LogFatal(msg, args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message.
+// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit(1).
 func (a *App) LogFatalf(template string, args ...interface{}) {
 	a.logger.LogFatalf(template, args...)
 }
