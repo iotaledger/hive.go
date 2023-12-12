@@ -302,5 +302,6 @@ func getSlogMessage(msg string, args ...slog.Attr) string {
 			attributes += ", "
 		}
 	}
+
 	return fmt.Sprintf(msg, attributes)
 }

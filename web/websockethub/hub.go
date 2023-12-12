@@ -177,6 +177,10 @@ drainLoop:
 	if client.onDisconnect != nil {
 		client.onDisconnect(client)
 	}
+
+	// cleanup the logger
+	client.loggerShutdown()
+
 	h.events.ClientDisconnected.Trigger(&ClientConnectionEvent{ID: client.id})
 
 	// We do not call "close(client.sendChan)" because we have multiple senders.
