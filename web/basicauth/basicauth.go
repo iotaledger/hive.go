@@ -45,6 +45,8 @@ func VerifyPassword(password []byte, salt []byte, storedPasswordKey []byte) (boo
 }
 
 // BasicAuth is a basic authentication implementation for a single user.
+//
+//nolint:revive // better be explicit here
 type BasicAuth struct {
 	username     string
 	passwordHash []byte
@@ -86,13 +88,15 @@ func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) 
 	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
-// Manager is the same as BasicAuth but for multiple users.
-type Manager struct {
+// BasicAuthManager is the same as BasicAuth but for multiple users.
+//
+//nolint:revive // better be explicit here
+type BasicAuthManager struct {
 	usersWithHashedPasswords map[string][]byte
 	passwordSalt             []byte
 }
 
-func NewManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*Manager, error) {
+func NewManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
 	usersWithHashedPasswords := make(map[string][]byte, len(usersWithPasswordsHex))
 	for username, passwordHashHex := range usersWithPasswordsHex {
 		if len(username) == 0 {
@@ -111,18 +115,18 @@ func NewManager(usersWithPasswordsHex map[string]string, passwordSaltHex string)
 		return nil, err
 	}
 
-	return &Manager{
+	return &BasicAuthManager{
 		usersWithHashedPasswords: usersWithHashedPasswords,
 		passwordSalt:             passwordSalt,
 	}, nil
 }
 
-func (b *Manager) Exists(username string) bool {
+func (b *BasicAuthManager) Exists(username string) bool {
 	_, exists := b.usersWithHashedPasswords[username]
 	return exists
 }
 
-func (b *Manager) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
+func (b *BasicAuthManager) VerifyUsernameAndPasswordBytes(username string, passwordBytes []byte) bool {
 	passwordHash, exists := b.usersWithHashedPasswords[username]
 	if !exists {
 		return false
@@ -132,7 +136,7 @@ func (b *Manager) VerifyUsernameAndPasswordBytes(username string, passwordBytes 
 	return lo.Return1(VerifyPassword(passwordBytes, b.passwordSalt, passwordHash))
 }
 
-func (b *Manager) VerifyUsernameAndPassword(username string, password string) bool {
+func (b *BasicAuthManager) VerifyUsernameAndPassword(username string, password string) bool {
 	return b.VerifyUsernameAndPasswordBytes(username, []byte(password))
 }
 
