@@ -1,7 +1,7 @@
 package app
 
 import (
-	"os"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -88,68 +88,94 @@ func (c *Component) Identifier() string {
 	return strings.ToLower(strings.ReplaceAll(c.Name, " ", ""))
 }
 
-// LogDebug uses fmt.Sprint to construct and log a message.
+// LogDebug emits a log message with the DEBUG level.
 func (c *Component) LogDebug(msg string, args ...interface{}) {
 	c.Logger().LogDebug(msg, args...)
 }
 
-// LogDebugf uses fmt.Sprintf to log a templated message.
+// LogDebugf emits a formatted log message with the DEBUG level.
 func (c *Component) LogDebugf(template string, args ...interface{}) {
 	c.Logger().LogDebugf(template, args...)
 }
 
-// LogError uses fmt.Sprint to construct and log a message.
-func (c *Component) LogError(msg string, args ...interface{}) {
-	c.Logger().LogError(msg, args...)
+// LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
+func (c *Component) LogDebugAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogDebugAttrs(msg, args...)
 }
 
-// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (c *Component) LogErrorAndExit(msg string, args ...interface{}) {
-	c.Logger().LogError(msg, args...)
-	c.Logger().LogError("Exiting...")
-	os.Exit(1)
-}
-
-// LogErrorf uses fmt.Sprintf to log a templated message.
-func (c *Component) LogErrorf(template string, args ...interface{}) {
-	c.Logger().LogErrorf(template, args...)
-}
-
-// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (c *Component) LogErrorfAndExit(template string, args ...interface{}) {
-	c.Logger().LogErrorf(template, args...)
-	c.Logger().LogError("Exiting...")
-	os.Exit(1)
-}
-
-// LogInfo uses fmt.Sprint to construct and log a message.
+// LogInfo emits a log message with the INFO level.
 func (c *Component) LogInfo(msg string, args ...interface{}) {
 	c.Logger().LogInfo(msg, args...)
 }
 
-// LogInfof uses fmt.Sprintf to log a templated message.
+// LogInfof emits a formatted log message with the INFO level.
 func (c *Component) LogInfof(template string, args ...interface{}) {
 	c.Logger().LogInfof(template, args...)
 }
 
-// LogWarn uses fmt.Sprint to construct and log a message.
+// LogInfoAttrs emits a log message with the INFO level and the given attributes.
+func (c *Component) LogInfoAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogInfoAttrs(msg, args...)
+}
+
+// LogWarn emits a log message with the WARN level.
 func (c *Component) LogWarn(msg string, args ...interface{}) {
 	c.Logger().LogWarn(msg, args...)
 }
 
-// LogWarnf uses fmt.Sprintf to log a templated message.
+// LogWarnf emits a formatted log message with the WARN level.
 func (c *Component) LogWarnf(template string, args ...interface{}) {
 	c.Logger().LogWarnf(template, args...)
 }
 
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit(1).
+// LogWarnAttrs emits a log message with the WARN level and the given attributes.
+func (c *Component) LogWarnAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogWarnAttrs(msg, args...)
+}
+
+// LogError emits a log message with the ERROR level.
+func (c *Component) LogError(msg string, args ...interface{}) {
+	c.Logger().LogError(msg, args...)
+}
+
+// LogErrorf emits a formatted log message with the ERROR level.
+func (c *Component) LogErrorf(template string, args ...interface{}) {
+	c.Logger().LogErrorf(template, args...)
+}
+
+// LogErrorAttrs emits a log message with the ERROR level and the given attributes.
+func (c *Component) LogErrorAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogErrorAttrs(msg, args...)
+}
+
+// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
 func (c *Component) LogFatal(msg string, args ...interface{}) {
 	c.Logger().LogFatal(msg, args...)
 }
 
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit(1).
+// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
 func (c *Component) LogFatalf(template string, args ...interface{}) {
 	c.Logger().LogFatalf(template, args...)
+}
+
+// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
+func (c *Component) LogFatalAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogFatalAttrs(msg, args...)
+}
+
+// LogPanic emits a log message with the PANIC level, then panics.
+func (c *Component) LogPanic(msg string, args ...interface{}) {
+	c.Logger().LogPanic(msg, args...)
+}
+
+// LogPanicf emits a formatted log message with the PANIC level, then panics.
+func (c *Component) LogPanicf(template string, args ...interface{}) {
+	c.Logger().LogPanicf(template, args...)
+}
+
+// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
+func (c *Component) LogPanicAttrs(msg string, args ...slog.Attr) {
+	c.Logger().LogPanicAttrs(msg, args...)
 }
 
 // InitComponent is the module initializing configuration of the app.

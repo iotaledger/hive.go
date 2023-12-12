@@ -81,6 +81,15 @@ type Logger interface {
 	// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
 	LogFatalAttrs(fmtString string, args ...slog.Attr)
 
+	// LogPanic emits a log message with the PANIC level, then panics.
+	LogPanic(msg string, args ...any)
+
+	// LogPanicf emits a formatted log message with the PANIC level, then panics.
+	LogPanicf(fmtString string, args ...any)
+
+	// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
+	LogPanicAttrs(fmtString string, args ...slog.Attr)
+
 	// Log emits a log message with the given level.
 	Log(msg string, level Level, args ...any)
 
@@ -134,8 +143,8 @@ func WithOutput(output io.Writer) options.Option[Options] {
 	}
 }
 
-// NewLogger creates a new logger with the given name and an optional config.
-// If no config is provided, the logger uses the info level and writes to stdout with rfc3339 time format.
+// NewLogger creates a new logger with the given options.
+// If no options are provided, the logger uses the info level and writes to stdout with rfc3339 time format.
 func NewLogger(opts ...options.Option[Options]) Logger {
 	loggerOptions := options.Apply(&Options{
 		Name:       "",

@@ -25,8 +25,11 @@ const (
 	// LevelError is the log level for error messages.
 	LevelError = slog.LevelError
 
+	// LevelFatal is the log level for fatal messages.
+	LevelFatal = slog.Level(12)
+
 	// LevelPanic is the log level for panic messages.
-	LevelPanic = slog.Level(12)
+	LevelPanic = slog.Level(16)
 )
 
 // LevelName returns the name of the given log level.
@@ -42,8 +45,10 @@ func LevelName(level Level) string {
 		return "WARNING"
 	case LevelError:
 		return "ERROR"
-	case LevelPanic:
+	case LevelFatal:
 		return "FATAL"
+	case LevelPanic:
+		return "PANIC"
 	default:
 		return "UNKNOWN"
 	}
@@ -61,7 +66,9 @@ func LevelFromString(level string) (Level, error) {
 		return LevelWarning, nil
 	case "error", "ERROR":
 		return LevelError, nil
-	case "panic", "FATAL":
+	case "fatal", "FATAL":
+		return LevelFatal, nil
+	case "panic", "PANIC":
 		return LevelPanic, nil
 	default:
 		return 0, ierrors.Errorf("unknown log level: %s", level)

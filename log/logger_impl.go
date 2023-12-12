@@ -195,20 +195,38 @@ func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
 
 // LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
 func (l *logger) LogFatal(msg string, args ...any) {
-	l.Log(msg, LevelPanic, args...)
+	l.Log(msg, LevelFatal, args...)
 	os.Exit(1)
 }
 
 // LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
 func (l *logger) LogFatalf(fmtString string, args ...any) {
-	l.Logf(fmtString, LevelPanic, args...)
+	l.Logf(fmtString, LevelFatal, args...)
 	os.Exit(1)
 }
 
 // LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
 func (l *logger) LogFatalAttrs(msg string, args ...slog.Attr) {
-	l.LogAttrs(msg, LevelPanic, args...)
+	l.LogAttrs(msg, LevelFatal, args...)
 	os.Exit(1)
+}
+
+// LogPanic emits a log message with the PANIC level, then panics.
+func (l *logger) LogPanic(msg string, args ...any) {
+	l.Log(msg, LevelPanic, args...)
+	panic(msg + fmt.Sprint(args...))
+}
+
+// LogPanicf emits a formatted log message with the PANIC level, then panics.
+func (l *logger) LogPanicf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelPanic, args...)
+	panic(fmt.Sprintf(fmtString, args...))
+}
+
+// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
+func (l *logger) LogPanicAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelPanic, args...)
+	panic(getSlogMessage(msg, args...))
 }
 
 // Log emits a log message with the given level.
@@ -271,3 +289,18 @@ func (l *logger) uniqueEntityName(name string) (uniqueName string) {
 
 // namespaceKey is the key of the slog attribute that holds the namespace of the logger.
 const namespaceKey = "namespace"
+
+func getSlogMessage(msg string, args ...slog.Attr) string {
+	if len(args) == 0 {
+		return msg
+	}
+
+	attributes := ""
+	for i, attr := range args {
+		attributes += attr.String()
+		if i < len(args)-1 {
+			attributes += ", "
+		}
+	}
+	return fmt.Sprintf(msg, attributes)
+}
