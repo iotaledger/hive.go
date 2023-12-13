@@ -1,7 +1,6 @@
 package log
 
 import (
-	"io"
 	"log/slog"
 	"os"
 
@@ -108,41 +107,6 @@ type Logger interface {
 	NewEntityLogger(entityName string) (entityLogger Logger, shutdown func())
 }
 
-type Options struct {
-	// Name is the name of the logger.
-	Name string
-	// Level is the log level of the logger.
-	Level Level
-	// TimeFormat is the time format of the logger.
-	TimeFormat string
-	// Output is the output of the logger.
-	Output io.Writer
-}
-
-func WithName(name string) options.Option[Options] {
-	return func(opts *Options) {
-		opts.Name = name
-	}
-}
-
-func WithLevel(level Level) options.Option[Options] {
-	return func(opts *Options) {
-		opts.Level = level
-	}
-}
-
-func WithTimeFormat(timeFormat string) options.Option[Options] {
-	return func(opts *Options) {
-		opts.TimeFormat = timeFormat
-	}
-}
-
-func WithOutput(output io.Writer) options.Option[Options] {
-	return func(opts *Options) {
-		opts.Output = output
-	}
-}
-
 // NewLogger creates a new logger with the given options.
 // If no options are provided, the logger uses the info level and writes to stdout with rfc3339 time format.
 func NewLogger(opts ...options.Option[Options]) Logger {
@@ -153,10 +117,10 @@ func NewLogger(opts ...options.Option[Options]) Logger {
 		Output:     os.Stdout,
 	}, opts)
 
-	logger := newLogger(slog.New(NewTextHandler(loggerOptions)), "", loggerOptions.Name)
-	logger.SetLogLevel(loggerOptions.Level)
+	l := newLogger(slog.New(NewTextHandler(loggerOptions)), "", loggerOptions.Name)
+	l.SetLogLevel(loggerOptions.Level)
 
-	return logger
+	return l
 }
 
 // EmptyLogger is a logger that does not log anything.
