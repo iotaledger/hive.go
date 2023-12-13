@@ -33,13 +33,13 @@ func provide(c *dig.Container) error {
 
 	// start the handler to be able to catch shutdown signals during the provide stage
 	if err := handler.Run(); err != nil {
-		Component.LogFatal(err.Error())
+		Component.LogPanic(err.Error())
 	}
 
 	if err := c.Provide(func() *shutdown.ShutdownHandler {
 		return handler
 	}); err != nil {
-		Component.LogFatal(err.Error())
+		Component.LogPanic(err.Error())
 	}
 
 	return nil
