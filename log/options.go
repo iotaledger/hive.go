@@ -31,7 +31,7 @@ func newOptions(opts ...options.Option[Options]) *Options {
 	o := options.Apply(&Options{
 		Name:       "",
 		Level:      LevelInfo,
-		TimeFormat: "rfc3339",
+		TimeFormat: "2006-01-02 15:04:05",
 		Output:     os.Stdout,
 	}, opts)
 
