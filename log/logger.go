@@ -2,7 +2,6 @@ package log
 
 import (
 	"log/slog"
-	"os"
 
 	"github.com/iotaledger/hive.go/runtime/options"
 )
@@ -110,14 +109,9 @@ type Logger interface {
 // NewLogger creates a new logger with the given options.
 // If no options are provided, the logger uses the info level and writes to stdout with rfc3339 time format.
 func NewLogger(opts ...options.Option[Options]) Logger {
-	loggerOptions := options.Apply(&Options{
-		Name:       "",
-		Level:      LevelInfo,
-		TimeFormat: "rfc3339",
-		Output:     os.Stdout,
-	}, opts)
+	loggerOptions := newOptions(opts...)
 
-	l := newLogger(slog.New(NewTextHandler(loggerOptions)), "", loggerOptions.Name)
+	l := newLogger(slog.New(loggerOptions.Handler), "", loggerOptions.Name)
 	l.SetLogLevel(loggerOptions.Level)
 
 	return l
