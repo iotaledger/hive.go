@@ -198,7 +198,7 @@ func (api *API) mapEncodeStructFields(
 			continue
 		}
 
-		if sField.settings.omitEmpty && fieldValue.IsZero() {
+		if sField.settings.omitEmpty && api.isValueEmpty(fieldValue) {
 			continue
 		}
 
@@ -322,4 +322,20 @@ func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSe
 	}
 
 	return m, nil
+}
+
+// Returns whether the value is empty.
+//
+// Thin wrapper around reflect.Value.IsZero to also consider slices of length 0 as empty.
+func (api *API) isValueEmpty(value reflect.Value) bool {
+	if value.IsZero() {
+		return true
+	}
+
+	switch value.Kind() {
+	case reflect.Slice:
+		return value.Len() == 0
+	}
+
+	return false
 }
