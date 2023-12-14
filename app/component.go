@@ -74,7 +74,7 @@ func (c *Component) App() *App {
 // Logger instantiates and returns a logger with the name of the component.
 func (c *Component) Logger() log.Logger {
 	c.loggerOnce.Do(func() {
-		c.logger, _ = c.App().NewLogger(c.Name)
+		c.logger = c.App().NewLogger(c.Name)
 	})
 
 	return c.logger
