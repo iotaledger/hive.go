@@ -16,13 +16,13 @@ func TestLogger(t *testing.T) {
 	logger.SetLogLevel(log.LevelTrace)
 	logger.LogTrace("created chain")
 
-	networkLogger, shutdownNetworkLogger := logger.NewChildLogger("network")
-	defer shutdownNetworkLogger()
+	networkLogger := logger.NewChildLogger("network")
+	defer networkLogger.UnsubscribeFromParentLogger()
 	networkLogger.SetLogLevel(log.LevelInfo)
 	networkLogger.LogInfo("instantiated chain (invisible)", "id", 1)
 
-	chainLogger, shutdownChainLogger := logger.NewChildLogger("chain1")
-	defer shutdownChainLogger()
+	chainLogger := logger.NewChildLogger("chain1")
+	defer chainLogger.UnsubscribeFromParentLogger()
 	chainLogger.SetLogLevel(log.LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
 	logger.LogTrace("shutdown")
@@ -80,7 +80,7 @@ func NewTestObject(logger log.Logger) *TestObject {
 		IsEvicted:           reactive.NewEvent(),
 	}
 
-	t.Logger, _ = logger.NewEntityLogger("TestObject")
+	t.Logger = logger.NewChildLogger("TestObject", true)
 
 	t.ImportantValue1.LogUpdates(t.Logger, log.LevelInfo, "ImportantValue1")
 	t.ImportantValue2.LogUpdates(t.Logger, log.LevelInfo, "ImportantValue2")
