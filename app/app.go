@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"runtime/debug"
@@ -656,76 +657,92 @@ func (a *App) NewLogger(name string) (logger log.Logger) {
 	return a.loggerRoot.NewChildLogger(name)
 }
 
-// LogDebug uses fmt.Sprint to construct and log a message.
+// LogDebug emits a log message with the DEBUG level.
 func (a *App) LogDebug(msg string, args ...interface{}) {
 	a.logger.LogDebug(msg, args...)
 }
 
-// LogDebugf uses fmt.Sprintf to log a templated message.
+// LogDebugf emits a formatted log message with the DEBUG level.
 func (a *App) LogDebugf(template string, args ...interface{}) {
 	a.logger.LogDebugf(template, args...)
 }
 
-// LogError uses fmt.Sprint to construct and log a message.
-func (a *App) LogError(msg string, args ...interface{}) {
-	a.logger.LogError(msg, args...)
+// LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
+func (a *App) LogDebugAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogDebugAttrs(msg, args...)
 }
 
-// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogErrorAndExit(msg string, args ...interface{}) {
-	a.logger.LogError(msg, args...)
-	a.logger.LogError("Exiting...")
-	os.Exit(1)
-}
-
-// LogErrorf uses fmt.Sprintf to log a templated message.
-func (a *App) LogErrorf(template string, args ...interface{}) {
-	a.logger.LogErrorf(template, args...)
-}
-
-// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
-	a.logger.LogErrorf(template, args...)
-	a.logger.LogError("Exiting...")
-	os.Exit(1)
-}
-
-// LogFatal uses fmt.Sprint to construct and log a message, then calls os.Exit(1).
-func (a *App) LogFatal(msg string, args ...interface{}) {
-	a.logger.LogFatal(msg, args...)
-}
-
-// LogFatalf uses fmt.Sprintf to log a templated message, then calls os.Exit(1).
-func (a *App) LogFatalf(template string, args ...interface{}) {
-	a.logger.LogFatalf(template, args...)
-}
-
-// LogInfo uses fmt.Sprint to construct and log a message.
+// LogInfo emits a log message with the INFO level.
 func (a *App) LogInfo(msg string, args ...interface{}) {
 	a.logger.LogInfo(msg, args...)
 }
 
-// LogInfof uses fmt.Sprintf to log a templated message.
+// LogInfof emits a formatted log message with the INFO level.
 func (a *App) LogInfof(template string, args ...interface{}) {
 	a.logger.LogInfof(template, args...)
 }
 
-// LogWarn uses fmt.Sprint to construct and log a message.
+// LogInfoAttrs emits a log message with the INFO level and the given attributes.
+func (a *App) LogInfoAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogInfoAttrs(msg, args...)
+}
+
+// LogWarn emits a log message with the WARN level.
 func (a *App) LogWarn(msg string, args ...interface{}) {
 	a.logger.LogWarn(msg, args...)
 }
 
-// LogWarnf uses fmt.Sprintf to log a templated message.
+// LogWarnf emits a formatted log message with the WARN level.
 func (a *App) LogWarnf(template string, args ...interface{}) {
 	a.logger.LogWarnf(template, args...)
 }
 
-// LogPanic uses fmt.Sprint to construct and log a message, then panics.
+// LogWarnAttrs emits a log message with the WARN level and the given attributes.
+func (a *App) LogWarnAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogWarnAttrs(msg, args...)
+}
+
+// LogError emits a log message with the ERROR level.
+func (a *App) LogError(msg string, args ...interface{}) {
+	a.logger.LogError(msg, args...)
+}
+
+// LogErrorf emits a formatted log message with the ERROR level.
+func (a *App) LogErrorf(template string, args ...interface{}) {
+	a.logger.LogErrorf(template, args...)
+}
+
+// LogErrorAttrs emits a log message with the ERROR level and the given attributes.
+func (a *App) LogErrorAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogErrorAttrs(msg, args...)
+}
+
+// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
+func (a *App) LogFatal(msg string, args ...interface{}) {
+	a.logger.LogFatal(msg, args...)
+}
+
+// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
+func (a *App) LogFatalf(template string, args ...interface{}) {
+	a.logger.LogFatalf(template, args...)
+}
+
+// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
+func (a *App) LogFatalAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogFatalAttrs(msg, args...)
+}
+
+// LogPanic emits a log message with the PANIC level, then panics.
 func (a *App) LogPanic(msg string, args ...interface{}) {
 	a.logger.LogPanic(msg, args...)
 }
 
-// LogPanicf uses fmt.Sprintf to log a templated message, then panics.
+// LogPanicf emits a formatted log message with the PANIC level, then panics.
 func (a *App) LogPanicf(template string, args ...interface{}) {
 	a.logger.LogPanicf(template, args...)
+}
+
+// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
+func (a *App) LogPanicAttrs(msg string, args ...slog.Attr) {
+	a.logger.LogPanicAttrs(msg, args...)
 }
