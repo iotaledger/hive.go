@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/iotaledger/hive.go/runtime/options"
 )
@@ -31,7 +32,7 @@ func newOptions(opts ...options.Option[Options]) *Options {
 	o := options.Apply(&Options{
 		Name:       "",
 		Level:      LevelInfo,
-		TimeFormat: "2006-01-02 15:04:05",
+		TimeFormat: time.DateTime,
 		Output:     os.Stdout,
 	}, opts)
 
