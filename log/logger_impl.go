@@ -287,7 +287,8 @@ func (l *logger) ParentLogger() Logger {
 }
 
 // UnsubscribeFromParentLogger unsubscribes the logger from its parent logger (e.g. updates about the log level).
-// It is important to call this method whenever we rem
+// It is important to call this method whenever we remove all references to the logger, otherwise the logger will
+// not be garbage collected.
 func (l *logger) UnsubscribeFromParentLogger() {
 	if l.unsubscribeFromParent != nil {
 		l.unsubscribeFromParent()
