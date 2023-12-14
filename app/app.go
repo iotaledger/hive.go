@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"os"
 	"runtime/debug"
@@ -41,13 +40,14 @@ type ParametersApp struct {
 }
 
 type App struct {
+	log.Logger
+
 	appInfo                *Info
 	componentsEnabledState map[string]bool
 	componentsMap          map[string]*Component
 	components             []*Component
 	container              *dig.Container
 	loggerRoot             log.Logger
-	logger                 log.Logger
 	appFlagSet             *flag.FlagSet
 	appConfig              *configuration.Configuration
 	appParams              *ParametersApp
@@ -83,7 +83,6 @@ func New(name string, version string, optionalOptions ...Option) *App {
 		components:             make([]*Component, 0),
 		container:              dig.New(dig.DeferAcyclicVerification()),
 		loggerRoot:             nil,
-		logger:                 nil,
 		appFlagSet:             nil,
 		appConfig:              nil,
 		configs:                nil,
@@ -308,7 +307,14 @@ Command line flags:
 	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.logger = a.loggerRoot.NewChildLogger("App")
+	a.Logger = a.loggerRoot.NewChildLogger("App")
+
+	// initialize the loggers of the components
+	forEachComponent(a.options.components, func(component *Component) bool {
+		component.Logger = a.loggerRoot.NewChildLogger(component.Name)
+
+		return true
+	})
 }
 
 // printAppInfo prints app name and version info.
@@ -642,107 +648,4 @@ func forEachComponent(components []*Component, f ComponentForEachFunc) {
 // ForEachComponent calls the given ComponentForEachFunc on each loaded component.
 func (a *App) ForEachComponent(f ComponentForEachFunc) {
 	forEachComponent(a.components, f)
-}
-
-//
-// Logger
-//
-
-// NewLogger returns a new named child of the app's root logger.
-func (a *App) NewLogger(name string) (logger log.Logger) {
-	if a.loggerRoot == nil {
-		panic("app root logger not initialized")
-	}
-
-	return a.loggerRoot.NewChildLogger(name)
-}
-
-// LogDebug emits a log message with the DEBUG level.
-func (a *App) LogDebug(msg string, args ...interface{}) {
-	a.logger.LogDebug(msg, args...)
-}
-
-// LogDebugf emits a formatted log message with the DEBUG level.
-func (a *App) LogDebugf(template string, args ...interface{}) {
-	a.logger.LogDebugf(template, args...)
-}
-
-// LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
-func (a *App) LogDebugAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogDebugAttrs(msg, args...)
-}
-
-// LogInfo emits a log message with the INFO level.
-func (a *App) LogInfo(msg string, args ...interface{}) {
-	a.logger.LogInfo(msg, args...)
-}
-
-// LogInfof emits a formatted log message with the INFO level.
-func (a *App) LogInfof(template string, args ...interface{}) {
-	a.logger.LogInfof(template, args...)
-}
-
-// LogInfoAttrs emits a log message with the INFO level and the given attributes.
-func (a *App) LogInfoAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogInfoAttrs(msg, args...)
-}
-
-// LogWarn emits a log message with the WARN level.
-func (a *App) LogWarn(msg string, args ...interface{}) {
-	a.logger.LogWarn(msg, args...)
-}
-
-// LogWarnf emits a formatted log message with the WARN level.
-func (a *App) LogWarnf(template string, args ...interface{}) {
-	a.logger.LogWarnf(template, args...)
-}
-
-// LogWarnAttrs emits a log message with the WARN level and the given attributes.
-func (a *App) LogWarnAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogWarnAttrs(msg, args...)
-}
-
-// LogError emits a log message with the ERROR level.
-func (a *App) LogError(msg string, args ...interface{}) {
-	a.logger.LogError(msg, args...)
-}
-
-// LogErrorf emits a formatted log message with the ERROR level.
-func (a *App) LogErrorf(template string, args ...interface{}) {
-	a.logger.LogErrorf(template, args...)
-}
-
-// LogErrorAttrs emits a log message with the ERROR level and the given attributes.
-func (a *App) LogErrorAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogErrorAttrs(msg, args...)
-}
-
-// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
-func (a *App) LogFatal(msg string, args ...interface{}) {
-	a.logger.LogFatal(msg, args...)
-}
-
-// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
-func (a *App) LogFatalf(template string, args ...interface{}) {
-	a.logger.LogFatalf(template, args...)
-}
-
-// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
-func (a *App) LogFatalAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogFatalAttrs(msg, args...)
-}
-
-// LogPanic emits a log message with the PANIC level, then panics.
-func (a *App) LogPanic(msg string, args ...interface{}) {
-	a.logger.LogPanic(msg, args...)
-}
-
-// LogPanicf emits a formatted log message with the PANIC level, then panics.
-func (a *App) LogPanicf(template string, args ...interface{}) {
-	a.logger.LogPanicf(template, args...)
-}
-
-// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
-func (a *App) LogPanicAttrs(msg string, args ...slog.Attr) {
-	a.logger.LogPanicAttrs(msg, args...)
 }

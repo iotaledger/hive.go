@@ -24,7 +24,7 @@ func provide(c *dig.Container) error {
 	// otherwise the shutdown handler might not be initialized if
 	// it was not a dependency in another component.
 	handler := shutdown.NewShutdownHandler(
-		Component.Logger(),
+		Component.Logger,
 		Component.Daemon(),
 		shutdown.WithStopGracePeriod(ParamsShutdown.StopGracePeriod),
 		shutdown.WithSelfShutdownLogsEnabled(ParamsShutdown.Log.Enabled),
