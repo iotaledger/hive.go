@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	filippo.io/edwards25519 v1.0.0
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231212162051-0adc25efdfc0
-	github.com/iotaledger/hive.go/lo v0.0.0-20231212162051-0adc25efdfc0
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231212162051-0adc25efdfc0
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20231214021733-8e18278e04ac
+	github.com/iotaledger/hive.go/lo v0.0.0-20231214021733-8e18278e04ac
+	github.com/iotaledger/hive.go/runtime v0.0.0-20231214021733-8e18278e04ac
 	github.com/libp2p/go-libp2p v0.30.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
@@ -17,7 +17,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231212162051-0adc25efdfc0 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20231214021733-8e18278e04ac // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
