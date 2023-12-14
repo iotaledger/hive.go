@@ -97,13 +97,17 @@ type Logger interface {
 	// LogAttrs emits a log message with the given level and attributes.
 	LogAttrs(msg string, level Level, args ...slog.Attr)
 
-	// NewChildLogger creates a new child logger with the given name.
-	NewChildLogger(name string) (childLogger Logger, shutdown func())
+	// NewChildLogger creates a new child logger with the given name. If enumerateChildren is true, the child logger
+	// will extend the name with the number of existing child loggers with the same name.
+	NewChildLogger(name string, enumerateChildren ...bool) Logger
 
-	// NewEntityLogger creates a new logger for an entity with the given name. The logger is automatically shut down
-	// when the given shutdown event is triggered. The initLogging function is called with the new logger instance and
-	// can be used to configure the logger.
-	NewEntityLogger(entityName string) (entityLogger Logger, shutdown func())
+	// ParentLogger returns the parent of this Logger (or nil if it is the root).
+	ParentLogger() Logger
+
+	// UnsubscribeFromParentLogger unsubscribes the logger from its parent logger (e.g. updates about the log level).
+	// It is important to call this method whenever we remove all references to the logger, otherwise the logger will
+	// not be garbage collected.
+	UnsubscribeFromParentLogger()
 }
 
 // NewLogger creates a new logger with the given options.
@@ -111,7 +115,7 @@ type Logger interface {
 func NewLogger(opts ...options.Option[Options]) Logger {
 	loggerOptions := newOptions(opts...)
 
-	l := newLogger(slog.New(loggerOptions.Handler), "", loggerOptions.Name)
+	l := newLogger(slog.New(loggerOptions.Handler), nil, loggerOptions.Name)
 	l.SetLogLevel(loggerOptions.Level)
 
 	return l
