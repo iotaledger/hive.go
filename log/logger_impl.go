@@ -240,7 +240,13 @@ func (l *logger) LogPanicf(fmtString string, args ...any) {
 // LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
 func (l *logger) LogPanicAttrs(msg string, args ...slog.Attr) {
 	l.LogAttrs(msg, LevelPanic, args...)
-	panic(getSlogMessage(msg, args...))
+
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
+
+	panic(msg + " " + fmt.Sprint(anyArgs...))
 }
 
 // Log emits a log message with the given level.
@@ -313,19 +319,3 @@ func (l *logger) uniqueEntityName(name string) (uniqueName string) {
 
 // namespaceKey is the key of the slog attribute that holds the namespace of the logger.
 const namespaceKey = "namespace"
-
-func getSlogMessage(msg string, args ...slog.Attr) string {
-	if len(args) == 0 {
-		return msg
-	}
-
-	attributes := ""
-	for i, attr := range args {
-		attributes += attr.String()
-		if i < len(args)-1 {
-			attributes += ", "
-		}
-	}
-
-	return fmt.Sprintf(msg, attributes)
-}

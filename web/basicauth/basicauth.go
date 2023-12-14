@@ -96,7 +96,7 @@ type BasicAuthManager struct {
 	passwordSalt             []byte
 }
 
-func NewManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
+func NewBasicAuthManager(usersWithPasswordsHex map[string]string, passwordSaltHex string) (*BasicAuthManager, error) {
 	usersWithHashedPasswords := make(map[string][]byte, len(usersWithPasswordsHex))
 	for username, passwordHashHex := range usersWithPasswordsHex {
 		if len(username) == 0 {

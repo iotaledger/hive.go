@@ -54,6 +54,7 @@ func LevelName(level Level) string {
 	}
 }
 
+// LevelFromString returns the log level for the given string.
 func LevelFromString(level string) (Level, error) {
 	switch level {
 	case "trace", "TRACE":
