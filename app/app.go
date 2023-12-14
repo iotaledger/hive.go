@@ -307,7 +307,7 @@ Command line flags:
 	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.logger, _ = a.loggerRoot.NewChildLogger("App")
+	a.logger = a.loggerRoot.NewChildLogger("App")
 }
 
 // printAppInfo prints app name and version info.
@@ -648,7 +648,7 @@ func (a *App) ForEachComponent(f ComponentForEachFunc) {
 //
 
 // NewLogger returns a new named child of the app's root logger.
-func (a *App) NewLogger(name string) (logger log.Logger, shutdown func()) {
+func (a *App) NewLogger(name string) (logger log.Logger) {
 	if a.loggerRoot == nil {
 		panic("app root logger not initialized")
 	}
