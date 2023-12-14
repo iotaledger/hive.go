@@ -39,7 +39,6 @@ type ClientID uint32
 // Client is a middleman between the node and the websocket connection.
 type Client struct {
 	log.Logger
-	loggerShutdown func()
 
 	// the id of the client.
 	id ClientID
@@ -95,11 +94,8 @@ func NewClient(hub *Hub, conn *websocket.Conn, onConnect func(client *Client), o
 
 	clientID := ClientID(hub.lastClientID.Add(1))
 
-	logger, loggerShutdown := hub.logger.NewChildLogger(fmt.Sprintf("client %d", clientID))
-
 	return &Client{
-		Logger:         logger,
-		loggerShutdown: loggerShutdown,
+		Logger:         hub.logger.NewChildLogger(fmt.Sprintf("client %d", clientID)),
 		id:             clientID,
 		hub:            hub,
 		conn:           conn,
