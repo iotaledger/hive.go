@@ -45,6 +45,8 @@ func VerifyPassword(password []byte, salt []byte, storedPasswordKey []byte) (boo
 }
 
 // BasicAuth is a basic authentication implementation for a single user.
+//
+//nolint:revive // better be explicit here
 type BasicAuth struct {
 	username     string
 	passwordHash []byte
@@ -87,6 +89,8 @@ func (b *BasicAuth) VerifyUsernameAndPassword(username string, password string) 
 }
 
 // BasicAuthManager is the same as BasicAuth but for multiple users.
+//
+//nolint:revive // better be explicit here
 type BasicAuthManager struct {
 	usersWithHashedPasswords map[string][]byte
 	passwordSalt             []byte

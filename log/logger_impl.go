@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
-	"github.com/iotaledger/hive.go/lo"
 )
 
 // logger is the default implementation of the Logger interface.
@@ -25,6 +25,12 @@ type logger struct {
 	// rootLogger is the root logger instance.
 	rootLogger *slog.Logger
 
+	// parentLogger is the parent logger instance.
+	parentLogger *logger
+
+	// unsubscribeFromParent is the function that is used to unsubscribe from the parent logger.
+	unsubscribeFromParent func()
+
 	// level is the current log level of the logger.
 	level *slog.LevelVar
 
@@ -36,13 +42,22 @@ type logger struct {
 }
 
 // newLogger creates a new logger instance with the given name and parent logger.
-func newLogger(rootLogger *slog.Logger, parentPath, name string) *logger {
+func newLogger(rootLogger *slog.Logger, parentLogger *logger, name string) *logger {
 	l := &logger{
 		name:          name,
-		path:          lo.Cond(parentPath == "", name, parentPath+"."+name),
+		path:          name,
 		rootLogger:    rootLogger,
+		parentLogger:  parentLogger,
 		level:         new(slog.LevelVar),
 		reactiveLevel: reactive.NewVariable[Level](),
+	}
+
+	if parentLogger != nil {
+		if parentLogger.path != "" {
+			l.path = parentLogger.path + "." + l.path
+		}
+
+		l.unsubscribeFromParent = l.reactiveLevel.InheritFrom(parentLogger.reactiveLevel)
 	}
 
 	l.reactiveLevel.OnUpdate(func(_, newLevel Level) { l.level.Set(newLevel) })
@@ -122,9 +137,9 @@ func (l *logger) LogTrace(msg string, args ...any) {
 	l.Log(msg, LevelTrace, args...)
 }
 
-// LogTraceF emits a formatted log message with the TRACE level.
-func (l *logger) LogTraceF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelTrace, args...)
+// LogTracef emits a formatted log message with the TRACE level.
+func (l *logger) LogTracef(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelTrace, args...)
 }
 
 // LogTraceAttrs emits a log message with the TRACE level and the given attributes.
@@ -137,9 +152,9 @@ func (l *logger) LogDebug(msg string, args ...any) {
 	l.Log(msg, LevelDebug, args...)
 }
 
-// LogDebugF emits a formatted log message with the DEBUG level.
-func (l *logger) LogDebugF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelDebug, args...)
+// LogDebugf emits a formatted log message with the DEBUG level.
+func (l *logger) LogDebugf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelDebug, args...)
 }
 
 // LogDebugAttrs emits a log message with the DEBUG level and the given attributes.
@@ -152,9 +167,9 @@ func (l *logger) LogInfo(msg string, args ...any) {
 	l.Log(msg, LevelInfo, args...)
 }
 
-// LogInfoF emits a formatted log message with the INFO level.
-func (l *logger) LogInfoF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelInfo, args...)
+// LogInfof emits a formatted log message with the INFO level.
+func (l *logger) LogInfof(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelInfo, args...)
 }
 
 // LogInfoAttrs emits a log message with the INFO level and the given attributes.
@@ -167,9 +182,9 @@ func (l *logger) LogWarn(msg string, args ...any) {
 	l.Log(msg, LevelWarning, args...)
 }
 
-// LogWarnF emits a formatted log message with the WARN level.
-func (l *logger) LogWarnF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelWarning, args...)
+// LogWarnf emits a formatted log message with the WARN level.
+func (l *logger) LogWarnf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelWarning, args...)
 }
 
 // LogWarnAttrs emits a log message with the WARN level and the given attributes.
@@ -182,14 +197,56 @@ func (l *logger) LogError(msg string, args ...any) {
 	l.Log(msg, LevelError, args...)
 }
 
-// LogErrorF emits a formatted log message with the ERROR level.
-func (l *logger) LogErrorF(fmtString string, args ...any) {
-	l.LogF(fmtString, LevelError, args...)
+// LogErrorf emits a formatted log message with the ERROR level.
+func (l *logger) LogErrorf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelError, args...)
 }
 
 // LogErrorAttrs emits a log message with the ERROR level and the given attributes.
 func (l *logger) LogErrorAttrs(msg string, args ...slog.Attr) {
 	l.LogAttrs(msg, LevelError, args...)
+}
+
+// LogFatal emits a log message with the FATAL level, then calls os.Exit(1).
+func (l *logger) LogFatal(msg string, args ...any) {
+	l.Log(msg, LevelFatal, args...)
+	os.Exit(1)
+}
+
+// LogFatalf emits a formatted log message with the FATAL level, then calls os.Exit(1).
+func (l *logger) LogFatalf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelFatal, args...)
+	os.Exit(1)
+}
+
+// LogFatalAttrs emits a log message with the FATAL level and the given attributes, then calls os.Exit(1).
+func (l *logger) LogFatalAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelFatal, args...)
+	os.Exit(1)
+}
+
+// LogPanic emits a log message with the PANIC level, then panics.
+func (l *logger) LogPanic(msg string, args ...any) {
+	l.Log(msg, LevelPanic, args...)
+	panic(msg + fmt.Sprint(args...))
+}
+
+// LogPanicf emits a formatted log message with the PANIC level, then panics.
+func (l *logger) LogPanicf(fmtString string, args ...any) {
+	l.Logf(fmtString, LevelPanic, args...)
+	panic(fmt.Sprintf(fmtString, args...))
+}
+
+// LogPanicAttrs emits a log message with the PANIC level and the given attributes, then panics.
+func (l *logger) LogPanicAttrs(msg string, args ...slog.Attr) {
+	l.LogAttrs(msg, LevelPanic, args...)
+
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
+
+	panic(msg + " " + fmt.Sprint(anyArgs...))
 }
 
 // Log emits a log message with the given level.
@@ -199,8 +256,8 @@ func (l *logger) Log(msg string, level Level, args ...any) {
 	}
 }
 
-// LogF emits a formatted log message with the given level.
-func (l *logger) LogF(fmtString string, level Level, args ...any) {
+// Logf emits a formatted log message with the given level.
+func (l *logger) Logf(fmtString string, level Level, args ...any) {
 	if l != nil && l.level.Level() <= level {
 		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...))
 	}
@@ -214,24 +271,34 @@ func (l *logger) LogAttrs(msg string, level Level, args ...slog.Attr) {
 }
 
 // NewChildLogger creates a new child logger with the given name.
-func (l *logger) NewChildLogger(name string) (childLogger Logger, shutdown func()) {
+func (l *logger) NewChildLogger(name string, enumerateChildren ...bool) (childLogger Logger) {
 	if l == nil {
-		return l, func() {}
+		return l
 	}
 
-	nestedLoggerInstance := newLogger(l.rootLogger, l.path, name)
+	if len(enumerateChildren) > 0 && enumerateChildren[0] {
+		name = l.uniqueEntityName(name)
+	}
 
-	return nestedLoggerInstance, nestedLoggerInstance.reactiveLevel.InheritFrom(l.reactiveLevel)
+	return newLogger(l.rootLogger, l, name)
 }
 
-// NewEntityLogger is identical to NewChildLogger with the difference that the name of the logger is automatically
-// extended with a unique identifier to avoid name collisions.
-func (l *logger) NewEntityLogger(entityName string) (entityLogger Logger, shutdown func()) {
-	if l == nil {
-		return l, func() {}
+// ParentLogger returns the parent logger of the logger (or nil if it is the root).
+func (l *logger) ParentLogger() Logger {
+	if l.parentLogger == nil {
+		return nil
 	}
 
-	return l.NewChildLogger(l.uniqueEntityName(entityName))
+	return l.parentLogger
+}
+
+// UnsubscribeFromParentLogger unsubscribes the logger from its parent logger (e.g. updates about the log level).
+// It is important to call this method whenever we remove all references to the logger, otherwise the logger will
+// not be garbage collected.
+func (l *logger) UnsubscribeFromParentLogger() {
+	if l.unsubscribeFromParent != nil {
+		l.unsubscribeFromParent()
+	}
 }
 
 // uniqueEntityName returns the name of an embedded instance of the given type.

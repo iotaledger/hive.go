@@ -1,6 +1,10 @@
 package log
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"github.com/iotaledger/hive.go/ierrors"
+)
 
 // Level is the type of log levels.
 type Level = slog.Level
@@ -20,6 +24,12 @@ const (
 
 	// LevelError is the log level for error messages.
 	LevelError = slog.LevelError
+
+	// LevelFatal is the log level for fatal messages.
+	LevelFatal = slog.Level(12)
+
+	// LevelPanic is the log level for panic messages.
+	LevelPanic = slog.Level(16)
 )
 
 // LevelName returns the name of the given log level.
@@ -35,7 +45,33 @@ func LevelName(level Level) string {
 		return "WARNING"
 	case LevelError:
 		return "ERROR"
+	case LevelFatal:
+		return "FATAL"
+	case LevelPanic:
+		return "PANIC"
 	default:
 		return "UNKNOWN"
+	}
+}
+
+// LevelFromString returns the log level for the given string.
+func LevelFromString(level string) (Level, error) {
+	switch level {
+	case "trace", "TRACE":
+		return LevelTrace, nil
+	case "debug", "DEBUG":
+		return LevelDebug, nil
+	case "info", "INFO":
+		return LevelInfo, nil
+	case "warning", "WARNING":
+		return LevelWarning, nil
+	case "error", "ERROR":
+		return LevelError, nil
+	case "fatal", "FATAL":
+		return LevelFatal, nil
+	case "panic", "PANIC":
+		return LevelPanic, nil
+	default:
+		return 0, ierrors.Errorf("unknown log level: %s", level)
 	}
 }

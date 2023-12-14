@@ -14,9 +14,10 @@ import (
 )
 
 // NewTextHandler creates a new handler that writes human-readable log records to the given output.
-func NewTextHandler(output io.Writer) slog.Handler {
+func NewTextHandler(options *Options) slog.Handler {
 	t := &textHandler{
-		output: output,
+		output:     options.Output,
+		timeFormat: options.TimeFormat,
 	}
 
 	formatString := "%s\t%-7s\t%s\t%s %s\n"
@@ -28,6 +29,7 @@ func NewTextHandler(output io.Writer) slog.Handler {
 // textHandler is a slog.Handler that writes human-readable log records to an output.
 type textHandler struct {
 	output             io.Writer
+	timeFormat         string
 	maxNamespaceLength atomic.Int64
 	formatString       atomic.Pointer[string]
 	updateMutex        sync.Mutex
@@ -66,7 +68,7 @@ func (t *textHandler) Handle(_ context.Context, r slog.Record) error {
 		fieldsBuffer.WriteString(")")
 	}
 
-	if _, err := fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format("2006/01/02 15:04:05"), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String()); err != nil {
+	if _, err := fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format(t.timeFormat), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String()); err != nil {
 		return ierrors.Wrap(err, "writing log record failed")
 	}
 

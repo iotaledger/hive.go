@@ -2,12 +2,15 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"time"
 
 	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/app/configuration"
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/log"
 )
 
 type ConfigurationSets []*ConfigurationSet
@@ -138,4 +141,106 @@ func loadConfigurations(configFilesFlagSet *flag.FlagSet, configurationSets []*C
 	}
 
 	return nil
+}
+
+// LoggerConfig holds the settings to configure a logger instance.
+type LoggerConfig struct {
+	// Name is the optional name of the logger instance. All log messages are prefixed with that name.
+	Name string `default:"" json:"name" usage:"the optional name of the logger instance. All log messages are prefixed with that name."`
+	// Level is the minimum enabled logging level.
+	// The default is "info".
+	Level string `default:"info" json:"level" usage:"the minimum enabled logging level"`
+	// TimeFormat sets the logger's timestamp format. Valid values are "layout", "ansic", "unixdate", "rubydate",
+	// "rfc822", "rfc822z", "rfc850", "rfc1123", "rfc1123z", "rfc3339", "rfc3339nano", "kitchen", "stamp", "stampmilli",
+	// "stampmicro", "stampnano", "datetime", "dateonly", "timeonly" and "iso8601".
+	// The default is "rfc3339".
+	TimeFormat string `name:"timeFormat" json:"timeFormat" default:"rfc3339" usage:"sets the logger's timestamp format. (options: \"rfc3339\", \"rfc3339nano\", \"datetime\", \"timeonly\", and \"iso8601\")"`
+	// OutputPaths is a list of URLs, file paths or stdout/stderr to write logging output to.
+	// The default is ["stdout"].
+	OutputPaths []string `default:"stdout" json:"outputPaths" usage:"a list of file paths or stdout/stderr to write logging output to"`
+}
+
+func newLoggerFromConfig(cfg *LoggerConfig) (log.Logger, error) {
+	level, err := log.LevelFromString(cfg.Level)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to load log level")
+	}
+
+	timeFormat, err := getTimeFormat(cfg.TimeFormat)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to load time format")
+	}
+
+	outputs := make([]io.Writer, len(cfg.OutputPaths))
+	for i, outputPath := range cfg.OutputPaths {
+		switch outputPath {
+		case "stdout":
+			outputs[i] = os.Stdout
+		case "stderr":
+			outputs[i] = os.Stderr
+		default:
+			file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			if err != nil {
+				return nil, ierrors.Wrapf(err, "failed to open log file \"%s\"", outputPath)
+			}
+
+			outputs[i] = file
+		}
+	}
+
+	return log.NewLogger(
+		log.WithName(cfg.Name),
+		log.WithLevel(level),
+		log.WithTimeFormat(timeFormat),
+		log.WithOutput(io.MultiWriter(outputs...)),
+	), nil
+}
+
+func getTimeFormat(format string) (string, error) {
+	switch format {
+	case "layout":
+		return time.Layout, nil
+	case "ansic":
+		return time.ANSIC, nil
+	case "unixdate":
+		return time.UnixDate, nil
+	case "rubydate":
+		return time.RubyDate, nil
+	case "rfc822":
+		return time.RFC822, nil
+	case "rfc822z":
+		return time.RFC822Z, nil
+	case "rfc850":
+		return time.RFC850, nil
+	case "rfc1123":
+		return time.RFC1123, nil
+	case "rfc1123z":
+		return time.RFC1123Z, nil
+	case "rfc3339":
+		return time.RFC3339, nil
+	case "rfc3339nano":
+		return time.RFC3339Nano, nil
+	case "kitchen":
+		return time.Kitchen, nil
+	case "stamp":
+		return time.Stamp, nil
+	case "stampmilli":
+		return time.StampMilli, nil
+	case "stampmicro":
+		return time.StampMicro, nil
+	case "stampnano":
+		return time.StampNano, nil
+	case "datetime":
+		return time.DateTime, nil
+	case "dateonly":
+		return time.DateOnly, nil
+	case "timeonly":
+		return time.TimeOnly, nil
+	case "iso8601":
+		return "2006-01-02T15:04:05.000Z0700", nil
+	case "":
+		return time.RFC3339, nil
+	default:
+		return "", ierrors.Errorf("unknown time format \"%s\"", format)
+	}
 }

@@ -8,7 +8,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/iotaledger/hive.go/ierrors"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/event"
 )
 
@@ -39,7 +39,7 @@ func newEvents() *Events {
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
 	// used Logger instance.
-	logger *logger.Logger
+	logger log.Logger
 
 	// the accept options of the websocket per client.
 	acceptOptions *websocket.AcceptOptions
@@ -81,7 +81,7 @@ type message struct {
 	dontDrop bool
 }
 
-func NewHub(logger *logger.Logger, acceptOptions *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
+func NewHub(logger log.Logger, acceptOptions *websocket.AcceptOptions, broadcastQueueSize int, clientSendChannelSize int, clientReadLimit int64) *Hub {
 	h := &Hub{
 		logger:                logger,
 		acceptOptions:         acceptOptions,
@@ -177,6 +177,10 @@ drainLoop:
 	if client.onDisconnect != nil {
 		client.onDisconnect(client)
 	}
+
+	// cleanup the logger
+	client.Logger.UnsubscribeFromParentLogger()
+
 	h.events.ClientDisconnected.Trigger(&ClientConnectionEvent{ID: client.id})
 
 	// We do not call "close(client.sendChan)" because we have multiple senders.
@@ -251,7 +255,7 @@ func (h *Hub) Run(ctx context.Context) {
 			case client := <-h.unregister:
 				if _, ok := h.clients[client]; ok {
 					h.removeClient(client)
-					h.logger.Infof("Removed websocket client")
+					h.logger.LogInfof("Removed websocket client")
 				}
 
 			case message := <-h.broadcast:
@@ -327,13 +331,13 @@ func (h *Hub) ServeWebsocket(
 
 	defer func() {
 		if r := recover(); r != nil {
-			h.logger.Errorf("recovered from ServeWebsocket func: %s", r)
+			h.logger.LogErrorf("recovered from ServeWebsocket func: %s", r)
 		}
 	}()
 
 	conn, err := websocket.Accept(w, r, h.acceptOptions)
 	if err != nil {
-		h.logger.Warn(err.Error())
+		h.logger.LogWarn(err.Error())
 		return err
 	}
 

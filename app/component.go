@@ -1,14 +1,12 @@
 package app
 
 import (
-	"os"
 	"strings"
-	"sync"
 
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app/daemon"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
@@ -40,6 +38,8 @@ type ComponentParams struct {
 
 // Component is something which extends the App's capabilities.
 type Component struct {
+	log.Logger
+
 	// A reference to the App instance.
 	app *App
 	// The name of the component.
@@ -61,23 +61,10 @@ type Component struct {
 	Run Callback
 	// WorkerPool gets configured and started automatically for each component (enabled components only).
 	WorkerPool *workerpool.WorkerPool
-
-	// The logger instance used in this component.
-	logger     *logger.Logger
-	loggerOnce sync.Once
 }
 
 func (c *Component) App() *App {
 	return c.app
-}
-
-// Logger instantiates and returns a logger with the name of the component.
-func (c *Component) Logger() *logger.Logger {
-	c.loggerOnce.Do(func() {
-		c.logger = c.App().NewLogger(c.Name)
-	})
-
-	return c.logger
 }
 
 func (c *Component) Daemon() daemon.Daemon {
@@ -86,80 +73,6 @@ func (c *Component) Daemon() daemon.Daemon {
 
 func (c *Component) Identifier() string {
 	return strings.ToLower(strings.ReplaceAll(c.Name, " ", ""))
-}
-
-// LogDebug uses fmt.Sprint to construct and log a message.
-func (c *Component) LogDebug(args ...interface{}) {
-	c.Logger().Debug(args...)
-}
-
-// LogDebugf uses fmt.Sprintf to log a templated message.
-func (c *Component) LogDebugf(template string, args ...interface{}) {
-	c.Logger().Debugf(template, args...)
-}
-
-// LogError uses fmt.Sprint to construct and log a message.
-func (c *Component) LogError(args ...interface{}) {
-	c.Logger().Error(args...)
-}
-
-// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (c *Component) LogErrorAndExit(args ...interface{}) {
-	c.Logger().Error(args...)
-	c.Logger().Error("Exiting...")
-	os.Exit(1)
-}
-
-// LogErrorf uses fmt.Sprintf to log a templated message.
-func (c *Component) LogErrorf(template string, args ...interface{}) {
-	c.Logger().Errorf(template, args...)
-}
-
-// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (c *Component) LogErrorfAndExit(template string, args ...interface{}) {
-	c.Logger().Errorf(template, args...)
-	c.Logger().Error("Exiting...")
-	os.Exit(1)
-}
-
-// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (c *Component) LogFatalAndExit(args ...interface{}) {
-	c.Logger().Fatal(args...)
-}
-
-// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (c *Component) LogFatalfAndExit(template string, args ...interface{}) {
-	c.Logger().Fatalf(template, args...)
-}
-
-// LogInfo uses fmt.Sprint to construct and log a message.
-func (c *Component) LogInfo(args ...interface{}) {
-	c.Logger().Info(args...)
-}
-
-// LogInfof uses fmt.Sprintf to log a templated message.
-func (c *Component) LogInfof(template string, args ...interface{}) {
-	c.Logger().Infof(template, args...)
-}
-
-// LogWarn uses fmt.Sprint to construct and log a message.
-func (c *Component) LogWarn(args ...interface{}) {
-	c.Logger().Warn(args...)
-}
-
-// LogWarnf uses fmt.Sprintf to log a templated message.
-func (c *Component) LogWarnf(template string, args ...interface{}) {
-	c.Logger().Warnf(template, args...)
-}
-
-// LogPanic uses fmt.Sprint to construct and log a message, then panics.
-func (c *Component) LogPanic(args ...interface{}) {
-	c.Logger().Panic(args...)
-}
-
-// LogPanicf uses fmt.Sprintf to log a templated message, then panics.
-func (c *Component) LogPanicf(template string, args ...interface{}) {
-	c.Logger().Panicf(template, args...)
 }
 
 // InitComponent is the module initializing configuration of the app.

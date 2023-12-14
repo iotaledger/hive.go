@@ -11,7 +11,7 @@ import (
 
 	"github.com/iotaledger/hive.go/app/daemon"
 	"github.com/iotaledger/hive.go/ierrors"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/event"
 	"github.com/iotaledger/hive.go/runtime/ioutils"
 	"github.com/iotaledger/hive.go/runtime/options"
@@ -36,7 +36,7 @@ type Events struct {
 //nolint:revive // better be explicit here
 type ShutdownHandler struct {
 	// the logger used to log events.
-	*logger.WrappedLogger
+	log.Logger
 
 	daemon daemon.Daemon
 
@@ -74,10 +74,9 @@ func WithSelfShutdownLogsFilePath(selfShutdownLogsFilePath string) options.Optio
 }
 
 // NewShutdownHandler creates a new shutdown handler.
-func NewShutdownHandler(log *logger.Logger, daemon daemon.Daemon, opts ...options.Option[ShutdownHandler]) *ShutdownHandler {
-
+func NewShutdownHandler(logger log.Logger, daemon daemon.Daemon, opts ...options.Option[ShutdownHandler]) *ShutdownHandler {
 	gs := options.Apply(&ShutdownHandler{
-		WrappedLogger:   logger.NewWrappedLogger(log),
+		Logger:          logger,
 		daemon:          daemon,
 		stopGracePeriod: 300 * time.Second,
 		gracefulStop:    make(chan os.Signal, 1),
@@ -170,7 +169,8 @@ func (gs *ShutdownHandler) Run() error {
 
 		go func() {
 			ts := time.Now()
-			for range time.Tick(1 * time.Second) {
+			ticker := time.NewTicker(1 * time.Second)
+			for range ticker.C {
 				secondsSinceStart := int(time.Since(ts).Seconds())
 
 				if secondsSinceStart <= int(gs.stopGracePeriod.Seconds()) {
@@ -182,7 +182,7 @@ func (gs *ShutdownHandler) Run() error {
 
 					gs.LogWarnf("Received shutdown request - waiting (max %d seconds) to finish processing %s...", int(gs.stopGracePeriod.Seconds())-secondsSinceStart, processList)
 				} else {
-					gs.LogFatalAndExit("Background processes did not terminate in time! Forcing shutdown ...")
+					gs.LogFatal("Background processes did not terminate in time! Forcing shutdown ...")
 				}
 			}
 		}()

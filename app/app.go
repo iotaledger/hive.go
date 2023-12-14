@@ -19,7 +19,7 @@ import (
 	"github.com/iotaledger/hive.go/app/version"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/timeutil"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
@@ -40,13 +40,14 @@ type ParametersApp struct {
 }
 
 type App struct {
+	log.Logger
+
 	appInfo                *Info
 	componentsEnabledState map[string]bool
 	componentsMap          map[string]*Component
 	components             []*Component
 	container              *dig.Container
-	loggerRoot             *logger.Logger
-	logger                 *logger.Logger
+	loggerRoot             log.Logger
 	appFlagSet             *flag.FlagSet
 	appConfig              *configuration.Configuration
 	appParams              *ParametersApp
@@ -82,7 +83,6 @@ func New(name string, version string, optionalOptions ...Option) *App {
 		components:             make([]*Component, 0),
 		container:              dig.New(dig.DeferAcyclicVerification()),
 		loggerRoot:             nil,
-		logger:                 nil,
 		appFlagSet:             nil,
 		appConfig:              nil,
 		configs:                nil,
@@ -128,8 +128,8 @@ func (a *App) init() {
 	a.appParams = &ParametersApp{}
 	a.appConfig.BindParameters(a.appFlagSet, "app", a.appParams)
 
-	loggerParams := &logger.Config{}
-	a.appConfig.BindParameters(a.appFlagSet, "logger", loggerParams)
+	loggerConfig := &LoggerConfig{}
+	a.appConfig.BindParameters(a.appFlagSet, "logger", loggerConfig)
 
 	// provide the app params in the container
 	if err := a.container.Provide(func() *ParametersApp {
@@ -300,14 +300,21 @@ Command line flags:
 	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
 	// initialize the root logger
-	loggerRoot, err := logger.NewRootLogger(*loggerParams)
+	loggerRoot, err := newLoggerFromConfig(loggerConfig)
 	if err != nil {
 		panic(err)
 	}
 	a.loggerRoot = loggerRoot
 
 	// initialize logger after init phase because components could modify it
-	a.logger = loggerRoot.Named("App")
+	a.Logger = a.loggerRoot.NewChildLogger("App")
+
+	// initialize the loggers of the components
+	forEachComponent(a.options.components, func(component *Component) bool {
+		component.Logger = a.loggerRoot.NewChildLogger(component.Name)
+
+		return true
+	})
 }
 
 // printAppInfo prints app name and version info.
@@ -641,91 +648,4 @@ func forEachComponent(components []*Component, f ComponentForEachFunc) {
 // ForEachComponent calls the given ComponentForEachFunc on each loaded component.
 func (a *App) ForEachComponent(f ComponentForEachFunc) {
 	forEachComponent(a.components, f)
-}
-
-//
-// Logger
-//
-
-// NewLogger returns a new named child of the app's root logger.
-func (a *App) NewLogger(name string) *logger.Logger {
-	if a.loggerRoot == nil {
-		panic("app root logger not initialized")
-	}
-
-	return a.loggerRoot.Named(name)
-}
-
-// LogDebug uses fmt.Sprint to construct and log a message.
-func (a *App) LogDebug(args ...interface{}) {
-	a.logger.Debug(args...)
-}
-
-// LogDebugf uses fmt.Sprintf to log a templated message.
-func (a *App) LogDebugf(template string, args ...interface{}) {
-	a.logger.Debugf(template, args...)
-}
-
-// LogError uses fmt.Sprint to construct and log a message.
-func (a *App) LogError(args ...interface{}) {
-	a.logger.Error(args...)
-}
-
-// LogErrorAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogErrorAndExit(args ...interface{}) {
-	a.logger.Error(args...)
-	a.logger.Error("Exiting...")
-	os.Exit(1)
-}
-
-// LogErrorf uses fmt.Sprintf to log a templated message.
-func (a *App) LogErrorf(template string, args ...interface{}) {
-	a.logger.Errorf(template, args...)
-}
-
-// LogErrorfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (a *App) LogErrorfAndExit(template string, args ...interface{}) {
-	a.logger.Errorf(template, args...)
-	a.logger.Error("Exiting...")
-	os.Exit(1)
-}
-
-// LogFatalAndExit uses fmt.Sprint to construct and log a message, then calls os.Exit.
-func (a *App) LogFatalAndExit(args ...interface{}) {
-	a.logger.Fatal(args...)
-}
-
-// LogFatalfAndExit uses fmt.Sprintf to log a templated message, then calls os.Exit.
-func (a *App) LogFatalfAndExit(template string, args ...interface{}) {
-	a.logger.Fatalf(template, args...)
-}
-
-// LogInfo uses fmt.Sprint to construct and log a message.
-func (a *App) LogInfo(args ...interface{}) {
-	a.logger.Info(args...)
-}
-
-// LogInfof uses fmt.Sprintf to log a templated message.
-func (a *App) LogInfof(template string, args ...interface{}) {
-	a.logger.Infof(template, args...)
-}
-
-// LogWarn uses fmt.Sprint to construct and log a message.
-func (a *App) LogWarn(args ...interface{}) {
-	a.logger.Warn(args...)
-}
-
-// LogWarnf uses fmt.Sprintf to log a templated message.
-func (a *App) LogWarnf(template string, args ...interface{}) {
-	a.logger.Warnf(template, args...)
-}
-
-// LogPanic uses fmt.Sprint to construct and log a message, then panics.
-func (a *App) LogPanic(args ...interface{}) {
-	a.logger.Panic(args...)
-}
-
-// LogPanicf uses fmt.Sprintf to log a templated message, then panics.
-func (a *App) LogPanicf(template string, args ...interface{}) {
-	a.logger.Panicf(template, args...)
 }

@@ -11,18 +11,18 @@ import (
 // TestLogger tests the logger by using the traditional logging methods that align with the slog interface and the
 // ability to create nested loggers with individual log levels.
 func TestLogger(t *testing.T) {
-	logger := log.NewLogger("node1")
+	logger := log.NewLogger(log.WithName("node1"))
 	logger.LogDebug("some log (invisible due to log level)")
 	logger.SetLogLevel(log.LevelTrace)
 	logger.LogTrace("created chain")
 
-	networkLogger, shutdownNetworkLogger := logger.NewChildLogger("network")
-	defer shutdownNetworkLogger()
+	networkLogger := logger.NewChildLogger("network")
+	defer networkLogger.UnsubscribeFromParentLogger()
 	networkLogger.SetLogLevel(log.LevelInfo)
 	networkLogger.LogInfo("instantiated chain (invisible)", "id", 1)
 
-	chainLogger, shutdownChainLogger := logger.NewChildLogger("chain1")
-	defer shutdownChainLogger()
+	chainLogger := logger.NewChildLogger("chain1")
+	defer chainLogger.UnsubscribeFromParentLogger()
 	chainLogger.SetLogLevel(log.LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
 	logger.LogTrace("shutdown")
@@ -32,7 +32,7 @@ func TestLogger(t *testing.T) {
 
 // TestEntityBasedLogging tests the entity based logging.
 func TestEntityBasedLogging(t *testing.T) {
-	logger := log.NewLogger("node1")
+	logger := log.NewLogger(log.WithName("node1"))
 
 	testObject0 := NewTestObject(logger)
 	testObject0.ImportantValue1.Set(1)      // will produce a log message
@@ -80,7 +80,7 @@ func NewTestObject(logger log.Logger) *TestObject {
 		IsEvicted:           reactive.NewEvent(),
 	}
 
-	t.Logger, _ = logger.NewEntityLogger("TestObject")
+	t.Logger = logger.NewChildLogger("TestObject", true)
 
 	t.ImportantValue1.LogUpdates(t.Logger, log.LevelInfo, "ImportantValue1")
 	t.ImportantValue2.LogUpdates(t.Logger, log.LevelInfo, "ImportantValue2")

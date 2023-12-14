@@ -24,7 +24,7 @@ func provide(c *dig.Container) error {
 	// otherwise the shutdown handler might not be initialized if
 	// it was not a dependency in another component.
 	handler := shutdown.NewShutdownHandler(
-		Component.Logger(),
+		Component.Logger,
 		Component.Daemon(),
 		shutdown.WithStopGracePeriod(ParamsShutdown.StopGracePeriod),
 		shutdown.WithSelfShutdownLogsEnabled(ParamsShutdown.Log.Enabled),
@@ -33,13 +33,13 @@ func provide(c *dig.Container) error {
 
 	// start the handler to be able to catch shutdown signals during the provide stage
 	if err := handler.Run(); err != nil {
-		Component.LogPanic(err)
+		Component.LogPanic(err.Error())
 	}
 
 	if err := c.Provide(func() *shutdown.ShutdownHandler {
 		return handler
 	}); err != nil {
-		Component.LogPanic(err)
+		Component.LogPanic(err.Error())
 	}
 
 	return nil

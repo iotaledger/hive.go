@@ -37,8 +37,8 @@ func NewReactiveModule(logger log.Logger) *ReactiveModule {
 
 // NewReactiveSubModule creates a new reactive submodule with the given name.
 func (r *ReactiveModule) NewReactiveSubModule(name string) *ReactiveModule {
-	childLogger, unsubscribe := r.NewChildLogger(name)
-	r.Shutdown.OnTrigger(unsubscribe)
+	childLogger := r.NewChildLogger(name)
+	r.Shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
 
 	return NewReactiveModule(childLogger)
 }
