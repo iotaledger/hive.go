@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/runtime/options"
 )
 
 // region TaskExecutor ////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,9 +19,9 @@ type TaskExecutor[T comparable] struct {
 }
 
 // NewTaskExecutor is the constructor of the TaskExecutor.
-func NewTaskExecutor[T comparable](workerCount int) *TaskExecutor[T] {
+func NewTaskExecutor[T comparable](workerCount int, opts ...options.Option[Executor]) *TaskExecutor[T] {
 	return &TaskExecutor[T]{
-		Executor:       NewExecutor(workerCount),
+		Executor:       NewExecutor(workerCount, opts...),
 		queuedElements: shrinkingmap.New[T, *QueueElement[func()]](),
 	}
 }
