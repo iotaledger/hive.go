@@ -398,6 +398,11 @@ func (api *API) mapDecodeStructFields(
 		mapVal, has := m[fieldKey]
 		if !has {
 			if sField.settings.isOptional || sField.settings.omitEmpty {
+				// initialize an empty slice if the kind is slice and its a nil pointer
+				if fieldValue.Kind() == reflect.Slice && fieldValue.IsNil() {
+					fieldValue.Set(reflect.MakeSlice(fieldValue.Type(), 0, 0))
+				}
+
 				continue
 			}
 
