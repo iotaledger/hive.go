@@ -160,7 +160,7 @@ type LoggerConfig struct {
 	OutputPaths []string `default:"stdout" json:"outputPaths" usage:"a list of file paths or stdout/stderr to write logging output to"`
 }
 
-func newLoggerFromConfig(cfg *LoggerConfig) (log.Logger, error) {
+func NewLoggerFromConfig(cfg *LoggerConfig) (log.Logger, error) {
 	level, err := log.LevelFromString(cfg.Level)
 	if err != nil {
 		return nil, ierrors.Wrapf(err, "failed to load log level")

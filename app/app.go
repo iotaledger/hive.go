@@ -300,7 +300,7 @@ Command line flags:
 	a.options.versionCheckEnabled = a.appParams.CheckForUpdates
 
 	// initialize the root logger
-	loggerRoot, err := newLoggerFromConfig(loggerConfig)
+	loggerRoot, err := NewLoggerFromConfig(loggerConfig)
 	if err != nil {
 		panic(err)
 	}
