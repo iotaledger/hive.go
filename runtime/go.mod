@@ -13,6 +13,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/stretchr/testify v1.8.4
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -24,5 +25,4 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20231207134359-e60b3f734c67 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
