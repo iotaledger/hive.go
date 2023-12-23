@@ -359,11 +359,11 @@ func TestSet_Encoding(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		testSet.Add(fmt.Sprintf("item%d", i))
 	}
-	bytes, err := testSet.Encode()
+	bytes, err := testSet.Encode(serix.DefaultAPI)
 	require.NoError(t, err)
 
 	decoded := newSet[string]()
-	consumed, err := decoded.Decode(bytes)
+	consumed, err := decoded.Decode(serix.DefaultAPI, bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), consumed)
 

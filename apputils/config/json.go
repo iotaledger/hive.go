@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 
 	// we need to use this orderedmap implementation for serialization instead of our own,
-	// because the generic orderedmap in hive.go doesn't support marshalling to json.
+	// because the generic orderedmap in hive.go doesn't support marshaling to json.
 	// this orderedmap implementation uses map[string]any as underlying datastructure,
-	// which is a must instead of map[K]V, otherwise we can't correctly sort nested maps during unmarshalling.
+	// which is a must instead of map[K]V, otherwise we can't correctly sort nested maps during unmarshaling.
 	"github.com/iancoleman/orderedmap"
 	flag "github.com/spf13/pflag"
 

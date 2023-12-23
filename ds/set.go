@@ -2,6 +2,7 @@ package ds
 
 import (
 	"github.com/iotaledger/hive.go/ds/walker"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // region Set //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +73,7 @@ type ReadableSet[ElementType comparable] interface {
 	ToSlice() []ElementType
 
 	// Encode encodes the set into a byte slice.
-	Encode() ([]byte, error)
+	Encode(*serix.API) ([]byte, error)
 
 	// String returns a string representation of the set.
 	String() string
@@ -111,7 +112,7 @@ type WriteableSet[ElementType comparable] interface {
 	Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType])
 
 	// Decode decodes the set from a byte slice.
-	Decode(b []byte) (bytesRead int, err error)
+	Decode(*serix.API, []byte) (bytesRead int, err error)
 
 	// ReadOnly returns a read-only version of the set.
 	ReadOnly() ReadableSet[ElementType]

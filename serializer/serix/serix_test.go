@@ -342,8 +342,8 @@ type deSerializeTest struct {
 	deSeriErr error
 }
 
-// convert all *orderedmap.OrderedMap to map[string]interface{}
-func convertOrderedMapToMap(m *orderedmap.OrderedMap) map[string]interface{} {
+// convert all *orderedmap.OrderedMap to map[string]any
+func convertOrderedMapToMap(m *orderedmap.OrderedMap) map[string]any {
 	for k, v := range m.Values() {
 		if v, ok := v.(*orderedmap.OrderedMap); ok {
 			m.Set(k, convertOrderedMapToMap(v))
@@ -363,7 +363,7 @@ func (test *deSerializeTest) run(t *testing.T) {
 	serixMapData, err := testAPI.MapEncode(context.Background(), test.source)
 	require.NoError(t, err, "map serialization failed")
 
-	// convert all *orderedmap.OrderedMap in serixMapData to map[string]interface{}
+	// convert all *orderedmap.OrderedMap in serixMapData to map[string]any
 	serixMapDataUnordered := convertOrderedMapToMap(serixMapData)
 
 	// binary deserialize

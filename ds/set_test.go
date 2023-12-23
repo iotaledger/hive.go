@@ -176,11 +176,11 @@ func TestSet_Encoding(t *testing.T) {
 	serix.DefaultAPI.RegisterTypeSettings("", serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte))
 
 	testSet := initSet(3, 0)
-	bytes, err := testSet.Encode()
+	bytes, err := testSet.Encode(serix.DefaultAPI)
 	require.NoError(t, err)
 
 	decoded := ds.NewSet[string]()
-	consumed, err := decoded.Decode(bytes)
+	consumed, err := decoded.Decode(serix.DefaultAPI, bytes)
 	require.NoError(t, err)
 	require.Equal(t, len(bytes), consumed)
 
