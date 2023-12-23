@@ -19,7 +19,7 @@ var (
 type ParameterGroup struct {
 	Parameters []*Parameter
 	SubGroups  []*ParameterGroup
-	Entries    []interface{}
+	Entries    []any
 	Name       string
 	BaseName   string
 	Level      int
