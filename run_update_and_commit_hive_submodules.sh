@@ -28,6 +28,15 @@ fi
 # Find all submodules by searching for subdirectories containing go.mod files
 SUBMODULES=$(find . -type f -name "go.mod" -exec dirname {} \; | sed -e 's/^\.\///' | sort)
 
+# Declare an associative array to store submodule versions
+declare -A SUBMODULE_VERSIONS
+
+# Get the current version of each submodule
+for submodule in $SUBMODULES; do
+    version=$(grep -E "^module " "$submodule/go.mod" | awk '{print $2}' | sed "s|^$BASE_MODULE/||")
+    SUBMODULE_VERSIONS["$submodule"]="$version"
+done
+
 # Declare an associative array to store submodule inter-dependencies
 declare -A SUBMODULE_INTER_DEPENDENCIES
 
@@ -36,6 +45,49 @@ for submodule in $SUBMODULES; do
     dependencies=$(grep -E "^\s$BASE_MODULE" "$submodule/go.mod" | awk '{print $1}')
     SUBMODULE_INTER_DEPENDENCIES["$submodule"]="$dependencies"
 done
+
+# Create an empty string to store the ordered submodules
+order=""
+
+# Function to recursively resolve dependencies and add them to the order array
+resolve_dependencies() {
+    local submodule_with_base_and_version="$1"
+    local submodule_with_version="${submodule_with_base_and_version#${BASE_MODULE}/}"
+    local submodule="${submodule_with_version%/v[0-9]*}"
+    local visited="$2"
+    local dependencies="${SUBMODULE_INTER_DEPENDENCIES["$submodule"]}"
+
+    if [[ -z "$visited" ]]; then
+        visited="$submodule_with_base_and_version "
+    else
+        visited+="$submodule_with_base_and_version "
+    fi
+
+    # dependencies are always with base and version
+    for dependency in $dependencies; do
+        if [[ ! "$visited" =~ "$dependency" ]]; then
+            resolve_dependencies "$dependency" "$visited"
+        fi
+    done
+
+    if [[ ! "$order" =~ "$submodule_with_base_and_version" ]]; then
+        order+="$submodule_with_base_and_version "
+    fi
+}
+
+# Resolve the dependencies between the submodules
+for submodule in $SUBMODULES; do
+    submodule_with_version="${SUBMODULE_VERSIONS["$submodule"]}"
+    submodule_with_base_and_version=$BASE_MODULE/$submodule_with_version
+    
+    if [[ ! "$order" =~ "$submodule_with_base_and_version" ]]; then
+        resolve_dependencies "$submodule_with_base_and_version"
+    fi
+done
+
+# Trim leading and trailing spaces
+order="${order%"${order##*[![:space:]]}"}"
+order="${order#"${order%%[![:space:]]*}"}"
 
 # Function that updates the inter-dependencies in the submodule
 update_submodule() {
@@ -76,49 +128,10 @@ update_submodule() {
     popd >/dev/null
 }
 
-# Create an empty string to store the ordered submodules
-order=""
-
-# Function to recursively resolve dependencies and add them to the order array
-resolve_dependencies() {
-    local submodule_with_base="$1"
-    local submodule="${submodule_with_base#${BASE_MODULE}/}"
-
-    local visited="$2"
-    local dependencies="${SUBMODULE_INTER_DEPENDENCIES["$submodule"]}"
-
-    if [[ -z "$visited" ]]; then
-        visited="$submodule_with_base "
-    else
-        visited+="$submodule_with_base "
-    fi
-
-    for dependency in $dependencies; do
-        if [[ ! "$visited" =~ "$dependency" ]]; then
-            resolve_dependencies "$dependency" "$visited"
-        fi
-    done
-
-    if [[ ! "$order" =~ "$submodule_with_base" ]]; then
-        order+="$submodule_with_base "
-    fi
-}
-
-# Resolve the dependencies between the submodules
-for submodule in $SUBMODULES; do
-    submodule_with_base=$BASE_MODULE/$submodule
-    if [[ ! "$order" =~ "$submodule_with_base" ]]; then
-        resolve_dependencies "$submodule_with_base"
-    fi
-done
-
-# Trim leading and trailing spaces
-order="${order%"${order##*[![:space:]]}"}"
-order="${order#"${order%%[![:space:]]*}"}"
-
 # Update submodules in the correct order
-for submodule_with_base in $order; do
-    submodule="${submodule_with_base#${BASE_MODULE}/}"
+for submodule_with_base_and_version in $order; do
+    submodule_with_version="${submodule_with_base_and_version#${BASE_MODULE}/}"
+    submodule="${submodule_with_version%/v[0-9]*}"
     update_submodule "$submodule"
 done
 
