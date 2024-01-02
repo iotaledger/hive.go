@@ -104,11 +104,13 @@ func (w *WorkerPool) DebounceFunc() (debounce func(workerFunc func(), optStackTr
 		currentInvocation := lastInvocation.Add(1)
 
 		w.Submit(func() {
-			execMutex.Lock()
-			defer execMutex.Unlock()
-
 			if currentInvocation == lastInvocation.Load() {
-				workerFunc()
+				execMutex.Lock()
+				defer execMutex.Unlock()
+
+				if currentInvocation == lastInvocation.Load() {
+					workerFunc()
+				}
 			}
 		})
 	}
