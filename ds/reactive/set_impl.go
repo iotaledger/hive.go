@@ -5,6 +5,7 @@ import (
 
 	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/serializer/v2/serix"
 )
 
 // region set //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +102,11 @@ func (s *set[ElementType]) Replace(elements ds.ReadableSet[ElementType]) (remove
 }
 
 // Decode decodes the set from a byte slice.
-func (s *set[ElementType]) Decode(b []byte) (bytesRead int, err error) {
+func (s *set[ElementType]) Decode(api *serix.API, b []byte) (bytesRead int, err error) {
 	s.readableSet.mutex.Lock()
 	defer s.readableSet.mutex.Unlock()
 
-	return s.value.Decode(b)
+	return s.value.Decode(api, b)
 }
 
 // ReadOnly returns a read-only version of the set.

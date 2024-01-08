@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/iotaledger/hive.go/ds/orderedmap"
+	"github.com/iotaledger/hive.go/ds/serializableorderedmap"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
 	"github.com/iotaledger/hive.go/ds/types"
 	"github.com/iotaledger/hive.go/ds/walker"
@@ -145,13 +145,13 @@ func (s *set[ElementType]) apply(mutations SetMutations[ElementType]) (appliedMu
 //
 //nolint:tagliatelle // heck knows why this linter fails here
 type readableSet[T comparable] struct {
-	*orderedmap.OrderedMap[T, types.Empty] `serix:""`
+	*serializableorderedmap.SerializableOrderedMap[T, types.Empty] `serix:""`
 }
 
 // newReadableSet creates a new readable set with the given elements.
 func newReadableSet[T comparable](elements ...T) *readableSet[T] {
 	r := &readableSet[T]{
-		OrderedMap: orderedmap.New[T, types.Empty](),
+		SerializableOrderedMap: serializableorderedmap.New[T, types.Empty](),
 	}
 
 	for _, element := range elements {
