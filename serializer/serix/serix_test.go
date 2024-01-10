@@ -4,6 +4,7 @@ package serix_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -862,4 +863,71 @@ func TestSerixOmitEmpty(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMapLexicalOrdering(t *testing.T) {
+	type MapKey string
+	type MapValue []byte
+	type Map map[MapKey]MapValue
+	type MapContainer struct {
+		MyMap Map `serix:""`
+	}
+
+	must(testAPI.RegisterTypeSettings(MapKey(""),
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte)),
+	)
+	must(testAPI.RegisterTypeSettings(MapValue(""),
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16)),
+	)
+	must(testAPI.RegisterTypeSettings(Map{},
+		serix.TypeSettings{}.
+			WithLengthPrefixType(serix.LengthPrefixTypeAsByte).
+			WithMinLen(1).
+			WithMaxByteSize(8192),
+	))
+	must(testAPI.RegisterTypeSettings(MapContainer{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
+
+	entries := MapContainer{
+		MyMap: Map{
+			"b": []byte("world"),
+			"c": []byte("world"),
+			"a": []byte("world"),
+		}}
+
+	// Test lexical order in binary format.
+	{
+		serixData, err := testAPI.Encode(ctx, entries, serix.WithValidation())
+		require.NoError(t, err)
+
+		serixTarget := &MapContainer{}
+		bytesRead, err := testAPI.Decode(ctx, serixData, serixTarget)
+		require.NoError(t, err)
+		require.Len(t, serixData, bytesRead)
+		require.EqualValues(t, entries, *serixTarget)
+
+		var keys string
+		for key := range serixTarget.MyMap {
+			keys += string(key)
+		}
+		require.Equal(t, "abc", keys)
+	}
+
+	// Test lexical order in JSON format.
+	{
+		serixData, err := testAPI.JSONEncode(ctx, entries, serix.WithValidation())
+		require.NoError(t, err)
+		fmt.Println(string(serixData))
+
+		serixTarget := &MapContainer{}
+		err = testAPI.JSONDecode(ctx, serixData, serixTarget)
+		require.NoError(t, err)
+		require.EqualValues(t, entries, *serixTarget)
+
+		var keys string
+		for key := range serixTarget.MyMap {
+			keys += string(key)
+		}
+		require.Equal(t, "abc", keys)
+	}
+
 }
