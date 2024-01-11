@@ -112,7 +112,7 @@ func (w *WorkerPool) DebounceFunc() (debounce func(workerFunc func(), optStackTr
 					workerFunc()
 				}
 			}
-		})
+		}, optStackTrace...)
 	}
 }
 
