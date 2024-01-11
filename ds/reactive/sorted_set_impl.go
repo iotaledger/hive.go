@@ -213,7 +213,7 @@ func (s *sortedSet[ElementType, WeightType]) swap(left *sortedSetElement[Element
 }
 
 // defaultTieBreaker is the default tie-breaker function that is used to break ties between elements with the same weight.
-func defaultTieBreaker[ElementType comparable](left ElementType, right ElementType) int {
+func defaultTieBreaker[ElementType comparable](_ ElementType, _ ElementType) int {
 	return 0
 }
 
