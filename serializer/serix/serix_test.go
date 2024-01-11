@@ -4,7 +4,6 @@ package serix_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -889,13 +888,14 @@ func TestMapLexicalOrdering(t *testing.T) {
 
 	entries := MapContainer{
 		MyMap: Map{
-			"b": []byte("world"),
-			"c": []byte("world"),
-			"a": []byte("world"),
+			"b": []byte("z"),
+			"c": []byte("z"),
+			"a": []byte("z"),
 		}}
 
 	// Test lexical order in binary format.
 	{
+		// Encode
 		serixData, err := testAPI.Encode(ctx, entries, serix.WithValidation())
 		require.NoError(t, err)
 
@@ -904,30 +904,32 @@ func TestMapLexicalOrdering(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, serixData, bytesRead)
 		require.EqualValues(t, entries, *serixTarget)
+		encoded := []byte("\x05\x03\x01a\x01\x00z\x01b\x01\x00z\x01c\x01\x00z")
+		require.Equal(t, encoded, serixData)
 
-		var keys string
-		for key := range serixTarget.MyMap {
-			keys += string(key)
-		}
-		require.Equal(t, "abc", keys)
+		// Decode
+		unsortedEncoded := []byte("\x05\x03\x01b\x01\x00z\x01a\x01\x00z\x01c\x01\x00z")
+		_, err = testAPI.Decode(ctx, unsortedEncoded, &MapContainer{}, serix.WithValidation())
+		require.ErrorIs(t, err, serializer.ErrArrayValidationOrderViolatesLexicalOrder)
 	}
 
 	// Test lexical order in JSON format.
 	{
+		// Encode
 		serixData, err := testAPI.JSONEncode(ctx, entries, serix.WithValidation())
 		require.NoError(t, err)
-		fmt.Println(string(serixData))
 
 		serixTarget := &MapContainer{}
 		err = testAPI.JSONDecode(ctx, serixData, serixTarget)
 		require.NoError(t, err)
 		require.EqualValues(t, entries, *serixTarget)
 
-		var keys string
-		for key := range serixTarget.MyMap {
-			keys += string(key)
-		}
-		require.Equal(t, "abc", keys)
-	}
+		require.Equal(t, `{"type":5,"myMap":{"a":"0x7a","b":"0x7a","c":"0x7a"}}`, string(serixData))
 
+		// Decode
+		err = testAPI.JSONDecode(ctx,
+			[]byte(`{"type":5,"myMap":{"c":"0x7a","b":"0x7a","a":"0x7a"}}`),
+			&MapContainer{}, serix.WithValidation())
+		require.ErrorIs(t, err, serializer.ErrArrayValidationOrderViolatesLexicalOrder)
+	}
 }

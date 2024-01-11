@@ -4,10 +4,12 @@ import (
 	"context"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
 func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, ts TypeSettings, opts *options) (err error) {
@@ -511,6 +513,18 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 	if opts.validation {
 		if err := api.checkMinMaxBounds(value, ts); err != nil {
 			return err
+		}
+
+		// Maps always need to be lexically ordered.
+		// We can safely assume the keys to be strings.
+		var prevKey string
+		for i, key := range value.MapKeys() {
+			if i > 0 {
+				if strings.Compare(prevKey, key.String()) == 1 {
+					return ierrors.Wrapf(serializer.ErrArrayValidationOrderViolatesLexicalOrder, "element %s should have been before element %s", prevKey, key)
+				}
+			}
+			prevKey = key.String()
 		}
 	}
 

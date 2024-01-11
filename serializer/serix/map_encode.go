@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -320,6 +321,10 @@ func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSe
 		}
 		m.Set(k, v)
 	}
+
+	m.Sort(func(a, b *orderedmap.Pair) bool {
+		return strings.Compare(a.Key(), b.Key()) < 0
+	})
 
 	return m, nil
 }
