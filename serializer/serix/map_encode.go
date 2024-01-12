@@ -55,7 +55,7 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 func (api *API) mapEncodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (any, error) {
-	globalTS, _ := api.getTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -74,7 +74,7 @@ func (api *API) mapEncodeBasedOnType(
 			sliceValue := sliceFromArray(elemValue)
 			sliceValueType := sliceValue.Type()
 
-			ts, _ = api.getTypeSettings(valueType)
+			ts, _ = api.typeSettingsRegistry.GetTypeSettings(valueType)
 
 			return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 		}
@@ -96,7 +96,7 @@ func (api *API) mapEncodeBasedOnType(
 		str := value.String()
 
 		if opts.validation {
-			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+			if err := checkMinMaxBoundsLength(len(str), ts); err != nil {
 				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 			}
 			// check the string for UTF-8 validity
@@ -137,12 +137,12 @@ func (api *API) mapEncodeInterface(
 	}
 
 	elemType := elemValue.Type()
-	if _, exists := registry.fromTypeToCode[elemType]; !exists {
+	if exists := registry.HasObjectType(elemType); !exists {
 		return nil, ierrors.Errorf("underlying type %s hasn't been registered for interface type %s",
 			elemType, valueType)
 	}
 
-	elemTypeSettings, _ := api.getTypeSettings(elemType)
+	elemTypeSettings, _ := api.typeSettingsRegistry.GetTypeSettings(elemType)
 
 	ele, err := api.mapEncode(ctx, elemValue, elemTypeSettings, opts)
 	if err != nil {
@@ -175,7 +175,7 @@ func (api *API) mapEncodeStruct(
 func (api *API) mapEncodeStructFields(
 	ctx context.Context, obj *orderedmap.OrderedMap, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := api.parseStructType(valueType)
+	structFields, err := api.getStructFields(valueType)
 	if err != nil {
 		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
@@ -251,7 +251,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	if valueType.AssignableTo(bytesType) {
 		if opts.validation {
-			if err := api.checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
+			if err := checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
 				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 			}
 		}
@@ -261,7 +261,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	sliceLen := value.Len()
 
-	if err := api.checkMinMaxBoundsLength(sliceLen, ts); err != nil {
+	if err := checkMinMaxBoundsLength(sliceLen, ts); err != nil {
 		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 	}
 
@@ -285,8 +285,8 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 }
 
 func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
-	keyTypeSettings := api.getTypeSettingsByValue(key)
-	valueTypeSettings := api.getTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(val)
 
 	k, err := api.mapEncode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
@@ -304,7 +304,7 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 
 func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := checkMinMaxBounds(value, ts); err != nil {
 			return nil, err
 		}
 	}
