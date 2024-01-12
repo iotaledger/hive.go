@@ -933,3 +933,85 @@ func TestMapLexicalOrdering(t *testing.T) {
 		require.ErrorIs(t, err, serializer.ErrArrayValidationOrderViolatesLexicalOrder)
 	}
 }
+
+func TestSliceLexicalOrdering(t *testing.T) {
+	const (
+		ShapeSquare    byte = 100
+		ShapeRectangle byte = 101
+		ShapeTriangle  byte = 102
+	)
+
+	type (
+		Shape interface {
+		}
+		Square struct {
+			Size uint8 `serix:""`
+		}
+		Rectangle struct {
+			Size uint8 `serix:""`
+		}
+		Triangle struct {
+			Size uint16 `serix:""`
+		}
+		Container struct {
+			Shapes []Shape `serix:""`
+		}
+	)
+
+	var shapesArrRules = &serix.ArrayRules{
+		Min: 0,
+		Max: 10,
+		ValidationMode: serializer.ArrayValidationModeNoDuplicates |
+			serializer.ArrayValidationModeLexicalOrdering |
+			serializer.ArrayValidationModeAtMostOneOfEachTypeByte,
+	}
+
+	api := serix.NewAPI()
+	must(api.RegisterTypeSettings(Square{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeSquare))))
+	must(api.RegisterTypeSettings(Rectangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeRectangle))))
+	must(api.RegisterTypeSettings(Triangle{}, serix.TypeSettings{}.WithObjectType(uint8(ShapeTriangle))))
+	must(api.RegisterTypeSettings(Container{}, serix.TypeSettings{}.WithObjectType(uint8(5))))
+
+	must(api.RegisterTypeSettings([]Shape{},
+		serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte).WithArrayRules(shapesArrRules),
+	))
+
+	must(api.RegisterInterfaceObjects((*Shape)(nil), (*Triangle)(nil)))
+	must(api.RegisterInterfaceObjects((*Shape)(nil), (*Square)(nil)))
+	must(api.RegisterInterfaceObjects((*Shape)(nil), (*Rectangle)(nil)))
+
+	// Lexical Order
+	sourceUnsorted := &Container{
+		Shapes: []Shape{
+			&Triangle{Size: 3},
+			&Square{Size: 10},
+			&Rectangle{Size: 5},
+		},
+	}
+
+	_, err := api.JSONEncode(ctx, sourceUnsorted, serix.WithValidation())
+	require.ErrorIs(t, err, serializer.ErrArrayValidationOrderViolatesLexicalOrder)
+
+	unsortedEncoded := []byte(`{"type":5,"shapes":[{"type":101,"size":5},{"type":100,"size":10},{"type":102,"size":3}]}`)
+	targetUnsorted := &Container{}
+	err = api.JSONDecode(ctx, unsortedEncoded, targetUnsorted, serix.WithValidation())
+	require.ErrorIs(t, err, serializer.ErrArrayValidationOrderViolatesLexicalOrder)
+
+	// Uniqueness
+	sourceUniqueness := &Container{
+		Shapes: []Shape{
+			&Square{Size: 10},
+			&Triangle{Size: 3},
+			&Triangle{Size: 3},
+			&Rectangle{Size: 5},
+		},
+	}
+
+	_, err = api.JSONEncode(ctx, sourceUniqueness, serix.WithValidation())
+	require.ErrorIs(t, err, serializer.ErrArrayValidationViolatesUniqueness)
+
+	duplicateEncoded := []byte(`{"type":5,"shapes":[{"type":100,"size":10},{"type":101,"size":1},{"type":101,"size":2}]}`)
+	targetUniqueness := &Container{}
+	err = api.JSONDecode(ctx, duplicateEncoded, targetUniqueness, serix.WithValidation())
+	require.ErrorIs(t, err, serializer.ErrArrayValidationViolatesTypeUniqueness)
+}

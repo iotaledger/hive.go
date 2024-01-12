@@ -466,6 +466,12 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		if err := api.checkArrayMustOccur(value, ts); err != nil {
 			return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 		}
+
+		// Hack to check uniqueness and lexical order of the slice of objects.
+		_, err := api.encodeSlice(ctx, value, valueType, ts, opts)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

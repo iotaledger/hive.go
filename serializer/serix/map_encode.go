@@ -270,6 +270,13 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 		if err := api.checkArrayMustOccur(value, ts); err != nil {
 			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 		}
+
+		// Hack to check uniqueness and lexical order of the slice of objects.
+		// This means we do not auto-sort for maps and the passed slice must be sorted.
+		_, err := api.encodeSlice(ctx, value, valueType, ts, opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data := make([]any, sliceLen)
