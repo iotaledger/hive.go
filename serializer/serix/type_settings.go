@@ -55,6 +55,8 @@ type ArrayRules serializer.ArrayRules
 type TypeSettings struct {
 	// fieldKey defines the key for the field used in json serialization.
 	fieldKey *string
+	// description defines the description of the object.
+	description string
 	// objectType defines the object type. It can be either uint8 or uint32 number.
 	objectType interface{}
 	// maxByteSize defines the max serialized byte size. 0 means unbounded.
@@ -65,6 +67,10 @@ type TypeSettings struct {
 	lexicalOrdering *bool
 	// arrayRules defines rules around a to be deserialized array.
 	arrayRules *ArrayRules
+}
+
+func NewTypeSettings() TypeSettings {
+	return TypeSettings{}
 }
 
 // WithFieldKey specifies the key for the field.
@@ -92,6 +98,18 @@ func (ts TypeSettings) MustFieldKey() string {
 	return *ts.fieldKey
 }
 
+// WithDescription specifies the description of the object.
+func (ts TypeSettings) WithDescription(description string) TypeSettings {
+	ts.description = description
+
+	return ts
+}
+
+// Description returns the description of the object.
+func (ts TypeSettings) Description() string {
+	return ts.description
+}
+
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
 // The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
 // serix uses object type to actually encode the number
@@ -112,6 +130,11 @@ func (ts TypeSettings) WithMaxByteSize(l uint) TypeSettings {
 	ts.maxByteSize = l
 
 	return ts
+}
+
+// MaxByteSize returns max serialized byte size for the type. 0 means unbounded.
+func (ts TypeSettings) MaxByteSize() uint {
+	return ts.maxByteSize
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.
