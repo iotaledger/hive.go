@@ -379,6 +379,8 @@ func (api *API) Decode(ctx context.Context, b []byte, obj interface{}, opts ...O
 // JSONDecode deserializes json data into the provided object obj.
 func (api *API) JSONDecode(ctx context.Context, data []byte, obj interface{}, opts ...Option) error {
 	m := map[string]any{}
+	// This does not error on duplicate keys.
+	// Can be fixed once https://github.com/golang/go/issues/48298 is implemented.
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
