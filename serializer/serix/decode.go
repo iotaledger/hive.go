@@ -93,7 +93,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
 		}
 
-		if err := checkMaxByteSize(bytesRead, ts); err != nil {
+		if err := ts.checkMaxByteSize(bytesRead); err != nil {
 			return bytesRead, err
 		}
 	}
@@ -242,7 +242,7 @@ func (api *API) decodeInterface(
 		return 0, ierrors.WithStack(err)
 	}
 
-	objectType, exists := iObjects.GetObjectByCode(objectCode)
+	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
 	if !exists || objectType == nil {
 		return 0, ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
 	}
@@ -494,7 +494,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	}
 
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return consumedBytes, err
 		}
 	}
