@@ -96,7 +96,7 @@ func (api *API) mapEncodeBasedOnType(
 		str := value.String()
 
 		if opts.validation {
-			if err := checkMinMaxBoundsLength(len(str), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(str)); err != nil {
 				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 			}
 			// check the string for UTF-8 validity
@@ -251,7 +251,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	if valueType.AssignableTo(bytesType) {
 		if opts.validation {
-			if err := checkMinMaxBoundsLength(len(value.Bytes()), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(value.Bytes())); err != nil {
 				return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 			}
 		}
@@ -261,7 +261,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	sliceLen := value.Len()
 
-	if err := checkMinMaxBoundsLength(sliceLen, ts); err != nil {
+	if err := ts.checkMinMaxBoundsLength(sliceLen); err != nil {
 		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 	}
 
@@ -304,7 +304,7 @@ func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, 
 
 func (api *API) mapEncodeMap(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) (*orderedmap.OrderedMap, error) {
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err
 		}
 	}

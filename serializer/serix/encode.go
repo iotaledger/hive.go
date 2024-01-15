@@ -59,7 +59,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 			return nil, ierrors.Wrap(err, "post-serialization validation failed")
 		}
 
-		if err := checkMaxByteSize(len(b), ts); err != nil {
+		if err := ts.checkMaxByteSize(len(b)); err != nil {
 			return nil, err
 		}
 	}
@@ -74,7 +74,7 @@ func (api *API) encodeBasedOnType(
 	ts = ts.merge(globalTS)
 
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err
 		}
 	}
@@ -367,7 +367,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	ts TypeSettings, opts *options) ([]byte, error) {
 
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err
 		}
 	}

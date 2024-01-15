@@ -117,7 +117,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				}
 
 				if opts.validation {
-					if err := checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+					if err := ts.checkMinMaxBoundsLength(len(byteSlice)); err != nil {
 						return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 					}
 				}
@@ -165,7 +165,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		}
 
 		if opts.validation {
-			if err := checkMinMaxBoundsLength(len(str), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(str)); err != nil {
 				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 			}
 			// check the string for UTF-8 validity
@@ -292,7 +292,7 @@ func (api *API) mapDecodeInterface(
 	//nolint:forcetypeassert // false positive
 	objectCode := uint32(objectCodeAny.(float64))
 
-	objectType, exists := iObjects.GetObjectByCode(objectCode)
+	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
 	if !exists || objectType == nil {
 		return ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
 	}
@@ -428,7 +428,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		}
 
 		if opts.validation {
-			if err := checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(byteSlice)); err != nil {
 				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 			}
 		}
@@ -449,7 +449,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 	}
 
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 		}
 	}
@@ -509,7 +509,7 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 	}
 
 	if opts.validation {
-		if err := checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return err
 		}
 	}
