@@ -46,6 +46,7 @@ func TestDecode_Interface(t *testing.T) {
 
 	var called atomic.Int64
 
+	//lint:ignore SA1029 // it's fine in the tests
 	testDecode(t, context.WithValue(ctx, "contextValue", func() {
 		called.Add(1)
 	}), testObj)
@@ -75,6 +76,7 @@ func TestDecode_EmbeddedStructs(t *testing.T) {
 
 	var called atomic.Int64
 
+	//lint:ignore SA1029 // it's fine in the tests
 	testDecode(t, context.WithValue(ctx, "contextValue", func() {
 		called.Add(1)
 	}), testObj)
@@ -97,6 +99,7 @@ func TestDecode_Deserializable(t *testing.T) {
 
 	var called atomic.Int64
 
+	//lint:ignore SA1029 // it's fine in the tests
 	testDecode(t, context.WithValue(ctx, "contextValue", func() {
 		called.Add(1)
 	}), testObject)
@@ -111,6 +114,7 @@ func TestDecode_DeserializablePointer(t *testing.T) {
 
 	var called atomic.Int64
 
+	//lint:ignore SA1029 // it's fine in the tests
 	testDecode(t, context.WithValue(ctx, "contextValue", func() {
 		called.Add(1)
 	}), testObject)

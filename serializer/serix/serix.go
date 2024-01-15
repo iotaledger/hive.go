@@ -63,6 +63,7 @@ import (
 	// which is a must instead of map[K]V, otherwise we can't correctly sort nested maps during unmarshaling.
 	"github.com/iancoleman/orderedmap"
 
+	hiveorderedmap "github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -125,10 +126,59 @@ type validators struct {
 	syntacticValidator reflect.Value
 }
 
-type interfaceObjects struct {
-	fromCodeToType map[uint32]reflect.Type
-	fromTypeToCode map[reflect.Type]uint32
+// InterfaceObjects holds all the information about the objects
+// that are registered to the same interface.
+type InterfaceObjects struct {
 	typeDenotation serializer.TypeDenotationType
+	fromCodeToType *hiveorderedmap.OrderedMap[uint32, reflect.Type]
+	fromTypeToCode *hiveorderedmap.OrderedMap[reflect.Type, uint32]
+}
+
+func NewInterfaceObjects(typeDenotation serializer.TypeDenotationType) *InterfaceObjects {
+	return &InterfaceObjects{
+		typeDenotation: typeDenotation,
+		fromCodeToType: hiveorderedmap.New[uint32, reflect.Type](),
+		fromTypeToCode: hiveorderedmap.New[reflect.Type, uint32](),
+	}
+}
+
+func (i *InterfaceObjects) TypeDenotation() serializer.TypeDenotationType {
+	return i.typeDenotation
+}
+
+func (i *InterfaceObjects) AddObject(objCode uint32, objType reflect.Type) {
+	i.fromCodeToType.Set(objCode, objType)
+	i.fromTypeToCode.Set(objType, objCode)
+}
+
+func (i *InterfaceObjects) HasObjectType(objType reflect.Type) bool {
+	_, exists := i.fromTypeToCode.Get(objType)
+
+	return exists
+}
+
+func (i *InterfaceObjects) GetObjectByCode(objCode uint32) (reflect.Type, bool) {
+	objType, exists := i.fromCodeToType.Get(objCode)
+
+	return objType, exists
+}
+
+func (i *InterfaceObjects) GetObjectByType(objType reflect.Type) (uint32, bool) {
+	objCode, exists := i.fromTypeToCode.Get(objType)
+
+	return objCode, exists
+}
+
+func (i *InterfaceObjects) ForEachObjectCode(f func(objCode uint32, objType reflect.Type) bool) {
+	i.fromTypeToCode.ForEach(func(objType reflect.Type, objCode uint32) bool {
+		return f(objCode, objType)
+	})
+}
+
+func (i *InterfaceObjects) ForEachObjectType(f func(objType reflect.Type, objCode uint32) bool) {
+	i.fromCodeToType.ForEach(func(objCode uint32, objType reflect.Type) bool {
+		return f(objType, objCode)
+	})
 }
 
 // Option is an option for Encode/Decode methods.
@@ -164,21 +214,119 @@ func (o *options) toMode() serializer.DeSerializationMode {
 	return mode
 }
 
+type TypeSettingsRegistry struct {
+	// the registered type settings for the known objects
+	typeSettingsRegistryMutex sync.RWMutex
+	typeSettingsRegistry      *hiveorderedmap.OrderedMap[reflect.Type, TypeSettings]
+}
+
+func NewTypeSettingsRegistry() *TypeSettingsRegistry {
+	return &TypeSettingsRegistry{
+		typeSettingsRegistry: hiveorderedmap.New[reflect.Type, TypeSettings](),
+	}
+}
+
+// RegisterTypeSettings registers settings for a particular type obj.
+func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
+	}
+
+	r.typeSettingsRegistryMutex.Lock()
+	defer r.typeSettingsRegistryMutex.Unlock()
+
+	if r.typeSettingsRegistry.Has(objType) {
+		return ierrors.Errorf("type settings for object %s are already registered", objType)
+	}
+
+	r.typeSettingsRegistry.Set(objType, ts)
+
+	return nil
+}
+
+func (r *TypeSettingsRegistry) Has(objType reflect.Type) bool {
+	r.typeSettingsRegistryMutex.RLock()
+	defer r.typeSettingsRegistryMutex.RUnlock()
+
+	return r.typeSettingsRegistry.Has(objType)
+}
+
+func (r *TypeSettingsRegistry) Get(objType reflect.Type) (TypeSettings, bool) {
+	r.typeSettingsRegistryMutex.RLock()
+	defer r.typeSettingsRegistryMutex.RUnlock()
+
+	return r.typeSettingsRegistry.Get(objType)
+}
+
+func (r *TypeSettingsRegistry) Set(objType reflect.Type, ts TypeSettings) {
+	r.typeSettingsRegistryMutex.Lock()
+	defer r.typeSettingsRegistryMutex.Unlock()
+
+	r.typeSettingsRegistry.Set(objType, ts)
+}
+
+func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts TypeSettings) bool) {
+	r.typeSettingsRegistryMutex.RLock()
+	defer r.typeSettingsRegistryMutex.RUnlock()
+
+	r.typeSettingsRegistry.ForEach(func(objType reflect.Type, ts TypeSettings) bool {
+		return consumer(objType, ts)
+	})
+}
+
+type InterfacesRegistry struct {
+	// the registered interfaces and their known objects
+	interfacesRegistryMutex sync.RWMutex
+	interfacesRegistry      *hiveorderedmap.OrderedMap[reflect.Type, *InterfaceObjects]
+}
+
+func NewInterfacesRegistry() *InterfacesRegistry {
+	return &InterfacesRegistry{
+		interfacesRegistry: hiveorderedmap.New[reflect.Type, *InterfaceObjects](),
+	}
+}
+
+func (r *InterfacesRegistry) AddInterfaceObjects(objType reflect.Type, interfaceObjects *InterfaceObjects) {
+	r.interfacesRegistryMutex.Lock()
+	defer r.interfacesRegistryMutex.Unlock()
+
+	r.interfacesRegistry.Set(objType, interfaceObjects)
+}
+
+func (r *InterfacesRegistry) Get(objType reflect.Type) (*InterfaceObjects, bool) {
+	r.interfacesRegistryMutex.RLock()
+	defer r.interfacesRegistryMutex.RUnlock()
+
+	return r.interfacesRegistry.Get(objType)
+}
+
+func (r *InterfacesRegistry) ForEach(consumer func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool) {
+	r.interfacesRegistryMutex.RLock()
+	defer r.interfacesRegistryMutex.RUnlock()
+
+	r.interfacesRegistry.ForEach(func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool {
+		return consumer(objType, interfaceObjects)
+	})
+}
+
 // API is the main object of the package that provides the methods for client to use.
 // It holds all the settings and configuration. It also stores the cache.
 // Most often you will need a single object of API for the whole program.
 // You register all type settings and interfaces on the program start or in init() function.
 // Instead of creating a new API object you can also use the default singleton API object: DefaultAPI.
 type API struct {
-	interfacesRegistryMutex sync.RWMutex
-	interfacesRegistry      map[reflect.Type]*interfaceObjects
+	// the registered interfaces and their known objects
+	interfacesRegistry *InterfacesRegistry
 
-	typeSettingsRegistryMutex sync.RWMutex
-	typeSettingsRegistry      map[reflect.Type]TypeSettings
+	// the registered type settings for the known objects
+	typeSettingsRegistry *TypeSettingsRegistry
 
+	// the registered validators for the known objects
 	validatorsRegistryMutex sync.RWMutex
 	validatorsRegistry      map[reflect.Type]validators
 
+	// the cache for the struct fields
 	typeCacheMutex sync.RWMutex
 	typeCache      map[reflect.Type][]structField
 }
@@ -186,8 +334,8 @@ type API struct {
 // NewAPI creates a new instance of the API type.
 func NewAPI() *API {
 	api := &API{
-		interfacesRegistry:   map[reflect.Type]*interfaceObjects{},
-		typeSettingsRegistry: map[reflect.Type]TypeSettings{},
+		interfacesRegistry:   NewInterfacesRegistry(),
+		typeSettingsRegistry: NewTypeSettingsRegistry(),
 		validatorsRegistry:   map[reflect.Type]validators{},
 		typeCache:            map[reflect.Type][]structField{},
 	}
@@ -211,7 +359,7 @@ func hasLength(v reflect.Value) bool {
 }
 
 // checkMinMaxBoundsLength checks whether the given length is within its defined bounds.
-func (api *API) checkMinMaxBoundsLength(length int, ts TypeSettings) error {
+func checkMinMaxBoundsLength(length int, ts TypeSettings) error {
 	if minLen, ok := ts.MinLen(); ok {
 		if uint(length) < minLen {
 			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "min length %d not reached (len %d)", minLen, length)
@@ -227,12 +375,12 @@ func (api *API) checkMinMaxBoundsLength(length int, ts TypeSettings) error {
 }
 
 // checkMinMaxBounds checks whether the given value is within its defined bounds in case it has a length.
-func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
+func checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 	if has := hasLength(v); !has {
 		return nil
 	}
 
-	if err := api.checkMinMaxBoundsLength(v.Len(), ts); err != nil {
+	if err := checkMinMaxBoundsLength(v.Len(), ts); err != nil {
 		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
 	}
 
@@ -240,7 +388,7 @@ func (api *API) checkMinMaxBounds(v reflect.Value, ts TypeSettings) error {
 }
 
 // checkMaxByteSize checks whether the given type is within its defined size in case it has a max byte size.
-func (api *API) checkMaxByteSize(byteSize int, ts TypeSettings) error {
+func checkMaxByteSize(byteSize int, ts TypeSettings) error {
 	if ts.maxByteSize > 0 && byteSize > int(ts.maxByteSize) {
 		return ierrors.Wrapf(ErrValidationMaxBytesExceeded, "serialized size (%d) exceeds max byte size of %d ", byteSize, ts.maxByteSize)
 	}
@@ -258,7 +406,7 @@ func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts
 		return ierrors.Wrapf(err, "can't get serialized size: failed to encode '%s' type", value.Kind())
 	}
 
-	return api.checkMaxByteSize(len(bytes), ts)
+	return checkMaxByteSize(len(bytes), ts)
 }
 
 // Checks the "Must Occur" array rules in the given slice.
@@ -285,7 +433,7 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 			elemValue = reflect.Indirect(elemValue.Elem())
 		}
 
-		elemTypeSettings, exists := api.getTypeSettings(elemValue.Type())
+		elemTypeSettings, exists := api.typeSettingsRegistry.GetTypeSettings(elemValue.Type())
 		if !exists {
 			return ierrors.Errorf("missing type settings for %s; needed to check Must Occur rules", elemValue)
 		}
@@ -586,29 +734,23 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 // or by type settings provided via option to the Encode/Decode methods.
 // See TypeSettings for more detail.
 func (api *API) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
-	objType := reflect.TypeOf(obj)
-	if objType == nil {
-		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
-	}
-
-	api.typeSettingsRegistryMutex.Lock()
-	defer api.typeSettingsRegistryMutex.Unlock()
-	api.typeSettingsRegistry[objType] = ts
-
-	return nil
+	return api.typeSettingsRegistry.RegisterTypeSettings(obj, ts)
 }
 
-func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
-	api.typeSettingsRegistryMutex.RLock()
-	defer api.typeSettingsRegistryMutex.RUnlock()
+func (r *TypeSettingsRegistry) GetTypeSettings(objType reflect.Type) (TypeSettings, bool) {
+	r.typeSettingsRegistryMutex.RLock()
+	defer r.typeSettingsRegistryMutex.RUnlock()
 
-	ts, ok := api.typeSettingsRegistry[objType]
+	ts, ok := r.typeSettingsRegistry.Get(objType)
 	if ok {
 		return ts, true
 	}
+
+	// if there is no type settings for the given type, and the type is a pointer,
+	// try to get the type settings for the pointer type.
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
-		ts, ok = api.typeSettingsRegistry[objType]
+		ts, ok = r.typeSettingsRegistry.Get(objType)
 
 		return ts, ok
 	}
@@ -617,12 +759,12 @@ func (api *API) getTypeSettings(objType reflect.Type) (TypeSettings, bool) {
 }
 
 //nolint:unparam // false positive, we will use it later
-func (api *API) getTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
-	api.typeSettingsRegistryMutex.RLock()
-	defer api.typeSettingsRegistryMutex.RUnlock()
+func (r *TypeSettingsRegistry) GetTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+	r.typeSettingsRegistryMutex.RLock()
+	defer r.typeSettingsRegistryMutex.RUnlock()
 
 	for {
-		if ts, ok := api.typeSettingsRegistry[objValue.Type()]; ok {
+		if ts, ok := r.typeSettingsRegistry.Get(objValue.Type()); ok {
 			if len(optTS) > 0 {
 				return optTS[0].merge(ts)
 			}
@@ -653,59 +795,95 @@ func (api *API) getTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSett
 // In order for reflection to grasp the actual interface type, iType must be provided as a pointer to an interface:
 // api.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
 // See TestMain() in serix_test.go for more detail.
-func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
+func (r *InterfacesRegistry) RegisterInterfaceObjects(typeSettingsRegistry *TypeSettingsRegistry, iType interface{}, objs ...interface{}) error {
 	ptrType := reflect.TypeOf(iType)
 	if ptrType == nil {
 		return ierrors.New("'iType' is a nil interface, it needs to be a pointer to an interface")
 	}
+
 	if ptrType.Kind() != reflect.Ptr {
 		return ierrors.Errorf("'iType' parameter must be a pointer, got %s", ptrType.Kind())
 	}
+
 	iTypeReflect := ptrType.Elem()
 	if iTypeReflect.Kind() != reflect.Interface {
 		return ierrors.Errorf(
 			"'iType' pointer must contain an interface, got %s", iTypeReflect.Kind())
 	}
+
 	if len(objs) == 0 {
 		return nil
 	}
 
-	iRegistry, exists := api.interfacesRegistry[iTypeReflect]
+	iRegistry, exists := r.Get(iTypeReflect)
 	if !exists {
-		iRegistry = &interfaceObjects{
-			fromCodeToType: make(map[uint32]reflect.Type, len(objs)),
-			fromTypeToCode: make(map[reflect.Type]uint32, len(objs)),
+		// get the object infos for the first object
+		objInfos, err := typeSettingsRegistry.GetObjectInfos(objs[0])
+		if err != nil {
+			return err
 		}
+
+		iRegistry = NewInterfaceObjects(objInfos.TypeDenotation)
 	}
 
-	for i, obj := range objs {
-		objType := reflect.TypeOf(obj)
-		objTypeDenotation, objCode, err := api.getTypeDenotationAndObjectCode(objType)
+	for _, obj := range objs {
+		objInfos, err := typeSettingsRegistry.GetObjectInfos(obj)
 		if err != nil {
-			return ierrors.Wrapf(err, "failed to get type denotation for object %T", obj)
+			return err
 		}
-		if i == 0 {
-			iRegistry.typeDenotation = objTypeDenotation
-		} else if iRegistry.typeDenotation != objTypeDenotation {
+
+		if iRegistry.TypeDenotation() != objInfos.TypeDenotation {
 			firstObj := objs[0]
 
 			return ierrors.Errorf(
 				"all registered objects must have the same type denotation: object %T has %s and object %T has %s",
-				firstObj, iRegistry.typeDenotation, obj, objTypeDenotation,
+				firstObj, iRegistry.TypeDenotation(), obj, objInfos.TypeDenotation,
 			)
 		}
-		iRegistry.fromCodeToType[objCode] = objType
-		iRegistry.fromTypeToCode[objType] = objCode
+
+		iRegistry.AddObject(objInfos.Code, objInfos.Type)
 	}
-	api.interfacesRegistryMutex.Lock()
-	defer api.interfacesRegistryMutex.Unlock()
-	api.interfacesRegistry[iTypeReflect] = iRegistry
+
+	r.AddInterfaceObjects(iTypeReflect, iRegistry)
 
 	return nil
 }
 
-func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
-	ts, exists := api.getTypeSettings(objType)
+// RegisterInterfaceObjects tells serix that when it encounters iType during serialization/deserialization
+// it actually might be one of the objs types.
+// Those objs type must provide their ObjectTypes beforehand via API.RegisterTypeSettings().
+// serix needs object types to be able to figure out what concrete object to instantiate during the deserialization
+// based on its object type code.
+// In order for reflection to grasp the actual interface type, iType must be provided as a pointer to an interface:
+// api.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil))
+// See TestMain() in serix_test.go for more detail.
+func (api *API) RegisterInterfaceObjects(iType interface{}, objs ...interface{}) error {
+	return api.interfacesRegistry.RegisterInterfaceObjects(api.typeSettingsRegistry, iType, objs...)
+}
+
+type ObjectInfos struct {
+	Type           reflect.Type
+	TypeDenotation serializer.TypeDenotationType
+	Code           uint32
+}
+
+func (r *TypeSettingsRegistry) GetObjectInfos(obj any) (*ObjectInfos, error) {
+	objType := reflect.TypeOf(obj)
+
+	objTypeDenotation, objCode, err := r.GetTypeDenotationAndObjectCode(objType)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to get type denotation for object %T", obj)
+	}
+
+	return &ObjectInfos{
+		Type:           objType,
+		TypeDenotation: objTypeDenotation,
+		Code:           objCode,
+	}, nil
+}
+
+func (r *TypeSettingsRegistry) GetTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
+	ts, exists := r.GetTypeSettings(objType)
 	if !exists {
 		return 0, 0, ierrors.Errorf(
 			"no type settings was found for object %s"+
@@ -713,6 +891,7 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 			objType,
 		)
 	}
+
 	objectType := ts.ObjectType()
 	if objectType == nil {
 		return 0, 0, ierrors.Errorf(
@@ -720,6 +899,7 @@ func (api *API) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer
 			objType,
 		)
 	}
+
 	objTypeDenotation, objectCode, err := getTypeDenotationAndCode(objectType)
 	if err != nil {
 		return 0, 0, ierrors.WithStack(err)
@@ -754,11 +934,25 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 	return objTypeDenotation, code, nil
 }
 
-func (api *API) getInterfaceObjects(iType reflect.Type) *interfaceObjects {
-	api.interfacesRegistryMutex.RLock()
-	defer api.interfacesRegistryMutex.RUnlock()
+func (api *API) getInterfaceObjects(iType reflect.Type) *InterfaceObjects {
+	iObj, exists := api.interfacesRegistry.Get(iType)
+	if !exists {
+		return nil
+	}
 
-	return api.interfacesRegistry[iType]
+	return iObj
+}
+
+func (api *API) ForEachRegisteredInterface(consumer func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool) {
+	api.interfacesRegistry.ForEach(func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool {
+		return consumer(objType, interfaceObjects)
+	})
+}
+
+func (api *API) ForEachRegisteredType(consumer func(objType reflect.Type, ts TypeSettings) bool) {
+	api.typeSettingsRegistry.ForEach(func(objType reflect.Type, ts TypeSettings) bool {
+		return consumer(objType, ts)
+	})
 }
 
 type structField struct {
@@ -767,10 +961,10 @@ type structField struct {
 	index        int
 	fType        reflect.Type
 	isEmbedded   bool
-	settings     tagSettings
+	settings     TagSettings
 }
 
-type tagSettings struct {
+type TagSettings struct {
 	position   int
 	isOptional bool
 	inlined    bool
@@ -778,15 +972,28 @@ type tagSettings struct {
 	ts         TypeSettings
 }
 
-func (api *API) parseStructType(structType reflect.Type) ([]structField, error) {
-	api.typeCacheMutex.RLock()
-	structFields, exists := api.typeCache[structType]
-	api.typeCacheMutex.RUnlock()
-	if exists {
-		return structFields, nil
-	}
+func (ts TagSettings) Position() int {
+	return ts.position
+}
 
-	structFields = make([]structField, 0, structType.NumField())
+func (ts TagSettings) IsOptional() bool {
+	return ts.isOptional
+}
+
+func (ts TagSettings) Inlined() bool {
+	return ts.inlined
+}
+
+func (ts TagSettings) OmitEmpty() bool {
+	return ts.omitEmpty
+}
+
+func (ts TagSettings) TypeSettings() TypeSettings {
+	return ts.ts
+}
+
+func parseStructFields(structType reflect.Type) ([]structField, error) {
+	structFields := make([]structField, 0, structType.NumField())
 
 	serixPosition := 0
 	for i := 0; i < structType.NumField(); i++ {
@@ -808,7 +1015,7 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 			continue
 		}
 
-		tSettings, err := parseSerixSettings(tag, serixPosition)
+		tSettings, err := ParseSerixSettings(tag, serixPosition)
 		if err != nil {
 			return nil, ierrors.Wrapf(err, "failed to parse serix struct tag for field %s", field.Name)
 		}
@@ -860,9 +1067,24 @@ func (api *API) parseStructType(structType reflect.Type) ([]structField, error) 
 		return structFields[i].settings.position < structFields[j].settings.position
 	})
 
+	return structFields, nil
+}
+
+func (api *API) getStructFields(structType reflect.Type) ([]structField, error) {
+	api.typeCacheMutex.RLock()
+	structFields, exists := api.typeCache[structType]
+	api.typeCacheMutex.RUnlock()
+	if exists {
+		return structFields, nil
+	}
+
+	structFields, err := parseStructFields(structType)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to parse struct type %s", structType)
+	}
+
 	api.typeCacheMutex.Lock()
 	defer api.typeCacheMutex.Unlock()
-
 	api.typeCache[structType] = structFields
 
 	return structFields, nil
@@ -919,8 +1141,9 @@ func parseStructTagValuePrefixType(name string, keyValue []string, currentPart s
 	return lengthPrefixType, nil
 }
 
-func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
-	settings := tagSettings{}
+// ParseSerixSettings parses the given struct tag and returns the settings.
+func ParseSerixSettings(tag string, serixPosition int) (TagSettings, error) {
+	settings := TagSettings{}
 	settings.position = serixPosition
 
 	if tag == "" {
@@ -932,7 +1155,7 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 	keyPart := parts[0]
 
 	if strings.ContainsAny(keyPart, "=") {
-		return tagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
+		return TagSettings{}, ierrors.Errorf("incorrect struct tag format: %s, must start with the field key or \",\"", tag)
 	}
 
 	if keyPart != "" {
@@ -943,7 +1166,7 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 	seenParts := map[string]struct{}{}
 	for _, currentPart := range parts {
 		if _, ok := seenParts[currentPart]; ok {
-			return tagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
+			return TagSettings{}, ierrors.Errorf("duplicated tag part: %s", currentPart)
 		}
 		keyValue := strings.Split(currentPart, "=")
 		partName := keyValue[0]
@@ -958,36 +1181,43 @@ func parseSerixSettings(tag string, serixPosition int) (tagSettings, error) {
 		case "omitempty":
 			settings.omitEmpty = true
 
+		case "description":
+			value, err := parseStructTagValue("description", keyValue, currentPart)
+			if err != nil {
+				return TagSettings{}, err
+			}
+			settings.ts = settings.ts.WithDescription(value)
+
 		case "maxByteSize":
 			value, err := parseStructTagValueUint("maxByteSize", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, err
+				return TagSettings{}, err
 			}
 			settings.ts = settings.ts.WithMaxByteSize(value)
 
 		case "lenPrefix":
 			value, err := parseStructTagValuePrefixType("lenPrefix", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, err
+				return TagSettings{}, err
 			}
 			settings.ts = settings.ts.WithLengthPrefixType(value)
 
 		case "minLen":
 			value, err := parseStructTagValueUint("minLen", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, err
+				return TagSettings{}, err
 			}
 			settings.ts = settings.ts.WithMinLen(value)
 
 		case "maxLen":
 			value, err := parseStructTagValueUint("maxLen", keyValue, currentPart)
 			if err != nil {
-				return tagSettings{}, err
+				return TagSettings{}, err
 			}
 			settings.ts = settings.ts.WithMaxLen(value)
 
 		default:
-			return tagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
+			return TagSettings{}, ierrors.Errorf("unknown tag part: %s", currentPart)
 		}
 
 		seenParts[partName] = struct{}{}
@@ -1012,18 +1242,19 @@ func fillArrayFromSlice(arrayValue, sliceValue reflect.Value) {
 }
 
 func isUnderlyingStruct(t reflect.Type) bool {
-	t = deRefPointer(t)
+	t = DeRefPointer(t)
 
 	return t.Kind() == reflect.Struct
 }
 
 func isUnderlyingInterface(t reflect.Type) bool {
-	t = deRefPointer(t)
+	t = DeRefPointer(t)
 
 	return t.Kind() == reflect.Interface
 }
 
-func deRefPointer(t reflect.Type) reflect.Type {
+// DeRefPointer dereferences the given type if it's a pointer.
+func DeRefPointer(t reflect.Type) reflect.Type {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
