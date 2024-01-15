@@ -5,7 +5,6 @@ import (
 
 	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
-	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/runtime/syncutils"
 )
 
@@ -31,16 +30,13 @@ type sortedSet[ElementType comparable, WeightType cmp.Ordered] struct {
 	// weightVariable is the function that is used to retrieve the weight of an element.
 	weightVariable func(element ElementType) Variable[WeightType]
 
-	// tieBreaker is the function that is used to break ties between elements with the same weight.
-	tieBreaker func(left, right ElementType) int
-
 	// mutex is used to synchronize access to the sortedElements slice.
 	mutex syncutils.RWMutex
 }
 
-// NewSortedSet creates a new SortedSet instance that sorts its elements by the given weightVariable. It is possible to
-// optionally provide a tieBreaker function that is used to break ties between elements with the same weight.
-func newSortedSet[ElementType comparable, WeightType cmp.Ordered](weightVariable func(element ElementType) Variable[WeightType], optTieBreaker ...func(left, right ElementType) int) *sortedSet[ElementType, WeightType] {
+// NewSortedSet creates a new SortedSet instance that sorts its elements by the given weightVariable. If the ElementType
+// implements a Less method, it will be used to break ties between elements with the same weight.
+func newSortedSet[ElementType comparable, WeightType cmp.Ordered](weightVariable func(element ElementType) Variable[WeightType]) *sortedSet[ElementType, WeightType] {
 	s := &sortedSet[ElementType, WeightType]{
 		Set:             NewSet[ElementType](),
 		elements:        shrinkingmap.New[ElementType, *sortedSetElement[ElementType, WeightType]](),
@@ -48,7 +44,6 @@ func newSortedSet[ElementType comparable, WeightType cmp.Ordered](weightVariable
 		heaviestElement: NewVariable[ElementType](),
 		lightestElement: NewVariable[ElementType](),
 		weightVariable:  weightVariable,
-		tieBreaker:      lo.First(optTieBreaker, defaultTieBreaker[ElementType]),
 	}
 
 	s.OnUpdate(func(appliedMutations ds.SetMutations[ElementType]) {
@@ -204,7 +199,13 @@ func (s *sortedSet[ElementType, WeightType]) updatePosition(element *sortedSetEl
 
 // swap swaps the position of the two given elements in the sortedElements slice.
 func (s *sortedSet[ElementType, WeightType]) swap(left *sortedSetElement[ElementType, WeightType], right *sortedSetElement[ElementType, WeightType]) (swapped bool) {
-	if swapped = (left.weight < right.weight) || (left.weight == right.weight && s.tieBreaker(left.element, right.element) < 0); swapped {
+	if swapped = left.weight < right.weight; !swapped && left.weight == right.weight {
+		if leftAsLessable, ok := ((any)(left.element)).(lessable[ElementType]); ok {
+			swapped = leftAsLessable.Less(right.element)
+		}
+	}
+
+	if swapped {
 		s.sortedElements[left.index], s.sortedElements[right.index] = s.sortedElements[right.index], s.sortedElements[left.index]
 		left.index, right.index = right.index, left.index
 	}
@@ -212,9 +213,9 @@ func (s *sortedSet[ElementType, WeightType]) swap(left *sortedSetElement[Element
 	return swapped
 }
 
-// defaultTieBreaker is the default tie-breaker function that is used to break ties between elements with the same weight.
-func defaultTieBreaker[ElementType comparable](_ ElementType, _ ElementType) int {
-	return 0
+// lessable is an interface that allows consumers to define a custom less function for a type.
+type lessable[T any] interface {
+	Less(other T) bool
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

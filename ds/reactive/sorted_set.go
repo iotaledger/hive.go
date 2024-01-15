@@ -7,7 +7,8 @@ import (
 // region SortedSet ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // SortedSet is a reactive Set implementation that allows consumers to subscribe to its changes and that keeps a sorted
-// perception of its elements.
+// perception of its elements. If the ElementType implements a Less method, it will be used to break ties between
+// elements with the same weight.
 type SortedSet[ElementType comparable] interface {
 	// Set imports the methods of the Set interface.
 	Set[ElementType]
@@ -25,10 +26,10 @@ type SortedSet[ElementType comparable] interface {
 	LightestElement() ReadableVariable[ElementType]
 }
 
-// NewSortedSet creates a new SortedSet instance that sorts its elements by the given weightVariable. It is possible to
-// optionally provide a tieBreaker function that is used to break ties between elements with the same weight.
-func NewSortedSet[ElementType comparable, WeightType cmp.Ordered](weightVariable func(element ElementType) Variable[WeightType], optTieBreaker ...func(left, right ElementType) int) SortedSet[ElementType] {
-	return newSortedSet(weightVariable, optTieBreaker...)
+// NewSortedSet creates a new SortedSet instance that sorts its elements by the given weightVariable. If the ElementType
+// implements a Less method, it will be used to break ties between elements with the same weight.
+func NewSortedSet[ElementType comparable, WeightType cmp.Ordered](weightVariable func(element ElementType) Variable[WeightType]) SortedSet[ElementType] {
+	return newSortedSet(weightVariable)
 }
 
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////

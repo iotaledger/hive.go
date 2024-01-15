@@ -30,7 +30,7 @@ func Test_SortedSet(t *testing.T) {
 	requireOrder(t, []*sortableElement{element2, element1, element3}, testSet)
 
 	element2.Weight.Set(3)
-	requireOrder(t, []*sortableElement{element1, element2, element3}, testSet)
+	requireOrder(t, []*sortableElement{element1, element3, element2}, testSet)
 
 	testSet.Delete(element2)
 	requireOrder(t, []*sortableElement{element1, element3}, testSet)
@@ -78,6 +78,10 @@ func newSortableElement(value string, weight int) *sortableElement {
 		value:  value,
 		Weight: NewVariable[int]().Init(weight),
 	}
+}
+
+func (t *sortableElement) Less(other *sortableElement) bool {
+	return t.value < other.value
 }
 
 func (t *sortableElement) weight() Variable[int] {
