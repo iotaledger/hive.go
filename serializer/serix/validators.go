@@ -1,7 +1,6 @@
 package serix
 
 import (
-	"context"
 	"reflect"
 	"sync"
 
@@ -9,7 +8,6 @@ import (
 )
 
 type validators struct {
-	bytesValidator     reflect.Value
 	syntacticValidator reflect.Value
 }
 
@@ -43,16 +41,6 @@ func parseValidatorFunc(validatorFn interface{}) (reflect.Value, error) {
 	}
 
 	return funcValue, nil
-}
-
-func checkBytesValidatorSignature(funcValue reflect.Value) error {
-	funcType := funcValue.Type()
-	argumentType := funcType.In(1)
-	if argumentType != bytesType {
-		return ierrors.Errorf("bytesValidatorFn's argument must be bytes, got %s", argumentType)
-	}
-
-	return nil
 }
 
 func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect.Value) error {
@@ -97,15 +85,10 @@ func (r *validatorsRegistry) AddValidators(objType reflect.Type, vldtrs validato
 	r.validatorsRegistry[objType] = vldtrs
 }
 
-func (r *validatorsRegistry) RegisterValidators(obj any, bytesValidatorFn func(context.Context, []byte) error, syntacticValidatorFn interface{}) error {
+func (r *validatorsRegistry) RegisterValidator(obj any, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
 		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
-	}
-
-	bytesValidatorValue, err := parseValidatorFunc(bytesValidatorFn)
-	if err != nil {
-		return ierrors.Wrap(err, "failed to parse bytesValidatorFn")
 	}
 
 	syntacticValidatorValue, err := parseValidatorFunc(syntacticValidatorFn)
@@ -114,12 +97,6 @@ func (r *validatorsRegistry) RegisterValidators(obj any, bytesValidatorFn func(c
 	}
 
 	vldtrs := validators{}
-	if bytesValidatorValue.IsValid() {
-		if err := checkBytesValidatorSignature(bytesValidatorValue); err != nil {
-			return ierrors.WithStack(err)
-		}
-		vldtrs.bytesValidator = bytesValidatorValue
-	}
 
 	if syntacticValidatorValue.IsValid() {
 		if err := checkSyntacticValidatorSignature(objType, syntacticValidatorValue); err != nil {

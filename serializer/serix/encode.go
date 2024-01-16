@@ -55,10 +55,6 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 	}
 
 	if opts.validation {
-		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
-			return nil, ierrors.Wrap(err, "post-serialization validation failed")
-		}
-
 		if err := ts.checkMaxByteSize(len(b)); err != nil {
 			return nil, err
 		}

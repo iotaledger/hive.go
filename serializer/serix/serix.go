@@ -244,29 +244,6 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 	return nil
 }
 
-func (api *API) callBytesValidator(ctx context.Context, valueType reflect.Type, bytes []byte) error {
-	vldtrs, exists := api.validatorsRegistry.Get(valueType)
-
-	// if the type doesn't exist in the registry, or the validator is not valid,
-	// try to get the validator for the dereferenced pointer type
-	if !exists || !vldtrs.bytesValidator.IsValid() {
-		if valueType.Kind() == reflect.Ptr {
-			valueType = valueType.Elem()
-			vldtrs, exists = api.validatorsRegistry.Get(valueType)
-		}
-	}
-
-	if exists && vldtrs.bytesValidator.IsValid() {
-		if err, _ := vldtrs.bytesValidator.Call(
-			[]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(bytes)},
-		)[0].Interface().(error); err != nil {
-			return ierrors.Wrapf(err, "bytes validator returns an error for type %s", valueType)
-		}
-	}
-
-	return nil
-}
-
 func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value, valueType reflect.Type) error {
 	vldtrs, exists := api.validatorsRegistry.Get(valueType)
 
@@ -306,16 +283,12 @@ func (api *API) getStructFields(structType reflect.Type) ([]structField, error) 
 	return structFields, nil
 }
 
-// RegisterValidators registers validator functions that serix will call during the Encode and Decode processes.
-// There are two types of validator functions:
+// RegisterValidator registers a syntactic validator function that serix will call during the Encode and Decode processes.
 //
-// 1. Syntactic validators, they validate the Go object and its data.
-// For Encode they are called for the original Go object before serix serializes the object into bytes.
-// For Decode they are called after serix builds the Go object from bytes.
+// A syntactic validator validates the Go object and its data.
 //
-// 2. Bytes validators, they validate the corresponding bytes representation of an object.
-// For Encode they are called after serix serializes Go object into bytes
-// For Decode they are called for the bytes before serix deserializes them into a Go object.
+// For Encode, it is called for the original Go object before serix serializes the object into bytes.
+// For Decode, it is called after serix builds the Go object from bytes.
 //
 // The validation is called for every registered type during the recursive traversal.
 // It's an early stop process, if some validator returns an error serix stops the Encode/Decode and pops up the error.
@@ -324,17 +297,16 @@ func (api *API) getStructFields(structType reflect.Type) ([]structField, error) 
 // Note that it's better to pass the obj as a value, not as a pointer
 // because that way serix would be able to dereference pointers during Encode/Decode
 // and detect the validators for both pointers and values
-// bytesValidatorFn is a function that accepts context.Context, []byte and returns an error.
-// syntacticValidatorFn is a function that accepts context.Context, and an object with the same type as obj.
-// Every validator func is optional, just provide nil.
-// Example:
-// bytesValidator := func(ctx context.Context, b []byte) error { ... }
-// syntacticValidator := func (ctx context.Context, t time.Time) error { ... }
-// api.RegisterValidators(time.Time{}, bytesValidator, syntacticValidator)
 //
-// See TestMain() in serix_test.go for more examples.
-func (api *API) RegisterValidators(obj any, bytesValidatorFn func(context.Context, []byte) error, syntacticValidatorFn interface{}) error {
-	return api.validatorsRegistry.RegisterValidators(obj, bytesValidatorFn, syntacticValidatorFn)
+// syntacticValidatorFn is a function that accepts context.Context, and an object with the same type as obj.
+//
+// Example:
+//
+// syntacticValidator := func (ctx context.Context, t time.Time) error { ... }
+//
+// api.RegisterValidator(time.Time{}, syntacticValidator)
+func (api *API) RegisterValidator(obj any, syntacticValidatorFn interface{}) error {
+	return api.validatorsRegistry.RegisterValidator(obj, syntacticValidatorFn)
 }
 
 // RegisterInterfaceObjects tells serix that when it encounters iType during serialization/deserialization

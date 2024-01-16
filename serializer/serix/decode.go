@@ -13,11 +13,6 @@ import (
 
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {
 	valueType := value.Type()
-	if opts.validation {
-		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
-			return 0, ierrors.Wrap(err, "pre-deserialization validation failed")
-		}
-	}
 	var deserializable Deserializable
 	var bytesRead int
 
