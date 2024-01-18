@@ -42,7 +42,7 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, value.Type()); err != nil {
-			return ierrors.Wrap(err, "pre-serialization validation failed")
+			return ierrors.Wrap(err, "post-serialization validation failed")
 		}
 
 		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
