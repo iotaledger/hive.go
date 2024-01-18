@@ -261,11 +261,11 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 
 	sliceLen := value.Len()
 
-	if err := ts.checkMinMaxBoundsLength(sliceLen); err != nil {
-		return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
-	}
-
 	if opts.validation {
+		if err := ts.checkMinMaxBoundsLength(sliceLen); err != nil {
+			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
+		}
+
 		if err := api.checkArrayMustOccur(value, ts); err != nil {
 			return nil, ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 		}
