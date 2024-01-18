@@ -304,7 +304,7 @@ func (api *API) getStructFields(structType reflect.Type) ([]structField, error) 
 //
 // syntacticValidator := func (ctx context.Context, t time.Time) error { ... }
 //
-// api.RegisterValidator(time.Time{}, syntacticValidator)
+// api.RegisterValidator(time.Time{}, syntacticValidator).
 func (api *API) RegisterValidator(obj any, syntacticValidatorFn interface{}) error {
 	return api.validatorsRegistry.RegisterValidator(obj, syntacticValidatorFn)
 }
