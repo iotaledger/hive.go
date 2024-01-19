@@ -51,7 +51,7 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 
 func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) error {
-	globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -99,7 +99,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			sliceValue := sliceFromArray(value.Elem())
 			sliceValueType := sliceValue.Type()
 			if sliceValueType.AssignableTo(bytesType) {
-				innerTS, ok := api.typeSettingsRegistry.GetTypeSettings(valueType)
+				innerTS, ok := api.typeSettingsRegistry.GetByType(valueType)
 				if !ok {
 					return ierrors.Errorf("missing type settings for interface %s", valueType)
 				}
@@ -294,7 +294,7 @@ func (api *API) mapDecodeInterface(
 
 	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
 	if !exists || objectType == nil {
-		return ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+		return ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "object code: %d, interface: %s", objectCode, valueType)
 	}
 
 	objectValue := reflect.New(objectType).Elem()
@@ -487,8 +487,8 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		elemValue := reflect.New(valueType.Elem()).Elem()
 
 		if !typeSettingsSet {
-			keyTypeSettings = api.typeSettingsRegistry.GetTypeSettingsByValue(keyValue)
-			valueTypeSettings = api.typeSettingsRegistry.GetTypeSettingsByValue(elemValue)
+			keyTypeSettings = api.typeSettingsRegistry.GetByValue(keyValue)
+			valueTypeSettings = api.typeSettingsRegistry.GetByValue(elemValue)
 			typeSettingsSet = true
 		}
 

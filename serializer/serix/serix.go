@@ -226,7 +226,7 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 			elemValue = reflect.Indirect(elemValue.Elem())
 		}
 
-		elemTypeSettings, exists := api.typeSettingsRegistry.GetTypeSettings(elemValue.Type())
+		elemTypeSettings, exists := api.typeSettingsRegistry.GetByType(elemValue.Type())
 		if !exists {
 			return ierrors.Errorf("missing type settings for %s; needed to check Must Occur rules", elemValue)
 		}
