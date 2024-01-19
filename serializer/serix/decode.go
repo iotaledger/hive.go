@@ -50,7 +50,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if valueType.Kind() == reflect.Ptr {
 			typeSettingValue = value.Elem()
 		}
-		globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(typeSettingValue.Type())
+		globalTS, _ := api.typeSettingsRegistry.GetByType(typeSettingValue.Type())
 		ts = ts.merge(globalTS)
 		if objectType := ts.ObjectType(); objectType != nil {
 			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
@@ -103,7 +103,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 
 func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
-	globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -447,8 +447,8 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 }
 
 func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
-	keyTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(key)
-	valueTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetByValue(val)
 
 	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
 	if err != nil {

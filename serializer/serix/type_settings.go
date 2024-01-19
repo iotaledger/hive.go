@@ -336,11 +336,54 @@ func (r *TypeSettingsRegistry) Has(objType reflect.Type) bool {
 	return r.registry.Has(objType)
 }
 
-func (r *TypeSettingsRegistry) Set(objType reflect.Type, ts TypeSettings) {
-	r.registryMutex.Lock()
-	defer r.registryMutex.Unlock()
+func (r *TypeSettingsRegistry) GetByType(objType reflect.Type) (TypeSettings, bool) {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
 
-	r.registry.Set(objType, ts)
+	ts, ok := r.registry.Get(objType)
+	if ok {
+		return ts, true
+	}
+
+	// if there is no type settings for the given type, and the type is a pointer,
+	// try to get the type settings for the pointer type.
+	if objType.Kind() == reflect.Ptr {
+		objType = objType.Elem()
+		ts, ok = r.registry.Get(objType)
+
+		return ts, ok
+	}
+
+	return TypeSettings{}, false
+}
+
+//nolint:unparam // false positive, we will use it later
+func (r *TypeSettingsRegistry) GetByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	for {
+		if ts, ok := r.registry.Get(objValue.Type()); ok {
+			if len(optTS) > 0 {
+				return optTS[0].merge(ts)
+			}
+
+			return ts
+		}
+
+		// resolve indirections
+		switch objValue.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			objValue = objValue.Elem()
+
+		default:
+			if len(optTS) > 0 {
+				return optTS[0]
+			}
+
+			return TypeSettings{}
+		}
+	}
 }
 
 func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts TypeSettings) bool) {
@@ -371,56 +414,6 @@ func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSett
 	return nil
 }
 
-func (r *TypeSettingsRegistry) GetTypeSettings(objType reflect.Type) (TypeSettings, bool) {
-	r.registryMutex.RLock()
-	defer r.registryMutex.RUnlock()
-
-	ts, ok := r.registry.Get(objType)
-	if ok {
-		return ts, true
-	}
-
-	// if there is no type settings for the given type, and the type is a pointer,
-	// try to get the type settings for the pointer type.
-	if objType.Kind() == reflect.Ptr {
-		objType = objType.Elem()
-		ts, ok = r.registry.Get(objType)
-
-		return ts, ok
-	}
-
-	return TypeSettings{}, false
-}
-
-//nolint:unparam // false positive, we will use it later
-func (r *TypeSettingsRegistry) GetTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
-	r.registryMutex.RLock()
-	defer r.registryMutex.RUnlock()
-
-	for {
-		if ts, ok := r.registry.Get(objValue.Type()); ok {
-			if len(optTS) > 0 {
-				return optTS[0].merge(ts)
-			}
-
-			return ts
-		}
-
-		// resolve indirections
-		switch objValue.Kind() {
-		case reflect.Ptr, reflect.Interface:
-			objValue = objValue.Elem()
-
-		default:
-			if len(optTS) > 0 {
-				return optTS[0]
-			}
-
-			return TypeSettings{}
-		}
-	}
-}
-
 func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotationType, uint32, error) {
 	objCodeType := reflect.TypeOf(objectType)
 	if objCodeType == nil {
@@ -448,7 +441,7 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 }
 
 func (r *TypeSettingsRegistry) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
-	ts, exists := r.GetTypeSettings(objType)
+	ts, exists := r.GetByType(objType)
 	if !exists {
 		return 0, 0, ierrors.Errorf(
 			"no type settings was found for object %s"+

@@ -27,7 +27,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		if valueType.Kind() == reflect.Interface {
 			typeSettingValue = value.Elem()
 		}
-		globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(typeSettingValue.Type())
+		globalTS, _ := api.typeSettingsRegistry.GetByType(typeSettingValue.Type())
 		ts = ts.merge(globalTS)
 
 		var bPrefix, bEncoded []byte
@@ -70,7 +70,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 func (api *API) encodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 
 	if opts.validation {
@@ -343,8 +343,8 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 }
 
 func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
-	keyTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(key)
-	valueTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetByValue(val)
 
 	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
 	if err != nil {

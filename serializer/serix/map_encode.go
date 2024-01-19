@@ -55,7 +55,7 @@ func (api *API) mapEncode(ctx context.Context, value reflect.Value, ts TypeSetti
 func (api *API) mapEncodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) (any, error) {
-	globalTS, _ := api.typeSettingsRegistry.GetTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -74,7 +74,7 @@ func (api *API) mapEncodeBasedOnType(
 			sliceValue := sliceFromArray(elemValue)
 			sliceValueType := sliceValue.Type()
 
-			ts, _ = api.typeSettingsRegistry.GetTypeSettings(valueType)
+			ts, _ = api.typeSettingsRegistry.GetByType(valueType)
 
 			return api.mapEncodeSlice(ctx, sliceValue, sliceValueType, ts, opts)
 		}
@@ -141,7 +141,7 @@ func (api *API) mapEncodeInterface(
 		return nil, ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "type: %s, interface: %s", elemType, valueType)
 	}
 
-	elemTypeSettings, _ := api.typeSettingsRegistry.GetTypeSettings(elemType)
+	elemTypeSettings, _ := api.typeSettingsRegistry.GetByType(elemType)
 
 	ele, err := api.mapEncode(ctx, elemValue, elemTypeSettings, opts)
 	if err != nil {
@@ -284,8 +284,8 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 }
 
 func (api *API) mapEncodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) (string, any, error) {
-	keyTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(key)
-	valueTypeSettings := api.typeSettingsRegistry.GetTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetByValue(val)
 
 	k, err := api.mapEncode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
