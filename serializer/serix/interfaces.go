@@ -70,35 +70,34 @@ func (i *InterfaceObjects) ForEachObjectType(f func(objType reflect.Type, objCod
 
 type InterfacesRegistry struct {
 	// the registered interfaces and their known objects
-	interfacesRegistryMutex sync.RWMutex
-	interfacesRegistry      *hiveorderedmap.OrderedMap[reflect.Type, *InterfaceObjects]
+	registryMutex sync.RWMutex
+	registry      *hiveorderedmap.OrderedMap[reflect.Type, *InterfaceObjects]
 }
 
 func NewInterfacesRegistry() *InterfacesRegistry {
 	return &InterfacesRegistry{
-		interfacesRegistry: hiveorderedmap.New[reflect.Type, *InterfaceObjects](),
+		registry: hiveorderedmap.New[reflect.Type, *InterfaceObjects](),
 	}
 }
 
-func (r *InterfacesRegistry) AddInterfaceObjects(objType reflect.Type, interfaceObjects *InterfaceObjects) {
-	r.interfacesRegistryMutex.Lock()
-	defer r.interfacesRegistryMutex.Unlock()
+func (r *InterfacesRegistry) Has(objType reflect.Type) bool {
+	_, exists := r.Get(objType)
 
-	r.interfacesRegistry.Set(objType, interfaceObjects)
+	return exists
 }
 
 func (r *InterfacesRegistry) Get(objType reflect.Type) (*InterfaceObjects, bool) {
-	r.interfacesRegistryMutex.RLock()
-	defer r.interfacesRegistryMutex.RUnlock()
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
 
-	return r.interfacesRegistry.Get(objType)
+	return r.registry.Get(objType)
 }
 
 func (r *InterfacesRegistry) ForEach(consumer func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool) {
-	r.interfacesRegistryMutex.RLock()
-	defer r.interfacesRegistryMutex.RUnlock()
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
 
-	r.interfacesRegistry.ForEach(func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool {
+	r.registry.ForEach(func(objType reflect.Type, interfaceObjects *InterfaceObjects) bool {
 		return consumer(objType, interfaceObjects)
 	})
 }
@@ -123,7 +122,10 @@ func (r *InterfacesRegistry) RegisterInterfaceObjects(typeSettingsRegistry *Type
 		return nil
 	}
 
-	iRegistry, exists := r.Get(iTypeReflect)
+	r.registryMutex.Lock()
+	defer r.registryMutex.Unlock()
+
+	iRegistry, exists := r.registry.Get(iTypeReflect)
 	if !exists {
 		// get the object metadata for the first object
 		objMeta, err := typeSettingsRegistry.GetObjectMetadata(objs[0])
@@ -152,7 +154,9 @@ func (r *InterfacesRegistry) RegisterInterfaceObjects(typeSettingsRegistry *Type
 		iRegistry.AddObject(objMeta.Code, objMeta.Type)
 	}
 
-	r.AddInterfaceObjects(iTypeReflect, iRegistry)
+	if !exists {
+		r.registry.Set(iTypeReflect, iRegistry)
+	}
 
 	return nil
 }
