@@ -244,7 +244,7 @@ func (api *API) decodeInterface(
 
 	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
 	if !exists || objectType == nil {
-		return 0, ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+		return 0, ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "object code: %d, interface: %s", objectCode, valueType)
 	}
 
 	objectValue := reflect.New(objectType).Elem()

@@ -138,8 +138,7 @@ func (api *API) mapEncodeInterface(
 
 	elemType := elemValue.Type()
 	if exists := registry.HasObjectType(elemType); !exists {
-		return nil, ierrors.Errorf("underlying type %s hasn't been registered for interface type %s",
-			elemType, valueType)
+		return nil, ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "type: %s, interface: %s", elemType, valueType)
 	}
 
 	elemTypeSettings, _ := api.typeSettingsRegistry.GetTypeSettings(elemType)

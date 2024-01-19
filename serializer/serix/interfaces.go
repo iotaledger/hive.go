@@ -9,6 +9,10 @@ import (
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
 
+var (
+	ErrInterfaceUnderlyingTypeNotRegistered = ierrors.New("underlying type hasn't been registered for interface type")
+)
+
 // InterfaceObjects holds all the information about the objects
 // that are registered to the same interface.
 type InterfaceObjects struct {
