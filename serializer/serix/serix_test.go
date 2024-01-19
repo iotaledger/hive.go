@@ -800,7 +800,7 @@ func TestSerixInterfaceObjects(t *testing.T) {
 			seriErr: nil,
 		},
 		{
-			name: "fail - invalid feature",
+			name: "fail - invalid object in Interfaces1",
 			source: &Container{
 				Interfaces1: Interfaces1{
 					&TestObject1{},
@@ -839,7 +839,7 @@ func TestSerixInterfaceObjects(t *testing.T) {
 			deSeriErr: nil,
 		},
 		{
-			name: "fail - invalid feature",
+			name: "fail - invalid types in Interfaces1",
 			source: &Container{
 				Interfaces1: Interfaces1{
 					&TestObject1{},

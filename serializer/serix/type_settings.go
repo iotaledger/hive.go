@@ -399,7 +399,7 @@ func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts Ty
 func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
-		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
+		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
 	}
 
 	r.registryMutex.Lock()
