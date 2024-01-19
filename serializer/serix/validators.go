@@ -59,36 +59,42 @@ func checkSyntacticValidatorSignature(objectType reflect.Type, funcValue reflect
 
 type validatorsRegistry struct {
 	// the registered validators for the known objects
-	validatorsRegistryMutex sync.RWMutex
-	validatorsRegistry      map[reflect.Type]validators
+	registryMutex sync.RWMutex
+	registry      map[reflect.Type]validators
 }
 
 func newValidatorsRegistry() *validatorsRegistry {
 	return &validatorsRegistry{
-		validatorsRegistry: make(map[reflect.Type]validators),
+		registry: make(map[reflect.Type]validators),
 	}
 }
 
-func (r *validatorsRegistry) Get(objType reflect.Type) (validators, bool) {
-	r.validatorsRegistryMutex.RLock()
-	defer r.validatorsRegistryMutex.RUnlock()
+func (r *validatorsRegistry) Has(objType reflect.Type) bool {
+	_, exists := r.Get(objType)
 
-	vldtrs, exists := r.validatorsRegistry[objType]
-
-	return vldtrs, exists
+	return exists
 }
 
-func (r *validatorsRegistry) AddValidators(objType reflect.Type, vldtrs validators) {
-	r.validatorsRegistryMutex.Lock()
-	defer r.validatorsRegistryMutex.Unlock()
+func (r *validatorsRegistry) Get(objType reflect.Type) (validators, bool) {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
 
-	r.validatorsRegistry[objType] = vldtrs
+	vldtrs, exists := r.registry[objType]
+
+	return vldtrs, exists
 }
 
 func (r *validatorsRegistry) RegisterValidator(obj any, syntacticValidatorFn interface{}) error {
 	objType := reflect.TypeOf(obj)
 	if objType == nil {
 		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
+	}
+
+	r.registryMutex.Lock()
+	defer r.registryMutex.Unlock()
+
+	if _, exists := r.registry[objType]; exists {
+		return ierrors.Errorf("validator for object type %s is already registered", objType)
 	}
 
 	syntacticValidatorValue, err := parseValidatorFunc(syntacticValidatorFn)
@@ -105,7 +111,7 @@ func (r *validatorsRegistry) RegisterValidator(obj any, syntacticValidatorFn int
 		vldtrs.syntacticValidator = syntacticValidatorValue
 	}
 
-	r.AddValidators(objType, vldtrs)
+	r.registry[objType] = vldtrs
 
 	return nil
 }

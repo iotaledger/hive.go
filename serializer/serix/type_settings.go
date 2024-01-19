@@ -336,42 +336,7 @@ func (r *TypeSettingsRegistry) Has(objType reflect.Type) bool {
 	return r.registry.Has(objType)
 }
 
-func (r *TypeSettingsRegistry) Set(objType reflect.Type, ts TypeSettings) {
-	r.registryMutex.Lock()
-	defer r.registryMutex.Unlock()
-
-	r.registry.Set(objType, ts)
-}
-
-func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts TypeSettings) bool) {
-	r.registryMutex.RLock()
-	defer r.registryMutex.RUnlock()
-
-	r.registry.ForEach(func(objType reflect.Type, ts TypeSettings) bool {
-		return consumer(objType, ts)
-	})
-}
-
-// RegisterTypeSettings registers settings for a particular type obj.
-func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
-	objType := reflect.TypeOf(obj)
-	if objType == nil {
-		return ierrors.New("'obj' is a nil interface, it's need to be a valid type")
-	}
-
-	r.registryMutex.Lock()
-	defer r.registryMutex.Unlock()
-
-	if r.registry.Has(objType) {
-		return ierrors.Errorf("type settings for object %s are already registered", objType)
-	}
-
-	r.registry.Set(objType, ts)
-
-	return nil
-}
-
-func (r *TypeSettingsRegistry) GetTypeSettings(objType reflect.Type) (TypeSettings, bool) {
+func (r *TypeSettingsRegistry) GetByType(objType reflect.Type) (TypeSettings, bool) {
 	r.registryMutex.RLock()
 	defer r.registryMutex.RUnlock()
 
@@ -393,7 +358,7 @@ func (r *TypeSettingsRegistry) GetTypeSettings(objType reflect.Type) (TypeSettin
 }
 
 //nolint:unparam // false positive, we will use it later
-func (r *TypeSettingsRegistry) GetTypeSettingsByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+func (r *TypeSettingsRegistry) GetByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
 	r.registryMutex.RLock()
 	defer r.registryMutex.RUnlock()
 
@@ -419,6 +384,34 @@ func (r *TypeSettingsRegistry) GetTypeSettingsByValue(objValue reflect.Value, op
 			return TypeSettings{}
 		}
 	}
+}
+
+func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts TypeSettings) bool) {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	r.registry.ForEach(func(objType reflect.Type, ts TypeSettings) bool {
+		return consumer(objType, ts)
+	})
+}
+
+// RegisterTypeSettings registers settings for a particular type obj.
+func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
+	}
+
+	r.registryMutex.Lock()
+	defer r.registryMutex.Unlock()
+
+	if r.registry.Has(objType) {
+		return ierrors.Errorf("type settings for object %s are already registered", objType)
+	}
+
+	r.registry.Set(objType, ts)
+
+	return nil
 }
 
 func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotationType, uint32, error) {
@@ -448,7 +441,7 @@ func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotation
 }
 
 func (r *TypeSettingsRegistry) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
-	ts, exists := r.GetTypeSettings(objType)
+	ts, exists := r.GetByType(objType)
 	if !exists {
 		return 0, 0, ierrors.Errorf(
 			"no type settings was found for object %s"+
