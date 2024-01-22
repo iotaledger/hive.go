@@ -63,8 +63,6 @@ type TypeSettings struct {
 	description string
 	// objectType defines the object type. It can be either uint8 or uint32 number.
 	objectType interface{}
-	// maxByteSize defines the max serialized byte size. 0 means unbounded.
-	maxByteSize uint
 	// lengthPrefixType defines the type of the value denoting the length of a collection.
 	lengthPrefixType *LengthPrefixType
 	// lexicalOrdering defines whether the collection must be lexically ordered during serialization.
@@ -127,18 +125,6 @@ func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
 // ObjectType returns the object type as an uint8 or uint32 number.
 func (ts TypeSettings) ObjectType() interface{} {
 	return ts.objectType
-}
-
-// WithMaxByteSize specifies max serialized byte size for the type. 0 means unbounded.
-func (ts TypeSettings) WithMaxByteSize(l uint) TypeSettings {
-	ts.maxByteSize = l
-
-	return ts
-}
-
-// MaxByteSize returns max serialized byte size for the type. 0 means unbounded.
-func (ts TypeSettings) MaxByteSize() uint {
-	return ts.maxByteSize
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.
@@ -303,15 +289,6 @@ func (ts TypeSettings) checkMinMaxBounds(v reflect.Value) error {
 
 	if err := ts.checkMinMaxBoundsLength(v.Len()); err != nil {
 		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
-	}
-
-	return nil
-}
-
-// checkMaxByteSize checks whether the given type is within its defined size in case it has a max byte size.
-func (ts TypeSettings) checkMaxByteSize(byteSize int) error {
-	if ts.maxByteSize > 0 && byteSize > int(ts.maxByteSize) {
-		return ierrors.Wrapf(ErrValidationMaxBytesExceeded, "serialized size (%d) exceeds max byte size of %d ", byteSize, ts.maxByteSize)
 	}
 
 	return nil

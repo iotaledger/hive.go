@@ -64,8 +64,6 @@ import (
 )
 
 var (
-	// ErrValidationMaxBytesExceeded gets returned if the serialized byte size of the object too big.
-	ErrValidationMaxBytesExceeded = ierrors.New("max bytes size exceeded")
 	// ErrMapValidationViolatesUniqueness gets returned if the map elements are not unique.
 	ErrMapValidationViolatesUniqueness = ierrors.New("map elements must be unique")
 	// ErrNonUTF8String gets returned when a non UTF-8 string is being encoded/decoded.
@@ -187,19 +185,6 @@ func (api *API) getInterfaceObjects(iType reflect.Type) *InterfaceObjects {
 	}
 
 	return iObj
-}
-
-func (api *API) checkSerializedSize(ctx context.Context, value reflect.Value, ts TypeSettings, opts *options) error {
-	if ts.maxByteSize == 0 {
-		return nil
-	}
-
-	bytes, err := api.encode(ctx, value, ts, opts)
-	if err != nil {
-		return ierrors.Wrapf(err, "can't get serialized size: failed to encode '%s' type", value.Kind())
-	}
-
-	return ts.checkMaxByteSize(len(bytes))
 }
 
 // Checks the "Must Occur" array rules in the given slice.

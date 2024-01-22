@@ -185,7 +185,7 @@ func TestSerixSerializeMap(t *testing.T) {
 	type MyMapTypeValue string
 	type MyMapType map[MyMapTypeKey]MyMapTypeValue
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4"`
 	}
 
 	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
@@ -230,20 +230,6 @@ func TestSerixSerializeMap(t *testing.T) {
 			target:  &MapStruct{},
 			size:    0,
 			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
-		},
-		{
-			name: "fail - too big",
-			source: &MapStruct{
-				MyMap: MyMapType{
-					"k1": "v1000",
-					"k2": "v2000",
-					"k3": "v3000",
-					"k4": "v4000",
-				},
-			},
-			target:  &MapStruct{},
-			size:    0,
-			seriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",
@@ -396,7 +382,7 @@ func TestSerixDeserializeMap(t *testing.T) {
 	type MyMapTypeKey string
 	type MyMapTypeValue string
 	type MapStruct struct {
-		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4"`
 	}
 
 	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
@@ -441,20 +427,6 @@ func TestSerixDeserializeMap(t *testing.T) {
 			target:    &MapStruct{},
 			size:      0,
 			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
-		},
-		{
-			name: "fail - too big",
-			source: &MapStruct{
-				MyMap: map[MyMapTypeKey]MyMapTypeValue{
-					"k1": "v1000",
-					"k2": "v2000",
-					"k3": "v3000",
-					"k4": "v4000",
-				},
-			},
-			target:    &MapStruct{},
-			size:      0,
-			deSeriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",

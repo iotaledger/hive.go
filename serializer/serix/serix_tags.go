@@ -133,13 +133,6 @@ func ParseSerixSettings(tag string, serixPosition int) (TagSettings, error) {
 			}
 			settings.ts = settings.ts.WithDescription(value)
 
-		case "maxByteSize":
-			value, err := parseStructTagValueUint("maxByteSize", keyValue, currentPart)
-			if err != nil {
-				return TagSettings{}, err
-			}
-			settings.ts = settings.ts.WithMaxByteSize(value)
-
 		case "lenPrefix":
 			value, err := parseStructTagValuePrefixType("lenPrefix", keyValue, currentPart)
 			if err != nil {

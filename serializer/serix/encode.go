@@ -54,12 +54,6 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		}
 	}
 
-	if opts.validation {
-		if err := ts.checkMaxByteSize(len(b)); err != nil {
-			return nil, err
-		}
-	}
-
 	return b, nil
 }
 
