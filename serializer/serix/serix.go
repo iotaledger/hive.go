@@ -246,7 +246,7 @@ func (api *API) callSyntacticValidator(ctx context.Context, value reflect.Value,
 		if err, _ := vldtrs.syntacticValidator.Call(
 			[]reflect.Value{reflect.ValueOf(ctx), value},
 		)[0].Interface().(error); err != nil {
-			return ierrors.Wrapf(err, "syntactic validator returns an error for type %s", valueType)
+			return ierrors.Errorf("syntactic validator returned an error for type %s: %w", valueType, err)
 		}
 	}
 

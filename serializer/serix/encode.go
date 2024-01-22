@@ -18,7 +18,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 	valueType := value.Type()
 	if opts.validation {
 		if err = api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return nil, ierrors.Wrap(err, "pre-serialization validation failed")
+			return nil, ierrors.Errorf("pre-serialization validation failed: %w", err)
 		}
 	}
 

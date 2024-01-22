@@ -85,7 +85,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
+			return 0, ierrors.Errorf("post-deserialization validation failed: %w", err)
 		}
 	}
 
