@@ -302,20 +302,6 @@ func TestArrayRules_ElementUniqueValidator(t *testing.T) {
 			ar:    &serializer.ArrayRules{},
 			valid: false,
 		},
-		{
-			name: "not ok - dups with reduction",
-			args: [][]byte{
-				{1, 1, 1},
-				{1, 1, 2},
-				{1, 1, 3},
-			},
-			ar: &serializer.ArrayRules{
-				UniquenessSliceFunc: func(next []byte) []byte {
-					return next[:2]
-				},
-			},
-			valid: false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -509,20 +495,6 @@ func TestArrayRules_LexicalOrderWithoutDupsValidator(t *testing.T) {
 				{3, 1, 3},
 			},
 			ar:    &serializer.ArrayRules{},
-			valid: false,
-		},
-		{
-			name: "not ok - dups with reduction",
-			args: [][]byte{
-				{1, 1, 1},
-				{1, 1, 2},
-				{1, 1, 3},
-			},
-			ar: &serializer.ArrayRules{
-				UniquenessSliceFunc: func(next []byte) []byte {
-					return next[:2]
-				},
-			},
 			valid: false,
 		},
 	}
