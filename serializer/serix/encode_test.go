@@ -81,14 +81,6 @@ func TestEncode_SyntacticValidation(t *testing.T) {
 	assert.ErrorIs(t, err, errSyntacticValidation)
 }
 
-func TestEncode_BytesValidation(t *testing.T) {
-	t.Parallel()
-	testObj := ObjectForBytesValidation{}
-	got, err := testAPI.Encode(ctx, testObj, serix.WithValidation())
-	require.Nil(t, got)
-	assert.ErrorIs(t, err, errBytesValidation)
-}
-
 func TestEncode_ArrayRules(t *testing.T) {
 	t.Parallel()
 	rules := &serix.ArrayRules{Min: 5}

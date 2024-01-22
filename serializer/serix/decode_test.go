@@ -130,14 +130,6 @@ func TestDecode_SyntacticValidation(t *testing.T) {
 	assert.ErrorIs(t, err, errSyntacticValidation)
 }
 
-func TestDecode_BytesValidation(t *testing.T) {
-	t.Parallel()
-	testObj := &ObjectForBytesValidation{}
-	bytesRead, err := testAPI.Decode(ctx, nil, testObj, serix.WithValidation())
-	require.Zero(t, bytesRead)
-	assert.ErrorIs(t, err, errBytesValidation)
-}
-
 func TestDecode_ArrayRules(t *testing.T) {
 	t.Parallel()
 	testObj := &Bools{true, false, true, true}

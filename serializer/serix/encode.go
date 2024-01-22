@@ -18,7 +18,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 	valueType := value.Type()
 	if opts.validation {
 		if err = api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return nil, ierrors.Wrap(err, "pre-serialization validation failed")
+			return nil, ierrors.Errorf("pre-serialization validation failed: %w", err)
 		}
 	}
 
@@ -51,16 +51,6 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		b, err = api.encodeBasedOnType(ctx, value, valueI, valueType, ts, opts)
 		if err != nil {
 			return nil, ierrors.WithStack(err)
-		}
-	}
-
-	if opts.validation {
-		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
-			return nil, ierrors.Wrap(err, "post-serialization validation failed")
-		}
-
-		if err := ts.checkMaxByteSize(len(b)); err != nil {
-			return nil, err
 		}
 	}
 
