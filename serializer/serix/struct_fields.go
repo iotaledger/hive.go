@@ -17,6 +17,10 @@ type structField struct {
 	settings     TagSettings
 }
 
+// parseStructFields parses the struct fields of the given struct type.
+// It returns a slice of structField (only the ones with valid serix tags).
+// Neither the interfacesRegistry, the typeSettingsRegistry nor the validatorsRegistry are used by this function.
+// The returned result is only based on the struct tags.
 func parseStructFields(structType reflect.Type) ([]structField, error) {
 	structFields := make([]structField, 0, structType.NumField())
 
