@@ -26,6 +26,7 @@ linters-settings:
                 # exclude the ierrors.go file itself
                 files:
                     - "!**/ierrors.go"
+                    - "!**/ierrors_no_stacktrace.go"
                 deny:
                     - pkg: "errors"
                       desc: Should be replaced with "github.com/iotaledger/hive.go/ierrors" package
