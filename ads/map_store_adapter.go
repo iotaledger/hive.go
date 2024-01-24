@@ -21,22 +21,22 @@ func newMapStoreAdapter(store hivekvstore.KVStore) *mapStoreAdapter {
 	}
 }
 
-// Get returns the value for a given key
+// Get returns the value for a given key.
 func (k *mapStoreAdapter) Get(key []byte) ([]byte, error) {
 	return k.underlying.Get(key)
 }
 
-// Set sets/updates the value for a given key
+// Set sets/updates the value for a given key.
 func (k *mapStoreAdapter) Set(key, value []byte) error {
 	return k.underlying.Set(key, value)
 }
 
-// Delete removes a key
+// Delete removes a key.
 func (k *mapStoreAdapter) Delete(key []byte) error {
 	return k.underlying.Delete(key)
 }
 
-// Len returns the number of key-value pairs in the store
+// Len returns the number of key-value pairs in the store.
 func (k *mapStoreAdapter) Len() int {
 	count := 0
 
@@ -52,7 +52,7 @@ func (k *mapStoreAdapter) Len() int {
 
 // --- Debug ---
 
-// ClearAll deletes all key-value pairs in the store
+// ClearAll deletes all key-value pairs in the store.
 func (k *mapStoreAdapter) ClearAll() error {
 	return k.underlying.Clear()
 }
