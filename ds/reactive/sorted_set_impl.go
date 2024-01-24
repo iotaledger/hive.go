@@ -158,22 +158,20 @@ func (s *sortedSet[ElementType, WeightType]) deleteSorted(element ElementType) {
 // updatePosition updates the position of the given element in the sortedElements slice.
 func (s *sortedSet[ElementType, WeightType]) updatePosition(element *sortedSetElement[ElementType, WeightType]) (moved bool) {
 	// update heaviest and lightest references after we are done moving the element
-	defer func(oldIndex int) {
-		if moved {
-			if oldIndex == 0 {
-				s.heaviestElement.Set(s.sortedElements[0].element)
-			}
-
-			if oldIndex == len(s.sortedElements)-1 {
-				s.lightestElement.Set(s.sortedElements[len(s.sortedElements)-1].element)
-			}
-		}
-
-		if element.index == 0 {
+	defer func(fromIndex int) {
+		if moved && fromIndex == 0 {
+			// moved away from the heaviest element
+			s.heaviestElement.Set(s.sortedElements[0].element)
+		} else if element.index == 0 {
+			// moved towards the heaviest element
 			s.heaviestElement.Set(element.element)
 		}
 
-		if element.index == len(s.sortedElements)-1 {
+		if moved && fromIndex == len(s.sortedElements)-1 {
+			// moved away from the lightest element
+			s.lightestElement.Set(s.sortedElements[len(s.sortedElements)-1].element)
+		} else if element.index == len(s.sortedElements)-1 {
+			// moved towards the lightest element
 			s.lightestElement.Set(element.element)
 		}
 	}(element.index)
