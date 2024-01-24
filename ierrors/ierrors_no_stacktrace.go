@@ -26,7 +26,7 @@ func Errorf(format string, args ...any) error {
 // Wrap adds a stacktrace to the error if there was no stacktrace
 // in the error tree yet and if the build flag "stacktrace" is set.
 func Wrap(err error, message string) error {
-	return fmt.Errorf("%w: %s", err, message)
+	return fmt.Errorf("%s: %w", message, err)
 }
 
 // Wrapf annotates an error with a message format specifier and arguments.
@@ -36,11 +36,11 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	// check if the passed args also contain an error
 	for _, arg := range args {
 		if _, ok := arg.(error); ok {
-			return fmt.Errorf("%w: %w", err, fmt.Errorf(format, args...))
+			return fmt.Errorf("%w: %w", fmt.Errorf(format, args...), err)
 		}
 	}
 
-	return fmt.Errorf("%w: %s", err, fmt.Sprintf(format, args...))
+	return fmt.Errorf("%s: %w", fmt.Sprintf(format, args...), err)
 }
 
 // WithStack adds a stacktrace to the error if there was no stacktrace
