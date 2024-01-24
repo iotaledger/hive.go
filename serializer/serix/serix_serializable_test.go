@@ -378,14 +378,6 @@ func SyntacticValidation(ctx context.Context, obj ObjectForSyntacticValidation) 
 	return errSyntacticValidation
 }
 
-type ObjectForBytesValidation struct{}
-
-var errBytesValidation = ierrors.New("bytes validation failed")
-
-func BytesValidation(ctx context.Context, b []byte) error {
-	return errBytesValidation
-}
-
 func TestMain(m *testing.M) {
 	exitCode := func() int {
 		if err := testAPI.RegisterTypeSettings(
@@ -409,10 +401,7 @@ func TestMain(m *testing.M) {
 		if err := testAPI.RegisterInterfaceObjects((*Interface)(nil), (*InterfaceImpl)(nil)); err != nil {
 			log.Panic(err)
 		}
-		if err := testAPI.RegisterValidators(ObjectForSyntacticValidation{}, nil, SyntacticValidation); err != nil {
-			log.Panic(err)
-		}
-		if err := testAPI.RegisterValidators(ObjectForBytesValidation{}, BytesValidation, nil); err != nil {
+		if err := testAPI.RegisterValidator(ObjectForSyntacticValidation{}, SyntacticValidation); err != nil {
 			log.Panic(err)
 		}
 

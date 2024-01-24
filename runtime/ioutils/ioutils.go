@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/pelletier/go-toml/v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/iotaledger/hive.go/ierrors"
 )
@@ -67,8 +68,8 @@ func FolderSize(target string) (int64, error) {
 
 // ReadFromFile reads structured binary data from the file named by filename to data.
 // A successful call returns err == nil, not err == EOF.
-// ReadFromFile uses binary.Read to decode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values.
+// ReadFromFile uses binary.Read to decode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
 func ReadFromFile(filename string, data interface{}) error {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -82,8 +83,8 @@ func ReadFromFile(filename string, data interface{}) error {
 // WriteToFile writes the binary representation of data to a file named by filename.
 // If the file does not exist, WriteFile creates it with permissions perm
 // (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-// WriteToFile uses binary.Write to encode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values.
+// WriteToFile uses binary.Write to encode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
 func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error) {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
@@ -99,8 +100,8 @@ func WriteToFile(filename string, data interface{}, perm os.FileMode) (err error
 }
 
 // ReadJSONFromFile reads JSON data from the file named by filename to data.
-// ReadJSONFromFile uses json.Unmarshal to decode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values.
+// ReadJSONFromFile uses json.Unmarshal to decode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
 func ReadJSONFromFile(filename string, data interface{}) error {
 	jsonData, err := os.ReadFile(filename)
 	if err != nil {
@@ -113,8 +114,8 @@ func ReadJSONFromFile(filename string, data interface{}) error {
 // WriteJSONToFile writes the JSON representation of data to a file named by filename.
 // If the file does not exist, WriteJSONToFile creates it with permissions perm
 // (before umask); otherwise WriteJSONToFile truncates it before writing, without changing permissions.
-// WriteJSONToFile uses json.MarshalIndent to encode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values.
+// WriteJSONToFile uses json.MarshalIndent to encode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
 func WriteJSONToFile(filename string, data interface{}, perm os.FileMode) (err error) {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
@@ -143,9 +144,55 @@ func WriteJSONToFile(filename string, data interface{}, perm os.FileMode) (err e
 	return nil
 }
 
+// ReadYAMLFromFile reads YAML data from the file named by filename to data.
+// ReadYAMLFromFile uses yaml.Unmarshal to decode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
+func ReadYAMLFromFile(filename string, data interface{}) error {
+	yamlData, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(yamlData, data)
+}
+
+// WriteYAMLToFile writes the YAML representation of data to a file named by filename.
+// If the file does not exist, WriteYAMLToFile creates it with permissions perm
+// (before umask); otherwise WriteYAMLToFile truncates it before writing, without changing permissions.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
+func WriteYAMLToFile(filename string, data interface{}, perm os.FileMode, indent int) (err error) {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+
+	encoder := yaml.NewEncoder(f)
+	encoder.SetIndent(indent)
+
+	if err := encoder.Encode(data); err != nil {
+		return ierrors.Wrapf(err, "unable to marshal YAML data to %s", filename)
+	}
+
+	if err := encoder.Close(); err != nil {
+		return ierrors.Wrapf(err, "unable to close YAML encoder for %s", filename)
+	}
+
+	if err := f.Sync(); err != nil {
+		return ierrors.Wrapf(err, "unable to fsync file content to %s", filename)
+	}
+
+	return nil
+}
+
 // ReadTOMLFromFile reads TOML data from the file named by filename to data.
-// ReadTOMLFromFile uses toml.Unmarshal to decode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values.
+// ReadTOMLFromFile uses toml.Unmarshal to decode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values.
 func ReadTOMLFromFile(filename string, data interface{}) error {
 	tomlData, err := os.ReadFile(filename)
 	if err != nil {
@@ -158,8 +205,8 @@ func ReadTOMLFromFile(filename string, data interface{}) error {
 // WriteTOMLToFile writes the TOML representation of data to a file named by filename.
 // If the file does not exist, WriteTOMLToFile creates it with permissions perm
 // (before umask); otherwise WriteTOMLToFile truncates it before writing, without changing permissions.
-// WriteTOMLToFile uses toml.Marshal to encode data. Data must be a pointer to a fixed-size value or a slice
-// of fixed-size values. An additional header can be passed.
+// WriteTOMLToFile uses toml.Marshal to encode data.
+// Data must be a pointer to a fixed-size value or a slice of fixed-size values. An additional header can be passed.
 func WriteTOMLToFile(filename string, data interface{}, perm os.FileMode, header ...string) (err error) {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {

@@ -185,7 +185,7 @@ func TestSerixSerializeMap(t *testing.T) {
 	type MyMapTypeValue string
 	type MyMapType map[MyMapTypeKey]MyMapTypeValue
 	type MapStruct struct {
-		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+		MyMap MyMapType `serix:",lenPrefix=uint8,minLen=2,maxLen=4"`
 	}
 
 	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
@@ -230,20 +230,6 @@ func TestSerixSerializeMap(t *testing.T) {
 			target:  &MapStruct{},
 			size:    0,
 			seriErr: serializer.ErrArrayValidationMaxElementsExceeded,
-		},
-		{
-			name: "fail - too big",
-			source: &MapStruct{
-				MyMap: MyMapType{
-					"k1": "v1000",
-					"k2": "v2000",
-					"k3": "v3000",
-					"k4": "v4000",
-				},
-			},
-			target:  &MapStruct{},
-			size:    0,
-			seriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",
@@ -396,7 +382,7 @@ func TestSerixDeserializeMap(t *testing.T) {
 	type MyMapTypeKey string
 	type MyMapTypeValue string
 	type MapStruct struct {
-		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4,maxByteSize=50"`
+		MyMap map[MyMapTypeKey]MyMapTypeValue `serix:",lenPrefix=uint8,minLen=2,maxLen=4"`
 	}
 
 	testAPI.RegisterTypeSettings(MyMapTypeKey(""), serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsUint16).WithMinLen(2).WithMaxLen(5))
@@ -441,20 +427,6 @@ func TestSerixDeserializeMap(t *testing.T) {
 			target:    &MapStruct{},
 			size:      0,
 			deSeriErr: serializer.ErrArrayValidationMaxElementsExceeded,
-		},
-		{
-			name: "fail - too big",
-			source: &MapStruct{
-				MyMap: map[MyMapTypeKey]MyMapTypeValue{
-					"k1": "v1000",
-					"k2": "v2000",
-					"k3": "v3000",
-					"k4": "v4000",
-				},
-			},
-			target:    &MapStruct{},
-			size:      0,
-			deSeriErr: serix.ErrValidationMaxBytesExceeded,
 		},
 		{
 			name: "fail - key too short",
@@ -743,6 +715,121 @@ func TestSerixMustOccur(t *testing.T) {
 	}
 }
 
+func TestSerixInterfaceObjects(t *testing.T) {
+	const (
+		TestType1 byte = iota
+		TestType2
+		TestType3
+	)
+
+	type (
+		Interface               interface{}
+		Interfaces[T Interface] []T
+		Interface1              interface{ Interface }
+		Interface2              interface{ Interface }
+		Interfaces1             = Interfaces[Interface1]
+		Interfaces2             = Interfaces[Interface2]
+
+		TestObject1 struct{}
+		TestObject2 struct{}
+		TestObject3 struct{}
+
+		Container struct {
+			Interfaces1 Interfaces1 `serix:""`
+			Interfaces2 Interfaces2 `serix:""`
+		}
+	)
+
+	registerTypes := func(api *serix.API) {
+		must(api.RegisterTypeSettings(TestObject1{}, serix.TypeSettings{}.WithObjectType(uint8(TestType1))))
+		must(api.RegisterTypeSettings(TestObject2{}, serix.TypeSettings{}.WithObjectType(uint8(TestType2))))
+		must(api.RegisterTypeSettings(TestObject3{}, serix.TypeSettings{}.WithObjectType(uint8(TestType3))))
+
+		must(api.RegisterTypeSettings(Interfaces1{}, serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte)))
+		must(api.RegisterInterfaceObjects((*Interface1)(nil), (*TestObject1)(nil)))
+		must(api.RegisterInterfaceObjects((*Interface1)(nil), (*TestObject2)(nil)))
+
+		// we also register the objects in another interface, just to make sure that the interface objects are not mixed up
+		must(api.RegisterTypeSettings(Interfaces2{}, serix.TypeSettings{}.WithLengthPrefixType(serix.LengthPrefixTypeAsByte)))
+		must(api.RegisterInterfaceObjects((*Interface2)(nil), (*TestObject1)(nil)))
+		must(api.RegisterInterfaceObjects((*Interface2)(nil), (*TestObject2)(nil)))
+		must(api.RegisterInterfaceObjects((*Interface2)(nil), (*TestObject3)(nil)))
+	}
+
+	registerTypes(testAPI)
+
+	tests := []encodingTest{
+		{
+			name: "ok",
+			source: &Container{
+				Interfaces1: Interfaces1{
+					&TestObject1{},
+					&TestObject2{},
+				},
+				Interfaces2: Interfaces2{},
+			},
+			target:  &Container{},
+			seriErr: nil,
+		},
+		{
+			name: "fail - invalid object in Interfaces1",
+			source: &Container{
+				Interfaces1: Interfaces1{
+					&TestObject1{},
+					&TestObject2{},
+					&TestObject3{},
+				},
+				Interfaces2: Interfaces2{},
+			},
+			target:  &Container{},
+			seriErr: serix.ErrInterfaceUnderlyingTypeNotRegistered,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+
+	// we need to create a new API to create valid test data for the deserialization tests
+	testVectorAPI := serix.NewAPI()
+	registerTypes(testVectorAPI)
+
+	// register TestObject3 to be able to create a valid test vector
+	must(testVectorAPI.RegisterInterfaceObjects((*Interface1)(nil), (*TestObject3)(nil)))
+
+	deSeriTests := []decodingTest{
+		{
+			name: "ok",
+			source: &Container{
+				Interfaces1: Interfaces1{
+					&TestObject1{},
+					&TestObject2{},
+				},
+				Interfaces2: Interfaces2{},
+			},
+			target:    &Container{},
+			deSeriErr: nil,
+		},
+		{
+			name: "fail - invalid types in Interfaces1",
+			source: &Container{
+				Interfaces1: Interfaces1{
+					&TestObject1{},
+					&TestObject2{},
+					&TestObject3{},
+				},
+				Interfaces2: Interfaces2{},
+			},
+			target:    &Container{},
+			deSeriErr: serix.ErrInterfaceUnderlyingTypeNotRegistered,
+		},
+	}
+
+	for _, tt := range deSeriTests {
+		t.Run(tt.name, func(t *testing.T) { tt.runWithTestVectorAPI(t, testVectorAPI) })
+	}
+}
+
 type encodingTest struct {
 	name    string
 	source  any
@@ -783,11 +870,12 @@ type decodingTest struct {
 	deSeriErr error
 }
 
-func (test *decodingTest) run(t *testing.T) {
-	serixData, err := testAPI.Encode(context.Background(), test.source)
+// runWithTestVectorAPI runs the decoding test with a new API to create valid test data.
+func (test *decodingTest) runWithTestVectorAPI(t *testing.T, testVectorAPI *serix.API) {
+	serixData, err := testVectorAPI.Encode(context.Background(), test.source)
 	require.NoError(t, err)
 
-	sourceJSON, err := testAPI.JSONEncode(context.Background(), test.source)
+	sourceJSON, err := testVectorAPI.JSONEncode(context.Background(), test.source)
 	require.NoError(t, err)
 
 	serixTarget := reflect.New(reflect.TypeOf(test.target).Elem()).Interface()
@@ -809,6 +897,11 @@ func (test *decodingTest) run(t *testing.T) {
 	require.NoError(t, jsonErr)
 
 	require.EqualValues(t, test.source, jsonDest)
+}
+
+func (test *decodingTest) run(t *testing.T) {
+	// the normal tests uses the same API to create the test vectors as used for decoding
+	test.runWithTestVectorAPI(t, testAPI)
 }
 
 func TestSerixOmitEmpty(t *testing.T) {

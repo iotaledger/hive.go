@@ -18,7 +18,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 	valueType := value.Type()
 	if opts.validation {
 		if err = api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return nil, ierrors.Wrap(err, "pre-serialization validation failed")
+			return nil, ierrors.Errorf("pre-serialization validation failed: %w", err)
 		}
 	}
 
@@ -27,7 +27,7 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		if valueType.Kind() == reflect.Interface {
 			typeSettingValue = value.Elem()
 		}
-		globalTS, _ := api.getTypeSettings(typeSettingValue.Type())
+		globalTS, _ := api.typeSettingsRegistry.GetByType(typeSettingValue.Type())
 		ts = ts.merge(globalTS)
 
 		var bPrefix, bEncoded []byte
@@ -54,27 +54,17 @@ func (api *API) encode(ctx context.Context, value reflect.Value, ts TypeSettings
 		}
 	}
 
-	if opts.validation {
-		if err = api.callBytesValidator(ctx, valueType, b); err != nil {
-			return nil, ierrors.Wrap(err, "post-serialization validation failed")
-		}
-
-		if err := api.checkMaxByteSize(len(b), ts); err != nil {
-			return nil, err
-		}
-	}
-
 	return b, nil
 }
 
 func (api *API) encodeBasedOnType(
 	ctx context.Context, value reflect.Value, valueI interface{}, valueType reflect.Type, ts TypeSettings, opts *options,
 ) ([]byte, error) {
-	globalTS, _ := api.getTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err
 		}
 	}
@@ -167,15 +157,17 @@ func (api *API) encodeInterface(
 	if !elemValue.IsValid() {
 		return nil, ierrors.Errorf("can't serialize interface %s it must have underlying value", valueType)
 	}
+
 	registry := api.getInterfaceObjects(valueType)
 	if registry == nil {
 		return nil, ierrors.Errorf("interface %s isn't registered", valueType)
 	}
+
 	elemType := elemValue.Type()
-	if _, exists := registry.fromTypeToCode[elemType]; !exists {
-		return nil, ierrors.Errorf("underlying type %s hasn't been registered for interface type %s",
-			elemType, valueType)
+	if exists := registry.HasObjectType(elemType); !exists {
+		return nil, ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "type: %s, interface: %s", elemType, valueType)
 	}
+
 	encodedBytes, err := api.encode(ctx, elemValue, ts, opts)
 	if err != nil {
 		return nil, ierrors.Wrapf(err, "failed to encode interface element %s", elemType)
@@ -210,7 +202,7 @@ func (api *API) encodeStruct(
 func (api *API) encodeStructFields(
 	ctx context.Context, s *serializer.Serializer, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := api.parseStructType(valueType)
+	structFields, err := api.getStructFields(valueType)
 	if err != nil {
 		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
@@ -341,8 +333,8 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 }
 
 func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opts *options) ([]byte, error) {
-	keyTypeSettings := api.getTypeSettingsByValue(key)
-	valueTypeSettings := api.getTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetByValue(val)
 
 	keyBytes, err := api.encode(ctx, key, keyTypeSettings, opts)
 	if err != nil {
@@ -364,7 +356,7 @@ func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType re
 	ts TypeSettings, opts *options) ([]byte, error) {
 
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err
 		}
 	}

@@ -3,18 +3,18 @@ module github.com/iotaledger/hive.go/logger
 go 1.21
 
 require (
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20231223025310-09f78e11685d
-	github.com/iotaledger/hive.go/lo v0.0.0-20231223025310-09f78e11685d
-	github.com/iotaledger/hive.go/runtime v0.0.0-20231223025310-09f78e11685d
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20240124160611-48c586134db5
+	github.com/iotaledger/hive.go/lo v0.0.0-20240124160611-48c586134db5
+	github.com/iotaledger/hive.go/runtime v0.0.0-20240124160611-48c586134db5
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20231223025310-09f78e11685d // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20231223025310-09f78e11685d // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20231223025310-09f78e11685d // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20240124160611-48c586134db5 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20240124160611-48c586134db5 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20240124160611-48c586134db5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20231207134359-e60b3f734c67 // indirect

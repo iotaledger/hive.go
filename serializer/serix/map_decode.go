@@ -41,8 +41,8 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 	}
 
 	if opts.validation {
-		if err := api.checkSerializedSize(ctx, value, ts, opts); err != nil {
-			return err
+		if err := api.callSyntacticValidator(ctx, value, value.Type()); err != nil {
+			return ierrors.Wrap(err, "post-serialization validation failed")
 		}
 	}
 
@@ -51,7 +51,7 @@ func (api *API) mapDecode(ctx context.Context, mapVal any, value reflect.Value, 
 
 func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) error {
-	globalTS, _ := api.getTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -99,7 +99,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 			sliceValue := sliceFromArray(value.Elem())
 			sliceValueType := sliceValue.Type()
 			if sliceValueType.AssignableTo(bytesType) {
-				innerTS, ok := api.getTypeSettings(valueType)
+				innerTS, ok := api.typeSettingsRegistry.GetByType(valueType)
 				if !ok {
 					return ierrors.Errorf("missing type settings for interface %s", valueType)
 				}
@@ -117,7 +117,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 				}
 
 				if opts.validation {
-					if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+					if err := ts.checkMinMaxBoundsLength(len(byteSlice)); err != nil {
 						return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 					}
 				}
@@ -165,7 +165,7 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		}
 
 		if opts.validation {
-			if err := api.checkMinMaxBoundsLength(len(str), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(str)); err != nil {
 				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 			}
 			// check the string for UTF-8 validity
@@ -292,9 +292,9 @@ func (api *API) mapDecodeInterface(
 	//nolint:forcetypeassert // false positive
 	objectCode := uint32(objectCodeAny.(float64))
 
-	objectType := iObjects.fromCodeToType[objectCode]
-	if objectType == nil {
-		return ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
+	if !exists || objectType == nil {
+		return ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "object code: %d, interface: %s", objectCode, valueType)
 	}
 
 	objectValue := reflect.New(objectType).Elem()
@@ -350,7 +350,7 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 func (api *API) mapDecodeStructFields(
 	ctx context.Context, m map[string]any, structVal reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := api.parseStructType(valueType)
+	structFields, err := api.getStructFields(valueType)
 	if err != nil {
 		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
@@ -428,7 +428,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 		}
 
 		if opts.validation {
-			if err := api.checkMinMaxBoundsLength(len(byteSlice), ts); err != nil {
+			if err := ts.checkMinMaxBoundsLength(len(byteSlice)); err != nil {
 				return ierrors.Wrapf(err, "can't deserialize '%s' type", value.Kind())
 			}
 		}
@@ -449,7 +449,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 	}
 
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return ierrors.Wrapf(err, "can't serialize '%s' type", value.Kind())
 		}
 	}
@@ -487,8 +487,8 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 		elemValue := reflect.New(valueType.Elem()).Elem()
 
 		if !typeSettingsSet {
-			keyTypeSettings = api.getTypeSettingsByValue(keyValue)
-			valueTypeSettings = api.getTypeSettingsByValue(elemValue)
+			keyTypeSettings = api.typeSettingsRegistry.GetByValue(keyValue)
+			valueTypeSettings = api.typeSettingsRegistry.GetByValue(elemValue)
 			typeSettingsSet = true
 		}
 
@@ -509,7 +509,7 @@ func (api *API) mapDecodeMap(ctx context.Context, mapVal any, value reflect.Valu
 	}
 
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return err
 		}
 	}

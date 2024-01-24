@@ -13,11 +13,6 @@ import (
 
 func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts TypeSettings, opts *options) (int, error) {
 	valueType := value.Type()
-	if opts.validation {
-		if err := api.callBytesValidator(ctx, valueType, b); err != nil {
-			return 0, ierrors.Wrap(err, "pre-deserialization validation failed")
-		}
-	}
 	var deserializable Deserializable
 	var bytesRead int
 
@@ -50,7 +45,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 		if valueType.Kind() == reflect.Ptr {
 			typeSettingValue = value.Elem()
 		}
-		globalTS, _ := api.getTypeSettings(typeSettingValue.Type())
+		globalTS, _ := api.typeSettingsRegistry.GetByType(typeSettingValue.Type())
 		ts = ts.merge(globalTS)
 		if objectType := ts.ObjectType(); objectType != nil {
 			typeDen, objectCode, err := getTypeDenotationAndCode(objectType)
@@ -90,11 +85,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 
 	if opts.validation {
 		if err := api.callSyntacticValidator(ctx, value, valueType); err != nil {
-			return 0, ierrors.Wrap(err, "post-deserialization validation failed")
-		}
-
-		if err := api.checkMaxByteSize(bytesRead, ts); err != nil {
-			return bytesRead, err
+			return 0, ierrors.Errorf("post-deserialization validation failed: %w", err)
 		}
 	}
 
@@ -103,7 +94,7 @@ func (api *API) decode(ctx context.Context, b []byte, value reflect.Value, ts Ty
 
 func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.Value,
 	valueType reflect.Type, ts TypeSettings, opts *options) (int, error) {
-	globalTS, _ := api.getTypeSettings(valueType)
+	globalTS, _ := api.typeSettingsRegistry.GetByType(valueType)
 	ts = ts.merge(globalTS)
 	switch value.Kind() {
 	case reflect.Ptr:
@@ -237,14 +228,16 @@ func (api *API) decodeInterface(
 		return 0, ierrors.Errorf("interface %s hasn't been registered", valueType)
 	}
 	deseri := serializer.NewDeserializer(b)
-	objectCode, err := deseri.GetObjectType(iObjects.typeDenotation)
+	objectCode, err := deseri.GetObjectType(iObjects.TypeDenotation())
 	if err != nil {
 		return 0, ierrors.WithStack(err)
 	}
-	objectType := iObjects.fromCodeToType[objectCode]
-	if objectType == nil {
-		return 0, ierrors.Errorf("no object type with code %d was found for interface %s", objectCode, valueType)
+
+	objectType, exists := iObjects.GetObjectTypeByCode(objectCode)
+	if !exists || objectType == nil {
+		return 0, ierrors.Wrapf(ErrInterfaceUnderlyingTypeNotRegistered, "object code: %d, interface: %s", objectCode, valueType)
 	}
+
 	objectValue := reflect.New(objectType).Elem()
 	bytesRead, err := api.decode(ctx, b, objectValue, ts, opts)
 	if err != nil {
@@ -288,7 +281,7 @@ func (api *API) decodeStruct(ctx context.Context, b []byte, value reflect.Value,
 func (api *API) decodeStructFields(
 	ctx context.Context, deseri *serializer.Deserializer, value reflect.Value, valueType reflect.Type, opts *options,
 ) error {
-	structFields, err := api.parseStructType(valueType)
+	structFields, err := api.getStructFields(valueType)
 	if err != nil {
 		return ierrors.Wrapf(err, "can't parse struct type %s", valueType)
 	}
@@ -445,8 +438,8 @@ func (api *API) decodeSlice(ctx context.Context, b []byte, value reflect.Value,
 }
 
 func (api *API) decodeMapKVPair(ctx context.Context, b []byte, key, val reflect.Value, opts *options) (int, error) {
-	keyTypeSettings := api.getTypeSettingsByValue(key)
-	valueTypeSettings := api.getTypeSettingsByValue(val)
+	keyTypeSettings := api.typeSettingsRegistry.GetByValue(key)
+	valueTypeSettings := api.typeSettingsRegistry.GetByValue(val)
 
 	keyBytesRead, err := api.decode(ctx, b, key, keyTypeSettings, opts)
 	if err != nil {
@@ -492,7 +485,7 @@ func (api *API) decodeMap(ctx context.Context, b []byte, value reflect.Value,
 	}
 
 	if opts.validation {
-		if err := api.checkMinMaxBounds(value, ts); err != nil {
+		if err := ts.checkMinMaxBounds(value); err != nil {
 			return consumedBytes, err
 		}
 	}

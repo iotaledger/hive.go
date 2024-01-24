@@ -1,6 +1,10 @@
 package serix
 
 import (
+	"reflect"
+	"sync"
+
+	hiveorderedmap "github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -55,16 +59,20 @@ type ArrayRules serializer.ArrayRules
 type TypeSettings struct {
 	// fieldKey defines the key for the field used in json serialization.
 	fieldKey *string
+	// description defines the description of the object.
+	description string
 	// objectType defines the object type. It can be either uint8 or uint32 number.
 	objectType interface{}
-	// maxByteSize defines the max serialized byte size. 0 means unbounded.
-	maxByteSize uint
 	// lengthPrefixType defines the type of the value denoting the length of a collection.
 	lengthPrefixType *LengthPrefixType
 	// lexicalOrdering defines whether the collection must be lexically ordered during serialization.
 	lexicalOrdering *bool
 	// arrayRules defines rules around a to be deserialized array.
 	arrayRules *ArrayRules
+}
+
+func NewTypeSettings() TypeSettings {
+	return TypeSettings{}
 }
 
 // WithFieldKey specifies the key for the field.
@@ -92,6 +100,18 @@ func (ts TypeSettings) MustFieldKey() string {
 	return *ts.fieldKey
 }
 
+// WithDescription specifies the description of the object.
+func (ts TypeSettings) WithDescription(description string) TypeSettings {
+	ts.description = description
+
+	return ts
+}
+
+// Description returns the description of the object.
+func (ts TypeSettings) Description() string {
+	return ts.description
+}
+
 // WithObjectType specifies the object type. It can be either uint8 or uint32 number.
 // The object type holds two meanings: the actual code (number) and the serializer.TypeDenotationType like uint8 or uint32.
 // serix uses object type to actually encode the number
@@ -105,13 +125,6 @@ func (ts TypeSettings) WithObjectType(t interface{}) TypeSettings {
 // ObjectType returns the object type as an uint8 or uint32 number.
 func (ts TypeSettings) ObjectType() interface{} {
 	return ts.objectType
-}
-
-// WithMaxByteSize specifies max serialized byte size for the type. 0 means unbounded.
-func (ts TypeSettings) WithMaxByteSize(l uint) TypeSettings {
-	ts.maxByteSize = l
-
-	return ts
 }
 
 // WithLengthPrefixType specifies LengthPrefixType.
@@ -250,4 +263,203 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 	}
 
 	return mode
+}
+
+// checkMinMaxBoundsLength checks whether the given length is within its defined bounds.
+func (ts TypeSettings) checkMinMaxBoundsLength(length int) error {
+	if minLen, ok := ts.MinLen(); ok {
+		if uint(length) < minLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "min length %d not reached (len %d)", minLen, length)
+		}
+	}
+	if maxLen, ok := ts.MaxLen(); ok {
+		if uint(length) > maxLen {
+			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "max length %d exceeded (len %d)", maxLen, length)
+		}
+	}
+
+	return nil
+}
+
+// checkMinMaxBounds checks whether the given value is within its defined bounds in case it has a length.
+func (ts TypeSettings) checkMinMaxBounds(v reflect.Value) error {
+	if has := hasLength(v); !has {
+		return nil
+	}
+
+	if err := ts.checkMinMaxBoundsLength(v.Len()); err != nil {
+		return ierrors.Wrapf(err, "can't serialize '%s' type", v.Kind())
+	}
+
+	return nil
+}
+
+type TypeSettingsRegistry struct {
+	// the registered type settings for the known objects
+	registryMutex sync.RWMutex
+	registry      *hiveorderedmap.OrderedMap[reflect.Type, TypeSettings]
+}
+
+func NewTypeSettingsRegistry() *TypeSettingsRegistry {
+	return &TypeSettingsRegistry{
+		registry: hiveorderedmap.New[reflect.Type, TypeSettings](),
+	}
+}
+
+func (r *TypeSettingsRegistry) Has(objType reflect.Type) bool {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	return r.registry.Has(objType)
+}
+
+func (r *TypeSettingsRegistry) GetByType(objType reflect.Type) (TypeSettings, bool) {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	ts, ok := r.registry.Get(objType)
+	if ok {
+		return ts, true
+	}
+
+	// if there is no type settings for the given type, and the type is a pointer,
+	// try to get the type settings for the pointer type.
+	if objType.Kind() == reflect.Ptr {
+		objType = objType.Elem()
+		ts, ok = r.registry.Get(objType)
+
+		return ts, ok
+	}
+
+	return TypeSettings{}, false
+}
+
+//nolint:unparam // false positive, we will use it later
+func (r *TypeSettingsRegistry) GetByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	for {
+		if ts, ok := r.registry.Get(objValue.Type()); ok {
+			if len(optTS) > 0 {
+				return optTS[0].merge(ts)
+			}
+
+			return ts
+		}
+
+		// resolve indirections
+		switch objValue.Kind() {
+		case reflect.Ptr, reflect.Interface:
+			objValue = objValue.Elem()
+
+		default:
+			if len(optTS) > 0 {
+				return optTS[0]
+			}
+
+			return TypeSettings{}
+		}
+	}
+}
+
+func (r *TypeSettingsRegistry) ForEach(consumer func(objType reflect.Type, ts TypeSettings) bool) {
+	r.registryMutex.RLock()
+	defer r.registryMutex.RUnlock()
+
+	r.registry.ForEach(func(objType reflect.Type, ts TypeSettings) bool {
+		return consumer(objType, ts)
+	})
+}
+
+// RegisterTypeSettings registers settings for a particular type obj.
+func (r *TypeSettingsRegistry) RegisterTypeSettings(obj interface{}, ts TypeSettings) error {
+	objType := reflect.TypeOf(obj)
+	if objType == nil {
+		return ierrors.New("'obj' is a nil interface, it needs to be a valid type")
+	}
+
+	r.registryMutex.Lock()
+	defer r.registryMutex.Unlock()
+
+	if r.registry.Has(objType) {
+		return ierrors.Errorf("type settings for object %s are already registered", objType)
+	}
+
+	r.registry.Set(objType, ts)
+
+	return nil
+}
+
+func getTypeDenotationAndCode(objectType interface{}) (serializer.TypeDenotationType, uint32, error) {
+	objCodeType := reflect.TypeOf(objectType)
+	if objCodeType == nil {
+		return 0, 0, ierrors.New("can't detect type denotation type: object code is nil interface")
+	}
+	var code uint32
+	var objTypeDenotation serializer.TypeDenotationType
+	switch objCodeType.Kind() {
+	case reflect.Uint32:
+		objTypeDenotation = serializer.TypeDenotationUint32
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect.Kind
+		code = objectType.(uint32)
+	case reflect.Uint8:
+		objTypeDenotation = serializer.TypeDenotationByte
+
+		//nolint:forcetypeassert // false positive, we already checked the type via reflect.Kind
+		code = uint32(objectType.(uint8))
+	default:
+		return 0, 0, ierrors.Errorf("unsupported object code type: %s (%s), only uint32 and byte are supported",
+			objCodeType, objCodeType.Kind())
+	}
+
+	return objTypeDenotation, code, nil
+}
+
+func (r *TypeSettingsRegistry) getTypeDenotationAndObjectCode(objType reflect.Type) (serializer.TypeDenotationType, uint32, error) {
+	ts, exists := r.GetByType(objType)
+	if !exists {
+		return 0, 0, ierrors.Errorf(
+			"no type settings was found for object %s"+
+				"you must register object with its type settings first",
+			objType,
+		)
+	}
+
+	objectType := ts.ObjectType()
+	if objectType == nil {
+		return 0, 0, ierrors.Errorf(
+			"type settings for object %s doesn't contain object code",
+			objType,
+		)
+	}
+
+	objTypeDenotation, objectCode, err := getTypeDenotationAndCode(objectType)
+	if err != nil {
+		return 0, 0, ierrors.WithStack(err)
+	}
+
+	return objTypeDenotation, objectCode, nil
+}
+
+type ObjectMetadata struct {
+	Type           reflect.Type
+	TypeDenotation serializer.TypeDenotationType
+	Code           uint32
+}
+
+func (r *TypeSettingsRegistry) GetObjectMetadata(obj any) (*ObjectMetadata, error) {
+	objType := reflect.TypeOf(obj)
+
+	objTypeDenotation, objCode, err := r.getTypeDenotationAndObjectCode(objType)
+	if err != nil {
+		return nil, ierrors.Wrapf(err, "failed to get type denotation for object %T", obj)
+	}
+
+	return &ObjectMetadata{
+		Type:           objType,
+		TypeDenotation: objTypeDenotation,
+		Code:           objCode,
+	}, nil
 }

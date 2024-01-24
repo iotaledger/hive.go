@@ -130,8 +130,6 @@ type ArrayRules struct {
 	Guards SerializableGuard
 	// The mode of validation.
 	ValidationMode ArrayValidationMode
-	// The slice reduction function for uniqueness checks.
-	UniquenessSliceFunc ElementUniquenessSliceFunc
 }
 
 // CheckBounds checks whether the given count violates the array bounds.
@@ -161,9 +159,6 @@ func (ar *ArrayRules) ElementUniqueValidator() ElementValidationFunc {
 	set := map[string]int{}
 
 	return func(index int, next []byte) error {
-		if ar.UniquenessSliceFunc != nil {
-			next = ar.UniquenessSliceFunc(next)
-		}
 		k := string(next)
 		if j, has := set[k]; has {
 			return ierrors.Wrapf(ErrArrayValidationViolatesUniqueness, "element %d and %d are duplicates", j, index)
@@ -205,17 +200,9 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 	return func(index int, next []byte) error {
 		if prev == nil {
 			prevIndex = index
-			if ar.UniquenessSliceFunc != nil {
-				prev = ar.UniquenessSliceFunc(next)
-
-				return nil
-			}
 			prev = next
 
 			return nil
-		}
-		if ar.UniquenessSliceFunc != nil {
-			next = ar.UniquenessSliceFunc(next)
 		}
 		switch bytes.Compare(prev, next) {
 		case 1:
@@ -225,11 +212,6 @@ func (ar *ArrayRules) LexicalOrderWithoutDupsValidator() ElementValidationFunc {
 			return ierrors.Wrapf(ErrArrayValidationViolatesUniqueness, "element %d and %d are duplicates", index, prevIndex)
 		}
 		prevIndex = index
-		if ar.UniquenessSliceFunc != nil {
-			prev = ar.UniquenessSliceFunc(next)
-
-			return nil
-		}
 		prev = next
 
 		return nil
