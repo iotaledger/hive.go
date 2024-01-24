@@ -53,10 +53,11 @@ func newAuthenticatedMap[IdentifierType types.IdentifierType, K, V any](
 		bytesToValue: bytesToValue,
 	}
 
+	mapStoreAdapter := newMapStoreAdapter(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})))
 	if root, err := newMap.root.Get(); err == nil {
-		newMap.tree = smt.ImportSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), root[:], smt.WithValueHasher(nil))
+		newMap.tree = smt.ImportSparseMerkleTrie(mapStoreAdapter, sha256.New(), root[:], smt.WithValueHasher(nil))
 	} else {
-		newMap.tree = smt.NewSparseMerkleTree(lo.PanicOnErr(store.WithExtendedRealm([]byte{prefixTreeStorage})), sha256.New(), smt.WithValueHasher(nil))
+		newMap.tree = smt.NewSparseMerkleTrie(mapStoreAdapter, sha256.New(), smt.WithValueHasher(nil))
 	}
 
 	return newMap

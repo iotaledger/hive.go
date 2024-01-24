@@ -8,7 +8,7 @@ require (
 	github.com/iotaledger/hive.go/kvstore v0.0.0-20240123130019-2cc3898fca39
 	github.com/iotaledger/hive.go/lo v0.0.0-20240123130019-2cc3898fca39
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20240123130019-2cc3898fca39
-	github.com/pokt-network/smt v0.6.1
+	github.com/pokt-network/smt v0.9.2
 	github.com/stretchr/testify v1.8.4
 )
 
