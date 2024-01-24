@@ -66,6 +66,18 @@ func ensureStacktraceUniqueness(err error) error {
 	return newErrorWithStacktrace(err, stacktrace())
 }
 
+// Join returns an error that wraps the given errors.
+// Any nil error values are discarded.
+// Join returns nil if errs contains no non-nil values.
+// The error formats as the concatenation of the strings obtained
+// by calling the Error method of each element of errs, with a newline
+// between each string.
+// Join adds a stacktrace to the error if there was no stacktrace
+// in the error tree yet and if the build flag "stacktrace" is set.
+func Join(errs ...error) error {
+	return ensureStacktraceUniqueness(errors.Join(errs...))
+}
+
 // Errorf formats according to a format specifier and returns the string as a
 // value that satisfies error.
 //
@@ -83,17 +95,41 @@ func Errorf(format string, args ...any) error {
 	return ensureStacktraceUniqueness(fmt.Errorf(format, args...))
 }
 
-// Wrap annotates an error with a message.
+// Wrap prepends an error with a message and wraps it into a new error.
 // Wrap adds a stacktrace to the error if there was no stacktrace
 // in the error tree yet and if the build flag "stacktrace" is set.
 func Wrap(err error, message string) error {
-	return ensureStacktraceUniqueness(fmt.Errorf("%w: %s", err, message))
+	return ensureStacktraceUniqueness(fmt.Errorf("%s: %w", message, err))
 }
 
-// Wrapf annotates an error with a message format specifier and arguments.
+// Wrapf prepends an error with a message format specifier and arguments
+// and wraps it into a new error.
 // Wrapf adds a stacktrace to the error if there was no stacktrace
 // in the error tree yet and if the build flag "stacktrace" is set.
 func Wrapf(err error, format string, args ...interface{}) error {
+	// check if the passed args also contain an error
+	for _, arg := range args {
+		if _, ok := arg.(error); ok {
+			// wrap the other errors as well
+			return ensureStacktraceUniqueness(fmt.Errorf("%w: %w", fmt.Errorf(format, args...), err))
+		}
+	}
+
+	return ensureStacktraceUniqueness(fmt.Errorf("%s: %w", fmt.Sprintf(format, args...), err))
+}
+
+// WithMessage appends a message to the error and wraps it into a new error.
+// WithMessage adds a stacktrace to the error if there was no stacktrace
+// in the error tree yet and if the build flag "stacktrace" is set.
+func WithMessage(err error, message string) error {
+	return ensureStacktraceUniqueness(fmt.Errorf("%w: %s", err, message))
+}
+
+// WithMessagef appends a message format specifier and arguments to the error
+// and wraps it into a new error.
+// WithMessagef adds a stacktrace to the error if there was no stacktrace
+// in the error tree yet and if the build flag "stacktrace" is set.
+func WithMessagef(err error, format string, args ...interface{}) error {
 	// check if the passed args also contain an error
 	for _, arg := range args {
 		if _, ok := arg.(error); ok {
