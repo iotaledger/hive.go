@@ -51,13 +51,15 @@ func Test_SortedSet(t *testing.T) {
 func requireOrder[ElementType comparable](t *testing.T, expectedElements []ElementType, sortedSet SortedSet[ElementType]) {
 	descendingElements := sortedSet.Descending()
 	require.Equal(t, len(expectedElements), len(descendingElements))
-
 	for i, expectedElement := range expectedElements {
 		require.Equal(t, expectedElement, descendingElements[i])
 	}
 
 	ascendingElements := sortedSet.Ascending()
 	require.Equal(t, len(expectedElements), len(ascendingElements))
+	for i, expectedElement := range expectedElements {
+		require.Equal(t, expectedElement, ascendingElements[len(expectedElements)-i-1])
+	}
 
 	if len(expectedElements) > 0 {
 		require.Equal(t, expectedElements[0], sortedSet.HeaviestElement().Get())
