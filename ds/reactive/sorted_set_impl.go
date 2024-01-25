@@ -162,7 +162,7 @@ func (s *sortedSet[ElementType, WeightType]) updatePosition(element *sortedSetEl
 		if moved && fromIndex == 0 {
 			// moved away from the heaviest element
 			s.heaviestElement.Set(s.sortedElements[0].element)
-		} else if element.index == 0 {
+		} else if element.index == 0 { // We check the index of the element after it is moved.
 			// moved towards the heaviest element
 			s.heaviestElement.Set(element.element)
 		}
@@ -170,11 +170,11 @@ func (s *sortedSet[ElementType, WeightType]) updatePosition(element *sortedSetEl
 		if moved && fromIndex == len(s.sortedElements)-1 {
 			// moved away from the lightest element
 			s.lightestElement.Set(s.sortedElements[len(s.sortedElements)-1].element)
-		} else if element.index == len(s.sortedElements)-1 {
+		} else if element.index == len(s.sortedElements)-1 { // We check the index of the element after it is moved.
 			// moved towards the lightest element
 			s.lightestElement.Set(element.element)
 		}
-	}(element.index)
+	}(element.index) // We capture the index of the element before it is moved.
 
 	// try to move the element to the left first
 	for ; element.index != 0; moved = true {
