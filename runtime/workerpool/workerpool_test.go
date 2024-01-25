@@ -6,7 +6,33 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestDebounceFunc(t *testing.T) {
+	wp := New(t.Name()).Start()
+	debounce := wp.DebounceFunc()
+
+	var latestValue atomic.Uint64
+	var callCount atomic.Uint64
+
+	for i := 0; i < 100; i++ {
+		iCaptured := i
+
+		debounce(func() {
+			callCount.Add(1)
+
+			latestValue.Store(uint64(iCaptured))
+
+			time.Sleep(1 * time.Second)
+		})
+	}
+
+	wp.PendingTasksCounter.WaitIsZero()
+
+	require.Less(t, callCount.Load(), uint64(3))
+	require.Equal(t, uint64(99), latestValue.Load())
+}
 
 func Test_NonBlockingNoFlush(t *testing.T) {
 	const workerCount = 2

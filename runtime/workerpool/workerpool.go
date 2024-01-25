@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/runtime/options"
@@ -91,6 +92,41 @@ func (w *WorkerPool) Submit(workerFunc func(), optStackTrace ...string) {
 	w.increasePendingTasks()
 
 	w.Queue.Push(newTask(workerFunc, w.decreasePendingTasks, lo.First(optStackTrace)))
+}
+
+// DebounceFunc returns a function that can be used to submit a task that is canceled if the function is called with a
+// new task before the previous task was executed.
+func (w *WorkerPool) DebounceFunc() (debounce func(workerFunc func(), optStackTrace ...string)) {
+	// lastInvocation is used to determine if a new invocation was submitted before the previous one was executed
+	var lastInvocation atomic.Uint64
+
+	// execMutex is used to synchronize the execution of the workerFunc (only one should be executed at a time)
+	var execMutex sync.Mutex
+
+	return func(workerFunc func(), optStackTrace ...string) {
+		// increment the invocation counter
+		currentInvocation := lastInvocation.Add(1)
+
+		// submit the task
+		w.Submit(func() {
+			// abort if the current invocation is not the last one anymore
+			if currentInvocation != lastInvocation.Load() {
+				return
+			}
+
+			// grab execution mutex
+			execMutex.Lock()
+			defer execMutex.Unlock()
+
+			// abort if the current invocation is not the last one anymore (double-checked locking)
+			if currentInvocation != lastInvocation.Load() {
+				return
+			}
+
+			// execute the workerFunc
+			workerFunc()
+		}, optStackTrace...)
+	}
 }
 
 // IsRunning returns true if the WorkerPool is running.
