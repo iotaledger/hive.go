@@ -285,7 +285,7 @@ func (l *logger) NewChildLogger(name string, enumerateChildren ...bool) (childLo
 
 // ParentLogger returns the parent logger of the logger (or nil if it is the root).
 func (l *logger) ParentLogger() Logger {
-	if l.parentLogger == nil {
+	if l == nil || l.parentLogger == nil {
 		return nil
 	}
 
@@ -296,7 +296,7 @@ func (l *logger) ParentLogger() Logger {
 // It is important to call this method whenever we remove all references to the logger, otherwise the logger will
 // not be garbage collected.
 func (l *logger) UnsubscribeFromParentLogger() {
-	if l.unsubscribeFromParent != nil {
+	if l != nil && l.unsubscribeFromParent != nil {
 		l.unsubscribeFromParent()
 	}
 }
