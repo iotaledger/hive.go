@@ -259,7 +259,7 @@ func (l *logger) Log(msg string, level Level, args ...any) {
 // Logf emits a formatted log message with the given level.
 func (l *logger) Logf(fmtString string, level Level, args ...any) {
 	if l != nil && l.level.Level() <= level {
-		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...))
+		l.rootLogger.LogAttrs(context.Background(), level, fmt.Sprintf(fmtString, args...), slog.Attr{Key: namespaceKey, Value: slog.StringValue(l.path)})
 	}
 }
 
