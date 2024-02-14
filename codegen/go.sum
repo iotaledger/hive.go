@@ -1,11 +1,11 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/iotaledger/hive.go/constraints v0.0.0-20240212120619-c0bb6cb3c1f8 h1:txkxMuqhqhshH2AYtIf2lsEQW/Dpcn3yQ+FQ01D2MyY=
-github.com/iotaledger/hive.go/constraints v0.0.0-20240212120619-c0bb6cb3c1f8/go.mod h1:dOBOM2s4se3HcWefPe8sQLUalGXJ8yVXw58oK8jke3s=
-github.com/iotaledger/hive.go/ierrors v0.0.0-20240212120619-c0bb6cb3c1f8 h1:lA4TQxTAbx1wGfnGPaWNBkhFb9K1ZSiFTpRwqyDe8o4=
-github.com/iotaledger/hive.go/ierrors v0.0.0-20240212120619-c0bb6cb3c1f8/go.mod h1:HcE8B5lP96enc/OALTb2/rIIi+yOLouRoHOKRclKmC8=
-github.com/iotaledger/hive.go/lo v0.0.0-20240212120619-c0bb6cb3c1f8 h1:1Pk4eWe6vmGP1wTgdj/oWbgojKcL/e1VOZkHxlWTaZk=
-github.com/iotaledger/hive.go/lo v0.0.0-20240212120619-c0bb6cb3c1f8/go.mod h1:K40QstiBDbWTYHRczVVuCIbkTstpsJ/0suyFhWnR1Dw=
+github.com/iotaledger/hive.go/constraints v0.0.0-20240214173640-45aebf957da5 h1:I8X0yQv1lqKi3jDnct7BOjeHuTpvCm3jTdnotOq/syA=
+github.com/iotaledger/hive.go/constraints v0.0.0-20240214173640-45aebf957da5/go.mod h1:dOBOM2s4se3HcWefPe8sQLUalGXJ8yVXw58oK8jke3s=
+github.com/iotaledger/hive.go/ierrors v0.0.0-20240214174743-8e3b6762589e h1:o9XFEUbGzbkWAjyA/y0oCYwKhrvq0EFijS8Vt3wkwgY=
+github.com/iotaledger/hive.go/ierrors v0.0.0-20240214174743-8e3b6762589e/go.mod h1:HcE8B5lP96enc/OALTb2/rIIi+yOLouRoHOKRclKmC8=
+github.com/iotaledger/hive.go/lo v0.0.0-20240214174743-8e3b6762589e h1:2WdgQ2YZqv+1KCplITch87M48RVFzaBjAJ1qcZ/fbj0=
+github.com/iotaledger/hive.go/lo v0.0.0-20240214174743-8e3b6762589e/go.mod h1:emwj7JQEo+BOIxtkcQwfr9x4MgmdHcDMjxFZohJ+sIk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
