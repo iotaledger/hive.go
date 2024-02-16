@@ -1,9 +1,9 @@
 module github.com/iotaledger/hive.go/lo
 
-go 1.21
+go 1.22
 
 require (
-	github.com/iotaledger/hive.go/constraints v0.0.0-20240214173640-45aebf957da5
+	github.com/iotaledger/hive.go/constraints v0.0.0-20240214175801-9ca9f93790f5
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240214173640-45aebf957da5
 	github.com/stretchr/testify v1.8.4
 )
