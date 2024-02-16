@@ -276,7 +276,7 @@ func DirectoryEmpty(dirPath string) (bool, error) {
 	}
 
 	// check if the directory is empty
-	if err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(dirPath, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

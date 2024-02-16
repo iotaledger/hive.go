@@ -207,6 +207,7 @@ func (g *Group) poolsString(indent int) string {
 // groupsString returns a human-readable representation of the Groups of the Group with the given indentation.
 func (g *Group) groupsString(indent int) string {
 	result := ""
+	//nolint:revive // better be explicit here
 	g.groups.ForEach(func(key string, value *Group) bool {
 		result += value.string(indent)
 		return true

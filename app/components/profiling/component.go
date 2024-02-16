@@ -18,7 +18,7 @@ func init() {
 	Component = &app.Component{
 		Name:   "Profiling",
 		Params: params,
-		IsEnabled: func(c *dig.Container) bool {
+		IsEnabled: func(_ *dig.Container) bool {
 			return ParamsProfiling.Enabled
 		},
 		Run: run,

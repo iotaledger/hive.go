@@ -95,6 +95,7 @@ func (r *EventTicker[I, T]) EvictUntil(index I) {
 
 	for currentIndex := r.lastEvictedIndex + 1; currentIndex <= index; currentIndex++ {
 		if evictedStorage := r.scheduledTickers.Evict(currentIndex); evictedStorage != nil {
+			//nolint:revive // better be explicit here
 			evictedStorage.ForEach(func(id T, scheduledTask *timed.ScheduledTask) bool {
 				scheduledTask.Cancel()
 
@@ -109,8 +110,9 @@ func (r *EventTicker[I, T]) EvictUntil(index I) {
 
 func (r *EventTicker[I, T]) Clear() {
 	pendingTickers := make([]T, 0)
+	//nolint:revive // better be explicit here
 	r.scheduledTickers.ForEach(func(index I, storage *shrinkingmap.ShrinkingMap[T, *timed.ScheduledTask]) {
-		storage.ForEach(func(id T, scheduledTask *timed.ScheduledTask) bool {
+		storage.ForEach(func(id T, _ *timed.ScheduledTask) bool {
 			pendingTickers = append(pendingTickers, id)
 			return true
 		})
