@@ -1,14 +1,14 @@
 module github.com/iotaledger/hive.go/app
 
-go 1.21
+go 1.22
 
 require (
 	github.com/felixge/fgprof v0.9.3
 	github.com/hashicorp/go-version v1.6.0
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20240214174541-a01817683669
-	github.com/iotaledger/hive.go/lo v0.0.0-20240214174541-a01817683669
-	github.com/iotaledger/hive.go/log v0.0.0-20240214174541-a01817683669
-	github.com/iotaledger/hive.go/runtime v0.0.0-20240214174541-a01817683669
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20240216130637-e5fb5dfb2d00
+	github.com/iotaledger/hive.go/lo v0.0.0-20240216130637-e5fb5dfb2d00
+	github.com/iotaledger/hive.go/log v0.0.0-20240216130637-e5fb5dfb2d00
+	github.com/iotaledger/hive.go/runtime v0.0.0-20240216130637-e5fb5dfb2d00
 	github.com/knadh/koanf v1.5.0
 	github.com/spf13/cast v1.6.0
 	github.com/spf13/pflag v1.0.5
@@ -28,10 +28,10 @@ require (
 	github.com/google/pprof v0.0.0-20240207164012-fb44976bdcd5 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20240214174541-a01817683669 // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20240214174541-a01817683669 // indirect
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20240214174541-a01817683669 // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20240214174541-a01817683669 // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20240216130637-e5fb5dfb2d00 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20240216130637-e5fb5dfb2d00 // indirect
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20240216130637-e5fb5dfb2d00 // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20240216130637-e5fb5dfb2d00 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

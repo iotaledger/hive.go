@@ -40,6 +40,7 @@ func (k *mapStoreAdapter) Delete(key []byte) error {
 func (k *mapStoreAdapter) Len() int {
 	count := 0
 
+	//nolint:revive // better be explicit here
 	if err := k.underlying.IterateKeys(hivekvstore.EmptyPrefix, func(key []byte) bool {
 		count++
 		return true

@@ -156,6 +156,7 @@ func (r *RandomMap[K, V]) RandomUniqueEntries(count int) (results []V) {
 	// can only return as many as there are in the map
 	if r.rawMap.Size() <= count {
 		results = make([]V, 0, r.rawMap.Size())
+		//nolint:revive // better be explicit here
 		r.forEach(func(key K, value V) bool {
 			results = append(results, value)
 			return true
@@ -195,6 +196,7 @@ func (r *RandomMap[K, V]) Values() (result []V) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
+	//nolint:revive // better be explicit here
 	r.forEach(func(key K, value V) bool {
 		result = append(result, value)
 		return true

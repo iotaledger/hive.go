@@ -40,6 +40,7 @@ func versionFilterFunc(fixedAppVersion string) latest.TagFilterFunc {
 		// => no need to check for updates.
 
 		// filter everything
+		//nolint:revive // better be explicit here
 		return func(version string) bool {
 			return false
 		}

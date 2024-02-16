@@ -375,6 +375,7 @@ func (s *SubscriptionManager[C, T]) TopicsSizeAll() int {
 	count := 0
 
 	// loop over all clients
+	//nolint:revive // better be explicit here
 	s.subscribers.ForEach(func(clientID C, topics *shrinkingmap.ShrinkingMap[T, int]) bool {
 		count += topics.Size()
 
