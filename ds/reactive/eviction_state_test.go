@@ -38,14 +38,27 @@ func TestEvictionEvent(t *testing.T) {
 func TestEvict(t *testing.T) {
 	state := newEvictionState[int]()
 
-	// Setup a slot to be evicted
-	slotToEvict := 1
-	state.evictionEvents.Set(slotToEvict, NewEvent())
+	{
+		// Setup a slot to be evicted
+		slotToEvict := 0
+		state.evictionEvents.Set(slotToEvict, NewEvent())
 
-	// Evict the slot and verify
-	state.Evict(slotToEvict)
-	_, exists := state.evictionEvents.Get(slotToEvict)
-	require.False(t, exists, "Evicted slot should no longer exist in evictionEvents")
+		// Evict the slot and verify
+		state.Evict(slotToEvict)
+		_, exists := state.evictionEvents.Get(slotToEvict)
+		require.False(t, exists, "Evicted slot should no longer exist in evictionEvents")
+	}
+
+	{
+		// Setup a slot to be evicted
+		slotToEvict := 1
+		state.evictionEvents.Set(slotToEvict, NewEvent())
+
+		// Evict the slot and verify
+		state.Evict(slotToEvict)
+		_, exists := state.evictionEvents.Get(slotToEvict)
+		require.False(t, exists, "Evicted slot should no longer exist in evictionEvents")
+	}
 }
 
 // TestEvictPrivate tests the private evict method
