@@ -3,9 +3,10 @@ package reactive
 // EvictionState is a reactive component that implements a slot based eviction mechanism.
 type EvictionState[Type EvictionStateSlotType] interface {
 	// LastEvictedSlot returns a reactive variable that contains the index of the last evicted slot.
-	LastEvictedSlot() Variable[Type]
+	LastEvictedSlot() Type
 
-	// EvictionEvent returns the event that is triggered when the given slot was evicted.
+	// EvictionEvent returns the event that is triggered when the given slot was evicted. It returns a triggered event
+	// as default if the slot was already evicted.
 	EvictionEvent(slot Type) Event
 
 	// Evict evicts the given slot and triggers the corresponding eviction events.
