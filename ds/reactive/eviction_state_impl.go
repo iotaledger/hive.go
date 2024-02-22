@@ -50,12 +50,22 @@ func (e *evictionState[Type]) Evict(slot Type) {
 
 // evict advances the lastEvictedSlot to the given slot and returns the events that shall be triggered.
 func (e *evictionState[Type]) evict(slot Type) (eventsToTrigger []Event) {
+	var zeroValue Type
+
 	e.lastEvictedSlot.Compute(func(lastEvictedSlotIndex Type) Type {
+		var startingSlot Type
 		if slot <= lastEvictedSlotIndex {
-			return lastEvictedSlotIndex
+			// We only continue if the slot is the zero value, and we have not evicted any slot yet.
+			if slot != zeroValue || lastEvictedSlotIndex != zeroValue {
+				return lastEvictedSlotIndex
+			}
+
+			startingSlot = slot
+		} else {
+			startingSlot = lastEvictedSlotIndex + Type(1)
 		}
 
-		for i := lastEvictedSlotIndex + Type(1); i <= slot; i++ {
+		for i := startingSlot; i <= slot; i++ {
 			if slotEvictedEvent, exists := e.evictionEvents.Get(i); exists {
 				eventsToTrigger = append(eventsToTrigger, slotEvictedEvent)
 				e.evictionEvents.Delete(i)
