@@ -6,20 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewEvictionState tests the newEvictionState function
-func TestNewEvictionState(t *testing.T) {
-	state := newEvictionState[int]()
-	require.NotNil(t, state, "newEvictionState should not return nil")
-	require.NotNil(t, state.evictionEvents, "Eviction events map should be initialized")
-}
-
-// TestLastEvictedSlot tests the LastEvictedSlot method
-func TestLastEvictedSlot(t *testing.T) {
-	state := newEvictionState[int]()
-	slot := state.LastEvictedSlot()
-	require.NotNil(t, slot, "LastEvictedSlot should not return nil")
-}
-
 // TestEvictionEvent tests the EvictionEvent method
 func TestEvictionEvent(t *testing.T) {
 	state := newEvictionState[int]()
@@ -63,27 +49,43 @@ func TestEvict(t *testing.T) {
 		_, exists := state.evictionEvents.Get(slotToEvict)
 		require.False(t, exists, "Evicted slot should no longer exist in evictionEvents")
 	}
+
 }
 
 // TestEvictPrivate tests the private evict method
 func TestEvictTriggered(t *testing.T) {
 	state := newEvictionState[int]()
 
-	// Test with a slot less than the current lastEvictedSlotIndex
-	state.setLastEvictedSlot(2)                   // Set the last evicted slot to 2
-	state.evictionEvents.Set(1, evictedSlotEvent) // Set an event for slot 1
-	eventsToTrigger := state.evict(1)             // Try to evict slot 1, which is less than the last evicted slot
-	require.Len(t, eventsToTrigger, 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
+	{
+		var expectedEventsToTrigger []Event
+		expectedEventsToTrigger = append(expectedEventsToTrigger, state.EvictionEvent(0))
+		expectedEventsToTrigger = append(expectedEventsToTrigger, state.EvictionEvent(1))
+		expectedEventsToTrigger = append(expectedEventsToTrigger, state.EvictionEvent(3))
 
-	// Test with a slot equal to the current lastEvictedSlotIndex
-	eventsToTrigger = state.evict(2) // Try to evict slot 2, which is equal to the last evicted slot
-	require.Len(t, eventsToTrigger, 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
+		actualEventsToTrigger := state.evict(5)
+		require.Equal(t, expectedEventsToTrigger, actualEventsToTrigger, "evict should return the correct events to trigger")
+	}
 
-	// Test with a slot greater than the current lastEvictedSlotIndex
-	slotToEvict := 3
-	state.evictionEvents.Set(slotToEvict, NewEvent())
-	eventToTrigger := state.EvictionEvent(slotToEvict)
-	require.False(t, eventToTrigger.WasTriggered(), "evicted event should not have been triggered")
-	state.Evict(slotToEvict)
-	require.True(t, eventToTrigger.WasTriggered(), "evicted event should have been triggered")
+	// Test with a slot smaller than current lastEvictedSlot
+	{
+		// Try to evict slot 0, which is less than the last evicted slot
+		require.Len(t, state.evict(0), 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
+		require.Len(t, state.evict(4), 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
+		require.Len(t, state.evict(5), 0, "evict should not return any events when slot is less than or equal to lastEvictedSlotIndex")
+	}
+
+	{
+		var expectedEventsToTrigger []Event
+		expectedEventsToTrigger = append(expectedEventsToTrigger, state.EvictionEvent(6))
+		expectedEventsToTrigger = append(expectedEventsToTrigger, state.EvictionEvent(8))
+
+		actualEventsToTrigger := state.evict(10)
+		require.Equal(t, expectedEventsToTrigger, actualEventsToTrigger, "evict should return the correct events to trigger")
+	}
+
+	// Requesting a EvictionEvent of an evicted slot should return the evictedSlotEvent
+	{
+		require.Equal(t, evictedSlotEvent, state.EvictionEvent(0), "EvictionEvent should return the evictedSlotEvent for a slot lower than lastEvictedSlot")
+		require.Equal(t, evictedSlotEvent, state.EvictionEvent(10), "EvictionEvent should return the evictedSlotEvent for a slot lower than lastEvictedSlot")
+	}
 }

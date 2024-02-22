@@ -25,13 +25,6 @@ func newEvictionState[Type EvictionStateSlotType]() *evictionState[Type] {
 	}
 }
 
-func (e *evictionState[Type]) setLastEvictedSlot(slot Type) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
-	e.lastEvictedSlot = &slot
-}
-
 func (e *evictionState[Type]) LastEvictedSlot() Type {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
