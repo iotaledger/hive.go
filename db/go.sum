@@ -1,10 +1,10 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/iotaledger/hive.go/ierrors v0.0.0-20240223122151-5112f0c49f60 h1:Yq6Pmpg6yuIrNUevIML7gQGv2xNgr2ngwjb8aG2aNXA=
-github.com/iotaledger/hive.go/ierrors v0.0.0-20240223122151-5112f0c49f60/go.mod h1:GQY0/35sjgT9Poi1Vrs9kFVvAkuKzGXfVh4j6CBXsAA=
-github.com/iotaledger/hive.go/runtime v0.0.0-20240223122151-5112f0c49f60 h1:PEUeF0CtcvugaCHtifFnSY8tCZOvc5aFbnVJ1eKGNy4=
-github.com/iotaledger/hive.go/runtime v0.0.0-20240223122151-5112f0c49f60/go.mod h1:lAR3vbqE9g65M9VwWHiaXab2q+d89dBOFjhKgnDfK7c=
+github.com/iotaledger/hive.go/ierrors v0.0.0-20240223140551-732433cbaf27 h1:7sp3f4Xp+7AuvTKtRw17wEKkXNTNGVSdx8M8PaAhJQE=
+github.com/iotaledger/hive.go/ierrors v0.0.0-20240223140551-732433cbaf27/go.mod h1:GQY0/35sjgT9Poi1Vrs9kFVvAkuKzGXfVh4j6CBXsAA=
+github.com/iotaledger/hive.go/runtime v0.0.0-20240223140551-732433cbaf27 h1:ib/w3v1Eeo3aoOKN8yh5YnR9KOdQvB2oBBrWlxCTeTg=
+github.com/iotaledger/hive.go/runtime v0.0.0-20240223140551-732433cbaf27/go.mod h1:pueoYXud+HmTY2x9j/S6+ZX3M5ZyENFKPDrx3EtcwWs=
 github.com/pelletier/go-toml/v2 v2.1.1 h1:LWAJwfNvjQZCFIDKWYQaM62NcYeYViCmWIwmOStowAI=
 github.com/pelletier/go-toml/v2 v2.1.1/go.mod h1:tJU2Z3ZkXwnxa4DPO899bsyIoywizdUvyaeZurnPPDc=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
