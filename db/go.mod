@@ -3,8 +3,8 @@ module github.com/iotaledger/hive.go/db
 go 1.22.0
 
 require (
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20240222083732-602e8e1b2f7e
-	github.com/iotaledger/hive.go/runtime v0.0.0-20240222083732-602e8e1b2f7e
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20240223122151-5112f0c49f60
+	github.com/iotaledger/hive.go/runtime v0.0.0-20240223122151-5112f0c49f60
 )
 
 require (

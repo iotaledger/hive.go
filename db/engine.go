@@ -29,8 +29,8 @@ type databaseInfo struct {
 	Engine string `toml:"databaseEngine"`
 }
 
-// engineFromString parses an engine from a string.
-func engineFromString(engineStr string) Engine {
+// EngineFromString parses an engine from a string.
+func EngineFromString(engineStr string) Engine {
 	if engineStr == "" {
 		// no engine specified
 		return EngineAuto
@@ -66,7 +66,7 @@ func EngineAllowed(dbEngine Engine, allowedEngines []Engine) (Engine, error) {
 
 // EngineFromStringAllowed parses an engine from a string and checks if the database engine is allowed.
 func EngineFromStringAllowed(dbEngineStr string, allowedEngines []Engine) (Engine, error) {
-	return EngineAllowed(engineFromString(dbEngineStr), allowedEngines)
+	return EngineAllowed(EngineFromString(dbEngineStr), allowedEngines)
 }
 
 // CheckEngine checks if the correct database engine is used.
@@ -83,12 +83,12 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 
 	switch dbEngine {
 	case EngineUnknown:
-		return EngineUnknown, ierrors.New("the database engine must not be EngineUnknown")
+		return dbEngine, ierrors.New("the database engine must not be EngineUnknown")
 
 		// TODO: add an interface with a flag that indicates if the database needs the file system or not.
 	case EngineMapDB, EnginePostgreSQL:
 		// no need to create or access a "database info file" in case of mapdb (in-memory) or postgres (external database)
-		return EngineMapDB, nil
+		return dbEngine, nil
 	}
 
 	dbEngineSpecified := dbEngine != EngineAuto
