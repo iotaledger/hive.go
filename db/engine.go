@@ -1,4 +1,4 @@
-package database
+package db
 
 import (
 	"os"
@@ -12,11 +12,13 @@ import (
 type Engine string
 
 const (
-	EngineUnknown Engine = "unknown"
-	EngineAuto    Engine = "auto"
-	EngineDebug   Engine = "debug"
-	EngineMapDB   Engine = "mapdb"
-	EngineRocksDB Engine = "rocksdb"
+	EngineUnknown    Engine = "unknown"
+	EngineAuto       Engine = "auto"
+	EngineDebug      Engine = "debug"
+	EngineMapDB      Engine = "mapdb"
+	EngineRocksDB    Engine = "rocksdb"
+	EngineSQLite     Engine = "sqlite"
+	EnginePostgreSQL Engine = "postgresql"
 )
 
 var (
@@ -37,8 +39,8 @@ func engineFromString(engineStr string) Engine {
 	return Engine(strings.ToLower(engineStr))
 }
 
-// getSupportedEnginesString returns a string containing all supported engines separated by "/".
-func getSupportedEnginesString(supportedEngines []Engine) string {
+// GetSupportedEnginesString returns a string containing all supported engines separated by "/".
+func GetSupportedEnginesString(supportedEngines []Engine) string {
 	supportedEnginesStr := ""
 	for i, allowedEngine := range supportedEngines {
 		if i != 0 {
@@ -59,7 +61,7 @@ func EngineAllowed(dbEngine Engine, allowedEngines []Engine) (Engine, error) {
 		}
 	}
 
-	return EngineUnknown, ierrors.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, getSupportedEnginesString(allowedEngines))
+	return EngineUnknown, ierrors.Errorf("unknown database engine: %s, supported engines: %s", dbEngine, GetSupportedEnginesString(allowedEngines))
 }
 
 // EngineFromStringAllowed parses an engine from a string and checks if the database engine is allowed.
@@ -83,8 +85,9 @@ func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine,
 	case EngineUnknown:
 		return EngineUnknown, ierrors.New("the database engine must not be EngineUnknown")
 
-	case EngineMapDB:
-		// no need to create or access a "database info file" in case of mapdb (in-memory)
+		// TODO: add an interface with a flag that indicates if the database needs the file system or not.
+	case EngineMapDB, EnginePostgreSQL:
+		// no need to create or access a "database info file" in case of mapdb (in-memory) or postgres (external database)
 		return EngineMapDB, nil
 	}
 
