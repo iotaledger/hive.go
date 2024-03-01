@@ -98,9 +98,10 @@ func (i *inspectedObject) Add(name string, instance any, inspectManually ...func
 
 // Get returns the child object with the given name.
 func (i *inspectedObject) Get(name string) (object InspectedObject, exists bool) {
-	value, exists := i.childObjects.Get(name)
-	if exists && value != nil {
-		return value.(InspectedObject), true
+	if value, valueExists := i.childObjects.Get(name); valueExists && value != nil {
+		object, exists = value.(InspectedObject)
+
+		return object, exists
 	}
 
 	return nil, false
