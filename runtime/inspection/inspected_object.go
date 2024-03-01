@@ -81,15 +81,11 @@ func (i *inspectedObject) InstanceID() string {
 
 // Add adds a child object to the inspected object.
 func (i *inspectedObject) Add(name string, instance any, inspectManually ...func(object InspectedObject)) {
-	type inspectable interface {
-		Inspect(session ...Session) InspectedObject
-	}
-
 	if stringify.IsInterfaceNil(instance) {
 		i.childObjects.Set(name, nil)
 	} else if len(inspectManually) >= 1 {
 		i.childObjects.Set(name, NewInspectedObject(instance, inspectManually[0], i.session))
-	} else if inspectableInstance, isInspectable := instance.(inspectable); isInspectable {
+	} else if inspectableInstance, isInspectable := instance.(Inspectable); isInspectable {
 		i.childObjects.Set(name, inspectableInstance.Inspect(i.session))
 	} else {
 		panic("added object does not have an 'Inspect(session ...Session) InspectedObject' method - please provide a manual inspection function")
