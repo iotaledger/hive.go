@@ -111,7 +111,7 @@ func (api *API) mapEncodeBasedOnType(
 	case reflect.Uint64:
 		return strconv.FormatUint(value.Uint(), 10), nil
 	case reflect.Float32, reflect.Float64:
-		return strconv.FormatFloat(value.Float(), 'E', -1, 64), nil
+		return strconv.FormatFloat(value.Float(), 'g', -1, 64), nil
 	default:
 	}
 
