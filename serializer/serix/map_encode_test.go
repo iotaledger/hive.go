@@ -123,8 +123,8 @@ func TestMapEncodeDecode(t *testing.T) {
 				"int32": -32,
 				"int16": -16,
 				"int8": -8,
-				"float32": "3.3000001311302185E-01",
-				"float64": "4.4E-01",
+				"float32": "0.33000001311302185",
+				"float64": "0.44",
 				"string": "abcd",
 				"bool": true
 			}`,
