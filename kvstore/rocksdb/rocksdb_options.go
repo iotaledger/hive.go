@@ -2,12 +2,13 @@ package rocksdb
 
 // Options holds the options used to instantiate the underlying grocksdb.DB.
 type Options struct {
-	compression bool
-	fillCache   bool
-	sync        bool
-	disableWAL  bool
-	parallelism int
-	custom      []string
+	compression    bool
+	fillCache      bool
+	sync           bool
+	disableWAL     bool
+	parallelism    int
+	blockCacheSize uint64
+	custom         []string
 }
 
 // Option is one of the Options.
@@ -45,6 +46,13 @@ func WriteSync(sync bool) Option {
 func WriteDisableWAL(value bool) Option {
 	return func(args *Options) {
 		args.disableWAL = value
+	}
+}
+
+// BlockCacheSize sets the size in bytes of the LRU cache for grocksdb blocks.
+func BlockCacheSize(size uint64) Option {
+	return func(args *Options) {
+		args.blockCacheSize = size
 	}
 }
 
