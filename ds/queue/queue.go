@@ -36,6 +36,21 @@ func (queue *Queue[T]) Capacity() int {
 	return queue.capacity
 }
 
+func (queue *Queue[T]) ForceOffer(element T) (removedElement T, wasRemoved bool) {
+	queue.mutex.Lock()
+	defer queue.mutex.Unlock()
+
+	if queue.size == queue.capacity {
+		removedElement, wasRemoved = queue.poll()
+	}
+
+	queue.ringBuffer[queue.write] = element
+	queue.write = (queue.write + 1) % queue.capacity
+	queue.size++
+
+	return removedElement, wasRemoved
+}
+
 // Offer adds an element to the queue and returns true.
 // If the queue is full, it drops it and returns false.
 func (queue *Queue[T]) Offer(element T) bool {
@@ -59,6 +74,12 @@ func (queue *Queue[T]) Poll() (element T, success bool) {
 	queue.mutex.Lock()
 	defer queue.mutex.Unlock()
 
+	return queue.poll()
+}
+
+// poll returns and removes the oldest element in the queue and true if successful.
+// If returns false if the queue is empty.
+func (queue *Queue[T]) poll() (element T, success bool) {
 	if success = queue.size != 0; !success {
 		return
 	}

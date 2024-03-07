@@ -20,33 +20,59 @@ func TestQueueOfferPoll(t *testing.T) {
 	require.NotNil(t, q)
 
 	// offer element to queue
-	assert.True(t, q.Offer(1))
-	assert.Equal(t, 1, q.Size())
+	{
+		assert.True(t, q.Offer(1))
+		assert.Equal(t, 1, q.Size())
 
-	assert.True(t, q.Offer(2))
-	assert.Equal(t, 2, q.Size())
+		assert.True(t, q.Offer(2))
+		assert.Equal(t, 2, q.Size())
 
-	assert.False(t, q.Offer(3))
+		assert.False(t, q.Offer(3))
+	}
 
 	// Poll element from queue
-	polledValue, ok := q.Poll()
-	assert.True(t, ok)
-	assert.Equal(t, 1, polledValue)
-	assert.Equal(t, 1, q.Size())
+	{
+		polledValue, ok := q.Poll()
+		assert.True(t, ok)
+		assert.Equal(t, 1, polledValue)
+		assert.Equal(t, 1, q.Size())
 
-	polledValue, ok = q.Poll()
-	assert.True(t, ok)
-	assert.Equal(t, 2, polledValue)
-	assert.Equal(t, 0, q.Size())
+		polledValue, ok = q.Poll()
+		assert.True(t, ok)
+		assert.Equal(t, 2, polledValue)
+		assert.Equal(t, 0, q.Size())
 
-	polledValue, ok = q.Poll()
-	assert.False(t, ok)
-	assert.Zero(t, polledValue)
-	assert.Equal(t, 0, q.Size())
+		polledValue, ok = q.Poll()
+		assert.False(t, ok)
+		assert.Zero(t, polledValue)
+		assert.Equal(t, 0, q.Size())
 
-	// Offer the empty queue again
-	assert.True(t, q.Offer(3))
-	assert.Equal(t, 1, q.Size())
+		// Offer the empty queue again
+		assert.True(t, q.Offer(3))
+		assert.Equal(t, 1, q.Size())
+	}
+
+	// ForceOffer elements to the queue
+	{
+		removedElement, wasRemoved := q.ForceOffer(4)
+		assert.False(t, wasRemoved)
+		assert.Equal(t, 0, removedElement)
+		assert.Equal(t, 2, q.Size())
+
+		removedElement, wasRemoved = q.ForceOffer(5)
+		assert.True(t, wasRemoved)
+		assert.Equal(t, 3, removedElement)
+		assert.Equal(t, 2, q.Size())
+
+		removedElement, wasRemoved = q.ForceOffer(6)
+		assert.True(t, wasRemoved)
+		assert.Equal(t, 4, removedElement)
+
+		polledValue, ok := q.Poll()
+		assert.True(t, ok)
+		assert.Equal(t, 5, polledValue)
+		assert.Equal(t, 1, q.Size())
+	}
 }
 
 func TestQueueOfferConcurrencySafe(t *testing.T) {
