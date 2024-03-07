@@ -18,8 +18,7 @@ type RocksDB struct {
 
 // CreateDB creates a new RocksDB instance.
 func CreateDB(directory string, options ...Option) (*RocksDB, error) {
-
-	if err := ioutils.CreateDirectory(directory, 0700); err != nil {
+	if err := ioutils.CreateDirectory(directory, 0o700); err != nil {
 		return nil, ierrors.Wrapf(err, "could not create directory '%s'", directory)
 	}
 
@@ -53,6 +52,12 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 	fo := grocksdb.NewDefaultFlushOptions()
 
+	if dbOpts.blockCacheSize != 0 {
+		bbto := grocksdb.NewDefaultBlockBasedTableOptions()
+		bbto.SetBlockCache(grocksdb.NewLRUCache(dbOpts.blockCacheSize))
+		opts.SetBlockBasedTableFactory(bbto)
+	}
+
 	db, err := grocksdb.OpenDb(opts, directory)
 	if err != nil {
 		return nil, ierrors.Wrapf(err, "could not open new DB '%s'", directory)
@@ -68,7 +73,6 @@ func CreateDB(directory string, options ...Option) (*RocksDB, error) {
 
 // OpenDBReadOnly opens a new RocksDB instance in read-only mode.
 func OpenDBReadOnly(directory string, options ...Option) (*RocksDB, error) {
-
 	dbOpts := dbOptions(options)
 
 	opts := grocksdb.NewDefaultOptions()
