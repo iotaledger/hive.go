@@ -3,31 +3,32 @@ package module
 import (
 	"sync/atomic"
 
+	"github.com/iotaledger/hive.go/ds/reactive"
 	"github.com/iotaledger/hive.go/lo"
 )
 
 // OnAllConstructed registers a callback that gets executed when all given modules have been constructed.
-func OnAllConstructed(callback func(), modules ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookConstructed, callback, modules...)
+func OnAllConstructed(callback func(), modules ...Module) (unsubscribe func()) {
+	return onModulesTriggered(Module.ConstructedEvent, callback, modules...)
 }
 
 // OnAllInitialized registers a callback that gets executed when all given modules have been initialized.
-func OnAllInitialized(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookInitialized, callback, modulesToWaitFor...)
+func OnAllInitialized(callback func(), modules ...Module) (unsubscribe func()) {
+	return onModulesTriggered(Module.InitializedEvent, callback, modules...)
 }
 
 // OnAllShutdown registers a callback that gets executed when all given modules have been shutdown.
-func OnAllShutdown(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookShutdown, callback, modulesToWaitFor...)
+func OnAllShutdown(callback func(), modules ...Module) (unsubscribe func()) {
+	return onModulesTriggered(Module.ShutdownEvent, callback, modules...)
 }
 
 // OnAllStopped registers a callback that gets executed when all given modules have been stopped.
-func OnAllStopped(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookStopped, callback, modulesToWaitFor...)
+func OnAllStopped(callback func(), modules ...Module) (unsubscribe func()) {
+	return onModulesTriggered(Module.StoppedEvent, callback, modules...)
 }
 
 // onModulesTriggered registers a callback that gets executed when all given modules have triggered the given hook.
-func onModulesTriggered(targetHook func(Interface, func()) func(), callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
+func onModulesTriggered(targetEvent func(Module) reactive.Event, callback func(), modulesToWaitFor ...Module) (unsubscribe func()) {
 	var (
 		expectedTriggerCount = int64(len(modulesToWaitFor))
 		actualTriggerCount   atomic.Int64
@@ -35,7 +36,7 @@ func onModulesTriggered(targetHook func(Interface, func()) func(), callback func
 
 	unsubscribeFunctions := make([]func(), len(modulesToWaitFor))
 	for i, module := range modulesToWaitFor {
-		unsubscribeFunctions[i] = targetHook(module, func() {
+		unsubscribeFunctions[i] = targetEvent(module).OnTrigger(func() {
 			if actualTriggerCount.Add(1) == expectedTriggerCount {
 				callback()
 			}

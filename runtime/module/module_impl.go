@@ -5,8 +5,8 @@ import (
 	"github.com/iotaledger/hive.go/log"
 )
 
-// reactiveModule is the default implementation of a ReactiveModule.
-type reactiveModule struct {
+// module is the default implementation of a Module.
+type module struct {
 	// constructed is an Event that is triggered when the module was constructed.
 	constructed reactive.Event
 
@@ -23,9 +23,9 @@ type reactiveModule struct {
 	log.Logger
 }
 
-// newReactiveModule creates a new reactive module with the given logger.
-func newReactiveModule(logger log.Logger) *reactiveModule {
-	return &reactiveModule{
+// newModule creates a new reactive module with the given logger.
+func newModule(logger log.Logger) *module {
+	return &module{
 		constructed: reactive.NewEvent(),
 		initialized: reactive.NewEvent(),
 		shutdown:    reactive.NewEvent(),
@@ -35,29 +35,29 @@ func newReactiveModule(logger log.Logger) *reactiveModule {
 }
 
 // ConstructedEvent is the getter for an Event that is triggered when the module was constructed.
-func (r *reactiveModule) ConstructedEvent() reactive.Event {
-	return r.constructed
+func (m *module) ConstructedEvent() reactive.Event {
+	return m.constructed
 }
 
 // InitializedEvent is the getter for an Event that is triggered when the module was initialized.
-func (r *reactiveModule) InitializedEvent() reactive.Event {
-	return r.initialized
+func (m *module) InitializedEvent() reactive.Event {
+	return m.initialized
 }
 
 // ShutdownEvent is the getter for an Event that is triggered when the module begins its shutdown process.
-func (r *reactiveModule) ShutdownEvent() reactive.Event {
-	return r.shutdown
+func (m *module) ShutdownEvent() reactive.Event {
+	return m.shutdown
 }
 
 // StoppedEvent is the getter for an Event that is triggered when the module finishes its shutdown process.
-func (r *reactiveModule) StoppedEvent() reactive.Event {
-	return r.stopped
+func (m *module) StoppedEvent() reactive.Event {
+	return m.stopped
 }
 
 // NewSubModule creates a new reactive submodule with the given name.
-func (r *reactiveModule) NewSubModule(name string) ReactiveModule {
-	childLogger := r.NewChildLogger(name)
-	r.shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
+func (m *module) NewSubModule(name string) Module {
+	childLogger := m.NewChildLogger(name)
+	m.shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
 
-	return NewReactiveModule(childLogger)
+	return New(childLogger)
 }
