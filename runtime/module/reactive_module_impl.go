@@ -41,7 +41,7 @@ func (r *reactiveModule) ConstructedEvent() reactive.Event {
 
 // InitializedEvent is the getter for an Event that is triggered when the module was initialized.
 func (r *reactiveModule) InitializedEvent() reactive.Event {
-	return r.stopped
+	return r.initialized
 }
 
 // ShutdownEvent is the getter for an Event that is triggered when the module begins its shutdown process.
