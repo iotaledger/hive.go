@@ -1,6 +1,7 @@
 package module
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
@@ -25,6 +26,18 @@ func OnAllShutdown(callback func(), modules ...Module) (unsubscribe func()) {
 // OnAllStopped registers a callback that gets executed when all given modules have been stopped.
 func OnAllStopped(callback func(), modules ...Module) (unsubscribe func()) {
 	return onModulesTriggered(Module.StoppedEvent, callback, modules...)
+}
+
+// WaitAll waits until all given modules have triggered the given event.
+func WaitAll(event func(Module) reactive.Event, modules ...Module) {
+	var wg sync.WaitGroup
+
+	wg.Add(len(modules))
+	for _, module := range modules {
+		event(module).OnTrigger(wg.Done)
+	}
+
+	wg.Wait()
 }
 
 // TriggerAll triggers the given event on all given modules.
