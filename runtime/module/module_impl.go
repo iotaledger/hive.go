@@ -5,8 +5,8 @@ import (
 	"github.com/iotaledger/hive.go/log"
 )
 
-// module is the default implementation of a Module.
-type module struct {
+// moduleImpl is the default implementation of a Module.
+type moduleImpl struct {
 	// constructed is an Event that is triggered when the module was constructed.
 	constructed reactive.Event
 
@@ -19,13 +19,13 @@ type module struct {
 	// stopped is an Event that is triggered when the module finishes its shutdown process.
 	stopped reactive.Event
 
-	// Logger is the logger of the module.
+	// Logger exposes the logging capabilities of the module.
 	log.Logger
 }
 
-// newModule creates a new reactive module with the given logger.
-func newModule(logger log.Logger) *module {
-	return &module{
+// newModuleImpl creates a new reactive moduleImpl with the given logger.
+func newModuleImpl(logger log.Logger) *moduleImpl {
+	return &moduleImpl{
 		constructed: reactive.NewEvent(),
 		initialized: reactive.NewEvent(),
 		shutdown:    reactive.NewEvent(),
@@ -34,28 +34,28 @@ func newModule(logger log.Logger) *module {
 	}
 }
 
-// ConstructedEvent is the getter for an Event that is triggered when the module was constructed.
-func (m *module) ConstructedEvent() reactive.Event {
+// ConstructedEvent is the getter for an Event that is triggered when the moduleImpl was constructed.
+func (m *moduleImpl) ConstructedEvent() reactive.Event {
 	return m.constructed
 }
 
-// InitializedEvent is the getter for an Event that is triggered when the module was initialized.
-func (m *module) InitializedEvent() reactive.Event {
+// InitializedEvent is the getter for an Event that is triggered when the moduleImpl was initialized.
+func (m *moduleImpl) InitializedEvent() reactive.Event {
 	return m.initialized
 }
 
-// ShutdownEvent is the getter for an Event that is triggered when the module begins its shutdown process.
-func (m *module) ShutdownEvent() reactive.Event {
+// ShutdownEvent is the getter for an Event that is triggered when the moduleImpl begins its shutdown process.
+func (m *moduleImpl) ShutdownEvent() reactive.Event {
 	return m.shutdown
 }
 
-// StoppedEvent is the getter for an Event that is triggered when the module finishes its shutdown process.
-func (m *module) StoppedEvent() reactive.Event {
+// StoppedEvent is the getter for an Event that is triggered when the moduleImpl finishes its shutdown process.
+func (m *moduleImpl) StoppedEvent() reactive.Event {
 	return m.stopped
 }
 
 // NewSubModule creates a new reactive submodule with the given name.
-func (m *module) NewSubModule(name string) Module {
+func (m *moduleImpl) NewSubModule(name string) Module {
 	childLogger := m.NewChildLogger(name)
 	m.shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
 
