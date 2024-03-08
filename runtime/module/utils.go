@@ -27,6 +27,13 @@ func OnAllStopped(callback func(), modules ...Module) (unsubscribe func()) {
 	return onModulesTriggered(Module.StoppedEvent, callback, modules...)
 }
 
+// TriggerAll triggers the given event on all given modules.
+func TriggerAll(event func(Module) reactive.Event, modules ...Module) {
+	for _, module := range modules {
+		event(module).Trigger()
+	}
+}
+
 // onModulesTriggered registers a callback that gets executed when all given modules have triggered the given hook.
 func onModulesTriggered(targetEvent func(Module) reactive.Event, callback func(), modulesToWaitFor ...Module) (unsubscribe func()) {
 	var (
