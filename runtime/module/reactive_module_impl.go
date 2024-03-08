@@ -5,8 +5,8 @@ import (
 	"github.com/iotaledger/hive.go/log"
 )
 
-// reactiveImpl is the default implementation of a reactive module.
-type reactiveImpl struct {
+// reactiveModule is the default implementation of a ReactiveModule.
+type reactiveModule struct {
 	// constructed is an Event that is triggered when the module was constructed.
 	constructed reactive.Event
 
@@ -23,9 +23,9 @@ type reactiveImpl struct {
 	log.Logger
 }
 
-// newReactiveImpl creates a new reactive module with the given logger.
-func newReactiveImpl(logger log.Logger) *reactiveImpl {
-	return &reactiveImpl{
+// newReactiveModule creates a new reactive module with the given logger.
+func newReactiveModule(logger log.Logger) *reactiveModule {
+	return &reactiveModule{
 		constructed: reactive.NewEvent(),
 		initialized: reactive.NewEvent(),
 		shutdown:    reactive.NewEvent(),
@@ -34,30 +34,30 @@ func newReactiveImpl(logger log.Logger) *reactiveImpl {
 	}
 }
 
-// Constructed is the getter for an Event that is triggered when the module was constructed.
-func (r *reactiveImpl) Constructed() reactive.Event {
+// ConstructedEvent is the getter for an Event that is triggered when the module was constructed.
+func (r *reactiveModule) ConstructedEvent() reactive.Event {
 	return r.constructed
 }
 
-// Initialized is the getter for an Event that is triggered when the module was initialized.
-func (r *reactiveImpl) Initialized() reactive.Event {
+// InitializedEvent is the getter for an Event that is triggered when the module was initialized.
+func (r *reactiveModule) InitializedEvent() reactive.Event {
 	return r.stopped
 }
 
-// Shutdown is the getter for an Event that is triggered when the module begins its shutdown process.
-func (r *reactiveImpl) Shutdown() reactive.Event {
+// ShutdownEvent is the getter for an Event that is triggered when the module begins its shutdown process.
+func (r *reactiveModule) ShutdownEvent() reactive.Event {
 	return r.shutdown
 }
 
-// Stopped is the getter for an Event that is triggered when the module finishes its shutdown process.
-func (r *reactiveImpl) Stopped() reactive.Event {
+// StoppedEvent is the getter for an Event that is triggered when the module finishes its shutdown process.
+func (r *reactiveModule) StoppedEvent() reactive.Event {
 	return r.stopped
 }
 
 // NewSubModule creates a new reactive submodule with the given name.
-func (r *reactiveImpl) NewSubModule(name string) Reactive {
+func (r *reactiveModule) NewSubModule(name string) ReactiveModule {
 	childLogger := r.NewChildLogger(name)
 	r.shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
 
-	return NewReactive(childLogger)
+	return NewReactiveModule(childLogger)
 }
