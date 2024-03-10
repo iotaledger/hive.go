@@ -45,7 +45,6 @@ func WaitAll(event func(Module) reactive.Event, modules ...Module) {
 func TriggerAll(event func(Module) reactive.Event, modules ...Module) {
 	for i, module := range modules {
 		fmt.Println(i, "TriggerAll", module)
-		fmt.Println(i, "TriggerAll", module)
 		event(module).Trigger()
 	}
 }
