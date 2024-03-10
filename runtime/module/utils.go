@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -42,7 +43,8 @@ func WaitAll(event func(Module) reactive.Event, modules ...Module) {
 
 // TriggerAll triggers the given event on all given modules.
 func TriggerAll(event func(Module) reactive.Event, modules ...Module) {
-	for _, module := range modules {
+	for i, module := range modules {
+		fmt.Println(i, "TriggerAll", module)
 		event(module).Trigger()
 	}
 }
