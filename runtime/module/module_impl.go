@@ -34,22 +34,22 @@ func newModuleImpl(logger log.Logger) *moduleImpl {
 	}
 }
 
-// ConstructedEvent is the getter for an Event that is triggered when the moduleImpl was constructed.
+// ConstructedEvent is the getter for an Event that is triggered when the module was constructed.
 func (m *moduleImpl) ConstructedEvent() reactive.Event {
 	return m.constructed
 }
 
-// InitializedEvent is the getter for an Event that is triggered when the moduleImpl was initialized.
+// InitializedEvent is the getter for an Event that is triggered when the module was initialized.
 func (m *moduleImpl) InitializedEvent() reactive.Event {
 	return m.initialized
 }
 
-// ShutdownEvent is the getter for an Event that is triggered when the moduleImpl begins its shutdown process.
+// ShutdownEvent is the getter for an Event that is triggered when the module begins its shutdown process.
 func (m *moduleImpl) ShutdownEvent() reactive.Event {
 	return m.shutdown
 }
 
-// StoppedEvent is the getter for an Event that is triggered when the moduleImpl finishes its shutdown process.
+// StoppedEvent is the getter for an Event that is triggered when the module finishes its shutdown process.
 func (m *moduleImpl) StoppedEvent() reactive.Event {
 	return m.stopped
 }

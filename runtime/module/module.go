@@ -8,22 +8,22 @@ import (
 // Module is a trait that exposes logging and lifecycle related API capabilities, that can be used to create a modular
 // architecture where different modules can listen and wait for each other to reach certain states.
 type Module interface {
-	// ConstructedEvent is the getter for an Event that is triggered when the moduleImpl was constructed.
+	// ConstructedEvent is the getter for an Event that is triggered when the Module was constructed.
 	ConstructedEvent() reactive.Event
 
-	// InitializedEvent is the getter for an Event that is triggered when the moduleImpl was initialized.
+	// InitializedEvent is the getter for an Event that is triggered when the Module was initialized.
 	InitializedEvent() reactive.Event
 
-	// ShutdownEvent is the getter for an Event that is triggered when the moduleImpl begins its shutdown process.
+	// ShutdownEvent is the getter for an Event that is triggered when the Module begins its shutdown process.
 	ShutdownEvent() reactive.Event
 
-	// StoppedEvent is the getter for an Event that is triggered when the moduleImpl finishes its shutdown process.
+	// StoppedEvent is the getter for an Event that is triggered when the Module finishes its shutdown process.
 	StoppedEvent() reactive.Event
 
 	// NewSubModule creates a new reactive submodule with the given name.
 	NewSubModule(name string) Module
 
-	// Logger is the logger of the moduleImpl.
+	// Logger is the logger of the Module.
 	log.Logger
 }
 
