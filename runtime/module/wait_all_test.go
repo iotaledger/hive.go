@@ -1,15 +1,11 @@
 package module
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/hive.go/ds"
-	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/log"
 )
 
@@ -30,12 +26,7 @@ func Test(t *testing.T) {
 	}()
 
 	wg := WaitAll(Module.ConstructedEvent, module1, module2, module3)
-
-	pendingElements := wg.PendingElements()
-	wg.PendingElements().OnUpdate(func(_ ds.SetMutations[Module]) {
-		fmt.Println("Pending elements: ", strings.Join(lo.Map(pendingElements.ToSlice(), Module.LogName), ", "))
-	})
-
+	wg.Debug(Module.LogName)
 	wg.Wait()
 
 	require.True(t, module1.ConstructedEvent().WasTriggered())

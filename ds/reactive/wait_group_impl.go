@@ -71,14 +71,17 @@ func (w *waitGroup[T]) PendingElements() ReadableSet[T] {
 }
 
 // Debug subscribes to the PendingElements and logs the state of the WaitGroup to the console whenever it changes.
-func (w *waitGroup[T]) Debug(optElementStringer ...func(T) string) (unsubscribe func()) {
+func (w *waitGroup[T]) Debug(optStringer ...func(T) string) (unsubscribe func()) {
 	return w.pendingElements.OnUpdate(func(_ ds.SetMutations[T]) {
+		pendingElementsString := "DONE"
 		if pendingElements := w.pendingElements.ToSlice(); len(pendingElements) != 0 {
-			fmt.Println("Waiting for elements: ", strings.Join(lo.Map(pendingElements, lo.First(optElementStringer, func(element T) string {
+			stringer := lo.First(optStringer, func(element T) string {
 				return fmt.Sprint(element)
-			})), ", "))
-		} else {
-			fmt.Println("Waiting for elements: done")
+			})
+
+			pendingElementsString = strings.Join(lo.Map(pendingElements, stringer), ", ")
 		}
+
+		fmt.Println("Waiting:", pendingElementsString)
 	})
 }
