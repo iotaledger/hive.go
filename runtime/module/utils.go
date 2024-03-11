@@ -1,8 +1,6 @@
 package module
 
 import (
-	"fmt"
-	"sync"
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ds/reactive"
@@ -29,22 +27,9 @@ func OnAllStopped(callback func(), modules ...Module) (unsubscribe func()) {
 	return onModulesTriggered(Module.StoppedEvent, callback, modules...)
 }
 
-// WaitAll waits until all given modules have triggered the given event.
-func WaitAll(event func(Module) reactive.Event, modules ...Module) {
-	var wg sync.WaitGroup
-
-	wg.Add(len(modules))
-	for _, module := range modules {
-		event(module).OnTrigger(wg.Done)
-	}
-
-	wg.Wait()
-}
-
 // TriggerAll triggers the given event on all given modules.
 func TriggerAll(event func(Module) reactive.Event, modules ...Module) {
-	for i, module := range modules {
-		fmt.Println(i, "TriggerAll", module)
+	for _, module := range modules {
 		event(module).Trigger()
 	}
 }
