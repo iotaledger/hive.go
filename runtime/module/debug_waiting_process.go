@@ -3,12 +3,10 @@ package module
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/iotaledger/hive.go/ds"
-	"github.com/iotaledger/hive.go/ds/reactive"
 	"github.com/iotaledger/hive.go/lo"
 )
 
@@ -24,23 +22,6 @@ func DebugWaitingProcess(reportInterval time.Duration, handler ...func(ds.Set[Mo
 
 		debugReportHandler.Store(&defaultDebugWaitAllHandler)
 	}
-}
-
-type PendingModules interface {
-	WaitGroup[Module]
-
-	MarkDone(module Module)
-
-	ds.ReadableSet[Module]
-
-	reactive.Event
-}
-
-type pendingModules struct {
-	ds.ReadableSet[Module]
-
-	wg             sync.WaitGroup
-	pendingModules ds.Set[Module]
 }
 
 func reportPendingModules(modules ...Module) (pendingModules ds.Set[Module]) {

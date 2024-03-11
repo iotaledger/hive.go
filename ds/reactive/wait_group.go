@@ -17,6 +17,9 @@ type WaitGroup[T comparable] interface {
 
 	// PendingElements returns the currently pending elements.
 	PendingElements() ReadableSet[T]
+
+	// Debug subscribes to the PendingElements and logs the state of the WaitGroup to the console whenever it changes.
+	Debug(optElementStringer ...func(T) string) (unsubscribe func())
 }
 
 // NewWaitGroup creates a new WaitGroup.

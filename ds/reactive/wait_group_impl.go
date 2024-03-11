@@ -1,8 +1,13 @@
 package reactive
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/iotaledger/hive.go/ds"
+	"github.com/iotaledger/hive.go/lo"
 )
 
 // waitGroup is the default implementation of the WaitGroup interface.
@@ -63,4 +68,17 @@ func (w *waitGroup[T]) Wait() {
 // PendingElements returns the currently pending elements.
 func (w *waitGroup[T]) PendingElements() ReadableSet[T] {
 	return w.pendingElements
+}
+
+// Debug subscribes to the PendingElements and logs the state of the WaitGroup to the console whenever it changes.
+func (w *waitGroup[T]) Debug(optElementStringer ...func(T) string) (unsubscribe func()) {
+	return w.pendingElements.OnUpdate(func(_ ds.SetMutations[T]) {
+		if pendingElements := w.pendingElements.ToSlice(); len(pendingElements) != 0 {
+			fmt.Println("Waiting for elements: ", strings.Join(lo.Map(pendingElements, lo.First(optElementStringer, func(element T) string {
+				return fmt.Sprint(element)
+			})), ", "))
+		} else {
+			fmt.Println("Waiting for elements: done")
+		}
+	})
 }
