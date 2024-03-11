@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/fjl/memsize v0.0.2
 	github.com/iotaledger/hive.go/constraints v0.0.0-20240308073758-9a05958cbc65
-	github.com/iotaledger/hive.go/ds v0.0.0-20240311213645-cf91c0c76f7a
+	github.com/iotaledger/hive.go/ds v0.0.0-20240311213815-82815d826e6e
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240308073758-9a05958cbc65
 	github.com/iotaledger/hive.go/lo v0.0.0-20240308073758-9a05958cbc65
 	github.com/iotaledger/hive.go/log v0.0.0-20240223134921-02b9a2022431
