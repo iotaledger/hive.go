@@ -56,6 +56,9 @@ func (s *set[ElementType]) Apply(mutations ds.SetMutations[ElementType]) (applie
 	defer s.mutex.Unlock()
 
 	appliedMutations, updateID, registeredCallbacks := s.apply(mutations)
+	if appliedMutations.IsEmpty() {
+		return appliedMutations
+	}
 
 	for _, registeredCallback := range registeredCallbacks {
 		if registeredCallback.LockExecution(updateID) {

@@ -8,6 +8,7 @@ import (
 
 func Test(t *testing.T) {
 	wg := NewWaitGroup(1, 2, 3)
+	wg.Debug()
 
 	require.True(t, wg.PendingElements().HasAll(NewSet(1, 2, 3)))
 	require.False(t, wg.WasTriggered())
