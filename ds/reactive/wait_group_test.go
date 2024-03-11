@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test(t *testing.T) {
+func TestWaitGroup(t *testing.T) {
 	wg := NewWaitGroup(1, 2, 3)
 	wg.Debug()
 
