@@ -24,10 +24,10 @@ func SafeAdd[T Integer](x T, y T) (T, error) {
 
 	if y > 0 {
 		if result < x {
-			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d + %d", x, y)
+			return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d + %d", x, y)
 		}
 	} else if result > x {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d + %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d + %d", x, y)
 	}
 
 	return result, nil
@@ -39,10 +39,10 @@ func SafeSub[T Integer](x T, y T) (T, error) {
 
 	if y > 0 {
 		if result > x {
-			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d - %d", x, y)
+			return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d - %d", x, y)
 		}
 	} else if result < x {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d - %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d - %d", x, y)
 	}
 
 	return result, nil
@@ -57,7 +57,7 @@ func SafeMul[T Integer](x T, y T) (T, error) {
 	result := x * y
 
 	if result/x != y {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d * %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d * %d", x, y)
 	}
 
 	return result, nil
@@ -74,7 +74,7 @@ func SafeMulUint64(x, y uint64) (uint64, error) {
 	hi, lo := bits.Mul64(x, y)
 
 	if hi != 0 {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d * %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d * %d", x, y)
 	}
 
 	return lo, nil
@@ -151,7 +151,7 @@ func SafeMulInt64(x, y int64) (int64, error) {
 
 	// If the computation overflowed a uint64, it would also overflow an int64.
 	if hi != 0 {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d * %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d * %d", x, y)
 	}
 
 	// Interpret the lo result as an int64, then correct for the expected sign.
@@ -163,11 +163,11 @@ func SafeMulInt64(x, y int64) (int64, error) {
 	if resultIsPositive {
 		// If the result is expected to be positive but the sign bit is set, it's an overflow.
 		if signBitSet {
-			return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d * %d", x, y)
+			return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d * %d", x, y)
 		}
 	} else if !signBitSet {
 		// If the result is expected to be negative but the sign bit is not set, it's an underflow.
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d * %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d * %d", x, y)
 	}
 
 	return loSigned, nil
@@ -176,7 +176,7 @@ func SafeMulInt64(x, y int64) (int64, error) {
 // Returns x / y or an error if that computation would cause a division by zero.
 func SafeDiv[T Integer](x T, y T) (T, error) {
 	if y == 0 {
-		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "%d / %d", x, y)
+		return 0, ierrors.WithMessagef(ErrIntegerDivisionByZero, "%d / %d", x, y)
 	}
 
 	return x / y, nil
@@ -186,7 +186,7 @@ func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
 	result := val << shift
 	// if the result is smaller than the original value, we have an overflow
 	if result < val {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "%d << %d", val, shift)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "%d << %d", val, shift)
 	}
 
 	return result, nil
@@ -195,13 +195,13 @@ func SafeLeftShift[T Integer](val T, shift uint8) (T, error) {
 // Given x, y and div as unsigned 64-bits integers, returns (x*y)/div or an error if that computation would under- or overflow.
 func Safe64MulDiv(x, y, div uint64) (uint64, error) {
 	if div == 0 {
-		return 0, ierrors.Wrapf(ErrIntegerDivisionByZero, "(%d*%d) / %d", x, y, div)
+		return 0, ierrors.WithMessagef(ErrIntegerDivisionByZero, "(%d*%d) / %d", x, y, div)
 	}
 
 	prodHi, prodLo := bits.Mul64(x, y)
 
 	if div <= prodHi {
-		return 0, ierrors.Wrapf(ErrIntegerOverflow, "(%d*(2^64)+%d) / %d", prodHi, prodLo, div)
+		return 0, ierrors.WithMessagef(ErrIntegerOverflow, "(%d*(2^64)+%d) / %d", prodHi, prodLo, div)
 	}
 
 	return lo.Return1(bits.Div64(prodHi, prodLo, div)), nil
