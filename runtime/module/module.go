@@ -1,6 +1,8 @@
 package module
 
 import (
+	"testing"
+
 	"github.com/iotaledger/hive.go/ds/reactive"
 	"github.com/iotaledger/hive.go/log"
 )
@@ -27,7 +29,12 @@ type Module interface {
 	log.Logger
 }
 
-// New creates a new ReactiveModule with the given logger.
+// New creates a new Module with the given logger.
 func New(logger log.Logger) Module {
 	return newModuleImpl(logger)
+}
+
+// NewTestModule creates a new pre-configured Module for testing purposes.
+func NewTestModule(t *testing.T) Module {
+	return New(log.NewLogger(log.WithName(t.Name())))
 }
