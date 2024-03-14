@@ -82,12 +82,12 @@ func Join(errs ...error) error {
 	return ensureStacktraceUniqueness(errors.Join(errs...))
 }
 
-// Merge merges multiple errors into a single error by wrapping them.
+// Chain chains multiple errors into a single error by wrapping them.
 // Any nil error values are discarded.
-// Merge returns nil if every value in errs is nil.
-// Merge adds a stacktrace to the error if there was no stacktrace
+// Chain returns nil if every value in errs is nil.
+// Chain adds a stacktrace to the error if there was no stacktrace
 // in the error tree yet and if the build flag "stacktrace" is set.
-func Merge(errs ...error) error {
+func Chain(errs ...error) error {
 	var result error
 	for _, err := range errs {
 		if err == nil {
