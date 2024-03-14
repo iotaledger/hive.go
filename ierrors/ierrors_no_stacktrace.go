@@ -19,6 +19,29 @@ func Join(errs ...error) error {
 	return errors.Join(errs...)
 }
 
+// Chain chains multiple errors into a single error by wrapping them.
+// Any nil error values are discarded.
+// Chain returns nil if every value in errs is nil.
+// Chain adds a stacktrace to the error if there was no stacktrace
+// in the error tree yet and if the build flag "stacktrace" is set.
+func Chain(errs ...error) error {
+	var result error
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+
+		if result == nil {
+			result = err
+			continue
+		}
+
+		result = fmt.Errorf("%w: %w", result, err)
+	}
+
+	return result
+}
+
 // Errorf formats according to a format specifier and returns the string as a
 // value that satisfies error.
 //

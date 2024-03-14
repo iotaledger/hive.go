@@ -63,4 +63,7 @@ func TestErrors(t *testing.T) {
 
 	err15 := WithStack(errStacktrace)
 	require.Equal(t, 1, strings.Count(err15.Error(), "github.com/iotaledger/hive.go/ierrors.TestErrors"))
+
+	err16 := Chain(New("err16"), New("chained"))
+	require.Equal(t, 1, strings.Count(err16.Error(), "github.com/iotaledger/hive.go/ierrors.TestErrors"))
 }
