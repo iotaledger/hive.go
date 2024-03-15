@@ -1,46 +1,45 @@
 package module
 
 import (
-	"sync/atomic"
-
-	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/ds/reactive"
 )
 
-// OnAllConstructed registers a callback that gets executed when all given modules have been constructed.
-func OnAllConstructed(callback func(), modules ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookConstructed, callback, modules...)
+// TriggerAll triggers the given event on all given modules.
+func TriggerAll(event func(Module) reactive.Event, modules ...Module) {
+	for _, module := range modules {
+		event(module).Trigger()
+	}
 }
 
-// OnAllInitialized registers a callback that gets executed when all given modules have been initialized.
-func OnAllInitialized(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookInitialized, callback, modulesToWaitFor...)
-}
-
-// OnAllShutdown registers a callback that gets executed when all given modules have been shutdown.
-func OnAllShutdown(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookShutdown, callback, modulesToWaitFor...)
-}
-
-// OnAllStopped registers a callback that gets executed when all given modules have been stopped.
-func OnAllStopped(callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	return onModulesTriggered(Interface.HookStopped, callback, modulesToWaitFor...)
-}
-
-// onModulesTriggered registers a callback that gets executed when all given modules have triggered the given hook.
-func onModulesTriggered(targetHook func(Interface, func()) func(), callback func(), modulesToWaitFor ...Interface) (unsubscribe func()) {
-	var (
-		expectedTriggerCount = int64(len(modulesToWaitFor))
-		actualTriggerCount   atomic.Int64
-	)
-
-	unsubscribeFunctions := make([]func(), len(modulesToWaitFor))
-	for i, module := range modulesToWaitFor {
-		unsubscribeFunctions[i] = targetHook(module, func() {
-			if actualTriggerCount.Add(1) == expectedTriggerCount {
-				callback()
-			}
+// WaitAll waits until all given modules have triggered the given event.
+func WaitAll(event func(Module) reactive.Event, modules ...Module) reactive.WaitGroup[Module] {
+	wg := reactive.NewWaitGroup(modules...)
+	for _, module := range modules {
+		event(module).OnTrigger(func() {
+			wg.Done(module)
 		})
 	}
 
-	return lo.Batch(unsubscribeFunctions...)
+	return wg
+}
+
+// InitSimpleLifecycle is a helper function that sets up the default lifecycle for the given module. If no shutdown
+// function is provided, then the default shutdown function will be used, which automatically triggers the StoppedEvent.
+//
+// Note: If a more complex lifecycle is required, then it needs to be implemented manually.
+func InitSimpleLifecycle[T Module](m T, optShutdown ...func(T)) T {
+	if len(optShutdown) == 0 {
+		m.ShutdownEvent().OnTrigger(func() {
+			m.StoppedEvent().Trigger()
+		})
+	} else {
+		m.ShutdownEvent().OnTrigger(func() {
+			optShutdown[0](m)
+		})
+	}
+
+	m.ConstructedEvent().Trigger()
+	m.InitializedEvent().Trigger()
+
+	return m
 }

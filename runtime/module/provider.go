@@ -1,10 +1,10 @@
 package module
 
-// Provider is a function that returns a module.
-type Provider[ContainerType any, ModuleType Interface] func(ContainerType) ModuleType
+// Provider is a function that returns a Module.
+type Provider[ContainerType any, ModuleType Module] func(ContainerType) ModuleType
 
 // Provide turns a constructor into a provider.
-func Provide[ContainerType any, ModuleType Interface](constructor func(ContainerType) ModuleType) Provider[ContainerType, ModuleType] {
+func Provide[ContainerType any, ModuleType Module](constructor func(ContainerType) ModuleType) Provider[ContainerType, ModuleType] {
 	return func(c ContainerType) ModuleType {
 		return constructor(c)
 	}
