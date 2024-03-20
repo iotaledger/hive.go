@@ -45,7 +45,7 @@ func memoryReport(v reflect.Value, indent int, stringBuilder *strings.Builder) {
 
 	// walk down the fields
 	if t.Kind() == reflect.Struct {
-		for numField := 0; numField < t.NumField(); numField++ {
+		for numField := range t.NumField() {
 			fT := t.Field(numField)
 
 			var fV reflect.Value

@@ -229,7 +229,6 @@ func (api *API) mapEncodeStructFields(
 
 func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) (any, error) {
-
 	if ts.ObjectType() != nil {
 		m := orderedmap.New()
 		m.Set(keyType, ts.ObjectType())
@@ -265,7 +264,7 @@ func (api *API) mapEncodeSlice(ctx context.Context, value reflect.Value, valueTy
 	}
 
 	data := make([]any, sliceLen)
-	for i := 0; i < sliceLen; i++ {
+	for i := range sliceLen {
 		elemValue := value.Index(i)
 		elem, err := api.mapEncode(ctx, elemValue, TypeSettings{}, opts)
 		if err != nil {

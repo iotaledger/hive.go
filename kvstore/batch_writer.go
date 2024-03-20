@@ -164,7 +164,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 	bw.writeWg.Add(1)
 
 	for bw.running.Load() || bw.scheduledCount.Load() != 0 {
-
 		batchedMutation, err := bw.store.Batched()
 		if err != nil {
 			panic(err)
@@ -178,7 +177,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 
 			for {
 				select {
-
 				// an element was added to the queue
 				case objectToPersist := <-bw.batchQueue:
 					if batchCollector.Add(objectToPersist) {
@@ -216,7 +214,6 @@ func (bw *BatchedWriter) runBatchWriter() {
 		FlushValues:
 			for {
 				select {
-
 				// pick the next element from the queue
 				case objectToPersist := <-bw.batchQueue:
 					if batchCollector.Add(objectToPersist) {

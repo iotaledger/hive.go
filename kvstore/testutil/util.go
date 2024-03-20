@@ -61,8 +61,8 @@ func RandByte() byte {
 
 // RandBytes returns length amount random bytes.
 func RandBytes(length int) []byte {
-	var b []byte
-	for i := 0; i < length; i++ {
+	b := make([]byte, 0, length)
+	for range length {
 		b = append(b, byte(RandomIntn(256)))
 	}
 
@@ -128,7 +128,7 @@ func Rand64ByteArray() [64]byte {
 // SortedRand32BytArray returns a count length slice of sorted 32 byte arrays.
 func SortedRand32BytArray(count int) [][32]byte {
 	hashes := make([][32]byte, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		hashes[i] = Rand32ByteArray()
 	}
 	sort.Slice(hashes, func(i, j int) bool {

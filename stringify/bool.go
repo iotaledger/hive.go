@@ -6,5 +6,4 @@ func Bool(value bool) string {
 	}
 
 	return "false"
-
 }

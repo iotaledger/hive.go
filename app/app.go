@@ -165,9 +165,8 @@ func (a *App) init() {
 
 	// provide all config files in the container
 	for cfgName, config := range a.configs.ConfigsMap() {
-		c := config
 		if err := a.container.Provide(func() *configuration.Configuration {
-			return c
+			return config
 		}, dig.Name(cfgName)); err != nil {
 			panic(err)
 		}

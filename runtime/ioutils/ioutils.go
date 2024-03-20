@@ -1,4 +1,3 @@
-//nolint:nosnakecase // os package uses underlines in constants
 package ioutils
 
 import (
@@ -48,7 +47,6 @@ func CreateDirectory(dir string, perm os.FileMode) error {
 
 // FolderSize returns the size of a folder.
 func FolderSize(target string) (int64, error) {
-
 	var size int64
 
 	err := filepath.Walk(target, func(_ string, info os.FileInfo, err error) error {
@@ -225,7 +223,7 @@ func WriteTOMLToFile(filename string, data interface{}, perm os.FileMode, header
 	}
 
 	if len(header) > 0 {
-		if _, err := f.Write([]byte(header[0] + "\n")); err != nil {
+		if _, err := f.WriteString(header[0] + "\n"); err != nil {
 			return ierrors.Wrapf(err, "unable to write header to %s", filename)
 		}
 	}

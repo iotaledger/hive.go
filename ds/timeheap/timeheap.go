@@ -53,7 +53,7 @@ func (h *TimeHeap) AveragePerSecond(timeBefore time.Duration) float32 {
 
 	lenHeap := h.heap.Len()
 	if lenHeap > 0 {
-		for i := 0; i < lenHeap; i++ {
+		for range lenHeap {
 			//nolint:forcetypeassert // false positive, we know that the element is of type *timeHeapEntry
 			oldest := heap.Pop(&h.heap).(*timeHeapEntry)
 

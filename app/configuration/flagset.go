@@ -34,7 +34,6 @@ func ParseFlagSets(flagSets []*flag.FlagSet) {
 
 // HideFlags hides all non essential flags from the help/usage text.
 func HideFlags(flagSets []*flag.FlagSet, nonHiddenFlag []string) {
-
 	nonHiddenFlagsMap := make(map[string]struct{})
 	for _, flag := range nonHiddenFlag {
 		nonHiddenFlagsMap[flag] = struct{}{}

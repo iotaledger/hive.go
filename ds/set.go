@@ -73,7 +73,7 @@ type ReadableSet[ElementType comparable] interface {
 	ToSlice() []ElementType
 
 	// Encode encodes the set into a byte slice.
-	Encode(*serix.API) ([]byte, error)
+	Encode(serixAPI *serix.API) ([]byte, error)
 
 	// String returns a string representation of the set.
 	String() string
@@ -112,7 +112,7 @@ type WriteableSet[ElementType comparable] interface {
 	Replace(elements ReadableSet[ElementType]) (removedElements Set[ElementType])
 
 	// Decode decodes the set from a byte slice.
-	Decode(*serix.API, []byte) (bytesRead int, err error)
+	Decode(serixAPI *serix.API, data []byte) (bytesRead int, err error)
 
 	// ReadOnly returns a read-only version of the set.
 	ReadOnly() ReadableSet[ElementType]

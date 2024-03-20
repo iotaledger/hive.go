@@ -124,7 +124,6 @@ func GetIterDirection(iterDirection ...IterDirection) IterDirection {
 
 // Copy copies the content from the source to the target KVStore.
 func Copy(source KVStore, target KVStore) error {
-
 	var innerErr error
 	if err := source.Iterate(EmptyPrefix, func(key, value Value) bool {
 		if err := target.Set(key, value); err != nil {
@@ -146,7 +145,6 @@ func Copy(source KVStore, target KVStore) error {
 // CopyBatched copies the content from the source to the target KVStore in batches.
 // If batchSize is not specified, everything is copied in a single batch.
 func CopyBatched(source KVStore, target KVStore, batchSize ...int) error {
-
 	batchedSize := 0
 	if len(batchSize) > 0 {
 		batchedSize = batchSize[0]

@@ -13,7 +13,6 @@ import (
 // LoadOrCreateIdentityPrivateKey loads an existing Ed25519 based identity private key
 // or creates a new one and stores it as a PEM file in the p2p store folder.
 func LoadOrCreateIdentityPrivateKey(privKeyFilePath string, identityPrivKey string) (libp2pcrypto.PrivKey, bool, error) {
-
 	privKeyFromConfig, err := ParseLibp2pEd25519PrivateKeyFromString(identityPrivKey)
 	if err != nil {
 		if ierrors.Is(err, ErrPrivKeyInvalid) {

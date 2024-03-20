@@ -182,7 +182,6 @@ func buildOptions(cfg Config) []zap.Option {
 		opts = append(opts, zap.AddCaller())
 	}
 	if !cfg.DisableStacktrace {
-
 		var stacktraceLevel Level
 		if err := stacktraceLevel.UnmarshalText([]byte(cfg.StacktraceLevel)); err != nil {
 			stacktraceLevel = LevelPanic

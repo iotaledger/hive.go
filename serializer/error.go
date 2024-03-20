@@ -88,7 +88,7 @@ func CheckExactByteLength(exact int, length int) error {
 	return nil
 }
 
-// CheckMinByteLength checks that length is min. min.
+// CheckMinByteLength checks that length is at least min.
 func CheckMinByteLength(min int, length int) error {
 	if length < min {
 		return ierrors.Wrapf(ErrDeserializationNotEnoughData, "data must be at least %d bytes long but is %d", min, length)

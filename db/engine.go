@@ -54,7 +54,6 @@ func GetSupportedEnginesString(supportedEngines []Engine) string {
 
 // EngineAllowed checks if the database engine is allowed.
 func EngineAllowed(dbEngine Engine, allowedEngines []Engine) (Engine, error) {
-
 	for _, allowedEngine := range allowedEngines {
 		if dbEngine == allowedEngine {
 			return dbEngine, nil
@@ -74,7 +73,6 @@ func EngineFromStringAllowed(dbEngineStr string, allowedEngines []Engine) (Engin
 // checks if an existing "database info file" contains the correct engine.
 // Otherwise the files in the database folder are not compatible.
 func CheckEngine(dbPath string, createDatabaseIfNotExists bool, dbEngine Engine, allowedEngines []Engine) (Engine, error) {
-
 	// check if the given target engine is allowed
 	_, err := EngineAllowed(dbEngine, allowedEngines)
 	if err != nil {

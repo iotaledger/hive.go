@@ -182,7 +182,6 @@ func (d *OrderedDaemon) runBackgroundWorker(name string, backgroundWorker Worker
 // Use order to define in which shutdown order this particular
 // background worker is shut down (higher = earlier).
 func (d *OrderedDaemon) BackgroundWorker(name string, handler WorkerFunc, order ...int) error {
-
 	if d.IsStopped() {
 		return ErrDaemonAlreadyStopped
 	}
@@ -287,8 +286,7 @@ func (d *OrderedDaemon) waitGroupsForAllShutdownOrders() []*sync.WaitGroup {
 	waitGroups := make([]*sync.WaitGroup, len(d.wgPerSameShutdownOrder))
 	i := 0
 	for _, wg := range d.wgPerSameShutdownOrder {
-		waitGroup := wg
-		waitGroups[i] = waitGroup
+		waitGroups[i] = wg
 		i++
 	}
 

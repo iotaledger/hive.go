@@ -139,7 +139,7 @@ func (t *Queue[T]) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 	default:
 		// ... empty it if the corresponding flag was set
 		if t.shutdownFlags.HasBits(CancelPendingElements) {
-			for i := 0; i < queuedElementsCount; i++ {
+			for range queuedElementsCount {
 				heap.Pop(&t.heap)
 			}
 		}

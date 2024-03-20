@@ -1,7 +1,5 @@
 run:
     tests: true
-    skip-files:
-        - ".*_test.go$"
 
 linters-settings:
     gofmt:
@@ -11,7 +9,8 @@ linters-settings:
     gocyclo:
         min-complexity: 15
     govet:
-        check-shadowing: false
+        disable:
+          - shadow
     misspell:
         locale: US
     staticcheck:
@@ -45,33 +44,46 @@ linters:
         - govet
         - ineffassign
         - staticcheck
-        - typecheck
         - unused
         - asasalint
         - asciicheck
         - bidichk
         - bodyclose
         #- containedctx
-        - contextcheck
+        #- contextcheck # this linter is buggy and renders all nolint rules useless
+        - copyloopvar
+        #- cyclop
         - decorder
         - depguard
         - dogsled
-        #- dupl
+        - dupl
+        - dupword
         - durationcheck
         - errchkjson
         - errname
-        #- errorlint
+        - errorlint
         - execinquery
         #- exhaustive
         #- exhaustruct
         - exportloopref
+        #- forbidigo
         - forcetypeassert
+        #- funlen
+        #- gci
+        - ginkgolinter
+        - gocheckcompilerdirectives
+        #- gochecknoglobals
+        #- gochecknoinits
+        #- gochecksumtype
+        #- gocognit
         - goconst
         #- gocritic
+        #- gocyclo
         - godot
         #- godox
-        #- goerr113
+        - goerr113
         - gofmt
+        #- gofumpt
         - goheader
         - goimports
         #- gomnd
@@ -79,38 +91,63 @@ linters:
         - gomodguard
         - goprintffuncname
         - gosec
+        - gosmopolitan
         - grouper
         - importas
-        #- interfacer
-        #- makezero
-        #- maligned
+        - inamedparam
+        #- interfacebloat
+        - intrange
+        #- ireturn
+        #- lll
+        - loggercheck
+        #- maintidx
+        - makezero
+        - mirror
         - misspell
-        #- nakedret
+        - musttag
+        - nakedret
+        #- nestif
         - nilerr
         - nilnil
         - nlreturn
         - noctx
+        - nolintlint
         #- nonamedreturns
-        #- nosnakecase
-        #- nosprintfhostport
+        - nosprintfhostport
+        - paralleltest
+        #- perfsprint
         - prealloc
         - predeclared
         - promlinter
+        - protogetter
+        - reassign
         - revive
-        #- scopelint
+        - rowserrcheck
+        - sloglint
+        - spancheck
         - sqlclosecheck
         - stylecheck
+        #- tagalign
         - tagliatelle
         - tenv
-        #- testpackage
-        #- thelper
+        - testableexamples
+        - testifylint
+        - testpackage
+        - thelper
         - tparallel
         - unconvert
         - unparam
         - usestdlibvars
         #- varnamelen
+        - wastedassign
+        - whitespace
+        #- wrapcheck
+        #- wsl
+        - zerologlint
 
 issues:
+    exclude-files:
+        - ".*_test.go$"
     # Maximum issues count per one linter.
     # Set to 0 to disable.
     # Default: 50

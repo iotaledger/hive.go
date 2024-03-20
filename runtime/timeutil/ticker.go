@@ -18,7 +18,6 @@ type Ticker struct {
 // NewTicker creates a new Ticker from the given details. The interval must be greater than zero; if not, NewTicker will
 // panic.
 func NewTicker(handler func(), interval time.Duration, ctx ...context.Context) (ticker *Ticker) {
-
 	innerCtx := context.Background()
 	if len(ctx) > 0 {
 		innerCtx = ctx[0]

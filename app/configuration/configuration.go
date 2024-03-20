@@ -64,7 +64,7 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 					// parameter not found in settings
 					break
 				}
-				// nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
+				//nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
 				parameter = par.(map[string]interface{})
 			}
 		}
@@ -78,7 +78,6 @@ func (c *Configuration) Print(ignoreSettingsAtPrint ...[]string) {
 // LoadFile loads parameters from a JSON or YAML file and merges them into the loaded config.
 // Existing keys will be overwritten.
 func (c *Configuration) LoadFile(filePath string) error {
-
 	exists, isDir, err := ioutils.PathExists(filePath)
 	if err != nil {
 		return err
@@ -100,7 +99,6 @@ func (c *Configuration) LoadFile(filePath string) error {
 		return ErrUnknownConfigFormat
 	}
 
-	//nolint:revive
 	if err := c.config.Load(file.Provider(filePath), parser); err != nil {
 		return err
 	}
@@ -111,7 +109,6 @@ func (c *Configuration) LoadFile(filePath string) error {
 // StoreFile stores the current config to a JSON or YAML file.
 // ignoreSettingsAtStore will not be stored to the file.
 func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSettingsAtStore ...[]string) error {
-
 	settings := c.config.Raw()
 	if len(ignoreSettingsAtStore) > 0 {
 		for _, ignoredSetting := range ignoreSettingsAtStore[0] {
@@ -130,7 +127,7 @@ func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSetti
 					break
 				}
 
-				// nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
+				//nolint:forcetypeassert // false positive, nested map[string]interface{} is expected
 				parameter = par.(map[string]interface{})
 			}
 		}
@@ -155,7 +152,6 @@ func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSetti
 		return ierrors.Wrap(err, "unable to marshal config file")
 	}
 
-	//nolint:gosec // access rights
 	if err := os.WriteFile(filePath, data, perm); err != nil {
 		return ierrors.Wrap(err, "unable to save config file")
 	}
@@ -168,7 +164,6 @@ func (c *Configuration) StoreFile(filePath string, perm os.FileMode, ignoreSetti
 // Existing keys will only be overwritten, if they were set via command line.
 // If not given via command line, default values will only be used if they did not exist beforehand.
 func (c *Configuration) LoadFlagSet(flagSet *flag.FlagSet) error {
-
 	return c.config.Load(lowerPosflagProvider(flagSet, ".", c.config), nil)
 }
 
@@ -231,7 +226,7 @@ type BoundParameter struct {
 // parameter.
 func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, pointerToStruct interface{}) {
 	val := reflect.ValueOf(pointerToStruct).Elem()
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		valueField := val.Field(i)
 		typeField := val.Type().Field(i)
 
@@ -269,7 +264,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 		// only use the default value from the tags if the value is the zero value
 		isZeroValue := valueField.IsZero()
 
-		// nolint:forcetypeassert // false positive
+		//nolint:forcetypeassert // false positive
 		switch defaultValue := valueField.Interface().(type) {
 		case bool:
 			if tagDefaultValue, exists := typeField.Tag.Lookup("default"); exists && isZeroValue {
@@ -625,7 +620,7 @@ func (c *Configuration) UpdateBoundParameters() {
 	for _, boundParameter := range c.boundParameters {
 		parameterName := boundParameter.Name
 
-		// nolint:forcetypeassert // type switch with reflect.Type
+		//nolint:forcetypeassert // type switch with reflect.Type
 		switch boundParameter.BoundType {
 		case reflectutils.BoolType:
 			*(boundParameter.BoundPointer.(*bool)) = c.Bool(parameterName)

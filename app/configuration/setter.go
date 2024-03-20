@@ -32,7 +32,6 @@ func (c *Configuration) SetDefaultStruct(path string, value interface{}, fieldTa
 
 // Set sets the value for the key (case-insensitive).
 func (c *Configuration) Set(path string, value interface{}, parser ...koanf.Parser) error {
-
 	var p koanf.Parser
 
 	if len(parser) > 0 {
@@ -53,7 +52,6 @@ func (c *Configuration) Set(path string, value interface{}, parser ...koanf.Pars
 //
 //nolint:revive
 func (c *Configuration) SetStruct(path string, value interface{}, fieldTag string, parser ...koanf.Parser) error {
-
 	var p koanf.Parser
 
 	if len(parser) > 0 {

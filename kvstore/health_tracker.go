@@ -21,7 +21,6 @@ type StoreHealthTracker struct {
 }
 
 func NewStoreHealthTracker(store KVStore, storePrefixHealth []byte, storeVersion byte, storeVersionUpdateFunc StoreVersionUpdateFunc) (*StoreHealthTracker, error) {
-
 	healthStore, err := store.WithRealm(storePrefixHealth)
 	if err != nil {
 		return nil, err
@@ -43,7 +42,6 @@ func NewStoreHealthTracker(store KVStore, storePrefixHealth []byte, storeVersion
 }
 
 func (s *StoreHealthTracker) MarkCorrupted() error {
-
 	if err := s.store.Set([]byte("dbCorrupted"), []byte{}); err != nil {
 		return ierrors.New("failed to set store health status")
 	}
@@ -52,7 +50,6 @@ func (s *StoreHealthTracker) MarkCorrupted() error {
 }
 
 func (s *StoreHealthTracker) MarkTainted() error {
-
 	if err := s.store.Set([]byte("dbTainted"), []byte{}); err != nil {
 		return ierrors.New("failed to set store health status")
 	}
@@ -61,7 +58,6 @@ func (s *StoreHealthTracker) MarkTainted() error {
 }
 
 func (s *StoreHealthTracker) MarkHealthy() error {
-
 	if err := s.store.Delete([]byte("dbCorrupted")); err != nil {
 		return ierrors.New("failed to set store health status")
 	}
@@ -70,7 +66,6 @@ func (s *StoreHealthTracker) MarkHealthy() error {
 }
 
 func (s *StoreHealthTracker) IsCorrupted() (bool, error) {
-
 	contains, err := s.store.Has([]byte("dbCorrupted"))
 	if err != nil {
 		return true, ierrors.New("failed to read store health status")
@@ -80,7 +75,6 @@ func (s *StoreHealthTracker) IsCorrupted() (bool, error) {
 }
 
 func (s *StoreHealthTracker) IsTainted() (bool, error) {
-
 	contains, err := s.store.Has([]byte("dbTainted"))
 	if err != nil {
 		return true, ierrors.New("failed to read store health status")
@@ -91,7 +85,6 @@ func (s *StoreHealthTracker) IsTainted() (bool, error) {
 
 // StoreVersion returns the store version.
 func (s *StoreHealthTracker) StoreVersion() (byte, error) {
-
 	value, err := s.store.Get([]byte("dbVersion"))
 	if err != nil {
 		return 0, ierrors.New("failed to read store health version")
@@ -105,7 +98,6 @@ func (s *StoreHealthTracker) StoreVersion() (byte, error) {
 }
 
 func (s *StoreHealthTracker) setStoreVersion(version byte) error {
-
 	_, err := s.store.Get([]byte("dbVersion"))
 	if ierrors.Is(err, ErrKeyNotFound) {
 		// Only create the entry, if it doesn't exist already (fresh store)
@@ -118,7 +110,6 @@ func (s *StoreHealthTracker) setStoreVersion(version byte) error {
 }
 
 func (s *StoreHealthTracker) CheckCorrectStoreVersion() (bool, error) {
-
 	if s.storeVersion == StoreVersionNone {
 		return false, ErrStoreVersionCheckNotSupported
 	}
@@ -134,7 +125,6 @@ func (s *StoreHealthTracker) CheckCorrectStoreVersion() (bool, error) {
 // UpdateStoreVersion tries to migrate the existing data to the new store version.
 // Returns true if the store needs to be updated / was updated.
 func (s *StoreHealthTracker) UpdateStoreVersion() (bool, error) {
-
 	storeVersion, err := s.StoreVersion()
 	if err != nil {
 		return false, err

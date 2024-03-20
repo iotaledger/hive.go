@@ -51,7 +51,7 @@ type ShutdownHandler struct {
 	Events *Events
 }
 
-// WithStopGracePeriod defines the the maximum time to wait for background
+// WithStopGracePeriod defines the maximum time to wait for background
 // processes to finish during shutdown before terminating the app.
 func WithStopGracePeriod(stopGracePeriod time.Duration) options.Option[ShutdownHandler] {
 	return func(s *ShutdownHandler) {
@@ -102,7 +102,6 @@ func (gs *ShutdownHandler) checkSelfShutdownLogsDirectory() error {
 
 	if err := ioutils.CreateDirectory(shutdownLogsDirectory, 0o700); err != nil {
 		return ierrors.Wrapf(err, "creating self-shutdown logs directory (%s) failed", shutdownLogsDirectory)
-
 	}
 
 	return nil
@@ -110,8 +109,6 @@ func (gs *ShutdownHandler) checkSelfShutdownLogsDirectory() error {
 
 func (gs *ShutdownHandler) writeSelfShutdownLogFile(msg string, critical bool) {
 	if gs.selfShutdownLogsEnabled {
-
-		//nolint:nosnakecase // false positive
 		f, err := os.OpenFile(gs.selfShutdownLogsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			gs.LogWarnf("self-shutdown log can't be opened, error: %s", err.Error())
@@ -141,7 +138,6 @@ func (gs *ShutdownHandler) SelfShutdown(msg string, critical bool) {
 
 // Run starts the ShutdownHandler go routine.
 func (gs *ShutdownHandler) Run() error {
-
 	if gs.selfShutdownLogsEnabled {
 		if err := gs.checkSelfShutdownLogsDirectory(); err != nil {
 			return err

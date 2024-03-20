@@ -27,10 +27,10 @@ type Parameter struct {
 }
 
 func createParameter(defaultVal any, usage string, name string) *Parameter {
-
-	typeName := ""
 	defaultValue := defaultVal
-	defaultValueStr := ""
+
+	var typeName string
+	var defaultValueStr string
 	switch v := defaultVal.(type) {
 	case int, int8, int16, int32, int64:
 		defaultValueStr = fmt.Sprintf("%d", v)
@@ -139,7 +139,6 @@ func createParameter(defaultVal any, usage string, name string) *Parameter {
 }
 
 func addParameter(groupsMap map[string]*ParameterGroup, defaultVal any, usage string, baseName string, name string) {
-
 	group, exists := groupsMap[baseName]
 	if !exists {
 		panic(fmt.Sprintf("group not found: %s", baseName))
@@ -151,7 +150,6 @@ func addParameter(groupsMap map[string]*ParameterGroup, defaultVal any, usage st
 }
 
 func getParameterValues(valueField reflect.Value, typeField reflect.StructField) (string, string, any) {
-
 	var name string
 	if tagName, exists := typeField.Tag.Lookup("name"); exists {
 		name += tagName

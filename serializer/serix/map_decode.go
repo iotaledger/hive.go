@@ -440,7 +440,7 @@ func (api *API) mapDecodeSlice(ctx context.Context, mapVal any, value reflect.Va
 	}
 
 	refVal := reflect.ValueOf(mapVal)
-	for i := 0; i < refVal.Len(); i++ {
+	for i := range refVal.Len() {
 		elemValue := reflect.New(valueType.Elem()).Elem()
 		if err := api.mapDecode(ctx, refVal.Index(i).Interface(), elemValue, TypeSettings{}, opts); err != nil {
 			return ierrors.WithStack(err)

@@ -117,7 +117,6 @@ func WithCleanupThresholdRatio[C ClientID, T Topic](cleanupThresholdRatio float3
 }
 
 func New[C ClientID, T Topic](opts ...options.Option[SubscriptionManager[C, T]]) *SubscriptionManager[C, T] {
-
 	manager := options.Apply(&SubscriptionManager[C, T]{
 		maxTopicSubscriptionsPerClient: 0,
 		cleanupThresholdCount:          10000,
@@ -143,7 +142,6 @@ func (s *SubscriptionManager[C, T]) Events() *Events[C, T] {
 
 // Connect connects the client.
 func (s *SubscriptionManager[C, T]) Connect(clientID C) {
-
 	wasConnected := false
 	var removedTopics, unsubscribedTopics []T
 
@@ -178,7 +176,6 @@ func (s *SubscriptionManager[C, T]) Connect(clientID C) {
 // Disconnect disconnects the client.
 // Returns true if the client was connected.
 func (s *SubscriptionManager[C, T]) Disconnect(clientID C) bool {
-
 	// cleanup the client
 	if wasConnected, removedTopics, unsubscribedTopics := s.cleanupClient(clientID); wasConnected {
 		for _, topic := range removedTopics {
@@ -198,7 +195,6 @@ func (s *SubscriptionManager[C, T]) Disconnect(clientID C) bool {
 // Subscribe subscribes the client to the topic.
 // Returns true if the client successfully subscribed to the topic.
 func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) bool {
-
 	clientDropped := false
 	var removedTopics, unsubscribedTopics []T
 	topicAdded := false
@@ -272,7 +268,6 @@ func (s *SubscriptionManager[C, T]) Subscribe(clientID C, topic T) bool {
 // Unsubscribe unsubscribes the client from the topic.
 // Returns true if the client successfully unsubscribed from the topic.
 func (s *SubscriptionManager[C, T]) Unsubscribe(clientID C, topic T) bool {
-
 	topicRemoved := false
 	topicUnsubscribed := false
 
@@ -387,7 +382,6 @@ func (s *SubscriptionManager[C, T]) TopicsSizeAll() int {
 
 // cleanupClientWithoutLocking removes all subscriptions and the client itself.
 func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (bool, []T, []T) {
-
 	removedTopics := make([]T, 0)
 	unsubscribedTopics := make([]T, 0)
 
@@ -399,7 +393,6 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (boo
 
 	// loop over all topics and delete them
 	subscribedTopics.ForEach(func(topic T, count int) bool {
-
 		// global topics map
 		topicsCount, has := s.topics.Get(topic)
 		if has {
@@ -413,7 +406,7 @@ func (s *SubscriptionManager[C, T]) cleanupClientWithoutLocking(clientID C) (boo
 		}
 
 		// call the topic unsubscribe as many times as it was subscribed
-		for i := 0; i < count; i++ {
+		for range count {
 			unsubscribedTopics = append(unsubscribedTopics, topic)
 		}
 

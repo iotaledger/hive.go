@@ -1,6 +1,8 @@
 // ierrors package provides a wrapper around the "errors" package from the standard library of Go.
 // It enhances error handling by adding additional error creation and manipulation functions.
 // This package also supports stacktraces when the "stacktrace" build tag is added.
+//
+//nolint:goerr113
 package ierrors
 
 import (

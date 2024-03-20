@@ -25,7 +25,7 @@ type lowerPosflag struct {
 // to `{parent: {child: {key: 1}}}`.
 //
 // It takes an optional (but recommended) Koanf instance to see if the
-// the flags defined have been set from other providers, for instance,
+// flags defined have been set from other providers, for instance,
 // a config file. If they are not, then the default values of the flags
 // are merged. If they do exist, the flag values are not merged but only
 // the values that have been explicitly set in the command line are merged.

@@ -323,7 +323,6 @@ func (h *Hub) ServeWebsocket(
 	onCreate func(client *Client),
 	onConnect func(client *Client),
 	onDisconnect func(client *Client)) error {
-
 	if h.shutdownFlag.Load() {
 		// hub was already shut down or was not started yet
 		return ErrWebsocketServerUnavailable

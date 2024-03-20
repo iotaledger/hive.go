@@ -233,7 +233,6 @@ func (api *API) encodeStructFields(
 				s.WritePayloadLength(0, func(err error) error {
 					return ierrors.Wrapf(err,
 						"failed to write zero length for an optional struct field %s to serializer",
-						//nolint:scopelint // false positive
 						sField.name,
 					)
 				})
@@ -247,7 +246,6 @@ func (api *API) encodeStructFields(
 			s.WritePayloadLength(len(fieldBytes), func(err error) error {
 				return ierrors.Wrapf(err,
 					"failed to write length for an optional struct field %s to serializer",
-					//nolint:scopelint // false positive
 					sField.name,
 				)
 			})
@@ -261,7 +259,6 @@ func (api *API) encodeStructFields(
 		s.WriteBytes(fieldBytes, func(err error) error {
 			return ierrors.Wrapf(err,
 				"failed to write serialized struct field bytes to serializer, field=%s",
-				//nolint:scopelint // false positive
 				sField.name,
 			)
 		})
@@ -294,7 +291,6 @@ func (api *API) encodeArray(ctx context.Context, value reflect.Value, ts TypeSet
 
 func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-
 	if valueType.AssignableTo(bytesType) {
 		lengthPrefixType, set := ts.LengthPrefixType()
 		if !set {
@@ -320,7 +316,7 @@ func (api *API) encodeSlice(ctx context.Context, value reflect.Value, valueType 
 
 	sliceLen := value.Len()
 	data := make([][]byte, sliceLen)
-	for i := 0; i < sliceLen; i++ {
+	for i := range sliceLen {
 		elemValue := value.Index(i)
 		elemBytes, err := api.encode(ctx, elemValue, TypeSettings{}, opts)
 		if err != nil {
@@ -354,7 +350,6 @@ func (api *API) encodeMapKVPair(ctx context.Context, key, val reflect.Value, opt
 
 func (api *API) encodeMap(ctx context.Context, value reflect.Value, valueType reflect.Type,
 	ts TypeSettings, opts *options) ([]byte, error) {
-
 	if opts.validation {
 		if err := ts.checkMinMaxBounds(value); err != nil {
 			return nil, err

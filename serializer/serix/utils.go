@@ -32,7 +32,7 @@ func sliceFromArray(arrValue reflect.Value) reflect.Value {
 }
 
 func fillArrayFromSlice(arrayValue, sliceValue reflect.Value) {
-	for i := 0; i < sliceValue.Len(); i++ {
+	for i := range sliceValue.Len() {
 		arrayValue.Index(i).Set(sliceValue.Index(i))
 	}
 }
