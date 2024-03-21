@@ -406,7 +406,7 @@ func (api *API) mapDecodeStructFields(
 				continue
 			}
 
-			return ierrors.Wrapf(err, "missing map entry for field %s", sField.name)
+			return ierrors.Errorf("missing map entry for field %s", sField.name)
 		}
 
 		if err := api.mapDecode(ctx, mapVal, fieldValue, sField.settings.ts, opts); err != nil {
