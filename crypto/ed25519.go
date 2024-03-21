@@ -13,7 +13,6 @@ var (
 
 // ParseEd25519PublicKeyFromString parses an ed25519 public key from a string.
 func ParseEd25519PublicKeyFromString(key string) (ed25519.PublicKey, error) {
-
 	keyBytes, err := hex.DecodeString(key)
 	if err != nil {
 		return nil, err
@@ -28,7 +27,6 @@ func ParseEd25519PublicKeyFromString(key string) (ed25519.PublicKey, error) {
 
 // ParseEd25519PrivateKeyFromString parses an ed25519 private key from a string.
 func ParseEd25519PrivateKeyFromString(key string) (ed25519.PrivateKey, error) {
-
 	keyBytes, err := hex.DecodeString(key)
 	if err != nil {
 		return nil, err

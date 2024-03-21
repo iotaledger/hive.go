@@ -65,7 +65,7 @@ func (o *SerializableOrderedMap[K, V]) Decode(api *serix.API, b []byte) (bytesRe
 	}
 	bytesRead += bytesReadSize
 
-	for i := uint32(0); i < mapSize; i++ {
+	for range mapSize {
 		var key K
 		bytesReadKey, err := api.Decode(context.Background(), b[bytesRead:], &key)
 		if err != nil {

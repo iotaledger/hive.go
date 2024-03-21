@@ -36,7 +36,6 @@ func KeyPrefixUpperBound(start []byte) []byte {
 
 // SortSlice sorts a slice according to the given IterDirection.
 func SortSlice(slice []string, iterDirection ...kvstore.IterDirection) []string {
-
 	switch kvstore.GetIterDirection(iterDirection...) {
 	case kvstore.IterDirectionForward:
 		sort.Sort(sort.StringSlice(slice))

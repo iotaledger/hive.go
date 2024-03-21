@@ -111,7 +111,7 @@ func ReadCollection(reader io.Reader, lenType serializer.SeriLengthPrefixType, r
 		return ierrors.Wrap(err, "failed to read collection count")
 	}
 
-	for i := 0; i < elementsCount; i++ {
+	for i := range elementsCount {
 		if err = readCallback(i); err != nil {
 			return ierrors.Wrapf(err, "failed to read element %d", i)
 		}

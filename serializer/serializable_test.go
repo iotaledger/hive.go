@@ -1,4 +1,4 @@
-//nolint:scopelint,gosec // we don't care about these linters in test cases
+//nolint:gosec // we don't care about these linters in test cases
 package serializer_test
 
 import (

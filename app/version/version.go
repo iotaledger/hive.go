@@ -33,7 +33,6 @@ func versionIsPreRelease(version *goversion.Version) bool {
 // We only check for any versions in the same MAJOR version. (e.g. 1.1.3 => 1.2.0)
 // If the AppVersion is a pre-release, we also check for any pre-releases in the same MAJOR version. (e.g. 1.1.4-rc1 => 1.2.0-alpha1 / 1.1.5).
 func versionFilterFunc(fixedAppVersion string) latest.TagFilterFunc {
-
 	appVersion, err := goversion.NewSemver(fixedAppVersion)
 	if err != nil {
 		// if the AppVersion can't be parsed, it may be a self compiled version.
@@ -78,7 +77,6 @@ type VersionChecker struct {
 
 // NewVersionChecker creates a new VersionChecker that can be used to check for updates on GitHub.
 func NewVersionChecker(owner string, repository string, version string) *VersionChecker {
-
 	fixedAppVersion := fixVersion(version)
 
 	return &VersionChecker{

@@ -15,6 +15,8 @@ var databaseCounterMutex sync.Mutex
 
 // RocksDB creates a temporary RocksDBKVStore that automatically gets cleaned up when the test finishes.
 func RocksDB(t *testing.T) (kvstore.KVStore, error) {
+	t.Helper()
+
 	dir := t.TempDir()
 
 	db, err := rocksdb.CreateDB(dir)

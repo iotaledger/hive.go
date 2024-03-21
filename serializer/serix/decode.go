@@ -193,7 +193,7 @@ func (api *API) decodeBasedOnType(ctx context.Context, b []byte, value reflect.V
 	case reflect.Bool:
 		deseri := serializer.NewDeserializer(b)
 		addrValue := value.Addr()
-		//nolint:forcetypeassert // false positive, we already checked the type via reflect
+
 		addrValue = addrValue.Convert(reflect.TypeOf((*bool)(nil)))
 		//nolint:forcetypeassert // false positive, we already checked the type via reflect
 		deseri.ReadBool(addrValue.Interface().(*bool), func(err error) error {

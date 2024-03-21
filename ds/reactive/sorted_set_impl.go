@@ -156,6 +156,8 @@ func (s *sortedSet[ElementType, WeightType]) deleteSorted(element ElementType) {
 }
 
 // updatePosition updates the position of the given element in the sortedElements slice.
+//
+//nolint:nakedret // false positive, because we need this defer logic here
 func (s *sortedSet[ElementType, WeightType]) updatePosition(element *sortedSetElement[ElementType, WeightType]) (moved bool) {
 	// update heaviest and lightest references after we are done moving the element
 	defer func(fromIndex int) {

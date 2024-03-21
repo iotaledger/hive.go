@@ -68,11 +68,10 @@ func (t *Executor) Shutdown(optionalShutdownFlags ...ShutdownFlag) {
 
 // startBackgroundWorkers is an internal utility function that spawns the background workers that execute the queued tasks.
 func (t *Executor) startBackgroundWorkers() {
-	for i := 0; i < t.workerCount; i++ {
+	for range t.workerCount {
 		t.shutdownWG.Add(1)
 		go func() {
 			for currentEntry := t.queue.Poll(true); currentEntry != nil; currentEntry = t.queue.Poll(true) {
-				//nolint:forcetypeassert // false positive, we know that the element is of type func()
 				currentEntry()
 			}
 

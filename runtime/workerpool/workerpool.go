@@ -150,7 +150,7 @@ func (w *WorkerPool) Shutdown() *WorkerPool {
 	if w.isRunning {
 		w.isRunning = false
 
-		for i := 0; i < w.workerCount; i++ {
+		for range w.workerCount {
 			w.shutdownSignal <- struct{}{}
 		}
 
@@ -192,7 +192,7 @@ func (w *WorkerPool) dispatcher() {
 
 // startWorkers starts the workers that execute tasks.
 func (w *WorkerPool) startWorkers() {
-	for i := 0; i < w.workerCount; i++ {
+	for range w.workerCount {
 		w.ShutdownComplete.Add(1)
 
 		go w.worker()

@@ -1,11 +1,11 @@
 package onchangemap
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/iotaledger/hive.go/constraints"
 	"github.com/iotaledger/hive.go/ds/shrinkingmap"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/runtime/options"
 )
 
@@ -82,7 +82,7 @@ func (r *OnChangeMap[K, C, I]) executeChangedCallback() error {
 
 	if r.changedCallback != nil {
 		if err := r.changedCallback(r.m.Values()); err != nil {
-			return fmt.Errorf("failed to execute callback in OnChangeMap: %w", err)
+			return ierrors.Errorf("failed to execute callback in OnChangeMap: %w", err)
 		}
 	}
 
@@ -101,7 +101,7 @@ func (r *OnChangeMap[K, C, I]) executeItemCallback(callback func(I) error, item 
 
 	if callback != nil {
 		if err := callback(item); err != nil {
-			return fmt.Errorf("failed to execute item callback in OnChangeMap: %w", err)
+			return ierrors.Errorf("failed to execute item callback in OnChangeMap: %w", err)
 		}
 	}
 
@@ -138,7 +138,7 @@ func (r *OnChangeMap[K, C, I]) Get(id C) (I, error) {
 
 	item, exists := r.m.Get(id.Key())
 	if !exists {
-		return *new(I), fmt.Errorf("unable to get item: \"%s\" does not exist in map", id)
+		return *new(I), ierrors.Errorf("unable to get item: \"%s\" does not exist in map", id)
 	}
 
 	//nolint:forcetypeassert // type safety is guaranteed
@@ -151,7 +151,7 @@ func (r *OnChangeMap[K, C, I]) Add(item I) error {
 	defer r.mutex.Unlock()
 
 	if r.m.Has(item.ID().Key()) {
-		return fmt.Errorf("unable to add item: \"%s\" already exists in map", item.ID())
+		return ierrors.Errorf("unable to add item: \"%s\" already exists in map", item.ID())
 	}
 
 	r.m.Set(item.ID().Key(), item)
@@ -166,7 +166,7 @@ func (r *OnChangeMap[K, C, I]) Modify(id C, callback func(item I) bool) (I, erro
 
 	item, exists := r.m.Get(id.Key())
 	if !exists {
-		return *new(I), fmt.Errorf("unable to modify item: \"%s\" does not exist in map", id)
+		return *new(I), ierrors.Errorf("unable to modify item: \"%s\" does not exist in map", id)
 	}
 
 	if !callback(item) {
@@ -185,7 +185,7 @@ func (r *OnChangeMap[K, C, I]) Delete(id C) error {
 
 	item, exists := r.m.Get(id.Key())
 	if !exists {
-		return fmt.Errorf("unable to remove item: \"%s\" does not exist in map", id)
+		return ierrors.Errorf("unable to remove item: \"%s\" does not exist in map", id)
 	}
 
 	r.m.Delete(id.Key())

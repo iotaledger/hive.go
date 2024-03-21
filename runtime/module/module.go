@@ -36,5 +36,6 @@ func New(logger log.Logger) Module {
 
 // NewTestModule creates a new pre-configured Module for testing purposes.
 func NewTestModule(t *testing.T) Module {
+	t.Helper()
 	return New(log.NewLogger(log.WithName(t.Name())))
 }

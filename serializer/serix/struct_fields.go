@@ -25,7 +25,7 @@ func parseStructFields(structType reflect.Type) ([]structField, error) {
 	structFields := make([]structField, 0, structType.NumField())
 
 	serixPosition := 0
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		field := structType.Field(i)
 
 		isUnexported := field.PkgPath != ""

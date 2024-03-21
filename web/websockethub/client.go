@@ -192,7 +192,6 @@ func (c *Client) keepAlive() {
 //
 // at most one reader per websocket connection is allowed.
 func (c *Client) readPump() {
-
 	defer func() {
 		select {
 		case <-c.ctx.Done():

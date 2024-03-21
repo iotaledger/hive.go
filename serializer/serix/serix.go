@@ -203,7 +203,7 @@ func (api *API) checkArrayMustOccur(slice reflect.Value, ts TypeSettings) error 
 	}
 
 	sliceLen := slice.Len()
-	for i := 0; i < sliceLen; i++ {
+	for i := range sliceLen {
 		elemValue := slice.Index(i)
 
 		// Get the type prefix of the element by retrieving the type settings.

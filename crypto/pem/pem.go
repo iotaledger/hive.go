@@ -14,7 +14,6 @@ import (
 
 // ReadEd25519PrivateKeyFromPEMFile reads an Ed25519 private key from a file with PEM format.
 func ReadEd25519PrivateKeyFromPEMFile(filepath string) (ed25519.PrivateKey, error) {
-
 	pemPrivateBlockBytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, ierrors.Wrap(err, "unable to read private key")
@@ -40,7 +39,6 @@ func ReadEd25519PrivateKeyFromPEMFile(filepath string) (ed25519.PrivateKey, erro
 
 // WriteEd25519PrivateKeyToPEMFile stores an Ed25519 private key to a file with PEM format.
 func WriteEd25519PrivateKeyToPEMFile(filepath string, privateKey ed25519.PrivateKey) error {
-
 	if err := ioutils.CreateDirectory(path.Dir(filepath), 0o700); err != nil {
 		return ierrors.Wrap(err, "unable to store private key")
 	}

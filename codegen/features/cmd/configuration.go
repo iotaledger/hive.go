@@ -56,7 +56,7 @@ func newConfiguration(fileName, name, receiver, featuresStr, additionalFieldsStr
 	newStruct := reflect.New(structType).Elem()
 
 	// set the values of the dynamic fields
-	for i := 0; i < newStruct.NumField(); i++ {
+	for i := range newStruct.NumField() {
 		field := newStruct.Field(i)
 		fieldName := structType.Field(i).Name
 

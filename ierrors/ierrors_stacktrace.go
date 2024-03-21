@@ -1,6 +1,8 @@
 //go:build stacktrace
 // +build stacktrace
 
+//
+//nolint:goerr113
 package ierrors
 
 import (

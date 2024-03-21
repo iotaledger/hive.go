@@ -1,4 +1,4 @@
-//nolint:golint,revive,stylecheck,nosnakecase // we don't care about these linters in test cases
+//nolint:golint,revive,stylecheck // we don't care about these linters in test cases
 package subscriptionmanager_test
 
 import (

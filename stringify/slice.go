@@ -15,7 +15,7 @@ func sliceReflect(value reflect.Value) (result string) {
 	result += "["
 
 	newLineVersion := false
-	for i := 0; i < value.Len(); i++ {
+	for i := range value.Len() {
 		item := value.Index(i)
 
 		valueString := Interface(item)

@@ -83,7 +83,6 @@ func NewConfigurationSet(
 
 // loadConfigurations loads the configuration files, the flag sets and the environment variables.
 func loadConfigurations(configFilesFlagSet *flag.FlagSet, configurationSets []*ConfigurationSet) error {
-
 	for _, configSet := range configurationSets {
 		configPathFlag := configFilesFlagSet.Lookup(configSet.filePathFlagName)
 		if configPathFlag == nil {

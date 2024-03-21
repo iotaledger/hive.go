@@ -61,7 +61,7 @@ func (br *BatchCollector) Commit() error {
 		return err
 	}
 
-	for i := 0; i < br.writtenValuesCounter; i++ {
+	for i := range br.writtenValuesCounter {
 		br.writtenValues[i].BatchWriteDone()
 	}
 

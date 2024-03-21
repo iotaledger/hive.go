@@ -334,7 +334,6 @@ func (r *TypeSettingsRegistry) GetByType(objType reflect.Type) (TypeSettings, bo
 	return TypeSettings{}, false
 }
 
-//nolint:unparam // false positive, we will use it later
 func (r *TypeSettingsRegistry) GetByValue(objValue reflect.Value, optTS ...TypeSettings) TypeSettings {
 	r.registryMutex.RLock()
 	defer r.registryMutex.RUnlock()

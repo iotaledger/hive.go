@@ -183,8 +183,6 @@ func (s *Serializer) WriteBool(v bool, errProducer ErrProducer) *Serializer {
 }
 
 // WriteByte writes the given byte to the Serializer.
-//
-//nolint:stdmethods // false positive
 func (s *Serializer) WriteByte(data byte, errProducer ErrProducer) *Serializer {
 	if s.err != nil {
 		return s
@@ -588,8 +586,6 @@ func (d *Deserializer) ReadBool(dest *bool, errProducer ErrProducer) *Deserializ
 }
 
 // ReadByte reads a byte into dest.
-//
-//nolint:stdmethods // false positive
 func (d *Deserializer) ReadByte(dest *byte, errProducer ErrProducer) *Deserializer {
 	if d.err != nil {
 		return d
@@ -808,7 +804,6 @@ func (d *Deserializer) readSliceLength(lenType SeriLengthPrefixType, errProducer
 	var sliceLength int
 
 	switch lenType {
-
 	case SeriLengthPrefixTypeAsByte:
 		if l < OneByte {
 			return 0, errProducer(ErrDeserializationNotEnoughData)
@@ -867,7 +862,6 @@ func (d *Deserializer) GetObjectType(typeDen TypeDenotationType) (uint32, error)
 	}
 
 	return ty, nil
-
 }
 
 func (d *Deserializer) readObject(target interface{}, deSeriMode DeSerializationMode, deSeriCtx interface{}, typeDen TypeDenotationType, serSel SerializableReadGuardFunc, errProducer ErrProducer) (*Deserializer, uint32) {
@@ -998,8 +992,7 @@ func (d *Deserializer) ReadSequenceOfObjects(
 		return d
 	}
 
-	for i := 0; i < sliceLength; i++ {
-
+	for i := range sliceLength {
 		// Remember where we were before reading the item.
 		srcBefore := d.src[d.offset:]
 		offsetBefore := d.offset
@@ -1022,7 +1015,6 @@ func (d *Deserializer) ReadSequenceOfObjects(
 	}
 
 	return d
-
 }
 func (d *Deserializer) readSerializablesIntoTarget(target interface{}, seris Serializables) {
 	switch x := target.(type) {

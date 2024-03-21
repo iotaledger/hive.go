@@ -24,7 +24,6 @@ func SaltGenerator(length int) ([]byte, error) {
 
 // DerivePasswordKey calculates the key based on password and salt.
 func DerivePasswordKey(password []byte, salt []byte) ([]byte, error) {
-
 	dk, err := scrypt.Key(password, salt, 1<<15, 8, 1, 32)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,6 @@ func DerivePasswordKey(password []byte, salt []byte) ([]byte, error) {
 
 // VerifyPassword verifies if the password is correct.
 func VerifyPassword(password []byte, salt []byte, storedPasswordKey []byte) (bool, error) {
-
 	dk, err := DerivePasswordKey(password, salt)
 	if err != nil {
 		return false, err
@@ -46,7 +44,7 @@ func VerifyPassword(password []byte, salt []byte, storedPasswordKey []byte) (boo
 
 // BasicAuth is a basic authentication implementation for a single user.
 //
-//nolint:revive // better be explicit here
+
 type BasicAuth struct {
 	username     string
 	passwordHash []byte

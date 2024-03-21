@@ -13,7 +13,7 @@ type Event interface {
 	WasTriggered() bool
 
 	// OnTrigger registers a callback that is executed when the event is triggered.
-	OnTrigger(func()) (unsubscribe func())
+	OnTrigger(callback func()) (unsubscribe func())
 }
 
 // NewEvent creates a new Event instance.

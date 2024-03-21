@@ -26,7 +26,7 @@ func CreateGroupConstructor[GroupType any, GroupPtrType ptrGroupType[GroupType, 
 
 			linkTargetValue := reflect.ValueOf(linkTarget).Elem()
 
-			for i := 0; i < selfValue.NumField(); i++ {
+			for i := range selfValue.NumField() {
 				if sourceField := selfValue.Field(i); sourceField.Kind() == reflect.Ptr {
 					if linkTo := sourceField.MethodByName("LinkTo"); linkTo.IsValid() {
 						linkTo.Call([]reflect.Value{linkTargetValue.Field(i)})

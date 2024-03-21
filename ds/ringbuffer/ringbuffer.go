@@ -47,7 +47,7 @@ func (r *RingBuffer[T]) ToSlice() []T {
 	if i < 0 {
 		i = r.capacity - 1
 	}
-	for j := 0; j < r.size; j++ {
+	for j := range r.size {
 		result[j] = r.buffer[i]
 		i--
 		if i < 0 {
