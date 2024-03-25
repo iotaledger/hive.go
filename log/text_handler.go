@@ -19,7 +19,7 @@ func NewTextHandler(options *Options) slog.Handler {
 	t := &textHandler{
 		output:     options.Output,
 		timeFormat: options.TimeFormat,
-		ioWorker:   workerpool.New("log.TextHandler", workerpool.WithWorkerCount(1)),
+		ioWorker:   workerpool.New("log.TextHandler", workerpool.WithWorkerCount(1)).Start(),
 	}
 
 	formatString := "%s\t%-7s\t%s\t%s %s\n"
