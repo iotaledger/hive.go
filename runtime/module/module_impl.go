@@ -57,7 +57,7 @@ func (m *moduleImpl) StoppedEvent() reactive.Event {
 // NewSubModule creates a new reactive submodule with the given name.
 func (m *moduleImpl) NewSubModule(name string) Module {
 	childLogger := m.NewChildLogger(name)
-	m.shutdown.OnTrigger(childLogger.UnsubscribeFromParentLogger)
+	m.shutdown.OnTrigger(childLogger.Shutdown)
 
 	return New(childLogger)
 }

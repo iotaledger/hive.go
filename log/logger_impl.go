@@ -292,9 +292,10 @@ func (l *logger) ParentLogger() Logger {
 	return l.parentLogger
 }
 
-// UnsubscribeFromParentLogger unsubscribes the logger from its parent logger (e.g. updates about the log level).
-// It is important to call this method whenever we remove all references to the logger, otherwise the logger will
-// not be garbage collected.
+// Shutdown shuts down the logger by either unsubscribing from its parent logger or shutting down the root logger.
+//
+// Note: It is important to call this method whenever we remove all references to a child logger, otherwise the
+// logger will not be garbage collected until the root logger is garbage collected.
 func (l *logger) Shutdown() {
 	if l == nil {
 		return

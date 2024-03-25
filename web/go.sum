@@ -21,6 +21,8 @@ github.com/iotaledger/hive.go/lo v0.0.0-20240315104458-b689cbcfddbd h1:bUWLJquwE
 github.com/iotaledger/hive.go/lo v0.0.0-20240315104458-b689cbcfddbd/go.mod h1:67oLzWYiBLGt5PN7IBVHdbt9P6oBYCx9UvMEL8ExDAc=
 github.com/iotaledger/hive.go/log v0.0.0-20240315104458-b689cbcfddbd h1:AzcvTlArc0zqrC/jyN7jEmsKMAFetsbXp8/ubbcLtsg=
 github.com/iotaledger/hive.go/log v0.0.0-20240315104458-b689cbcfddbd/go.mod h1:H5tmswUbT3o5+QiM6UPtBv7VnPf+lJtlantgpp2lzUI=
+github.com/iotaledger/hive.go/log v0.0.0-20240325121040-9c1add11c50c h1:t5oa8lvSazbp6bUMUmokZ41ANiNP6Zvuzoy3Uq7j3Ro=
+github.com/iotaledger/hive.go/log v0.0.0-20240325121040-9c1add11c50c/go.mod h1:aGN4l8SXoKmtx8RZV+hjuRykKAJUjHW9OhkoPU5/A6A=
 github.com/iotaledger/hive.go/runtime v0.0.0-20240315104458-b689cbcfddbd h1:+HDX4N/l7geVOZTIICG/6Znrujek+qO2YClXp/ghTAI=
 github.com/iotaledger/hive.go/runtime v0.0.0-20240315104458-b689cbcfddbd/go.mod h1:OKoOmZd+qDjm0WsisIB5FYbKhMm5iPx4/mDJL/8SjsU=
 github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20240223141119-c37e4a9b00ed h1:bX5avXG5PlxbXusdVyT9oSJskmnRf5NPYazBMu5XUCk=

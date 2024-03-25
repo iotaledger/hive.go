@@ -7,7 +7,7 @@ require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20240315104458-b689cbcfddbd
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240315104458-b689cbcfddbd
 	github.com/iotaledger/hive.go/lo v0.0.0-20240315104458-b689cbcfddbd
-	github.com/iotaledger/hive.go/log v0.0.0-20240315104458-b689cbcfddbd
+	github.com/iotaledger/hive.go/log v0.0.0-20240325121040-9c1add11c50c
 	github.com/iotaledger/hive.go/runtime v0.0.0-20240315104458-b689cbcfddbd
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.21.0

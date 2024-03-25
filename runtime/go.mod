@@ -8,7 +8,7 @@ require (
 	github.com/iotaledger/hive.go/ds v0.0.0-20240315104458-b689cbcfddbd
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240315104458-b689cbcfddbd
 	github.com/iotaledger/hive.go/lo v0.0.0-20240315104458-b689cbcfddbd
-	github.com/iotaledger/hive.go/log v0.0.0-20240315104458-b689cbcfddbd
+	github.com/iotaledger/hive.go/log v0.0.0-20240325121040-9c1add11c50c
 	github.com/iotaledger/hive.go/stringify v0.0.0-20240315104458-b689cbcfddbd
 	github.com/pelletier/go-toml/v2 v2.2.0
 	github.com/sasha-s/go-deadlock v0.3.1
