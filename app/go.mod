@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240315104458-b689cbcfddbd
 	github.com/iotaledger/hive.go/lo v0.0.0-20240315104458-b689cbcfddbd
-	github.com/iotaledger/hive.go/log v0.0.0-20240315104458-b689cbcfddbd
+	github.com/iotaledger/hive.go/log v0.0.0-20240325125531-49f04658265e
 	github.com/iotaledger/hive.go/runtime v0.0.0-20240315104458-b689cbcfddbd
 	github.com/knadh/koanf v1.5.0
 	github.com/spf13/cast v1.6.0
