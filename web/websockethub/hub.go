@@ -179,7 +179,7 @@ drainLoop:
 	}
 
 	// cleanup the logger
-	client.Logger.UnsubscribeFromParentLogger()
+	client.Logger.Shutdown()
 
 	h.events.ClientDisconnected.Trigger(&ClientConnectionEvent{ID: client.id})
 

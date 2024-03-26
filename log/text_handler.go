@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/runtime/workerpool"
 )
 
 // NewTextHandler creates a new handler that writes human-readable log records to the given output.
@@ -18,6 +19,7 @@ func NewTextHandler(options *Options) slog.Handler {
 	t := &textHandler{
 		output:     options.Output,
 		timeFormat: options.TimeFormat,
+		ioWorker:   workerpool.New("log.TextHandler", workerpool.WithWorkerCount(1)).Start(),
 	}
 
 	formatString := "%s\t%-7s\t%s\t%s %s\n"
@@ -33,6 +35,7 @@ type textHandler struct {
 	maxNamespaceLength atomic.Int64
 	formatString       atomic.Pointer[string]
 	updateMutex        sync.Mutex
+	ioWorker           *workerpool.WorkerPool
 }
 
 // Enabled returns true for all levels as we handle the cutoff ourselves using reactive variables and the ability to
@@ -43,34 +46,36 @@ func (t *textHandler) Enabled(_ context.Context, _ slog.Level) bool {
 
 // Handle writes the log record to the output.
 func (t *textHandler) Handle(_ context.Context, r slog.Record) error {
-	var namespace string
-	fieldsBuffer := new(bytes.Buffer)
+	t.ioWorker.Submit(func() {
+		var namespace string
+		fieldsBuffer := new(bytes.Buffer)
 
-	fieldCount := r.NumAttrs() - 1
-	if fieldCount > 0 {
-		fieldsBuffer.WriteString("(")
-	}
-
-	r.Attrs(func(attr slog.Attr) bool {
-		if attr.Key == namespaceKey {
-			//nolint:forcetypeassert // false positive, we know that the value is a string for a namespace key
-			namespace = attr.Value.Any().(string)
-		} else {
-			fieldsBuffer.WriteString(attr.String())
-			fieldsBuffer.WriteString(" ")
+		fieldCount := r.NumAttrs() - 1
+		if fieldCount > 0 {
+			fieldsBuffer.WriteString("(")
 		}
 
-		return true
+		r.Attrs(func(attr slog.Attr) bool {
+			if attr.Key == namespaceKey {
+				//nolint:forcetypeassert // false positive, we know that the value is a string for a namespace key
+				namespace = attr.Value.Any().(string)
+			} else {
+				fieldsBuffer.WriteString(attr.String())
+				fieldsBuffer.WriteString(" ")
+			}
+
+			return true
+		})
+
+		if fieldCount > 0 {
+			fieldsBuffer.Truncate(fieldsBuffer.Len() - 1)
+			fieldsBuffer.WriteString(")")
+		}
+
+		if _, err := fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format(t.timeFormat), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String()); err != nil {
+			panic(ierrors.Wrap(err, "writing log record failed"))
+		}
 	})
-
-	if fieldCount > 0 {
-		fieldsBuffer.Truncate(fieldsBuffer.Len() - 1)
-		fieldsBuffer.WriteString(")")
-	}
-
-	if _, err := fmt.Fprintf(t.output, t.buildFormatString(namespace), r.Time.Format(t.timeFormat), LevelName(r.Level), namespace, r.Message, fieldsBuffer.String()); err != nil {
-		return ierrors.Wrap(err, "writing log record failed")
-	}
 
 	return nil
 }

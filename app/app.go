@@ -580,10 +580,16 @@ func (a *App) Run() {
 	})
 
 	a.LogInfo("Shutdown complete!")
+
+	a.loggerRoot.Shutdown()
 }
 
 func (a *App) Shutdown() {
 	a.Daemon().ShutdownAndWait()
+
+	a.LogInfo("Shutdown complete!")
+
+	a.loggerRoot.Shutdown()
 }
 
 func (a *App) Info() *Info {

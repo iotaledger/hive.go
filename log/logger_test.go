@@ -17,12 +17,12 @@ func TestLogger(t *testing.T) {
 	logger.LogTrace("created chain")
 
 	networkLogger := logger.NewChildLogger("network")
-	defer networkLogger.UnsubscribeFromParentLogger()
+	defer networkLogger.Shutdown()
 	networkLogger.SetLogLevel(log.LevelInfo)
 	networkLogger.LogInfo("instantiated chain (invisible)", "id", 1)
 
 	chainLogger := logger.NewChildLogger("chain1")
-	defer chainLogger.UnsubscribeFromParentLogger()
+	defer chainLogger.Shutdown()
 	chainLogger.SetLogLevel(log.LevelDebug)
 	chainLogger.LogDebug("attested weight updated (visible)", "oldWeight", 7, "newWeight", 10)
 	logger.LogTrace("shutdown")
