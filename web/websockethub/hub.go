@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/log"
