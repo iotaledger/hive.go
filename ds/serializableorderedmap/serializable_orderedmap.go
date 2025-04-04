@@ -3,6 +3,8 @@ package serializableorderedmap
 import (
 	"context"
 
+	"fortio.org/safecast"
+
 	"github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -23,9 +25,14 @@ func New[K comparable, V any]() *SerializableOrderedMap[K, V] {
 
 // Encode returns a serialized byte slice of the object.
 func (o *SerializableOrderedMap[K, V]) Encode(api *serix.API) ([]byte, error) {
+	v, err := safecast.Convert[uint32](o.Size())
+	if err != nil {
+		return nil, err
+	}
+
 	seri := serializer.NewSerializer()
 
-	seri.WriteNum(uint32(o.Size()), func(err error) error {
+	seri.WriteNum(v, func(err error) error {
 		return ierrors.Wrap(err, "failed to write SerializableOrderedMap size to serializer")
 	})
 

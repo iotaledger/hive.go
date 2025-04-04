@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"fortio.org/safecast"
+
 	"github.com/iotaledger/hive.go/ds"
 	"github.com/iotaledger/hive.go/lo"
 )
@@ -37,7 +39,8 @@ func newWaitGroup[T comparable](elements ...T) *waitGroup[T] {
 // Add adds the given elements to the wait group.
 func (w *waitGroup[T]) Add(elements ...T) {
 	// first increase the counter so that the trigger is not executed before all elements are added
-	w.pendingElementsCounter.Add(int32(len(elements)))
+	v := safecast.MustConvert[int32](len(elements))
+	w.pendingElementsCounter.Add(v)
 
 	// then add the elements (and correct the counter if the elements are already present)
 	for _, element := range elements {
