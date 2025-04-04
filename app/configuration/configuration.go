@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/safecast"
+
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
@@ -616,7 +618,7 @@ func (c *Configuration) BindParameters(flagset *flag.FlagSet, namespace string, 
 
 // UpdateBoundParameters updates parameters that were bound using the BindParameters method with the current values in
 // the configuration.
-func (c *Configuration) UpdateBoundParameters() {
+func (c *Configuration) UpdateBoundParameters() error {
 	for _, boundParameter := range c.boundParameters {
 		parameterName := boundParameter.Name
 
@@ -633,25 +635,57 @@ func (c *Configuration) UpdateBoundParameters() {
 		case reflectutils.IntType:
 			*(boundParameter.BoundPointer.(*int)) = c.Int(parameterName)
 		case reflectutils.Int8Type:
-			*(boundParameter.BoundPointer.(*int8)) = int8(c.Int(parameterName))
+			v, err := safecast.Convert[int8](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*int8)) = v
 		case reflectutils.Int16Type:
-			*(boundParameter.BoundPointer.(*int16)) = int16(c.Int(parameterName))
+			v, err := safecast.Convert[int16](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*int16)) = v
 		case reflectutils.Int32Type:
-			*(boundParameter.BoundPointer.(*int32)) = int32(c.Int(parameterName))
+			v, err := safecast.Convert[int32](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*int32)) = v
 		case reflectutils.Int64Type:
 			*(boundParameter.BoundPointer.(*int64)) = c.Int64(parameterName)
 		case reflectutils.StringType:
 			*(boundParameter.BoundPointer.(*string)) = c.String(parameterName)
 		case reflectutils.UintType:
-			*(boundParameter.BoundPointer.(*uint)) = uint(c.Int(parameterName))
+			v, err := safecast.Convert[uint](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*uint)) = v
 		case reflectutils.Uint8Type:
-			*(boundParameter.BoundPointer.(*uint8)) = uint8(c.Int(parameterName))
+			v, err := safecast.Convert[uint8](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*uint8)) = v
 		case reflectutils.Uint16Type:
-			*(boundParameter.BoundPointer.(*uint16)) = uint16(c.Int(parameterName))
+			v, err := safecast.Convert[uint16](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*uint16)) = v
 		case reflectutils.Uint32Type:
-			*(boundParameter.BoundPointer.(*uint32)) = uint32(c.Int(parameterName))
+			v, err := safecast.Convert[uint32](c.Int(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*uint32)) = v
 		case reflectutils.Uint64Type:
-			*(boundParameter.BoundPointer.(*uint64)) = uint64(c.Int64(parameterName))
+			v, err := safecast.Convert[uint64](c.Int64(parameterName))
+			if err != nil {
+				return err
+			}
+			*(boundParameter.BoundPointer.(*uint64)) = v
 		case reflectutils.StringSliceType:
 			*(boundParameter.BoundPointer.(*[]string)) = c.Strings(parameterName)
 		case reflectutils.StringMapType:
@@ -672,6 +706,8 @@ func (c *Configuration) UpdateBoundParameters() {
 			reflect.ValueOf(boundParameter.BoundPointer).Elem().Set(newBoundParameterPointer.Elem())
 		}
 	}
+
+	return nil
 }
 
 // GetParameterPath returns the path to the parameter with the given name.
