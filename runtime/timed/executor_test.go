@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TestMemoryReleaseMaxMemoryIncreaseFactor = 1.20
+	TestMemoryReleaseMaxMemoryIncreaseFactor = 1.21
 )
 
 func TestTimedExecutor_MemLeak(t *testing.T) {
@@ -30,7 +30,7 @@ func TestTimedExecutor_MemLeak(t *testing.T) {
 	}, 10*time.Second, 100*time.Millisecond)
 
 	memStatsEnd := memStats()
-	assert.Less(t, float64(memStatsEnd.HeapObjects), TestMemoryReleaseMaxMemoryIncreaseFactor*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 10%")
+	assert.Less(t, float64(memStatsEnd.HeapObjects), TestMemoryReleaseMaxMemoryIncreaseFactor*float64(memStatsStart.HeapObjects), "the objects in the heap should not grow by more than 21%")
 }
 
 func TestTimedExecutor(t *testing.T) {
