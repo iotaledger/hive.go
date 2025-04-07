@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/web
 go 1.22
 
 require (
+	github.com/coder/websocket v1.8.13
 	github.com/iotaledger/hive.go/constraints v0.0.0-20240517131232-748f1ce3a2d2
 	github.com/iotaledger/hive.go/ds v0.0.0-20240517131232-748f1ce3a2d2
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240517131232-748f1ce3a2d2
@@ -11,7 +12,6 @@ require (
 	github.com/iotaledger/hive.go/runtime v0.0.0-20240517131232-748f1ce3a2d2
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.23.0
-	nhooyr.io/websocket v1.8.11
 )
 
 require (
