@@ -284,12 +284,19 @@ func (m *authenticatedMap[IdentifierType, K, V]) addSize(delta int) error {
 		return ierrors.Wrap(err, "failed to get size")
 	}
 
-	deltaUint, err := safecast.Convert[uint64](delta)
+	sizeInt, err := safecast.Convert[int](size)
 	if err != nil {
-		return ierrors.Wrap(err, "failed to convert delta to uint64")
+		return ierrors.Wrap(err, "failed to convert size to int")
 	}
 
-	if err := m.size.Set(size + deltaUint); err != nil {
+	newSize := sizeInt + delta
+
+	updatedSize, err := safecast.Convert[uint64](newSize)
+	if err != nil {
+		return ierrors.Wrap(err, "failed to convert new size to uint64")
+	}
+
+	if err := m.size.Set(updatedSize); err != nil {
 		return ierrors.Wrap(err, "failed to set size")
 	}
 
