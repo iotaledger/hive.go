@@ -87,20 +87,20 @@ func MergeContexts(ctxPrimary context.Context, ctxSecondary context.Context) (co
 // Deadline returns ok==false when no deadline is set.
 // Successive calls to Deadline return the same results.
 func (mc *mergedContext) Deadline() (time.Time, bool) {
-	min := time.Time{}
+	minimum := time.Time{}
 
 	if dl, ok := mc.ctxPrimary.Deadline(); ok {
-		min = dl
+		minimum = dl
 	}
 
 	if dl, ok := mc.ctxSecondary.Deadline(); ok {
 		// if deadline not set yet or secondary deadline is before current deadline
-		if min.IsZero() || dl.Before(min) {
-			min = dl
+		if minimum.IsZero() || dl.Before(minimum) {
+			minimum = dl
 		}
 	}
 
-	return min, !min.IsZero()
+	return minimum, !minimum.IsZero()
 }
 
 // Done returns a channel that's closed when work done on behalf of the

@@ -29,11 +29,11 @@ func (f statelessOptionFunc) apply(p Policy) Policy {
 }
 
 // MaxRetries configures a backoff policy to return Stop if NextBackOff() has been called too many times.
-func MaxRetries(max int) Option {
+func MaxRetries(maximum int) Option {
 	return optionFunc(func(p Policy) Policy {
 		return &maxRetriesOption{
 			delegate: p,
-			maxTries: max,
+			maxTries: maximum,
 			numTries: 0,
 		}
 	})

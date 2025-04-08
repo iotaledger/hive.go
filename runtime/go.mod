@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/runtime
 go 1.22
 
 require (
+	fortio.org/safecast v1.0.0
 	github.com/fjl/memsize v0.0.2
 	github.com/iotaledger/hive.go/constraints v0.0.0-20240517131232-748f1ce3a2d2
 	github.com/iotaledger/hive.go/ds v0.0.0-20240517131232-748f1ce3a2d2
