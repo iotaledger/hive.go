@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/kvstore
 go 1.22
 
 require (
+	fortio.org/safecast v1.0.0
 	github.com/iotaledger/grocksdb v1.7.5-0.20230220105546-5162e18885c7
 	github.com/iotaledger/hive.go/ds v0.0.0-20240517131232-748f1ce3a2d2
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240517131232-748f1ce3a2d2

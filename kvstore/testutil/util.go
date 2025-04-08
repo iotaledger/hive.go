@@ -74,28 +74,28 @@ func RandString(length int) string {
 }
 
 // RandUint8 returns a random uint8.
-func RandUint8(max uint8) uint8 {
-	return uint8(RandomInt31n(int32(max)))
+func RandUint8(maximum uint8) uint8 {
+	return uint8(RandomInt31n(int32(maximum))) //nolint:gosec
 }
 
 // RandUint16 returns a random uint16.
-func RandUint16(max uint16) uint16 {
-	return uint16(RandomInt31n(int32(max)))
+func RandUint16(maximum uint16) uint16 {
+	return uint16(RandomInt31n(int32(maximum))) //nolint:gosec
 }
 
 // RandUint32 returns a random uint32.
-func RandUint32(max uint32) uint32 {
-	return uint32(RandomInt63n(int64(max)))
+func RandUint32(maximum uint32) uint32 {
+	return uint32(RandomInt63n(int64(maximum))) //nolint:gosec
 }
 
 // RandUint64 returns a random uint64.
-func RandUint64(max uint64) uint64 {
-	return uint64(RandomInt63n(int64(uint32(max))))
+func RandUint64(maximum uint64) uint64 {
+	return uint64(RandomInt63n(int64(uint32(maximum)))) //nolint:gosec
 }
 
 // RandFloat64 returns a random float64.
-func RandFloat64(max float64) float64 {
-	return RandomFloat64() * max
+func RandFloat64(maximum float64) float64 {
+	return RandomFloat64() * maximum
 }
 
 // Rand32ByteArray returns an array with 32 random bytes.
