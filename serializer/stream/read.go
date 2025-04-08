@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"fortio.org/safecast"
+
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
 )
@@ -127,29 +129,48 @@ func readFixedSize(reader io.Reader, lenType serializer.SeriLengthPrefixType) (i
 		if err != nil {
 			return 0, ierrors.Wrap(err, "failed to read length prefix")
 		}
+		v, err := safecast.Convert[int](result)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to convert length prefix")
+		}
 
-		return int(result), nil
+		return v, nil
 	case serializer.SeriLengthPrefixTypeAsUint16:
 		result, err := Read[uint16](reader)
 		if err != nil {
 			return 0, ierrors.Wrap(err, "failed to read length prefix")
 		}
 
-		return int(result), nil
+		v, err := safecast.Convert[int](result)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to convert length prefix")
+		}
+
+		return v, nil
 	case serializer.SeriLengthPrefixTypeAsUint32:
 		result, err := Read[uint32](reader)
 		if err != nil {
 			return 0, ierrors.Wrap(err, "failed to read length prefix")
 		}
 
-		return int(result), nil
+		v, err := safecast.Convert[int](result)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to convert length prefix")
+		}
+
+		return v, nil
 	case serializer.SeriLengthPrefixTypeAsUint64:
 		result, err := Read[uint64](reader)
 		if err != nil {
 			return 0, ierrors.Wrap(err, "failed to read length prefix")
 		}
 
-		return int(result), nil
+		v, err := safecast.Convert[int](result)
+		if err != nil {
+			return 0, ierrors.Wrap(err, "failed to convert length prefix")
+		}
+
+		return v, nil
 	default:
 		panic(fmt.Sprintf("unknown slice length type %v", lenType))
 	}

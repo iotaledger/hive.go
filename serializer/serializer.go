@@ -10,6 +10,8 @@ import (
 	"sort"
 	"time"
 
+	"fortio.org/safecast"
+
 	"github.com/iotaledger/hive.go/ierrors"
 )
 
@@ -231,7 +233,7 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 
 			return
 		}
-		if err := binary.Write(&s.buf, binary.LittleEndian, uint16(l)); err != nil {
+		if err := binary.Write(&s.buf, binary.LittleEndian, uint16(l)); err != nil { //nolint:gosec // overflow checked above
 			s.err = errProducer(err)
 
 			return
@@ -242,7 +244,7 @@ func (s *Serializer) writeSliceLength(l int, lenType SeriLengthPrefixType, errPr
 
 			return
 		}
-		if err := binary.Write(&s.buf, binary.LittleEndian, uint32(l)); err != nil {
+		if err := binary.Write(&s.buf, binary.LittleEndian, uint32(l)); err != nil { //nolint:gosec // overflow checked above
 			s.err = errProducer(err)
 
 			return
@@ -432,12 +434,17 @@ func TimeToUint64(value time.Time) uint64 {
 		unixNano = 0
 	}
 
-	return uint64(unixNano)
+	return uint64(unixNano) //nolint:gosec // overflow checked above
 }
 
 // Uint64ToTime converts a uint64 unix timestamp with nanosecond-precision to a time.Time.
-func Uint64ToTime(value uint64) time.Time {
-	return time.Unix(0, int64(value)).UTC()
+func Uint64ToTime(value uint64) (time.Time, error) {
+	v, err := safecast.Convert[int64](value)
+	if err != nil {
+		return time.Unix(0, 0), err
+	}
+
+	return time.Unix(0, v).UTC(), nil
 }
 
 // WritePayload writes the given payload Serializable into the Serializer.
@@ -493,7 +500,11 @@ func (s *Serializer) WritePayloadLength(length int, errProducer ErrProducer) *Se
 }
 
 func (s *Serializer) writePayloadLength(length int) error {
-	if err := binary.Write(&s.buf, binary.LittleEndian, uint32(length)); err != nil {
+	v, err := safecast.Convert[uint32](length)
+	if err != nil {
+		return ierrors.Wrap(err, "unable to serialize payload length")
+	}
+	if err := binary.Write(&s.buf, binary.LittleEndian, v); err != nil {
 		return ierrors.Wrap(err, "unable to serialize payload length")
 	}
 
@@ -687,19 +698,19 @@ func (d *Deserializer) ReadNum(dest any, errProducer ErrProducer) *Deserializer 
 		*x = data[0]
 
 	case *int16:
-		*x = int16(binary.LittleEndian.Uint16(data))
+		*x = safecast.MustConvert[int16](binary.LittleEndian.Uint16(data))
 
 	case *uint16:
 		*x = binary.LittleEndian.Uint16(data)
 
 	case *int32:
-		*x = int32(binary.LittleEndian.Uint32(data))
+		*x = safecast.MustConvert[int32](binary.LittleEndian.Uint32(data))
 
 	case *uint32:
 		*x = binary.LittleEndian.Uint32(data)
 
 	case *int64:
-		*x = int64(binary.LittleEndian.Uint64(data))
+		*x = safecast.MustConvert[int64](binary.LittleEndian.Uint64(data))
 
 	case *uint64:
 		*x = binary.LittleEndian.Uint64(data)
@@ -984,7 +995,13 @@ func (d *Deserializer) ReadSequenceOfObjects(
 
 	var arrayElementValidator ElementValidationFunc
 	if deSeriMode.HasMode(DeSeriModePerformValidation) {
-		if err := arrayRules.CheckBounds(uint(sliceLength)); err != nil {
+		v, err := safecast.Convert[uint](sliceLength)
+		if err != nil {
+			d.err = errProducer(err)
+
+			return d
+		}
+		if err := arrayRules.CheckBounds(v); err != nil {
 			d.err = errProducer(err)
 
 			return d
@@ -1053,7 +1070,7 @@ func (d *Deserializer) ReadTime(dest *time.Time, errProducer ErrProducer) *Deser
 		nanoseconds = math.MaxInt64
 	}
 
-	*dest = time.Unix(0, int64(nanoseconds)).UTC()
+	*dest = time.Unix(0, int64(nanoseconds)).UTC() //nolint:gosec // overflow checked above
 
 	d.offset += UInt64ByteSize
 

@@ -131,6 +131,9 @@ func writeFixedSize(writer io.Writer, l int, lenType serializer.SeriLengthPrefix
 		return nil
 
 	case serializer.SeriLengthPrefixTypeAsUint64:
+		if l < 0 {
+			return ierrors.Errorf("unable to serialize collection length: length %d must be non-negative", l)
+		}
 		if err := Write(writer, uint64(l)); err != nil {
 			return ierrors.Wrap(err, "unable to write length")
 		}
