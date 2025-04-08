@@ -137,8 +137,8 @@ func TestEvent1_Hook_WorkerPool(t *testing.T) {
 	require.False(t, hook.WasTriggered())
 	testEvent.Trigger(0)
 	require.True(t, testEvent.WasTriggered())
-	require.Equal(t, 1, testEvent.TriggerCount())
-	require.Equal(t, testEvent.MaxTriggerCount(), 0)
+	require.Equal(t, uint64(1), testEvent.TriggerCount())
+	require.Equal(t, testEvent.MaxTriggerCount(), uint64(0))
 	require.False(t, testEvent.MaxTriggerCountReached())
 	require.True(t, hook.WasTriggered())
 

@@ -49,13 +49,13 @@ func (t *triggerSettings) WasTriggered() bool {
 }
 
 // TriggerCount returns the number of times Trigger was called.
-func (t *triggerSettings) TriggerCount() int {
-	return int(t.triggerCount.Load())
+func (t *triggerSettings) TriggerCount() uint64 {
+	return t.triggerCount.Load()
 }
 
 // MaxTriggerCount returns the maximum number of times Trigger can be called.
-func (t *triggerSettings) MaxTriggerCount() int {
-	return int(t.maxTriggerCount)
+func (t *triggerSettings) MaxTriggerCount() uint64 {
+	return t.maxTriggerCount
 }
 
 // MaxTriggerCountReached returns true if the maximum number of times Trigger can be called was reached.
