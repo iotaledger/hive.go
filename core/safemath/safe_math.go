@@ -84,7 +84,6 @@ func SafeMulUint64(x, y uint64) (uint64, error) {
 //
 // According to benchmarks, this function is about 27% faster than SafeMul.
 //
-//nolint:gosec // disable G115 - integer overlfows are checked manua
 //nolint:gosec // disable G115 - integer overlfows are checked manually
 func SafeMulInt64(x, y int64) (int64, error) {
 	// This function stores the sign of the resulting int64 multiplication
