@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/serializer/v2
 go 1.22
 
 require (
+	fortio.org/safecast v1.0.0
 	github.com/ethereum/go-ethereum v1.14.3
 	github.com/iancoleman/orderedmap v0.3.0
 	github.com/iotaledger/hive.go/ds v0.0.0-20240517131232-748f1ce3a2d2

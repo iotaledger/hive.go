@@ -21,7 +21,7 @@ func newClock(granularity time.Duration) *clock {
 	}
 
 	// set the initial value.
-	c.variable.Set(time.Now())
+	c.Set(time.Now())
 
 	go func() {
 		// align the ticker to the given granularity.
@@ -29,14 +29,14 @@ func newClock(granularity time.Duration) *clock {
 		ticker := time.NewTicker(granularity)
 
 		// first tick after the initial value.
-		c.variable.Set(time.Now().Truncate(granularity))
+		c.Set(time.Now().Truncate(granularity))
 
 		for {
 			select {
 			case <-c.shutdown:
 				return
 			case t := <-ticker.C:
-				c.variable.Set(t.Truncate(granularity))
+				c.Set(t.Truncate(granularity))
 			}
 		}
 	}()

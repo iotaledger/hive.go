@@ -3,6 +3,8 @@ package event
 import (
 	"sync/atomic"
 
+	"fortio.org/safecast"
+
 	"github.com/iotaledger/hive.go/lo"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/hive.go/runtime/workerpool"
@@ -50,12 +52,15 @@ func (t *triggerSettings) WasTriggered() bool {
 
 // TriggerCount returns the number of times Trigger was called.
 func (t *triggerSettings) TriggerCount() int {
-	return int(t.triggerCount.Load())
+	v := safecast.MustConvert[int](t.triggerCount.Load())
+	return v
 }
 
 // MaxTriggerCount returns the maximum number of times Trigger can be called.
 func (t *triggerSettings) MaxTriggerCount() int {
-	return int(t.maxTriggerCount)
+	v := safecast.MustConvert[int](t.maxTriggerCount)
+
+	return v
 }
 
 // MaxTriggerCountReached returns true if the maximum number of times Trigger can be called was reached.

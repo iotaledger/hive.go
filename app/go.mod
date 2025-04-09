@@ -3,6 +3,7 @@ module github.com/iotaledger/hive.go/app
 go 1.22
 
 require (
+	fortio.org/safecast v1.0.0
 	github.com/felixge/fgprof v0.9.4
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iotaledger/hive.go/ierrors v0.0.0-20240517131232-748f1ce3a2d2

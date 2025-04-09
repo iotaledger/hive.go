@@ -145,7 +145,11 @@ func (api *API) mapDecodeBasedOnType(ctx context.Context, mapVal any, value refl
 		sliceValue := sliceFromArray(value)
 		sliceValueType := sliceValue.Type()
 		if sliceValueType.AssignableTo(bytesType) {
-			byteSlice, err := DecodeHex(mapVal.(string))
+			str, ok := mapVal.(string)
+			if !ok {
+				return ierrors.New("non string value for string field")
+			}
+			byteSlice, err := DecodeHex(str)
 			if err != nil {
 				return ierrors.Wrap(err, "failed to read byte slice from map")
 			}
@@ -262,8 +266,11 @@ func (api *API) mapDecodeFloat(value reflect.Value, valueType reflect.Type, mapV
 	addrValue := value.Addr()
 	bitSize, _, addrTypeToConvert := getNumberTypeToConvert(valueType.Kind())
 	addrValue = addrValue.Convert(addrTypeToConvert)
-
-	f, err := strconv.ParseFloat(mapVal.(string), bitSize)
+	str, ok := mapVal.(string)
+	if !ok {
+		return ierrors.New("non string value for string field")
+	}
+	f, err := strconv.ParseFloat(str, bitSize)
 	if err != nil {
 		return err
 	}
@@ -315,8 +322,11 @@ func (api *API) mapDecodeStruct(ctx context.Context, mapVal any, value reflect.V
 		if err != nil {
 			return ierrors.Wrapf(err, "unable to parse time %s map value", strVal)
 		}
-
-		value.Set(reflect.ValueOf(serializer.Uint64ToTime(nanoTime)))
+		t, err := serializer.Uint64ToTime(nanoTime)
+		if err != nil {
+			return ierrors.Wrapf(err, "unable to parse time %s map value", strVal)
+		}
+		value.Set(reflect.ValueOf(t))
 
 		return nil
 	}

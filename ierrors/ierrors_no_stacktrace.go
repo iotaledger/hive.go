@@ -1,6 +1,6 @@
 //go:build !stacktrace
 
-//nolint:goerr113
+//nolint:err113
 package ierrors
 
 import (

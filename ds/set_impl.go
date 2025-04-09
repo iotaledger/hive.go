@@ -155,7 +155,7 @@ func newReadableSet[T comparable](elements ...T) *readableSet[T] {
 	}
 
 	for _, element := range elements {
-		r.OrderedMap.Set(element, types.Void)
+		r.Set(element, types.Void)
 	}
 
 	return r

@@ -122,7 +122,7 @@ func (gs *ShutdownHandler) writeSelfShutdownLogFile(msg string, critical bool) {
 			message += " (CRITICAL)"
 		}
 
-		if _, err := f.WriteString(fmt.Sprintf("%s: %s\n", time.Now().Format(time.RFC3339), message)); err != nil {
+		if _, err := fmt.Fprintf(f, "%s: %s\n", time.Now().Format(time.RFC3339), message); err != nil {
 			gs.LogWarnf("self-shutdown log can't be written, error: %s", err.Error())
 		}
 	}

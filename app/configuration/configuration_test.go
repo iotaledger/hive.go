@@ -272,7 +272,8 @@ func TestBindAndUpdateParameters(t *testing.T) {
 	err = config.LoadFlagSet(flagset)
 	assert.NoError(t, err)
 
-	config.UpdateBoundParameters()
+	err = config.UpdateBoundParameters()
+	assert.NoError(t, err)
 
 	assertFlag(t, flagset, config, &parameters.TestField,
 		"configuration.testField",

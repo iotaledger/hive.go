@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"sync"
 
+	"fortio.org/safecast"
+
 	hiveorderedmap "github.com/iotaledger/hive.go/ds/orderedmap"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/serializer/v2"
@@ -212,15 +214,23 @@ func (ts TypeSettings) MaxLen() (uint, bool) {
 // MinMaxLen returns min/max lengths for the object.
 // Returns 0 for either value if they are not set.
 func (ts TypeSettings) MinMaxLen() (int, int) {
-	var min, max int
+	var minimum, maximum int
 	if ts.arrayRules != nil {
-		min = int(ts.arrayRules.Min)
+		v, err := safecast.Convert[int](ts.arrayRules.Min)
+		if err != nil {
+			panic("array rule min conversion failed")
+		}
+		minimum = v
 	}
 	if ts.arrayRules != nil {
-		max = int(ts.arrayRules.Max)
+		v, err := safecast.Convert[int](ts.arrayRules.Max)
+		if err != nil {
+			panic("array rule max conversion failed")
+		}
+		maximum = v
 	}
 
-	return min, max
+	return minimum, maximum
 }
 
 func (ts TypeSettings) ensureOrdering() TypeSettings {
@@ -267,13 +277,20 @@ func (ts TypeSettings) toMode(opts *options) serializer.DeSerializationMode {
 
 // checkMinMaxBoundsLength checks whether the given length is within its defined bounds.
 func (ts TypeSettings) checkMinMaxBoundsLength(length int) error {
+	v, err := safecast.Convert[uint](length)
 	if minLen, ok := ts.MinLen(); ok {
-		if uint(length) < minLen {
+		if err != nil {
+			return ierrors.Wrap(err, "invalid length specified")
+		}
+		if v < minLen {
 			return ierrors.Wrapf(serializer.ErrArrayValidationMinElementsNotReached, "min length %d not reached (len %d)", minLen, length)
 		}
 	}
 	if maxLen, ok := ts.MaxLen(); ok {
-		if uint(length) > maxLen {
+		if err != nil {
+			return ierrors.Wrap(err, "invalid length specified")
+		}
+		if v > maxLen {
 			return ierrors.Wrapf(serializer.ErrArrayValidationMaxElementsExceeded, "max length %d exceeded (len %d)", maxLen, length)
 		}
 	}

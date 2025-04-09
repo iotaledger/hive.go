@@ -112,6 +112,7 @@ func (s *mapDB) Set(key kvstore.Key, value kvstore.Value) error {
 	return s.set(key, value)
 }
 
+//nolint:unparam // error is always nil
 func (s *mapDB) set(key kvstore.Key, value kvstore.Value) error {
 	s.m.set(byteutils.ConcatBytes(s.realm, key), value)
 
@@ -142,6 +143,7 @@ func (s *mapDB) Delete(key kvstore.Key) error {
 	return s.delete(key)
 }
 
+//nolint:unparam // error is always nil
 func (s *mapDB) delete(key kvstore.Key) error {
 	s.m.delete(byteutils.ConcatBytes(s.realm, key))
 

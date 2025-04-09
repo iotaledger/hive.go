@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"sync"
 
+	"fortio.org/safecast"
+
 	"github.com/pokt-network/smt"
 
 	"github.com/iotaledger/hive.go/ds/types"
@@ -124,7 +126,12 @@ func (m *authenticatedMap[IdentifierType, K, V]) Size() int {
 		return 0
 	}
 
-	return int(size)
+	v, err := safecast.Convert[int](size)
+	if err != nil {
+		return 0
+	}
+
+	return v
 }
 
 // Commit persists the current state of the map to the storage.
@@ -277,7 +284,19 @@ func (m *authenticatedMap[IdentifierType, K, V]) addSize(delta int) error {
 		return ierrors.Wrap(err, "failed to get size")
 	}
 
-	if err := m.size.Set(uint64(int(size) + delta)); err != nil {
+	sizeInt, err := safecast.Convert[int](size)
+	if err != nil {
+		return ierrors.Wrap(err, "failed to convert size to int")
+	}
+
+	newSize := sizeInt + delta
+
+	updatedSize, err := safecast.Convert[uint64](newSize)
+	if err != nil {
+		return ierrors.Wrap(err, "failed to convert new size to uint64")
+	}
+
+	if err := m.size.Set(updatedSize); err != nil {
 		return ierrors.Wrap(err, "failed to set size")
 	}
 

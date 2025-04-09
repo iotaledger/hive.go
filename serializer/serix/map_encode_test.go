@@ -377,7 +377,8 @@ func TestMapEncodeDecode(t *testing.T) {
 
 				uint64Time, err := serix.DecodeUint64("1660301478120072000")
 				require.NoError(t, err)
-				exampleTime := serializer.Uint64ToTime(uint64Time)
+				exampleTime, err := serializer.Uint64ToTime(uint64Time)
+				require.NoError(t, err)
 
 				return paras{
 					api: api,

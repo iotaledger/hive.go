@@ -222,12 +222,12 @@ func Max[T constraints.Ordered](collection ...T) T {
 
 	maxElem = collection[0]
 
-	return Reduce(collection, func(max, value T) T {
-		if Comparator(value, max) > 0 {
+	return Reduce(collection, func(accum, value T) T {
+		if Comparator(value, accum) > 0 {
 			return value
 		}
 
-		return max
+		return accum
 	}, maxElem)
 }
 
@@ -240,12 +240,12 @@ func Min[T constraints.Ordered](collection ...T) T {
 
 	minElem = collection[0]
 
-	return Reduce(collection, func(min, value T) T {
-		if Comparator(value, min) < 0 {
+	return Reduce(collection, func(accum, value T) T {
+		if Comparator(value, accum) < 0 {
 			return value
 		}
 
-		return min
+		return accum
 	}, minElem)
 }
 
