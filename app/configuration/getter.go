@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/v2"
 )
 
 // All returns a map of all flattened key paths and their values.
