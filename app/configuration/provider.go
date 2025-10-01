@@ -3,9 +3,9 @@ package configuration
 import (
 	"strings"
 
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/ierrors"

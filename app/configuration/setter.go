@@ -3,9 +3,9 @@ package configuration
 import (
 	"strings"
 
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/structs"
+	"github.com/knadh/koanf/v2"
 )
 
 // SetDefault sets the default value for the key (case-insensitive).

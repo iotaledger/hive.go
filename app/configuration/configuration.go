@@ -12,9 +12,9 @@ import (
 
 	"fortio.org/safecast"
 
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	flag "github.com/spf13/pflag"
 
 	"github.com/iotaledger/hive.go/ierrors"

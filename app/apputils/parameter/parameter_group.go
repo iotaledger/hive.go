@@ -11,9 +11,7 @@ import (
 	"github.com/iotaledger/hive.go/ierrors"
 )
 
-var (
-	ErrUnknownEntryType = ierrors.New("unknown entry type")
-)
+var ErrUnknownEntryType = ierrors.New("unknown entry type")
 
 //nolint:revive // better be explicit here
 type ParameterGroup struct {

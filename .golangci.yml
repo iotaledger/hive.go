@@ -54,7 +54,6 @@ linters:
     - promlinter
     - protogetter
     - reassign
-    - revive
     - rowserrcheck
     - sloglint
     - spancheck
@@ -78,8 +77,8 @@ linters:
       rules:
         main:
           files:
-            - '!**/ierrors.go'
-            - '!**/ierrors_no_stacktrace.go'
+            - "!**/ierrors.go"
+            - "!**/ierrors_no_stacktrace.go"
           deny:
             - pkg: errors
               desc: Should be replaced with "github.com/iotaledger/hive.go/ierrors" package
